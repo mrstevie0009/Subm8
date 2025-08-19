@@ -120,7 +120,7 @@ export default function ProfileHeader({ profile, isOwner, initialIsFollowing = f
                     {isFollowing ? 'Unfollow' : 'Follow'}
                   </button>
                 </form>
-                <Link href={`/${locale}/messages/new?to=${profile.username}`} className="px-3 py-1.5 rounded-full border border-white/20 hover:bg-white/5">
+                <Link href={`/${locale}/chat/new?to=${profile.username}`} className="px-3 py-1.5 rounded-full border border-white/20 hover:bg-white/5">
                   Message
                 </Link>
               </div>
