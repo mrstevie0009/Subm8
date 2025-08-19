@@ -2,193 +2,299 @@
 
 import * as React from 'react';
 import Image from 'next/image';
+import PostCard from '@/components/PostCard';
+
+const AVATAR_PH = '/images/avatar-placeholder.png';
 
 type Tab = 'posts' | 'gallery' | 'leaderboard';
 
-export default function ProfileTabsContent({
-  handle,
-  activeTab,
-}: {
+type Props = {
   handle: string;
-  activeTab: Tab;
-}) {
-  const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState<string | null>(null);
+  /** Uncontrolled Startwert (falls activeTab nicht gesetzt ist) */
+  initialTab?: Tab;
+  /** Controlled: aktiver Tab von außen (Header) */
+  activeTab?: Tab;
+  /** Tabs oben anzeigen? (default: true) */
+  showTabs?: boolean;
+};
 
-  const [posts, setPosts] = React.useState<
-    { id: string; content: string | null; imageUrl: string | null; createdAt: string }[]
-  >([]);
+type ApiPost = {
+  id: string;
+  createdAt: string;
+  text: string | null;
+  mediaUrl: string | null;
+  mediaAlt: string | null;
+  nsfw: boolean;
+  author: {
+    id: string;
+    handle: string;
+    displayName: string;
+    avatarUrl: string | null;
+  };
+};
 
-  const [leaderboard, setLeaderboard] = React.useState<
-    {
-      sender: { id: string; username: string; displayName: string; avatarUrl?: string };
-      totalCents: number;
-      lastAt: string;
-    }[]
-  >([]);
+type LeaderTop = {
+  user: { id: string; handle: string; displayName: string; avatarUrl: string | null };
+  totalCents: number;
+  count: number;
+};
 
-  const load = React.useCallback(async () => {
-    try {
-      setError(null);
-      setLoading(true);
+type LeaderRow = {
+  id: string;
+  at: string;
+  amountCents: number;
+  user: { id: string; handle: string; displayName: string; avatarUrl: string | null };
+};
 
-      if (activeTab === 'posts' || activeTab === 'gallery') {
-        const onlyImages = activeTab === 'gallery' ? '1' : '0';
-        const res = await fetch(`/api/users/${handle}/posts?onlyImages=${onlyImages}`, {
-          cache: 'no-store',
-        });
-        const json = await res.json();
-        if (!json?.ok) throw new Error(json?.error || 'Failed loading posts');
-        setPosts(json.items);
-      } else {
-        const res = await fetch(`/api/users/${handle}/leaderboard`, { cache: 'no-store' });
-        const json = await res.json();
-        if (!json?.ok) throw new Error(json?.error || 'Failed loading leaderboard');
-        setLeaderboard(json.items);
-      }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Unexpected error');
-    } finally {
-      setLoading(false);
-    }
-  }, [handle, activeTab]);
+export default function ProfileTabsContent({ handle, initialTab = 'posts', activeTab, showTabs = true }: Props) {
+  // interner State nur, wenn nicht controlled
+  const [internalTab, setInternalTab] = React.useState<Tab>(initialTab);
+  const tab: Tab = activeTab ?? internalTab;
 
+  const [posts, setPosts] = React.useState<ApiPost[]>([]);
+  const [loadingPosts, setLoadingPosts] = React.useState(true);
+  const [errPosts, setErrPosts] = React.useState<string | null>(null);
+
+  const [top, setTop] = React.useState<LeaderTop[]>([]);
+  const [rows, setRows] = React.useState<LeaderRow[]>([]);
+  const [loadingLead, setLoadingLead] = React.useState(false);
+  const [errLead, setErrLead] = React.useState<string | null>(null);
+
+  // Posts laden
   React.useEffect(() => {
-    void load();
-  }, [load]);
+    let cancelled = false;
+    (async () => {
+      try {
+        setLoadingPosts(true);
+        setErrPosts(null);
+        const res = await fetch(`/api/user/${handle}/posts`, { cache: 'no-store' });
+        const json = await res.json();
+        if (!json?.ok) throw new Error(json?.error || 'Failed to load posts');
+        if (!cancelled) setPosts(json.items as ApiPost[]);
+      } catch (e) {
+        if (!cancelled) setErrPosts(e instanceof Error ? e.message : 'Failed to load posts');
+      } finally {
+        if (!cancelled) setLoadingPosts(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [handle]);
 
-  if (loading) return <div className="py-8 text-sm text-muted">Loading…</div>;
-  if (error)   return <div className="py-4 text-sm text-red-500">{error}</div>;
+  // Leaderboard laden (wenn Tab aktiv ist)
+  React.useEffect(() => {
+    if (tab !== 'leaderboard') return;
+    let cancelled = false;
+    (async () => {
+      try {
+        setLoadingLead(true);
+        setErrLead(null);
+        const res = await fetch(`/api/user/${handle}/posts/leaderboard`, { cache: 'no-store' });
+        const json = await res.json();
+        if (!json?.ok) throw new Error(json?.error || 'Failed to load leaderboard');
+        if (!cancelled) {
+          setTop(json.top3 as LeaderTop[]);
+          setRows(json.rows as LeaderRow[]);
+        }
+      } catch (e) {
+        if (!cancelled) setErrLead(e instanceof Error ? e.message : 'Failed to load leaderboard');
+      } finally {
+        if (!cancelled) setLoadingLead(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [handle, tab]);
 
-  if (activeTab === 'posts') {
-    if (posts.length === 0) return <Empty label="No posts yet" />;
-    return (
-      <ul className="space-y-3">
-        {posts.map(p => (
-          <li key={p.id} className="rounded-app border border-sub bg-card p-3">
-            {p.imageUrl ? (
-              <div className="mb-2 relative w-full overflow-hidden rounded-lg border border-white/10" style={{ aspectRatio: '16/9' }}>
-                <Image
-                  src={p.imageUrl}
-                  alt=""
-                  fill
-                  className="object-cover"
-                  sizes="(min-width: 768px) 720px, 100vw"
-                />
-              </div>
-            ) : null}
-            {p.content ? <div className="whitespace-pre-wrap">{p.content}</div> : null}
-            <div className="mt-1 text-[11px] text-muted">
-              {new Date(p.createdAt).toLocaleString()}
-            </div>
-          </li>
-        ))}
-      </ul>
-    );
-  }
-
-  if (activeTab === 'gallery') {
-    if (posts.length === 0) return <Empty label="No images yet" />;
-    return (
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-        {posts.map(p => (
-          <div key={p.id} className="relative w-full overflow-hidden rounded-lg border border-white/10" style={{ aspectRatio: '1/1' }}>
-            <Image
-              src={p.imageUrl!}
-              alt=""
-              fill
-              className="object-cover"
-              sizes="(min-width: 768px) 240px, 45vw"
-            />
-          </div>
-        ))}
-      </div>
-    );
-  }
-
-  // leaderboard
-  if (leaderboard.length === 0) return <Empty label="No tributes received yet" />;
-
-  const top3 = leaderboard.slice(0, 3);
-  const rest = leaderboard.slice(3);
+  const gallery = React.useMemo(() => posts.filter(p => !!p.mediaUrl), [posts]);
 
   return (
-    <div className="space-y-6">
-      {/* Top 3 */}
-      <div className="grid grid-cols-3 gap-3">
-        {top3.map((row, idx) => (
-          <div key={row.sender.id} className="text-center rounded-app border border-sub bg-card p-3">
-            <Trophy rank={idx + 1} />
-            <div className="mt-2 font-medium truncate">{row.sender.displayName}</div>
-            <div className="text-[12px] text-muted truncate">@{row.sender.username}</div>
-            <div className="mt-1 text-sm">
-              ${(row.totalCents / 100).toFixed(2)}
-            </div>
-          </div>
-        ))}
-      </div>
+    <div className="mt-4">
+      {/* Tabs hier nur anzeigen, wenn explizit gewünscht */}
+      {showTabs && (
+        <nav className="border-t border-white/10">
+          <ul className="grid grid-cols-3 text-center text-[14px] font-medium">
+            <Tab label="Posts"       active={tab === 'posts'}       onClick={() => setInternalTab('posts')} />
+            <Tab label="Galerie"     active={tab === 'gallery'}     onClick={() => setInternalTab('gallery')} />
+            <Tab label="Leaderboard" active={tab === 'leaderboard'} onClick={() => setInternalTab('leaderboard')} />
+          </ul>
+        </nav>
+      )}
 
-      {/* Tabelle */}
-      <div className="rounded-app border border-sub overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-white/[.04] text-muted">
-            <tr>
-              <th className="text-left px-3 py-2">Time</th>
-              <th className="text-left px-3 py-2">User</th>
-              <th className="text-right px-3 py-2">Amount</th>
-            </tr>
-          </thead>
-          <tbody>
-            {leaderboard.map(row => (
-              <tr key={row.sender.id} className="border-t border-white/10">
-                <td className="px-3 py-2 text-[12px] text-muted">
-                  {new Date(row.lastAt).toLocaleString()}
-                </td>
-                <td className="px-3 py-2">
-                  <div className="flex items-center gap-2">
-                    <MiniAvatar src={row.sender.avatarUrl} />
-                    <div className="min-w-0">
-                      <div className="truncate">{row.sender.displayName}</div>
-                      <div className="text-[12px] text-muted truncate">@{row.sender.username}</div>
-                    </div>
-                  </div>
-                </td>
-                <td className="px-3 py-2 text-right">
-                  ${(row.totalCents / 100).toFixed(2)}
-                </td>
-              </tr>
+      {/* Inhalte */}
+      <div className="mt-3 space-y-3">
+        {tab === 'posts' && (
+          <>
+            {loadingPosts && <div className="text-sm text-muted">Loading…</div>}
+            {errPosts && <div className="text-sm text-red-500">{errPosts}</div>}
+            {!loadingPosts && !errPosts && posts.length === 0 && (
+              <div className="text-sm text-muted">No posts yet.</div>
+            )}
+            {!loadingPosts && !errPosts && posts.map((p) => (
+              <PostCard
+                key={p.id}
+                post={{
+                  id: p.id,
+                  createdAt: p.createdAt,
+                  text: p.text ?? '',
+                  mediaUrl: p.mediaUrl ?? undefined,
+                  mediaAlt: p.mediaAlt ?? undefined,
+                  author: {
+                    name: p.author.displayName,
+                    handle: p.author.handle,
+                    avatarUrl: p.author.avatarUrl ?? undefined,
+                  },
+                  stats: { comments: 0, reposts: 0, likes: 0 },
+                  viewer: { liked: false, bookmarked: false },
+                }}
+              />
             ))}
-          </tbody>
-        </table>
+          </>
+        )}
+
+        {tab === 'gallery' && (
+          <>
+            {loadingPosts && <div className="text-sm text-muted">Loading…</div>}
+            {errPosts && <div className="text-sm text-red-500">{errPosts}</div>}
+            {!loadingPosts && !errPosts && gallery.length === 0 && (
+              <div className="text-sm text-muted">No media posts yet.</div>
+            )}
+            {!loadingPosts && !errPosts && gallery.map((p) => (
+              <PostCard
+                key={p.id}
+                post={{
+                  id: p.id,
+                  createdAt: p.createdAt,
+                  text: p.text ?? '',
+                  mediaUrl: p.mediaUrl ?? undefined,
+                  mediaAlt: p.mediaAlt ?? undefined,
+                  author: {
+                    name: p.author.displayName,
+                    handle: p.author.handle,
+                    avatarUrl: p.author.avatarUrl ?? undefined,
+                  },
+                  stats: { comments: 0, reposts: 0, likes: 0 },
+                  viewer: { liked: false, bookmarked: false },
+                }}
+              />
+            ))}
+          </>
+        )}
+
+        {tab === 'leaderboard' && (
+            <div className="space-y-4">
+                {loadingLead && <div className="text-sm text-muted">Loading…</div>}
+                {errLead && <div className="text-sm text-red-500">{errLead}</div>}
+
+                {/* Top 3 – immer anzeigen, mit Platzhalter falls leer */}
+                {!loadingLead && !errLead && (
+                <>
+                    {(() => {
+                    const podium: (LeaderTop | null)[] = [
+                        top[0] ?? null,
+                        top[1] ?? null,
+                        top[2] ?? null,
+                    ];
+                    return (
+                        <div className="grid grid-cols-3 gap-3">
+                        {podium.map((t, i) => (
+                            <div key={i} className="rounded-app border border-sub bg-card p-3 text-center">
+                            <div className="text-2xl" aria-hidden="true">
+                                {i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉'}
+                            </div>
+                            <div className="mt-1 font-semibold truncate">
+                                {t?.user.displayName ?? '—'}
+                            </div>
+                            <div className="text-[12px] text-muted truncate">
+                                {t ? `@${t.user.handle}` : '@—'}
+                            </div>
+                            <div className="mt-1 text-sm">
+                                ${(((t?.totalCents ?? 0) / 100).toFixed(2))} · {(t?.count ?? 0)} tips
+                            </div>
+                            </div>
+                        ))}
+                        </div>
+                    );
+                    })()}
+                </>
+                )}
+
+                {/* Tabelle – immer rendern; bei 0 Rows Platzhalterzeile */}
+                {!loadingLead && !errLead && (
+                <div className="rounded-app border border-sub overflow-hidden">
+                    <table className="w-full text-sm">
+                    <thead className="bg-white/[.04]">
+                        <tr>
+                        <th className="text-left px-3 py-2">Time</th>
+                        <th className="text-left px-3 py-2">User</th>
+                        <th className="text-right px-3 py-2">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {rows.length > 0 ? (
+                        rows.map((r) => (
+                            <tr key={r.id} className="border-t border-white/10">
+                            <td className="px-3 py-2 text-muted whitespace-nowrap">
+                                {new Date(r.at).toLocaleString()}
+                            </td>
+                            <td className="px-3 py-2">
+                                <div className="flex items-center gap-2 min-w-0">
+                                <div className="relative size-7 rounded-full overflow-hidden bg-white/10">
+                                    <Image
+                                    src={r.user.avatarUrl || AVATAR_PH}
+                                    alt=""
+                                    fill
+                                    className="object-cover"
+                                    />
+                                </div>
+                                <div className="truncate">
+                                    <div className="truncate">{r.user.displayName}</div>
+                                    <div className="text-[11px] text-muted truncate">@{r.user.handle}</div>
+                                </div>
+                                </div>
+                            </td>
+                            <td className="px-3 py-2 text-right">
+                                ${(r.amountCents / 100).toFixed(2)}
+                            </td>
+                            </tr>
+                        ))
+                        ) : (
+                        <tr className="border-t border-white/10">
+                            <td className="px-3 py-3 text-center text-muted" colSpan={3}>
+                            No Tribute yet.
+                            </td>
+                        </tr>
+                        )}
+                    </tbody>
+                    </table>
+                </div>
+                )}
+            </div>
+            )}
       </div>
     </div>
   );
 }
 
-function Empty({ label }: { label: string }) {
+function Tab({
+  label,
+  active,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
   return (
-    <div className="py-12 text-center text-muted">{label}</div>
-  );
-}
-
-function MiniAvatar({ src }: { src?: string }) {
-  return (
-    <span className="relative inline-block size-7 rounded-full overflow-hidden bg-white/10 border border-white/15">
-      {src ? (
-        <Image src={src} alt="" fill className="object-cover" sizes="28px" />
-      ) : null}
-    </span>
-  );
-}
-
-function Trophy({ rank }: { rank: 1 | 2 | 3 }) {
-  const color =
-    rank === 1 ? '#f5c542' : rank === 2 ? '#c0c7cf' : '#cd7f32'; // gold/silver/bronze
-  return (
-    <svg viewBox="0 0 24 24" className="mx-auto" style={{ width: 28, height: 28 }}>
-      <path d="M8 21h8M12 17v4" stroke={color} strokeWidth="1.6" strokeLinecap="round" />
-      <path d="M6 3h12v5a6 6 0 0 1-12 0V3Z" fill="none" stroke={color} strokeWidth="1.6" />
-      <path d="M18 5h3a3 3 0 0 1-3 3M6 5H3a3 3 0 0 0 3 3" fill="none" stroke={color} strokeWidth="1.6" />
-    </svg>
+    <li>
+      <button
+        type="button"
+        onClick={onClick}
+        className={`w-full px-4 py-3 transition-colors ${
+          active ? 'text-[var(--purple)]' : 'text-white'
+        } hover:bg-white/[.04]`}
+        aria-current={active ? 'page' : undefined}
+      >
+        {label}
+      </button>
+    </li>
   );
 }

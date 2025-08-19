@@ -16,6 +16,7 @@ export type Post = {
   mediaUrl?: string;
   mediaAlt?: string;
   stats?: { comments?: number; reposts?: number; likes?: number };
+  viewer?: { liked?: boolean; bookmarked?: boolean }; // 👈 optional
   /** optional: initialer Bookmark-Status */
   initiallyBookmarked?: boolean;
 };

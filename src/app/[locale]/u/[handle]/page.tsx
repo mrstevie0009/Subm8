@@ -2,21 +2,20 @@
 import { notFound } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/currentUser';
-import ProfileHeader from '@/components/ProfileHeader';
 import type { RoleUI, Profile } from '@/types/profile';
+import ClientProfile from './ClientProfile';
 
 function toRoleUI(r: unknown): RoleUI {
   if (r === 'DOMME' || r === 'domme') return 'domme';
-  return 'sub'; // SUB | submissive -> sub
+  return 'sub';
 }
 
 type Params = { locale: string; handle: string };
 
 export default async function ProfilePage({ params }: { params: Promise<Params> }) {
-  // ✅ params zuerst awaiten (Next 15)
-  const { handle: raw, locale } = await params;
+  // Next 15: params zuerst awaiten
+  const { handle: raw } = await params;
 
-  // @user → user
   const clean = raw.startsWith('@') ? raw.slice(1) : raw;
   const handle = clean.toLowerCase();
 
@@ -63,7 +62,6 @@ export default async function ProfilePage({ params }: { params: Promise<Params> 
 
   const isOwner = !!viewer && viewer.id === user.id;
 
-  // folgt viewer diesem Profil?
   const isFollowing = viewer
     ? !!(await prisma.follow.findUnique({
         where: {
@@ -74,13 +72,10 @@ export default async function ProfilePage({ params }: { params: Promise<Params> 
     : false;
 
   return (
-    <div className="space-y-4">
-      <ProfileHeader
-        profile={ui}
-        isOwner={isOwner}
-        initialIsFollowing={isFollowing}
-        locale={locale} // ✅
-      />
-    </div>
+    <ClientProfile
+      profile={ui}
+      isOwner={isOwner}
+      initialIsFollowing={isFollowing}
+    />
   );
 }

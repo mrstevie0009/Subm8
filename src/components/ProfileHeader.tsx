@@ -1,4 +1,3 @@
-// src/components/ProfileHeader.tsx
 'use client';
 
 import * as React from 'react';
@@ -11,8 +10,10 @@ import { followAction, unfollowAction } from '@/app/actions/follow';
 const AVATAR_PH = '/images/avatar-placeholder.png';
 const BANNER_PH = '/images/banner-placeholder.png';
 
+type Tab = 'posts' | 'gallery' | 'leaderboard';
+
 function Chip({
-children,
+  children,
   tone = 'neutral',
   size = 'sm',
 }: {
@@ -29,7 +30,7 @@ children,
   const sizeCls: Record<'sm'|'md'|'lg', string> = {
     sm: 'text-[11px] px-2 py-1',
     md: 'text-[12px] px-2.5 py-[6px]',
-    lg: 'text-[14px] px-3 py-[4px]',
+    lg: 'text-[14px] px-3 py-[3px]',
   };
 
   return (
@@ -52,22 +53,25 @@ function joinedMonthYear(iso?: string | Date) {
   ).format(d);
 }
 
-type Tab = 'posts' | 'gallery' | 'leaderboard';
-
 type Props = {
   profile: Profile;
   isOwner: boolean;
   initialIsFollowing?: boolean;
-  initialTab?: Tab;
-  onTabChange?: (tab: Tab) => void;
+  /** Aktiver Tab (vom Parent gesteuert) */
+  activeTab?: Tab;
+  /** Callback beim Tab-Wechsel */
+  onTabChange?: (t: Tab) => void;
+  /** Falls du Tabs mal verstecken willst */
+  showTabs?: boolean; // default: true
 };
 
 export default function ProfileHeader({
   profile,
   isOwner,
   initialIsFollowing = false,
-  initialTab = 'posts',
-  onTabChange
+  activeTab = 'posts',
+  onTabChange,
+  showTabs = true,
 }: Props) {
   const locale = useLocale();
 
@@ -76,14 +80,9 @@ export default function ProfileHeader({
 
   const [bannerSrc, setBannerSrc] = React.useState<string>(profile.bannerUrl || BANNER_PH);
   const [avatarSrc, setAvatarSrc] = React.useState<string>(profile.avatarUrl || AVATAR_PH);
+
   const [isFollowing, setIsFollowing] = React.useState<boolean>(!!initialIsFollowing);
   const [pending, startTransition] = React.useTransition();
-  const [activeTab, setActiveTab] = React.useState<Tab>(initialTab);
-
-  const switchTab = (t: Tab) => {
-    setActiveTab(t);
-    onTabChange?.(t);
-  };
 
   type CSSVars = React.CSSProperties & { ['--avatar']?: string };
   const avatarStyle: CSSVars = {
@@ -108,11 +107,10 @@ export default function ProfileHeader({
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/20" />
       </div>
 
-     
+      {/* Content */}
       <div className="px-4 pb-0">
-        {/* vorher: items-end */}
         <div className="grid grid-cols-[auto_1fr_auto] items-start gap-3">
-          {/* AVATAR + ROLE direkt darunter */}
+          {/* Avatar + Role */}
           <div className="flex flex-col items-center">
             <div
               className="relative shrink-0 rounded-full overflow-hidden ring-2 ring-black/40 border border-white/20 bg-white/10"
@@ -128,25 +126,23 @@ export default function ProfileHeader({
                 onError={() => setAvatarSrc(AVATAR_PH)}
               />
             </div>
-
-            {/* Role-Badge direkt unter dem Avatar */}
-            <div className="mt-2 text-[22px] md:text-[24px]">
+            <div className="mt-2">
               <Chip tone="purple" size="lg">
                 {profile.role === 'domme' ? 'Domme' : 'Sub'}
               </Chip>
             </div>
           </div>
 
-          {/* Name + Handle rechts vom Avatar */}
-          <div className="min-w-0 /* vorher: pb-2 */">
+          {/* Name + Handle */}
+          <div className="min-w-0">
             <h1 className="text-[22px] md:text-[24px] font-bold leading-tight truncate">
               {profile.displayName}
             </h1>
             <div className="mt-0.5 text-muted text-[13px] truncate">@{profile.username}</div>
           </div>
 
-          {/* Actions rechts */}
-          <div className="flex justify-end /* vorher: pt-2 */">
+          {/* Actions */}
+          <div className="flex justify-end">
             {isOwner ? (
               <Link
                 href={`/${locale}/u/${profile.username}/edit`}
@@ -184,14 +180,13 @@ export default function ProfileHeader({
           </div>
         </div>
 
-
-        {/* Bio (optional) */}
+        {/* Bio */}
         {profile.bio && <p className="mt-3 leading-relaxed">{profile.bio}</p>}
 
-        {/* Großer Abstand vor Meta */}
+        {/* großer Abstand vor Meta */}
         <div className="mt-10" />
 
-        {/* Meta (Joined, Location etc.) */}
+        {/* Meta */}
         <div className="flex items-center text-[12px] leading-[1.35] text-muted">
           {profile.location && (
             <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
@@ -202,11 +197,9 @@ export default function ProfileHeader({
               {profile.location}
             </span>
           )}
-
           {profile.location && profile.createdAt && (
             <span className="mx-3 select-none" aria-hidden="true">·</span>
           )}
-
           {profile.createdAt && (
             <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
               <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 relative top-[0.5px]" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -228,40 +221,32 @@ export default function ProfileHeader({
             <strong className="text-white/95">{profile.stats.followers}</strong> Followers
           </span>
         </div>
+
+        {/* kleiner Spacer zum Content darunter */}
+        <div className="mt-6" />
       </div>
 
-      {/* Großer Abstand vor Tabs */}
-      <div className="mt-8" />
-
-      {/* Tabs */}
-      <nav className="border-t border-white/10">
-        <ul className="grid grid-cols-3 text-center text-[14px] font-medium">
-          <TabButton label="Posts"       active={activeTab === 'posts'}       onClick={() => switchTab('posts')} />
-          <TabButton label="Galerie"     active={activeTab === 'gallery'}     onClick={() => switchTab('gallery')} />
-          <TabButton label="Leaderboard" active={activeTab === 'leaderboard'} onClick={() => switchTab('leaderboard')} />
-        </ul>
-      </nav>
+      {/* FUNKTIONALE TABS im Header */}
+      {showTabs && (
+        <nav className="border-t border-white/10">
+          <ul className="grid grid-cols-3 text-center text-[14px] font-medium">
+            <TabBtn label="Posts"       active={activeTab === 'posts'}       onClick={() => onTabChange?.('posts')} />
+            <TabBtn label="Galerie"     active={activeTab === 'gallery'}     onClick={() => onTabChange?.('gallery')} />
+            <TabBtn label="Leaderboard" active={activeTab === 'leaderboard'} onClick={() => onTabChange?.('leaderboard')} />
+          </ul>
+        </nav>
+      )}
     </section>
   );
 }
 
-function TabButton({
-  label,
-  active,
-  onClick
-}: {
-  label: string;
-  active: boolean;
-  onClick: () => void;
-}) {
+function TabBtn({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
   return (
     <li>
       <button
         type="button"
         onClick={onClick}
-        className={`w-full px-4 py-3 transition-colors ${
-          active ? 'text-[var(--purple)]' : 'text-white'
-        } hover:bg-white/[.04]`}
+        className={`w-full px-4 py-3 transition-colors ${active ? 'text-[var(--purple)]' : 'text-white'} hover:bg-white/[.04]`}
         aria-current={active ? 'page' : undefined}
       >
         {label}
