@@ -36,6 +36,8 @@ export default function ChatListPage() {
   const [error, setError] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(true);
 
+  const iconSize = 'clamp(28px, 3.6vw, 34px)';
+
   React.useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -70,28 +72,48 @@ export default function ChatListPage() {
   return (
     <main
       className="mx-auto px-3"
-      style={{
-        maxWidth: 760,
-        paddingTop: 'calc(var(--chat-header-h, var(--header-h, 56px)) + 8px)',
-        paddingBottom: 'calc(var(--bottomnav-h, 72px) + 8px)',
-      }}
+      style={{ maxWidth: 760 }}
     >
       {/* Titel */}
       <h1 className="text-6xl md:text-5xl font-extrabold leading-tight tracking-tight mb-3">
         Messages
       </h1>
 
-      {/* Suche (sticky unterhalb des globalen Headers) */}
+      {/* Suche + Settings */}
       <div
-        className="sticky z-10 py-2 bg-black/50 backdrop-blur border-y border-white/10"
+        className="sticky z-10 bg-black/50 backdrop-blur border-y border-white/10"
         style={{ top: 'calc(var(--chat-header-h, var(--header-h, 56px)) + 1px)' }}
       >
-        <input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Search through messages"
-          className="w-full rounded-xl bg-white/[.06] border border-white/10 px-3 py-2 outline-none"
-        />
+        <div className="grid grid-cols-[auto_1fr] items-center gap-2 px-1 py-2">
+          {/* Settings → ?settings=1 */}
+          <Link
+            href={`/${locale}?settings=1`}
+            prefetch={false}
+            className="justify-self-start p-2 rounded hover:bg-white/5 shrink-0 relative inline-grid place-items-center cursor-pointer"
+            aria-label="Settings"
+            style={{ width: iconSize, height: iconSize }}
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              aria-hidden="true"
+              className="pointer-events-none"
+              style={{ color: 'rgba(255,255,255,.95)', position: 'absolute', inset: 0, width: '70%', height: '70%', margin: 'auto' }}
+            >
+              <rect x="3" y="6" width="18" height="2" rx="1" />
+              <rect x="3" y="11" width="18" height="2" rx="1" />
+              <rect x="3" y="16" width="18" height="2" rx="1" />
+            </svg>
+          </Link>
+
+          {/* Suchfeld */}
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search through messages"
+            className="w-full rounded-xl bg-white/[.06] border border-white/10 px-3 py-2 outline-none"
+          />
+        </div>
       </div>
 
       {error && <div className="my-2 text-sm text-red-500">{error}</div>}

@@ -13,8 +13,11 @@ export default function Header({ locale }: { locale: string }) {
   const { data: session } = useSession();
   const pathname = usePathname();
     // ❌ Globalen Header auf der Bookmarks-Seite ausblenden
-  if (pathname?.startsWith(`/${locale}/settings/bookmarks`)) {
+  if (pathname?.startsWith(`/${locale}/settings/bookmarks`) ) {
     return null;
+  }
+  else if (pathname?.startsWith(`/${locale}/chat`)) {
+    return null; // Chat-Seite hat eigenen Header
   }
 
   const iconSize = 'clamp(24px, 2.8vw, 50px)';

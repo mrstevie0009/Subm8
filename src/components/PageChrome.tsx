@@ -18,16 +18,27 @@ export default function PageChrome({
   const pathname = usePathname();
 
   // Auf /[locale]/settings/bookmarks den Header GAR NICHT mounten
-  const hideHeader =
-    pathname?.startsWith(`/${locale}/settings/bookmarks`) ?? false;
+  // bestehend
+  const inBookmarks = pathname.startsWith(`/${locale}/settings/bookmarks`);
+  
+  // neu: Chat-Routen erkennen
+  const inChatList   = pathname === `/${locale}/chat`;
+  const inChatThread = pathname.startsWith(`/${locale}/chat/`);
+  const inChat       = inChatList || inChatThread;  
 
+  // Header im Bookmarks-Bereich und im Chat ausblenden
+  const hideHeader = inBookmarks || inChat;
+
+  const hideBottomNav = inChat;
   // Content-Padding: kleiner, wenn kein Header vorhanden
   const contentTopPad = hideHeader
     ? '12px'
     : 'calc(clamp(24px, 2.8vw, 50px) + 20px)';
+// Platz nach unten – wenn BottomNav ausgeblendet ist, weniger Padding nötig
+  const contentBottomPad = hideBottomNav ? '12px' : '84px';
 
   // Platz nach unten, damit nichts unter die BottomNav rutscht
-  const contentBottomPad = '84px';
+  //const contentBottomPad = '84px';
 
   return (
     <>

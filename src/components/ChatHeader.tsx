@@ -3,10 +3,11 @@ import * as React from 'react';
 import Link from 'next/link';
 import { useLocale } from 'next-intl';
 import type { ChatUser } from '@/types/chat';
+import { usePathname } from 'next/navigation';
 
 export default function ChatHeader({ other }: { other: ChatUser & { role: 'domme'|'submissive'|'DOMME'|'SUBMISSIVE' } }) {
   const locale = useLocale();
-
+  const pathname = usePathname();
   const iconSize = 'clamp(28px, 3.6vw, 34px)';
   const titleSz  = 'clamp(17px, 2.1vw, 19px)';
   const metaSz   = 'clamp(12px, 1.6vw, 13px)';
@@ -26,6 +27,10 @@ export default function ChatHeader({ other }: { other: ChatUser & { role: 'domme
     };
   }, [headerH]);
 
+    // ❌ Globalen Header auf der Bookmarks-Seite ausblenden
+  if (pathname?.startsWith(`/${locale}/chat/[id]`)) {
+    return null;
+  }  
   const isDomme = String(other.role).toUpperCase() === 'DOMME';
   const roleLabel = isDomme ? 'Domme' : 'Sub';
 
@@ -36,11 +41,7 @@ export default function ChatHeader({ other }: { other: ChatUser & { role: 'domme
 
   return (
     <header
-      className="fixed z-40 left-1/2 -translate-x-1/2
-                 top-[var(--header-h,56px)]
-                 w-[min(100vw,760px)]
-                 border-b border-white/10
-                 bg-black/60 backdrop-blur supports-[backdrop-filter]:bg-black/50 px-3"
+      className="px-4 pt-3 pb-4 border-b border-white/10"
       style={styleVars}
     >
       <div

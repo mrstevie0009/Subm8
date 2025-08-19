@@ -18,7 +18,7 @@ type ThreadOk = {
     handle: string;
     displayName: string;
     avatarUrl: string | null;
-    role: DbRole; // <-- Rolle kommt direkt aus der DB
+    role: DbRole;
   };
   messages: {
     id: string;
@@ -51,8 +51,10 @@ export default function ChatThreadPage() {
   const [loading, setLoading] = React.useState(true);
   const [tipOpen, setTipOpen] = React.useState(false);
 
-  const mapRole = (r: DbRole): 'domme' | 'submissive' =>
-    r === 'DOMME' ? 'domme' : 'submissive';
+  const mapRole = React.useCallback(
+    (r: DbRole): 'domme' | 'submissive' => (r === 'DOMME' ? 'domme' : 'submissive'),
+    []
+  );
 
   const load = React.useCallback(async () => {
     try {
@@ -68,7 +70,7 @@ export default function ChatThreadPage() {
         username: json.other.handle,
         displayName: json.other.displayName,
         avatarUrl: json.other.avatarUrl ?? undefined,
-        role: mapRole(json.other.role), // ✅ echte Rolle verwenden
+        role: mapRole(json.other.role),
         dmOpen: true,
       });
 
@@ -86,9 +88,8 @@ export default function ChatThreadPage() {
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, mapRole]);
 
-  // Initial laden + leichtes Polling
   React.useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -101,7 +102,6 @@ export default function ChatThreadPage() {
     };
   }, [load]);
 
-  // Nachricht senden
   const sendMessage = React.useCallback(
     async (text: string) => {
       await fetch(`/api/chat/${id}`, {
@@ -114,7 +114,6 @@ export default function ChatThreadPage() {
     [id, load]
   );
 
-  // Datei-Upload (Platzhalter)
   const handleUpload = React.useCallback((file: File) => {
     alert(`Upload kommt bald: ${file.name}`);
   }, []);
@@ -129,7 +128,6 @@ export default function ChatThreadPage() {
 
   return (
     <>
-      {/* Header mit Gegenüber (zentriert, Label nutzt echte Rolle) */}
       {other && (
         <ChatHeader
           other={{
@@ -137,13 +135,12 @@ export default function ChatThreadPage() {
             username: other.username,
             displayName: other.displayName,
             avatarUrl: other.avatarUrl,
-            role: other.role, // 'domme' | 'submissive'
+            role: other.role,
             dmOpen: other.dmOpen,
           }}
         />
       )}
 
-      {/* Hauptbereich: zentriert unter globalem Header + ChatHeader */}
       <main className="px-3">
         <div
           className="mx-auto w-full max-w-[760px]"
@@ -186,7 +183,7 @@ export default function ChatThreadPage() {
       </main>
 
       <ChatComposer
-        disabled={false /* später via dmOpen/meRole steuerbar */}
+        disabled={false}
         onSend={sendMessage}
         onTip={() => setTipOpen(true)}
         onUpload={handleUpload}
