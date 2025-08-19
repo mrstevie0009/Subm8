@@ -1,0 +1,328 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider          = "postgresql"
+  url               = env("DATABASE_URL")
+  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
+}
+
+model User {
+  id                            String            @id @default(cuid())
+  createdAt                     DateTime          @default(now())
+  updatedAt                     DateTime          @updatedAt
+  email                         String?           @unique
+  handle                        String            @unique @db.VarChar(20)
+  displayName                   String            @db.VarChar(40)
+  role                          Role
+  avatarUrl                     String?
+  bannerUrl                     String?
+  bio                           String?           @db.VarChar(300)
+  location                      String?
+  nsfwDefault                   Boolean           @default(false)
+  ageVerifiedAt                 DateTime?
+  accounts                      Account[]
+  Bookmark                      Bookmark[]
+  Comment                       Comment[]
+  Community                     Community[]
+  CommunityMember               CommunityMember[]
+  conversationsAsDomme          Conversation[]    @relation("domme")
+  conversationsAsSub            Conversation[]    @relation("sub")
+  followers                     Follow[]          @relation("followee")
+  following                     Follow[]          @relation("follower")
+  Like                          Like[]
+  messages                      Message[]
+  reads                         MessageRead[]
+  Payment_Payment_payeeIdToUser Payment[]         @relation("Payment_payeeIdToUser")
+  Payment_Payment_payerIdToUser Payment[]         @relation("Payment_payerIdToUser")
+  Payout                        Payout[]
+  Post                          Post[]
+  sessions                      Session[]
+  sentTips                      Tip[]             @relation("sentTips")
+  receivedTips                  Tip[]             @relation("receivedTips")
+  Wallet                        Wallet?
+  passwordHash                  String?
+}
+
+model Follow {
+  id         String   @id @default(cuid())
+  createdAt  DateTime @default(now())
+  followerId String
+  followeeId String
+  followee   User     @relation("followee", fields: [followeeId], references: [id], onDelete: Cascade)
+  follower   User     @relation("follower", fields: [followerId], references: [id], onDelete: Cascade)
+
+  @@unique([followerId, followeeId])
+  @@index([followeeId])
+  @@index([followerId])
+}
+
+model Conversation {
+  id            String    @id @default(cuid())
+  createdAt     DateTime  @default(now())
+  dommeId       String
+  subId         String
+  openedByDomme Boolean   @default(true)
+  domme         User      @relation("domme", fields: [dommeId], references: [id], onDelete: Cascade)
+  sub           User      @relation("sub", fields: [subId], references: [id], onDelete: Cascade)
+  messages      Message[]
+  tips          Tip[]
+
+  @@unique([dommeId, subId])
+  @@index([dommeId])
+  @@index([subId])
+}
+
+model Message {
+  id             String        @id @default(cuid())
+  createdAt      DateTime      @default(now())
+  conversationId String
+  authorId       String
+  text           String?       @db.VarChar(4000)
+  mediaUrl       String?
+  mediaType      String?
+  seenAt         DateTime?
+  author         User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  conversation   Conversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  reads          MessageRead[]
+}
+
+model MessageRead {
+  messageId    String
+  readerUserId String
+  readAt       DateTime @default(now())
+  message      Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  readerUser   User     @relation(fields: [readerUserId], references: [id], onDelete: Cascade)
+
+  @@id([messageId, readerUserId])
+  @@index([readerUserId])
+}
+
+model Tip {
+  id             String        @id @default(cuid())
+  createdAt      DateTime      @default(now())
+  fromUserId     String
+  toUserId       String
+  amountCents    Int
+  currency       String        @db.VarChar(3)
+  methodRef      String?
+  status         TipStatus     @default(PENDING)
+  note           String?       @db.VarChar(200)
+  conversationId String?
+  conversation   Conversation? @relation(fields: [conversationId], references: [id])
+  from           User          @relation("sentTips", fields: [fromUserId], references: [id], onDelete: Cascade)
+  to             User          @relation("receivedTips", fields: [toUserId], references: [id], onDelete: Cascade)
+
+  @@index([fromUserId])
+  @@index([toUserId])
+  @@index([conversationId])
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Bookmark {
+  id        String   @id @default(cuid())
+  userId    String
+  postId    String
+  createdAt DateTime @default(now())
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId])
+}
+
+model Post {
+  id          String     @id @default(cuid())
+  authorId    String
+  text        String
+  mediaUrl    String?
+  mediaAlt    String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  communityId String?
+  nsfw        Boolean    @default(false)
+  bookmarks   Bookmark[]
+  Comment     Comment[]
+  Like        Like[]
+  author      User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  Community   Community? @relation(fields: [communityId], references: [id])
+
+  @@index([authorId, createdAt])
+  @@index([communityId, createdAt])
+}
+
+model Comment {
+  id        String   @id
+  userId    String
+  postId    String
+  text      String
+  createdAt DateTime @default(now())
+  Post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  User      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([postId, createdAt])
+  @@index([userId, createdAt])
+}
+
+model Community {
+  id              String            @id
+  slug            String            @unique
+  name            String
+  description     String?
+  createdById     String
+  createdAt       DateTime          @default(now())
+  User            User              @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  CommunityMember CommunityMember[]
+  Post            Post[]
+}
+
+model CommunityMember {
+  communityId String
+  userId      String
+  role        CommunityRole @default(MEMBER)
+  createdAt   DateTime      @default(now())
+  Community   Community     @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  User        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([communityId, userId])
+}
+
+model Ledger {
+  id          String          @id
+  paymentId   String?
+  entryType   LedgerEntryType
+  account     LedgerAccount
+  amountCents Int
+  currency    String          @default("EUR")
+  createdAt   DateTime        @default(now())
+  Payment     Payment?        @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+}
+
+model Like {
+  userId    String
+  postId    String
+  createdAt DateTime @default(now())
+  Post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  User      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, postId])
+  @@index([postId])
+  @@index([userId])
+}
+
+model Payment {
+  id                         String        @id
+  payerId                    String
+  payeeId                    String
+  amountGrossCents           Int
+  amountNetToDommeCents      Int
+  platformFeeCents           Int
+  processorFeeCents          Int           @default(0)
+  currency                   String        @default("EUR")
+  status                     PaymentStatus
+  externalRef                String?
+  createdAt                  DateTime      @default(now())
+  updatedAt                  DateTime
+  Ledger                     Ledger[]
+  User_Payment_payeeIdToUser User          @relation("Payment_payeeIdToUser", fields: [payeeId], references: [id], onDelete: Cascade)
+  User_Payment_payerIdToUser User          @relation("Payment_payerIdToUser", fields: [payerId], references: [id], onDelete: Cascade)
+}
+
+model Payout {
+  id             String       @id
+  userId         String
+  amountCents    Int
+  currency       String       @default("EUR")
+  status         PayoutStatus
+  method         String
+  destinationRef String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime
+  User           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Wallet {
+  userId       String   @id
+  balanceCents Int      @default(0)
+  updatedAt    DateTime
+  User         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum Role {
+  DOMME
+  SUBMISSIVE
+}
+
+enum TipStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  REFUNDED
+}
+
+enum CommunityRole {
+  ADMIN
+  MOD
+  MEMBER
+}
+
+enum LedgerAccount {
+  SUB_CASH
+  PROCESSOR
+  DOMME_WALLET
+  PLATFORM_WALLET
+  FEES
+}
+
+enum LedgerEntryType {
+  DEBIT
+  CREDIT
+}
+
+enum PaymentStatus {
+  CREATED
+  PROCESSING
+  SUCCEEDED
+  FAILED
+  CANCELED
+}
+
+enum PayoutStatus {
+  REQUESTED
+  PROCESSING
+  PAID
+  FAILED
+}
