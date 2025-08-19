@@ -8,7 +8,6 @@ import Link from 'next/link';
 import { useSession, signOut } from 'next-auth/react';
 import { useLocale } from 'next-intl';
 import { usePathname, useSearchParams } from 'next/navigation';
-// ❌ Entfernen: import { getCurrentUserWithStats } from '@/lib/currentUser';
 
 const AVATAR_PH = '/images/avatar-placeholder.png';
 
@@ -38,8 +37,9 @@ export default function SettingsDrawer({ open, onClose }: Props) {
   const roleRaw = (u.role ?? '').toString().toUpperCase();
   const roleLabel = roleRaw === 'DOMME' ? 'Domina' : roleRaw ? 'Sub' : '—';
 
-  // 🔢 Stats-States
-  const [stats, setStats] = React.useState<{ followers: number; following: number } | null>(null);
+  // Stats-States mit 0 als Default → nie „—“
+  const [followers, setFollowers] = React.useState<number>(0);
+  const [following, setFollowing] = React.useState<number>(0);
   const [statsError, setStatsError] = React.useState<string | null>(null);
 
   // Stats laden, wenn geöffnet & eingeloggt
@@ -51,11 +51,16 @@ export default function SettingsDrawer({ open, onClose }: Props) {
         setStatsError(null);
         const res = await fetch('/api/me/stats', { cache: 'no-store' });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const json = await res.json();
+        const json: { ok?: boolean; followers?: number; following?: number; error?: string } = await res.json();
         if (!json?.ok) throw new Error(json?.error || 'Unknown error');
-        if (!cancelled) setStats({ followers: json.followers ?? 0, following: json.following ?? 0 });
-      } catch (e: any) {
-        if (!cancelled) setStatsError(e?.message || 'Fehler beim Laden der Stats');
+        if (!cancelled) {
+          setFollowers(Number(json.followers ?? 0));
+          setFollowing(Number(json.following ?? 0));
+        }
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : 'Fehler beim Laden der Stats';
+        if (!cancelled) setStatsError(msg);
+        // Fallback bleibt 0
       }
     })();
     return () => {
@@ -67,7 +72,6 @@ export default function SettingsDrawer({ open, onClose }: Props) {
   const [show, setShow] = React.useState(false);
 
   React.useEffect(() => setMounted(true), []);
-
   React.useEffect(() => {
     if (!open) return setShow(false);
     const id = requestAnimationFrame(() => setShow(true));
@@ -90,7 +94,7 @@ export default function SettingsDrawer({ open, onClose }: Props) {
     };
   }, [open]);
 
-  // ✅ Links
+  // Links
   const hrefs = React.useMemo(
     () => ({
       profile:
@@ -195,15 +199,11 @@ export default function SettingsDrawer({ open, onClose }: Props) {
           {isAuth && (
             <div style={{ display: 'flex', gap: 16, marginTop: 10, fontSize: 14 }}>
               <div title={statsError ?? undefined}>
-                <span style={{ fontWeight: 600 }}>
-                  {stats ? stats.following : '—'}
-                </span>{' '}
+                <span style={{ fontWeight: 600 }}>{following}</span>{' '}
                 <span style={{ opacity: 0.7 }}>Following</span>
               </div>
               <div title={statsError ?? undefined}>
-                <span style={{ fontWeight: 600 }}>
-                  {stats ? stats.followers : '—'}
-                </span>{' '}
+                <span style={{ fontWeight: 600 }}>{followers}</span>{' '}
                 <span style={{ opacity: 0.7 }}>Follower</span>
               </div>
             </div>
@@ -295,41 +295,64 @@ function HireRow({ name, role }: { name: string; role: string }) {
   );
 }
 
-/* Icons (unverändert) */
-function ProfileIcon(c: string) { /* ... */ return (
-  <svg viewBox="0 0 24 24" style={{ width: 20, height: 20, color: c }} aria-hidden="true">
-    <circle cx="12" cy="7.5" r="3.5" fill="none" stroke="currentColor" strokeWidth="1.8" />
-    <path d="M4 19a8 8 0 0 1 16 0" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-  </svg>
-);}
-function CogIcon(c: string) { /* ... */ return (
-  <svg viewBox="0 0 24 24" style={{ width: 20, height: 20, color: c }} aria-hidden="true">
-    <circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" strokeWidth="1.8" />
-    <circle cx="12" cy="12" r="7.2" fill="none" stroke="currentColor" strokeWidth="1.6" />
-    <g stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
-      <line x1="19.2" y1="12" x2="21.4" y2="12" />
-      <line x1="4.8" y1="12" x2="2.6" y2="12" />
-      <line x1="15.6" y1="5.765" x2="16.75" y2="3.773" />
-      <line x1="8.4" y1="5.765" x2="7.25" y2="3.773" />
-      <line x1="8.4" y1="18.235" x2="7.25" y2="20.227" />
-      <line x1="15.6" y1="18.235" x2="16.75" y2="20.227" />
-    </g>
-  </svg>
-);}
-function BookmarkIcon(c: string) { /* ... */ return (
-  <svg viewBox="0 0 24 24" style={{ width: 20, height: 20, color: c }} aria-hidden="true">
-    <path d="M7 4h10a1 1 0 0 1 1 1v15l-6-3-6 3V5a1 1 0 0 1 1-1Z" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
-  </svg>
-);}
-function BoltIcon(c: string) { /* ... */ return (
-  <svg viewBox="0 0 24 24" style={{ width: 20, height: 20, color: c }} aria-hidden="true">
-    <path d="M13 2 6 13h5l-1 9 8-12h-5l1-8Z" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round" />
-  </svg>
-);}
-function PaymentsIcon(c: string) { /* ... */ return (
-  <svg viewBox="0 0 24 24" style={{ width: 20, height: 20, color: c }} aria-hidden="true">
-    <rect x="3.5" y="5.5" width="17" height="13" rx="2.2" fill="none" stroke="currentColor" strokeWidth="1.8" />
-    <path d="M3.5 9.5h17" fill="none" stroke="currentColor" strokeWidth="1.8" />
-    <circle cx="17.5" cy="15.2" r="2.7" fill="none" stroke="currentColor" strokeWidth="1.8" />
-  </svg>
-);}
+/* Icons */
+function ProfileIcon(c: string) {
+  return (
+    <svg viewBox="0 0 24 24" style={{ width: 20, height: 20, color: c }} aria-hidden="true">
+      <circle cx="12" cy="7.5" r="3.5" fill="none" stroke="currentColor" strokeWidth="1.8" />
+      <path d="M4 19a8 8 0 0 1 16 0" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  );
+}
+function CogIcon(c: string) {
+  return (
+    <svg viewBox="0 0 24 24" style={{ width: 20, height: 20, color: c }} aria-hidden="true">
+      <circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" strokeWidth="1.8" />
+      <circle cx="12" cy="12" r="7.2" fill="none" stroke="currentColor" strokeWidth="1.6" />
+      <g stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
+        <line x1="19.2" y1="12" x2="21.4" y2="12" />
+        <line x1="4.8" y1="12" x2="2.6" y2="12" />
+        <line x1="15.6" y1="5.765" x2="16.75" y2="3.773" />
+        <line x1="8.4" y1="5.765" x2="7.25" y2="3.773" />
+        <line x1="8.4" y1="18.235" x2="7.25" y2="20.227" />
+        <line x1="15.6" y1="18.235" x2="16.75" y2="20.227" />
+      </g>
+    </svg>
+  );
+}
+function BookmarkIcon(c: string) {
+  return (
+    <svg viewBox="0 0 24 24" style={{ width: 20, height: 20, color: c }} aria-hidden="true">
+      <path
+        d="M7 4h10a1 1 0 0 1 1 1v15l-6-3-6 3V5a1 1 0 0 1 1-1Z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+function BoltIcon(c: string) {
+  return (
+    <svg viewBox="0 0 24 24" style={{ width: 20, height: 20, color: c }} aria-hidden="true">
+      <path
+        d="M13 2 6 13h5l-1 9 8-12h-5l1-8Z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+function PaymentsIcon(c: string) {
+  return (
+    <svg viewBox="0 0 24 24" style={{ width: 20, height: 20, color: c }} aria-hidden="true">
+      <rect x="3.5" y="5.5" width="17" height="13" rx="2.2" fill="none" stroke="currentColor" strokeWidth="1.8" />
+      <path d="M3.5 9.5h17" fill="none" stroke="currentColor" strokeWidth="1.8" />
+      <circle cx="17.5" cy="15.2" r="2.7" fill="none" stroke="currentColor" strokeWidth="1.8" />
+    </svg>
+  );
+}
