@@ -1,0 +1,49 @@
+# Dependencies / package managers
+node_modules/
+.pnpm-store/
+.npm/
+.pnp
+.pnp.*
+
+# Build / caches
+.next/
+.turbo/
+out/
+dist/
+coverage/
+*.tsbuildinfo
+next-env.d.ts
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Env & secrets
+.env
+.env.local
+.env.*.local
+*.env
+
+# Hosting / platform
+.vercel/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.pem
+
+# Local dev uploads (keine großen Binaries ins Repo)
+public/uploads/
+
+# Prisma (generierte Artefakte außerhalb node_modules – falls du so einen Ordner hast)
+generated/
+generated/prisma/
+
+# Optional misc caches
+.cache/
+.parcel-cache/

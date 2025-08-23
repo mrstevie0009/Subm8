@@ -1,0 +1,59 @@
+@import "tailwindcss";
+
+:root {
+color-scheme: dark;
+--bg: #0b0b0c;
+--card: rgba(255,255,255,.05);
+--border: rgba(255,255,255,.10);
+--muted: rgba(255,255,255,.65);
+--muted-2: rgba(255,255,255,.45);
+--fg: #ffffff;
+--purple: #8b5cf6;
+--fs-base: clamp(0.95rem, 0.9rem + 0.35vw, 1.06rem);
+--radius: 1rem;
+--shadow: 0 8px 30px rgba(0,0,0,.35);
+}
+
+
+html, body { background: var(--bg); color: var(--fg); font-size: var(--fs-base); line-height: 1.6; }
+
+
+/* Utility-Aliase */
+.bg-card{background:var(--card)}
+.border-sub{border-color:var(--border)}
+.text-muted{color:var(--muted)}
+.text-muted-2{color:var(--muted-2)}
+.text-fg{color:var(--fg)}
+.text-purple{color:var(--purple)}
+.bg-purple{background:var(--purple)}
+.rounded-app{border-radius:var(--radius)}
+.shadow-app{box-shadow:var(--shadow)}
+.fill-subm8-purple { fill: var(--purple); }
+.stroke-subm8-purple { stroke: var(--purple); }
+.text-subm8-purple { color: var(--purple); }
+.text-card-foreground { color: var(--fg); }
+.motion-safe\:animate-pulse-slow { animation: pulse-slow 6s ease-in-out infinite; }
+/* --- Header sizing (global) --- */
+:root {
+  /* Responsive Icon-Größe; du hattest max=50px gewünscht */
+  --icon-size: clamp(24px, 2.8vw, 50px);
+  /* Vertikaler Puffer im Header (oben+unten zusammen; entspricht p-2 = 16px) */
+  --header-pad-y: 16px;
+  /* Effektive Header-Höhe = Icon-Größe + vertikaler Puffer */
+  --header-h: calc(var(--icon-size) + var(--header-pad-y));
+}
+
+/* iOS Safe-Area oben berücksichtigen (kein Kommentarblock mehr) */
+@supports (padding-top: env(safe-area-inset-top)) {
+  :root {
+    --header-h: calc(var(--icon-size) + var(--header-pad-y) + env(safe-area-inset-top));
+  }
+}
+@keyframes pulse-slow { 0%,100% { opacity:.9 } 50% { opacity:1 } }
+/* --- BottomNav sizing (global) --- */
+:root {
+  /* vertikaler Puffer im BottomNav (oben+unten zusammen) */
+  --bottomnav-pad-y: 20px;
+  /* effektive Höhe inkl. Safe-Area unten */
+  --bottomnav-h: calc(var(--icon-size) + var(--bottomnav-pad-y) + env(safe-area-inset-bottom));
+}
