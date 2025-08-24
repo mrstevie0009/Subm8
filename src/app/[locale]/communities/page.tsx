@@ -1,31 +1,58 @@
 'use client';
 
 import * as React from 'react';
-
-type Community = {
-  id: string;
-  name: string;
-  handle: string;
-  members: number;
-  banner?: string;
-  about: string;
-};
+import Link from 'next/link';
+import { useLocale } from 'next-intl';
+import CommunityJoinButton from '@/components/CommunityJoinButton';
+import CreateCommunityButton from '@/components/CreateCommunityButton';
 
 const BANNER_PH = '/images/banner-placeholder.png';
 
+type JoinPolicy = 'OPEN' | 'INVITE_ONLY' | 'DOMME_ONLY' | 'SUB_ONLY';
+
+type CommunityItem = {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  members: number;
+  joined: boolean;
+  policy: JoinPolicy;
+  bannerUrl?: string | null;
+};
+
 export default function CommunitiesPage() {
+  const locale = useLocale();
   const [tab, setTab] = React.useState<'discover' | 'yours'>('discover');
+  const [discover, setDiscover] = React.useState<CommunityItem[]>([]);
+  const [mine, setMine] = React.useState<CommunityItem[]>([]);
+  const [loading, setLoading] = React.useState(false);
 
-  const discover: Community[] = [
-    { id: 'c1', name: 'Findom Europe', handle: 'findom-eu', members: 3210, about: 'EU based findom & tips' },
-    { id: 'c2', name: 'Aftercare', handle: 'aftercare', members: 1540, about: 'Care, talk & resources' },
-    { id: 'c3', name: 'Rope & Knots', handle: 'rope-knots', members: 780, about: 'Shibari & safety' },
-  ];
-  const yours: Community[] = [
-    { id: 'c4', name: 'Vienna Kink', handle: 'vienna-kink', members: 420, about: 'Local meetups in Vienna' },
-  ];
+  React.useEffect(() => {
+    let cancelled = false;
 
-  const list = tab === 'discover' ? discover : yours;
+    async function load() {
+      setLoading(true);
+      try {
+        if (tab === 'discover') {
+          const r = await fetch('/api/communities?limit=24', { cache: 'no-store' });
+          const j = (await r.json()) as { ok: boolean; items: CommunityItem[] };
+          if (!cancelled && j?.ok) setDiscover(j.items);
+        } else {
+          const r = await fetch('/api/communities?mine=1&limit=48', { cache: 'no-store' });
+          const j = (await r.json()) as { ok: boolean; items: CommunityItem[] };
+          if (!cancelled && j?.ok) setMine(j.items);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    load();
+    return () => { cancelled = true; };
+  }, [tab]);
+
+  const list = tab === 'discover' ? discover : mine;
 
   return (
     <div className="max-w-5xl mx-auto">
@@ -33,9 +60,7 @@ export default function CommunitiesPage() {
       <div className="sticky top-[calc(var(--header-h))] z-10 bg-black/80 backdrop-blur border-b border-white/10">
         <div className="px-4 py-3 flex items-center justify-between">
           <div className="text-lg font-semibold">Communities</div>
-          <button className="px-3 py-1.5 rounded-full bg-[var(--purple)] text-white hover:opacity-95">
-            New Community
-          </button>
+          <CreateCommunityButton />
         </div>
         <div className="grid grid-cols-2">
           {(['discover', 'yours'] as const).map((k) => {
@@ -56,15 +81,25 @@ export default function CommunitiesPage() {
 
       {/* Grid */}
       <div className="p-4 grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {list.map((c) => (
+        {loading && (
+          <div className="col-span-full text-center opacity-70 py-8">Lade…</div>
+        )}
+
+        {!loading && list.length === 0 && (
+          <div className="col-span-full text-center opacity-70 py-10">
+            {tab === 'discover' ? 'Noch keine Communities gefunden.' : 'Du bist noch keiner Community beigetreten.'}
+          </div>
+        )}
+
+        {!loading && list.map((c) => (
           <article
             key={c.id}
-            className="rounded-app border border-sub shadow-app overflow-hidden flex flex-col"
+            className="relative rounded-app border border-sub shadow-app overflow-hidden flex flex-col"
           >
             {/* Banner */}
             <div className="relative h-28 bg-white/5">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={c.banner || BANNER_PH} alt="" className="object-cover w-full h-full" />
+              <img src={c.bannerUrl || BANNER_PH} alt="" className="object-cover w-full h-full" />
               <div className="absolute inset-0 bg-gradient-to-b from-black/0 to-black/30" />
             </div>
 
@@ -73,23 +108,32 @@ export default function CommunitiesPage() {
               <div className="flex items-start gap-3">
                 {/* simple letter avatar */}
                 <div className="shrink-0 size-10 rounded-full grid place-items-center bg-white/10 border border-white/20">
-                  <span className="font-semibold">{c.name.charAt(0)}</span>
+                  <span className="font-semibold">{c.name.charAt(0).toUpperCase()}</span>
                 </div>
                 <div className="min-w-0">
                   <div className="font-semibold truncate">{c.name}</div>
-                  <div className="text-sm opacity-70 truncate">@{c.handle}</div>
+                  <div className="text-sm opacity-70 truncate">@{c.slug}</div>
                 </div>
               </div>
 
-              <p className="mt-2 text-sm opacity-90 line-clamp-2">{c.about}</p>
+              <p className="mt-2 text-sm opacity-90 line-clamp-2">{c.description}</p>
 
-              <div className="mt-auto pt-3 flex items-center justify-between">
+              <div className="mt-auto pt-3 flex items-center justify-between relative z-20">
                 <span className="text-sm opacity-80">{c.members.toLocaleString()} members</span>
-                <button className="px-3 py-1.5 rounded-full border border-white/20 hover:bg-white/5">
-                  Join
-                </button>
+                <CommunityJoinButton
+                  slug={c.slug}
+                  initialJoined={c.joined}
+                  initialMembers={c.members}
+                />
               </div>
             </div>
+
+            {/* Klick-Overlay */}
+            <Link
+              href={`/${locale}/communities/${c.slug}`}
+              className="absolute inset-0 z-10"
+              aria-label={c.name}
+            />
           </article>
         ))}
       </div>

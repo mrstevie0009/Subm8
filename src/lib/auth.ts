@@ -1,18 +1,52 @@
 // src/lib/auth.ts
-import type {NextAuthOptions} from 'next-auth';
-import {PrismaAdapter} from '@next-auth/prisma-adapter';
+import type { NextAuthOptions, User as NextAuthUser } from 'next-auth';
+import { PrismaAdapter } from '@next-auth/prisma-adapter';
 import GoogleProvider from 'next-auth/providers/google';
 import CredentialsProvider from 'next-auth/providers/credentials';
-import {prisma} from '@/lib/prisma';
-import {verifyPassword} from '@/lib/password';
-import type {JWT} from 'next-auth/jwt';
-import type {Session} from 'next-auth';
-import {getServerSession} from 'next-auth';
+import { prisma } from '@/lib/prisma';
+import { verifyPassword } from '@/lib/password';
+import type { JWT } from 'next-auth/jwt';
+import type { Session } from 'next-auth';
+import { getServerSession } from 'next-auth';
+import type { Role } from '@prisma/client';
+
+// --- Module Augmentation: eigene Felder in User, Session & JWT typisieren ---
+declare module 'next-auth' {
+  interface User {
+    handle: string;
+    role: Role;
+    name?: string | null;
+    email?: string | null;
+    image?: string | null;
+    id: string;
+  }
+  interface Session {
+    user: {
+      id: string;
+      handle?: string;
+      role?: Role;
+      name?: string | null;
+      email?: string | null;
+      image?: string | null;
+    };
+  }
+}
+
+declare module 'next-auth/jwt' {
+  interface JWT {
+    uid?: string;
+    handle?: string;
+    role?: Role;
+    name?: string | null;
+    email?: string | null;
+    picture?: string | null;
+  }
+}
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   secret: process.env.NEXTAUTH_SECRET,
-  session: {strategy: 'jwt'},
+  session: { strategy: 'jwt' },
 
   providers: [
     GoogleProvider({
@@ -20,20 +54,31 @@ export const authOptions: NextAuthOptions = {
       clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? '',
     }),
 
+    // Login mit E-Mail ODER Handle
     CredentialsProvider({
-      name: 'E-Mail & Passwort',
+      name: 'Handle/E-Mail & Passwort',
       credentials: {
-        email: {label: 'E-Mail', type: 'email'},
-        password: {label: 'Passwort', type: 'password'},
+        identifier: { label: 'E-Mail oder Handle', type: 'text' },
+        password: { label: 'Passwort', type: 'password' },
       },
-      authorize: (async (credentials: Record<'email' | 'password', string> | undefined) => {
-        const email = (credentials?.email || '').trim().toLowerCase();
-        const password = (credentials?.password || '').toString();
-        if (!email || !password) return null;
+      async authorize(credentials): Promise<NextAuthUser | null> {
+        if (!credentials) return null;
 
-        // inkl. handle & role selektieren
-        const user = await prisma.user.findUnique({
-          where: {email},
+        const raw = (credentials.identifier ?? '').trim();
+        const password = String(credentials.password ?? '');
+        if (!raw || !password) return null;
+
+        const emailLike = raw.toLowerCase();
+        const handle = raw.replace(/^@/, '').toLowerCase();
+
+        // User per E-Mail ODER Handle finden (Handle case-insensitive)
+        const user = await prisma.user.findFirst({
+          where: {
+            OR: [
+              { email: emailLike },
+              { handle: { equals: handle, mode: 'insensitive' } },
+            ],
+          },
           select: {
             id: true,
             email: true,
@@ -49,59 +94,85 @@ export const authOptions: NextAuthOptions = {
         const ok = await verifyPassword(password, user.passwordHash);
         if (!ok) return null;
 
-        // Extra-Felder (handle/role) dürfen im returned user vorhanden sein
-        return {
+        // Wichtig: handle & role MIT zurückgeben (Projekt-Erweiterung von User)
+        const authUser: NextAuthUser = {
           id: user.id,
-          email: user.email ?? undefined,
-          name: user.displayName,
-          image: user.avatarUrl ?? undefined,
+          email: user.email ?? null,
+          name: user.displayName ?? null,
+          image: user.avatarUrl ?? null,
           handle: user.handle,
           role: user.role,
-        } as any;
-      }) as any,
-    }) as any,
+        };
+        return authUser;
+      },
+    }),
   ],
 
-  pages: {signIn: '/signin'},
+  // Falls du eine feste (nicht-lokalisierte) Signin-Seite verwendest
+  pages: { signIn: '/signin' },
 
   callbacks: {
-    // Schreibe id/handle/role in den JWT
-    async jwt({token, user}: {token: JWT; user?: any}) {
+    async jwt({
+      token,
+      user,
+    }: {
+      token: JWT;
+      user?: NextAuthUser | undefined;
+    }) {
+      // Bei Login: Basisdaten setzen
       if (user) {
-        token.uid = user.id as string;
-        if (user.handle) token.handle = user.handle as string;
-        if (user.role) token.role = user.role as any;
+        token.uid = user.id;
+        if (user.handle) token.handle = user.handle;
+        if (user.role) token.role = user.role;
+        if (typeof user.name !== 'undefined') token.name = user.name ?? null;
+        if (typeof user.image !== 'undefined') token.picture = user.image ?? null;
+        if (typeof user.email !== 'undefined') token.email = user.email ?? null;
       }
 
-      // Falls wir noch keinen handle/role im Token haben (z. B. nach Google-Login): aus DB nachladen
-      if ((!token.handle || !token.role) && token.uid) {
+      // handle/role bei Bedarf aus DB nachladen (z. B. Social Login)
+      if (token.uid && (!token.handle || !token.role)) {
         const dbUser = await prisma.user.findUnique({
-          where: {id: token.uid as string},
-          select: {handle: true, role: true, displayName: true, avatarUrl: true, email: true},
+          where: { id: token.uid },
+          select: {
+            handle: true,
+            role: true,
+            displayName: true,
+            avatarUrl: true,
+            email: true,
+          },
         });
         if (dbUser) {
           token.handle = dbUser.handle ?? token.handle;
-          token.role = (dbUser.role as any) ?? token.role;
-          // optional Name/Bild refreshen
-          if (dbUser.displayName) token.name = dbUser.displayName;
-          if (dbUser.avatarUrl) token.picture = dbUser.avatarUrl;
-          if (dbUser.email) token.email = dbUser.email;
+          token.role = dbUser.role ?? token.role;
+          token.name = dbUser.displayName ?? token.name ?? null;
+          token.picture = dbUser.avatarUrl ?? token.picture ?? null;
+          token.email = dbUser.email ?? token.email ?? null;
         }
       }
 
       return token;
     },
 
-    // Und aus dem JWT in die Session schieben → Client & Server können darauf zugreifen
-    async session({session, token}: {session: Session; token: JWT}) {
-      if (!session.user) (session as any).user = {};
-      if (token?.uid) (session.user as any).id = token.uid as string;
-      if (token?.handle) (session.user as any).handle = token.handle as string;
-      if (token?.role) (session.user as any).role = token.role as any;
-      // optional konsistent halten:
-      if (token?.name) session.user.name = token.name as string;
-      if (token?.picture) session.user.image = token.picture as string;
-      if (token?.email) session.user.email = token.email as string;
+    async session({
+      session,
+      token,
+    }: {
+      session: Session;
+      token: JWT;
+    }) {
+      // Session-User sicherstellen
+      if (!session.user) {
+        session.user = { id: token.uid ?? '' };
+      }
+
+      if (token.uid) session.user.id = token.uid;
+      if (token.handle) session.user.handle = token.handle;
+      if (token.role) session.user.role = token.role;
+
+      if (typeof token.name !== 'undefined') session.user.name = token.name;
+      if (typeof token.picture !== 'undefined') session.user.image = token.picture;
+      if (typeof token.email !== 'undefined') session.user.email = token.email;
+
       return session;
     },
   },

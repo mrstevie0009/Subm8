@@ -9,5 +9,5 @@ export default function HeaderGate() {
   const locale = useLocale();
   const hide = pathname?.startsWith(`/${locale}/chat`);
   if (hide) return null;
-  return <ChatHeader />;
+  return <ChatHeader/>;
 }

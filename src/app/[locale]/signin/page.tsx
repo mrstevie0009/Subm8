@@ -1,4 +1,3 @@
-// src/app/[locale]/signin/page.tsx
 'use client';
 
 import * as React from 'react';
@@ -11,11 +10,16 @@ export default function SignInPage() {
   const sp = useSearchParams();
   const locale = useLocale();
 
-  const presetEmail = sp.get('email') ?? '';
+  // sowohl ?email= als auch ?handle= als Vorausfüllung unterstützen
+  const preset =
+    sp.get('email') ??
+    sp.get('handle')?.replace(/^@/, '') ??
+    '';
+
   const registered = sp.get('registered') === '1';
   const errorMsg = sp.get('error');
 
-  const [email, setEmail] = React.useState(presetEmail);
+  const [identifier, setIdentifier] = React.useState(preset);
   const [password, setPassword] = React.useState('');
   const [loading, setLoading] = React.useState(false);
 
@@ -26,7 +30,7 @@ export default function SignInPage() {
       await signIn('credentials', {
         redirect: true,
         callbackUrl: `/${locale}`, // Redirect ins aktuelle Locale
-        email,
+        identifier,                // <— neu: Email ODER Handle
         password,
       });
     } finally {
@@ -52,12 +56,14 @@ export default function SignInPage() {
 
       <form onSubmit={handleCredentials} className="space-y-3">
         <div className="space-y-1">
-          <label className="block text-sm">E-Mail</label>
+          <label className="block text-sm">E-Mail oder Handle</label>
           <input
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            type="email"
+            value={identifier}
+            onChange={(e) => setIdentifier(e.target.value)}
+            type="text"                 // wichtig: kein "email", damit @handle erlaubt ist
+            autoComplete="username"
             required
+            placeholder="you@example.com oder @deinhandle"
             className="w-full rounded-md border px-3 py-2"
           />
         </div>
@@ -67,6 +73,7 @@ export default function SignInPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             type="password"
+            autoComplete="current-password"
             required
             className="w-full rounded-md border px-3 py-2"
           />

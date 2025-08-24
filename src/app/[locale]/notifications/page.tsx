@@ -1,90 +1,305 @@
+// src/app/[locale]/notifications/page.tsx
 'use client';
 
 import * as React from 'react';
+import Image from 'next/image';
+import { followAction, unfollowAction } from '@/app/actions/follow';
+
+// ---------- Types ----------
+type ApiUser = {
+  id?: string;                       // optional – falls deine API noch keine id liefert
+  handle: string;
+  displayName: string;
+  avatarUrl?: string | null;
+  viewerFollows?: boolean;           // muss von deiner API berechnet werden
+};
+
+type ApiFollow   = { id: string; kind: 'follow';  time: string; user: ApiUser };
+type ApiLike     = { id: string; kind: 'like';    time: string; user: ApiUser; text: string; postId: string };
+type ApiMention  = { id: string; kind: 'mention'; time: string; user: ApiUser; text: string; postId?: string };
+type ApiNoti     = ApiFollow | ApiLike | ApiMention;
+
+type SuggestUser = {
+  id?: string;                       // optional – falls nur handle geliefert wird
+  handle: string;
+  displayName: string;
+  avatarUrl?: string | null;
+  followersCount?: number;
+  viewerFollows?: boolean;
+};
+
+type NotiBase = {
+  id: string;
+  time: string; // relative
+  user: { id?: string; handle: string; name?: string; avatar?: string; viewerFollows?: boolean };
+};
 
 type Noti =
-  | { id: string; kind: 'follow'; user: string; time: string }
-  | { id: string; kind: 'mention'; user: string; text: string; time: string }
-  | { id: string; kind: 'like'; user: string; text: string; time: string };
+  | (NotiBase & { kind: 'follow' })
+  | (NotiBase & { kind: 'like'; text: string })
+  | (NotiBase & { kind: 'mention'; text: string });
 
+// ---------- Helpers ----------
+function timeAgo(date: Date): string {
+  const s = Math.floor((Date.now() - date.getTime()) / 1000);
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h`;
+  const d = Math.floor(h / 24);
+  return `${d}d`;
+}
+function cn(...classes: Array<string | false | undefined>) {
+  return classes.filter(Boolean).join(' ');
+}
+
+// ---------- Small Server-Action Follow Form ----------
+function FollowForm({
+  userId,
+  handle,
+  initialFollowing,
+}: {
+  userId?: string;
+  handle: string;
+  initialFollowing: boolean;
+}) {
+  const [following, setFollowing] = React.useState<boolean>(!!initialFollowing);
+  const [pending, startTransition] = React.useTransition();
+
+  const cls = following
+    ? 'px-3 py-1.5 rounded-full border border-white/25 hover:bg-white/5'
+    : 'px-3 py-1.5 rounded-full bg-[var(--purple)] text-white hover:opacity-95';
+
+  return (
+    <form
+      method="POST"
+      action={following ? unfollowAction : followAction}
+      onSubmit={() => startTransition(() => setFollowing((v) => !v))}
+    >
+      {/* Wir geben BEIDES mit: userId (falls vorhanden) UND handle als Fallback */}
+      {userId ? <input type="hidden" name="userId" value={userId} /> : null}
+      <input type="hidden" name="handle" value={handle} />
+      <button type="submit" disabled={pending} className={cls}>
+        {following ? 'Following' : 'Follow'}
+      </button>
+    </form>
+  );
+}
+
+// ---------- Page ----------
 export default function NotificationsPage() {
   const [tab, setTab] = React.useState<'all' | 'mentions'>('all');
 
-  const data: Noti[] = [
-    { id: '1', kind: 'follow', user: 'mistress_aria', time: '2m' },
-    { id: '2', kind: 'like', user: 'rope_nerd', text: 'Loved your post', time: '1h' },
-    { id: '3', kind: 'mention', user: 'user1001', text: '@you check this out', time: '3h' },
-  ];
+  const [items, setItems] = React.useState<Noti[]>([]);
+  const [loadingNoti, setLoadingNoti] = React.useState(false);
 
-  const list = tab === 'all' ? data : data.filter((n) => n.kind === 'mention');
+  const [suggestions, setSuggestions] = React.useState<SuggestUser[]>([]);
+  const [loadingSug, setLoadingSug] = React.useState(false);
+
+  // Notifications laden
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoadingNoti(true);
+      try {
+        const res = await fetch(`/api/notifications?tab=${tab}`, { cache: 'no-store' });
+        const j: { ok: boolean; items?: ApiNoti[] } = await res.json();
+        if (!cancelled && j?.ok && Array.isArray(j.items)) {
+          const mapped: Noti[] = j.items.map((n) => {
+            const rel = timeAgo(new Date(n.time));
+            const base: NotiBase = {
+              id: n.id,
+              time: rel,
+              user: {
+                id: n.user.id,
+                handle: n.user.handle,
+                name: n.user.displayName,
+                avatar: n.user.avatarUrl ?? undefined,
+                viewerFollows: n.user.viewerFollows,
+              },
+            };
+            if (n.kind === 'follow') return { ...base, kind: 'follow' };
+            if (n.kind === 'like') return { ...base, kind: 'like', text: n.text };
+            return { ...base, kind: 'mention', text: n.text };
+          });
+          setItems(mapped);
+        } else if (!cancelled) {
+          setItems([]);
+        }
+      } finally {
+        if (!cancelled) setLoadingNoti(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [tab]);
+
+  // Suggestions laden
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoadingSug(true);
+      try {
+        const res = await fetch(`/api/users/suggest?limit=6`, { cache: 'no-store' });
+        const j: { ok: boolean; users?: SuggestUser[] } = await res.json();
+        if (!cancelled && j?.ok && Array.isArray(j.users)) {
+          setSuggestions(j.users);
+        } else if (!cancelled) {
+          setSuggestions([]);
+        }
+      } finally {
+        if (!cancelled) setLoadingSug(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <div className="max-w-2xl mx-auto">
-      {/* Header with tabs */}
-      <div className="sticky top-[calc(var(--header-h))] z-10 bg-black/80 backdrop-blur border-b border-white/10">
-        <div className="px-4 py-3 flex items-center justify-between">
-          <div className="text-lg font-semibold">Notifications</div>
-          <button className="px-3 py-1.5 rounded-full border border-white/20 hover:bg-white/5">
-            Mark all as read
-          </button>
+      {/* Header */}
+      <div className="sticky top-[calc(var(--header-h))] z-10 border-b border-white/10 bg-black/70 backdrop-blur">
+        <div className="px-4 pt-3 pb-2">
+          <h1 className="text-xl md:text-2xl font-bold tracking-tight">Notifications</h1>
         </div>
 
-        <div className="grid grid-cols-2">
-          {(['all', 'mentions'] as const).map((k) => {
-            const active = tab === k;
-            return (
-              <button
-                key={k}
-                onClick={() => setTab(k)}
-                className={`py-3 font-medium ${active ? 'text-white' : 'text-white/70'} relative`}
-              >
-                {k === 'all' ? 'All' : 'Mentions'}
-                {active && (
-                  <span className="absolute left-0 right-0 -bottom-px h-[2px] bg-[var(--purple)]" />
-                )}
-              </button>
-            );
-          })}
+        {/* Segmented Tabs */}
+        <div className="px-4 pb-3">
+          <div className="inline-flex rounded-full border border-white/10 bg-white/[.04] p-1">
+            {(['all', 'mentions'] as const).map((k) => {
+              const active = tab === k;
+              return (
+                <button
+                  key={k}
+                  onClick={() => setTab(k)}
+                  className={cn(
+                    'px-4 py-1.5 text-sm rounded-full transition',
+                    active ? 'bg-[var(--purple)] text-white' : 'text-white/80 hover:bg-white/10'
+                  )}
+                >
+                  {k === 'all' ? 'All' : 'Mentions'}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
 
-      {/* List */}
-      <ul>
-        {list.map((n) => (
+      {/* People you might want to follow */}
+      <section className="px-4 pt-4">
+        <div className="rounded-app border border-sub shadow-app p-3">
+          <div className="px-1 pb-2 font-semibold">People you might want to follow</div>
+          {loadingSug && (
+            <ul className="divide-y divide-white/10">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <li key={i} className="flex items-center justify-between px-1 py-2">
+                  <div className="flex items-center gap-3">
+                    <div className="size-10 rounded-full bg-white/10 animate-pulse" />
+                    <div>
+                      <div className="h-3 w-28 bg-white/10 rounded animate-pulse" />
+                      <div className="h-3 w-20 bg-white/10 rounded mt-2 animate-pulse" />
+                    </div>
+                  </div>
+                  <div className="h-8 w-24 rounded-full border border-white/15" />
+                </li>
+              ))}
+            </ul>
+          )}
+          {!loadingSug && (
+            <ul className="divide-y divide-white/10">
+              {suggestions.map((u) => (
+                <li key={u.handle} className="flex items-center justify-between px-1 py-2">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <Avatar size={40} name={u.displayName || u.handle} src={u.avatarUrl ?? undefined} />
+                    <div className="min-w-0">
+                      <div className="font-medium truncate">{u.displayName}</div>
+                      <div className="text-sm opacity-70 truncate">@{u.handle}</div>
+                    </div>
+                  </div>
+                  <FollowForm
+                    userId={u.id}                          // wenn vorhanden, super
+                    handle={u.handle}                      // fallback – Actions können per handle auflösen
+                    initialFollowing={!!u.viewerFollows}   // initialer Status aus API
+                  />
+                </li>
+              ))}
+              {suggestions.length === 0 && (
+                <li className="px-1 py-4 text-sm opacity-70">No suggestions right now.</li>
+              )}
+            </ul>
+          )}
+        </div>
+      </section>
+
+      {/* Notifications List */}
+      <ul className="mt-4">
+        {loadingNoti && (
+          <>
+            <SkeletonRow />
+            <SkeletonRow />
+            <SkeletonRow />
+          </>
+        )}
+
+        {!loadingNoti && items.length === 0 && (
+          <li className="px-4 py-12 text-center">
+            <div className="inline-flex flex-col items-center gap-3 opacity-80">
+              <div className="grid place-items-center size-12 rounded-full bg-white/5 border border-white/10">
+                <BellIcon tone="purple" />
+              </div>
+              <div className="text-base font-medium">All caught up</div>
+              <div className="text-sm opacity-70">You have no notifications right now.</div>
+            </div>
+          </li>
+        )}
+
+        {items.map((n) => (
           <li key={n.id} className="px-4 py-3 hover:bg-white/5 border-b border-white/10">
             <div className="flex items-start gap-3">
-              <div className="mt-0.5">
-                {n.kind === 'follow' && <BellIcon tone="purple" />}
-                {n.kind === 'mention' && <AtIcon tone="neutral" />}
-                {n.kind === 'like' && <HeartIcon tone="purple" />}
+              {/* Avatar + Kind-Badge */}
+              <div className="relative">
+                <Avatar size={40} name={n.user.name ?? n.user.handle} src={n.user.avatar} />
+                <div className="absolute -bottom-1 -right-1 grid place-items-center rounded-full border border-black size-5 bg-[var(--purple)] text-white">
+                  {n.kind === 'follow' && <SmallUserPlusIcon />}
+                  {n.kind === 'mention' && <SmallAtIcon />}
+                  {n.kind === 'like' && <SmallHeartIcon />}
+                </div>
               </div>
 
-              <div className="flex-1 min-w-0">
+              {/* Text */}
+              <div className="flex-1 min-w-0 leading-tight">
                 {n.kind === 'follow' && (
-                  <div className="leading-tight">
-                    <b>@{n.user}</b> followed you · <span className="text-sm opacity-70">{n.time}</span>
+                  <div>
+                    <b>@{n.user.handle}</b> followed you{' '}
+                    <span className="text-xs opacity-60">· {n.time}</span>
                   </div>
                 )}
-
                 {n.kind === 'mention' && (
-                  <div className="leading-tight">
-                    <b>@{n.user}</b> mentioned you: <span className="opacity-90">{n.text}</span>{' '}
-                    · <span className="text-sm opacity-70">{n.time}</span>
+                  <div>
+                    <b>@{n.user.handle}</b> mentioned you:{' '}
+                    <span className="opacity-90">{n.text}</span>{' '}
+                    <span className="text-xs opacity-60">· {n.time}</span>
                   </div>
                 )}
-
                 {n.kind === 'like' && (
-                  <div className="leading-tight">
-                    <b>@{n.user}</b> liked your post: <span className="opacity-90">{n.text}</span>{' '}
-                    · <span className="text-sm opacity-70">{n.time}</span>
+                  <div>
+                    <b>@{n.user.handle}</b> liked your post:{' '}
+                    <span className="opacity-90">{n.text}</span>{' '}
+                    <span className="text-xs opacity-60">· {n.time}</span>
                   </div>
                 )}
               </div>
 
+              {/* Action */}
               {n.kind === 'follow' ? (
-                <button className="px-3 py-1.5 rounded-full bg-[var(--purple)] text-white hover:opacity-95">
-                  Follow back
-                </button>
+                <FollowForm
+                  userId={n.user.id}
+                  handle={n.user.handle}
+                  initialFollowing={!!n.user.viewerFollows}
+                />
               ) : (
                 <button className="px-3 py-1.5 rounded-full border border-white/20 hover:bg-white/5">
                   View
@@ -98,47 +313,75 @@ export default function NotificationsPage() {
   );
 }
 
+// ---- UI bits ----
+function Avatar({ src, name, size = 40 }: { src?: string; name: string; size?: number }) {
+  if (src) {
+    return (
+      <Image
+        src={src}
+        alt=""
+        width={size}
+        height={size}
+        className="rounded-full object-cover border border-white/15"
+        sizes={`${size}px`}
+      />
+    );
+  }
+  const initial = (name || '?').trim().charAt(0).toUpperCase();
+  return (
+    <div
+      className="grid place-items-center rounded-full bg-white/10 border border-white/20"
+      style={{ width: size, height: size }}
+      aria-hidden
+    >
+      <span className="font-semibold">{initial}</span>
+    </div>
+  );
+}
+
+function SkeletonRow() {
+  return (
+    <li className="px-4 py-3 border-b border-white/10">
+      <div className="flex items-start gap-3">
+        <div className="size-10 rounded-full bg-white/10 animate-pulse" />
+        <div className="flex-1 min-w-0">
+          <div className="h-3 w-2/3 bg-white/10 rounded animate-pulse" />
+          <div className="h-3 w-1/3 bg-white/10 rounded mt-2 animate-pulse" />
+        </div>
+        <div className="h-8 w-20 rounded-full border border-white/15" />
+      </div>
+    </li>
+  );
+}
+
+// ---- Icons ----
 function BellIcon({ tone = 'neutral' }: { tone?: 'neutral' | 'purple' }) {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      width="22"
-      height="22"
-      className={tone === 'purple' ? 'text-[var(--purple)]' : 'text-white/80'}
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-    >
+    <svg viewBox="0 0 24 24" width="22" height="22" className={tone === 'purple' ? 'text-[var(--purple)]' : 'text-white/80'} fill="none" stroke="currentColor" strokeWidth="1.8">
       <path d="M6 9a6 6 0 1 1 12 0c0 4 2 5 2 6H4c0-1 2-2 2-6Z" />
       <path d="M9 19a3 3 0 0 0 6 0" />
     </svg>
   );
 }
-function AtIcon({ tone = 'neutral' }: { tone?: 'neutral' | 'purple' }) {
+function SmallUserPlusIcon() {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      width="22"
-      height="22"
-      className={tone === 'purple' ? 'text-[var(--purple)]' : 'text-white/80'}
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-    >
-      <path d="M16 15v-6a4 4 0 1 0-1 7" />
-      <circle cx="12" cy="12" r="9" />
+    <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor" aria-hidden>
+      <path d="M15 8a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z" />
+      <path d="M2 20c0-4 4-7 9-7s9 3 9 7H2Z" />
+      <path d="M19 8v-2m0 0V4m0 2h2m-2 0h-2" stroke="black" strokeWidth="1" />
     </svg>
   );
 }
-function HeartIcon({ tone = 'purple' }: { tone?: 'neutral' | 'purple' }) {
+function SmallAtIcon() {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      width="22"
-      height="22"
-      className={tone === 'purple' ? 'text-[var(--purple)]' : 'text-white/80'}
-      fill="currentColor"
-    >
+    <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor" aria-hidden>
+      <path d="M12 4a8 8 0 1 0 5.3 14.1l.2-.2a1 1 0 1 0-1.5-1.3l-.2.2A6 6 0 1 1 12 6a5 5 0 0 1 5 5v.5a1.5 1.5 0 0 1-3 0V7.5a1 1 0 1 0-2 0V11a3.5 3.5 0 1 0 7 0V11a7 7 0 0 0-7-7Z" />
+    </svg>
+  );
+}
+function SmallHeartIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor" aria-hidden>
       <path d="M20.8 8.8a5.5 5.5 0 0 0-9.4-3.9l-.9.9-.9-.9a5.5 5.5 0 0 0-7.8 7.8l.9.9L10.5 21l8.7-7.4.9-.9a5.5 5.5 0 0 0 0-3.9z" />
     </svg>
   );

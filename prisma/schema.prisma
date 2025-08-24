@@ -5,7 +5,6 @@ generator client {
 datasource db {
   provider          = "postgresql"
   url               = env("DATABASE_URL")
-  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
 }
 
 model User {
@@ -207,6 +206,8 @@ model Community {
   User            User              @relation(fields: [createdById], references: [id], onDelete: Cascade)
   CommunityMember CommunityMember[]
   Post            Post[]
+  joinPolicy      CommunityJoinPolicy @default(OPEN)
+  bannerUrl       String?
 }
 
 model CommunityMember {
@@ -325,4 +326,11 @@ enum PayoutStatus {
   PROCESSING
   PAID
   FAILED
+}
+
+enum CommunityJoinPolicy {
+  OPEN
+  INVITE_ONLY
+  DOMME_ONLY
+  SUB_ONLY
 }

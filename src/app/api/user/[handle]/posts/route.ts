@@ -4,6 +4,25 @@ import { prisma } from '@/lib/prisma';
 
 type Params = { handle: string };
 
+export const dynamic = 'force-dynamic'; // kein statisches Caching für den Feed
+
+function normalizeMediaUrl(url: string | null | undefined): string | undefined {
+  if (!url) return undefined;
+  // already absolute or correct public path
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('/uploads/')) {
+    return url;
+  }
+  // bare filename like "ee0a-...-b2d8.png" -> prefix with /uploads/
+  if (/^[a-f0-9-]+\.(png|jpe?g|webp|gif)$/i.test(url)) {
+    return `/uploads/${url}`;
+  }
+  // legacy relative like "uploads/..." -> ensure it has leading slash
+  if (url.startsWith('uploads/')) {
+    return `/${url}`;
+  }
+  return url;
+}
+
 export async function GET(_req: Request, { params }: { params: Params }) {
   try {
     const handle = params.handle.toLowerCase();
@@ -17,7 +36,6 @@ export async function GET(_req: Request, { params }: { params: Params }) {
       return NextResponse.json({ ok: false, error: 'User not found' }, { status: 404 });
     }
 
-    // Posts des Users inkl. Autor-Infos (für PostCard)
     const posts = await prisma.post.findMany({
       where: { authorId: user.id },
       orderBy: { createdAt: 'desc' },
@@ -36,28 +54,23 @@ export async function GET(_req: Request, { params }: { params: Params }) {
             avatarUrl: true,
           },
         },
-        // Wenn du Zähler/Viewer-Infos hast, hier ergänzen:
-        // _count: { select: { likes: true, comments: true, reposts: true } },
       },
+      take: 50, // optional: begrenzen
     });
 
-    // schlanke Form zurückgeben – PostCard kann diese Struktur i. d. R. adaptieren
     const items = posts.map((p) => ({
       id: p.id,
       createdAt: p.createdAt.toISOString(),
       text: p.text,
-      mediaUrl: p.mediaUrl,
-      mediaAlt: p.mediaAlt,
+      mediaUrl: normalizeMediaUrl(p.mediaUrl),
+      mediaAlt: p.mediaAlt ?? undefined,
       nsfw: p.nsfw,
       author: {
         id: p.author.id,
         handle: p.author.handle,
         displayName: p.author.displayName,
-        avatarUrl: p.author.avatarUrl,
+        avatarUrl: p.author.avatarUrl ?? undefined,
       },
-      // Optional: stats/viewer falls dein PostCard das erwartet
-      // stats: { likes: 0, replies: 0, reposts: 0 },
-      // viewer: { liked: false, bookmarked: false },
     }));
 
     return NextResponse.json({ ok: true, items });

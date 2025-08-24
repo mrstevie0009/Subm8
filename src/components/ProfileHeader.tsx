@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useLocale } from 'next-intl';
 import type { Profile } from '@/types/profile';
-import { followAction, unfollowAction } from '@/app/actions/follow';
+import {followAction, unfollowAction } from '@/app/actions/follow';
 
 const AVATAR_PH = '/images/avatar-placeholder.png';
 const BANNER_PH = '/images/banner-placeholder.png';

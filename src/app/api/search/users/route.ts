@@ -1,0 +1,44 @@
+import { prisma } from '@/lib/prisma';
+
+export async function GET(req: Request) {
+  const sp = new URL(req.url).searchParams;
+  const q = (sp.get('q') || '').trim();
+  const limit = Math.min(Math.max(Number(sp.get('limit') || 8), 1), 25);
+  const sort = (sp.get('sort') || 'followers') as 'followers' | 'alpha';
+
+  if (!q) return Response.json({ ok: true, users: [] });
+
+  const users = await prisma.user.findMany({
+    where: {
+      OR: [
+        { handle: { contains: q, mode: 'insensitive' } },
+        { displayName: { contains: q, mode: 'insensitive' } },
+      ],
+    },
+    select: {
+      handle: true,
+      displayName: true,
+      avatarUrl: true,
+      _count: { select: { followers: true } },
+    },
+    orderBy:
+      sort === 'followers'
+        ? [
+            // Meiste Follower zuerst
+            { followers: { _count: 'desc' } },
+            { handle: 'asc' },
+          ]
+        : [{ handle: 'asc' }],
+    take: limit,
+  });
+
+  return Response.json({
+    ok: true,
+    users: users.map((u) => ({
+      handle: u.handle,
+      name: u.displayName || u.handle,
+      avatar: u.avatarUrl ?? undefined,
+      followers: u._count.followers,
+    })),
+  });
+}

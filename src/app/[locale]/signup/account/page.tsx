@@ -5,6 +5,7 @@ import * as React from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useLocale } from 'next-intl';
 import Link from 'next/link';
+import { signIn } from 'next-auth/react';
 
 function isValidEmail(e: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
@@ -56,6 +57,34 @@ export default function SignupAccountPage() {
       }
       // Signup fertig → z.B. auf Home oder Profil
       router.replace(`/${locale}`);
+      // Signup fertig → direkt einloggen (Credentials)
+      // 1) Versuch: E-Mail + Passwort
+      const loginByEmail = await signIn('credentials', {
+        redirect: false,
+        email,
+        password: pw,
+        callbackUrl: `/${locale}`,
+      });
+      let login = loginByEmail;
+
+      // 2) Fallback: Handle + Passwort (falls dein Provider 'handle' erwartet)
+      if (loginByEmail?.error) {
+        const loginByHandle = await signIn('credentials', {
+          redirect: false,
+          handle,
+          password: pw,
+          callbackUrl: `/${locale}`,
+        });
+        login = loginByHandle;
+      }
+
+      if (login?.error) {
+        setErr(login.error);
+        return;
+      }
+
+      // Weiter auf Home/Feed
+      router.replace(login?.url ?? `/${locale}`);
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Failed to sign up');
     } finally {
