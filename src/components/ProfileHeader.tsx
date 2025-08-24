@@ -5,12 +5,10 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useLocale } from 'next-intl';
 import type { Profile } from '@/types/profile';
-import {followAction, unfollowAction } from '@/app/actions/follow';
+import { followAction, unfollowAction } from '@/app/actions/follow';
 
 const AVATAR_PH = '/images/avatar-placeholder.png';
 const BANNER_PH = '/images/banner-placeholder.png';
-
-type Tab = 'posts' | 'gallery' | 'leaderboard';
 
 function Chip({
   children,
@@ -26,18 +24,13 @@ function Chip({
     purple:  { color: 'var(--purple)', background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.25)' },
     success: { color: '#4ade80', background: 'rgba(74,222,128,.12)', border: '1px solid rgba(74,222,128,.25)' },
   };
-
   const sizeCls: Record<'sm'|'md'|'lg', string> = {
     sm: 'text-[11px] px-2 py-1',
     md: 'text-[12px] px-2.5 py-[6px]',
     lg: 'text-[14px] px-3 py-[3px]',
   };
-
   return (
-    <span
-      className={`rounded-full leading-none whitespace-nowrap ${sizeCls[size]}`}
-      style={styles[tone]}
-    >
+    <span className={`rounded-full leading-none whitespace-nowrap ${sizeCls[size]}`} style={styles[tone]}>
       {children}
     </span>
   );
@@ -57,11 +50,8 @@ type Props = {
   profile: Profile;
   isOwner: boolean;
   initialIsFollowing?: boolean;
-  /** Aktiver Tab (vom Parent gesteuert) */
-  activeTab?: Tab;
-  /** Callback beim Tab-Wechsel */
-  onTabChange?: (t: Tab) => void;
-  /** Falls du Tabs mal verstecken willst */
+  activeTab?: 'posts' | 'gallery' | 'leaderboard';
+  onTabChange?: (t: 'posts' | 'gallery' | 'leaderboard') => void;
   showTabs?: boolean; // default: true
 };
 
@@ -183,7 +173,6 @@ export default function ProfileHeader({
         {/* Bio */}
         {profile.bio && <p className="mt-3 leading-relaxed">{profile.bio}</p>}
 
-        {/* großer Abstand vor Meta */}
         <div className="mt-10" />
 
         {/* Meta */}
@@ -211,22 +200,20 @@ export default function ProfileHeader({
           )}
         </div>
 
-        {/* Following · Followers */}
+        {/* Following · Followers (klickbar) */}
         <div className="mt-3 text-[14px]">
-          <span>
+          <Link href={`/${locale}/u/${profile.username}/following`} className="hover:underline" prefetch={false}>
             <strong className="text-white/95">{profile.stats.following}</strong> Following
-          </span>
+          </Link>
           <span className="mx-2 text-muted">·</span>
-          <span>
+          <Link href={`/${locale}/u/${profile.username}/followers`} className="hover:underline" prefetch={false}>
             <strong className="text-white/95">{profile.stats.followers}</strong> Followers
-          </span>
+          </Link>
         </div>
 
-        {/* kleiner Spacer zum Content darunter */}
         <div className="mt-6" />
       </div>
 
-      {/* FUNKTIONALE TABS im Header */}
       {showTabs && (
         <nav className="border-t border-white/10">
           <ul className="grid grid-cols-3 text-center text-[14px] font-medium">

@@ -1,12 +1,13 @@
+// src/app/[locale]/search/page.tsx
 'use client';
 
 import * as React from 'react';
 import Image from 'next/image';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { followAction, unfollowAction } from '@/app/actions/follow';
 
-type UserSug = { handle: string; name: string; avatar?: string; followers?: number };
 type PostCounts = { likes: number; comments: number; bookmarks: number };
-type Author = { handle: string; name: string; avatar?: string };
+type Author = { handle: string; name: string; avatar?: string | null };
 type PostItem = {
   id: string;
   text: string;
@@ -15,6 +16,19 @@ type PostItem = {
   createdAt: string | Date;
   author: Author;
   counts: PostCounts;
+};
+
+// Vereinheitlichte User-Typen für Suche & Vorschläge (optionale Felder!)
+type SearchUser = {
+  id?: string;
+  handle: string;
+  name?: string;
+  displayName?: string;
+  avatar?: string | null;
+  avatarUrl?: string | null;
+  followers?: number;
+  followersCount?: number;
+  viewerFollows?: boolean;
 };
 
 const AVATAR_PH = '/images/avatar-placeholder.png';
@@ -35,17 +49,15 @@ export default function SearchPage() {
   // ---- Startansicht-States (wenn q leer ist)
   const [recent, setRecent] = React.useState<string[]>([]);
   const [trending, setTrending] = React.useState<{ tag: string; posts: number }[]>([]);
-  const [suggestPeople, setSuggestPeople] = React.useState<UserSug[]>([]);
+  const [suggestions, setSuggestions] = React.useState<SearchUser[]>([]);
+  const [loadingSug, setLoadingSug] = React.useState(false);
 
-  // Recent aus localStorage lesen (nur beim ersten Mount)
+  // Recent aus localStorage lesen
   React.useEffect(() => {
     try {
       const raw = localStorage.getItem('subm8.search.recent');
-      if (raw) {
-        setRecent(JSON.parse(raw));
-      } else {
-        setRecent(['more4eve', 'domme tips', 'vienna']);
-      }
+      if (raw) setRecent(JSON.parse(raw));
+      else setRecent(['more4eve', 'domme tips', 'vienna']);
     } catch {
       setRecent(['more4eve', 'domme tips', 'vienna']);
     }
@@ -57,7 +69,29 @@ export default function SearchPage() {
     } catch {}
   }, []);
 
-  // Trending für Startansicht laden (Fallback wenn API nichts liefert)
+  // Suggestions laden (gefiltert: keine, denen der Viewer schon folgt)
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoadingSug(true);
+      try {
+        const res = await fetch(`/api/users/suggest?limit=6`, { cache: 'no-store' });
+        const j: { ok: boolean; users?: SearchUser[] } = await res.json();
+        if (!cancelled && j?.ok && Array.isArray(j.users)) {
+          setSuggestions(j.users.filter((u) => !u.viewerFollows));
+        } else if (!cancelled) {
+          setSuggestions([]);
+        }
+      } finally {
+        if (!cancelled) setLoadingSug(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Trending für Startansicht laden (Fallback)
   React.useEffect(() => {
     (async () => {
       try {
@@ -67,10 +101,7 @@ export default function SearchPage() {
           setTrending(j.trending.slice(0, 10));
           return;
         }
-      } catch {
-        /* noop */
-      }
-      // Fallback
+      } catch {}
       setTrending([
         { tag: 'Findom', posts: 14700 },
         { tag: 'NSFW', posts: 89200 },
@@ -79,18 +110,8 @@ export default function SearchPage() {
       ]);
     })();
   }, []);
-  // Vorschläge: Top-Follower (nur für Startansicht)
- React.useEffect(() => {
-   if (qParam) return; // nur laden, wenn keine Suche aktiv
-   (async () => {
-     try {
-       const res = await fetch('/api/users/suggest?limit=6', { cache: 'no-store' });
-       const j = await res.json();
-       if (j?.ok && Array.isArray(j.users)) setSuggestPeople(j.users);
-     } catch {/* noop */}
-   })();
- }, [qParam]);
-  // Recent-Interaktionen (Startansicht)
+
+  // Recent-Interaktionen
   function applyRecent(r: string) {
     setQ(r);
     const next = [r, ...recent.filter((x) => x !== r)].slice(0, 10);
@@ -101,19 +122,18 @@ export default function SearchPage() {
   }
 
   // ---- Ergebnis-States (wenn q gesetzt ist)
-  const [topUsers, setTopUsers] = React.useState<UserSug[]>([]);
+  const [topUsers, setTopUsers] = React.useState<SearchUser[]>([]);
   const [topPosts, setTopPosts] = React.useState<PostItem[]>([]);
   const [latestPosts, setLatestPosts] = React.useState<PostItem[]>([]);
-  const [people, setPeople] = React.useState<UserSug[]>([]);
+  const [people, setPeople] = React.useState<SearchUser[]>([]);
   const [loading, setLoading] = React.useState(false);
 
-  // Enter → URL updaten (ohne Layoutänderung)
+  // Enter → URL updaten
   function goToQuery(nextTab?: 'top' | 'latest' | 'people') {
     const tab = nextTab || tabParam || 'top';
     const url = `/${locale}/search?q=${encodeURIComponent(q)}&tab=${tab}`;
     router.push(url);
   }
-
   function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === 'Enter') {
       e.preventDefault();
@@ -121,7 +141,7 @@ export default function SearchPage() {
     }
   }
 
-  // Daten für aktive Tab-Kombination laden, wenn URL-Query sich ändert
+  // Daten für aktive Tab-Kombination laden
   React.useEffect(() => {
     const query = sp.get('q') || '';
     const tab = (sp.get('tab') || 'top') as 'top' | 'latest' | 'people';
@@ -138,23 +158,28 @@ export default function SearchPage() {
       try {
         if (tab === 'top') {
           const [uRes, pRes] = await Promise.all([
-            fetch(`/api/search/users?q=${encodeURIComponent(query)}&sort=followers&limit=5`),
-            fetch(`/api/search/posts?q=${encodeURIComponent(query)}&sort=top&limit=20`),
+            fetch(`/api/search/users?q=${encodeURIComponent(query)}&sort=followers&limit=5`, { cache: 'no-store' }),
+            fetch(`/api/search/posts?q=${encodeURIComponent(query)}&sort=top&limit=20`, { cache: 'no-store' }),
           ]);
-          const [uj, pj] = await Promise.all([uRes.json(), pRes.json()]);
+          const [uj, pj]: [{ users?: SearchUser[] }, { posts?: PostItem[] }] = await Promise.all([
+            uRes.json(),
+            pRes.json(),
+          ]);
           setTopUsers(uj?.users ?? []);
           setTopPosts(pj?.posts ?? []);
         } else if (tab === 'latest') {
           const pRes = await fetch(
-            `/api/search/posts?q=${encodeURIComponent(query)}&sort=latest&limit=20`
+            `/api/search/posts?q=${encodeURIComponent(query)}&sort=latest&limit=20`,
+            { cache: 'no-store' }
           );
-          const pj = await pRes.json();
+          const pj: { posts?: PostItem[] } = await pRes.json();
           setLatestPosts(pj?.posts ?? []);
         } else if (tab === 'people') {
           const uRes = await fetch(
-            `/api/search/users?q=${encodeURIComponent(query)}&sort=followers&limit=20`
+            `/api/search/users?q=${encodeURIComponent(query)}&sort=followers&limit=20`,
+            { cache: 'no-store' }
           );
-          const uj = await uRes.json();
+          const uj: { users?: SearchUser[] } = await uRes.json();
           setPeople(uj?.users ?? []);
         }
       } finally {
@@ -181,7 +206,7 @@ export default function SearchPage() {
 
   return (
     <div className="max-w-3xl mx-auto">
-      {/* Sticky Suchleiste (Enter öffnet Suchergebnisse) */}
+      {/* Sticky Suchleiste */}
       <div className="sticky top-[calc(var(--header-h))] z-10 bg-black/80 rounded-2xl backdrop-blur border-b border-white/10">
         <div className="px-4 py-3">
           <label className="relative block">
@@ -200,7 +225,7 @@ export default function SearchPage() {
         </div>
       </div>
 
-      {/* STARTANSICHT (wie vorher), wenn keine Query gesetzt ist */}
+      {/* STARTANSICHT */}
       {!qParam ? (
         <div className="p-4 grid gap-6">
           {/* Recent */}
@@ -209,10 +234,7 @@ export default function SearchPage() {
               <header className="px-4 py-3 border-b border-white/10 font-semibold">Recent</header>
               <ul>
                 {recent.map((r) => (
-                  <li
-                    key={r}
-                    className="flex items-center justify-between px-4 py-3 hover:bg-white/5"
-                  >
+                  <li key={r} className="flex items-center justify-between px-4 py-3 hover:bg-white/5">
                     <button
                       className="text-left truncate hover:underline"
                       onClick={() => applyRecent(r)}
@@ -242,50 +264,51 @@ export default function SearchPage() {
                 <li key={t.tag} className="px-4 py-3 hover:bg-white/5">
                   <div className="text-sm opacity-70">#{i + 1} · Topic</div>
                   <div className="font-medium">{t.tag}</div>
-                  <div className="text-sm opacity-70">
-                    {Intl.NumberFormat().format(t.posts)} posts
-                  </div>
+                  <div className="text-sm opacity-70">{Intl.NumberFormat().format(t.posts)} posts</div>
                 </li>
               ))}
             </ul>
           </section>
 
           {/* People you might want to follow */}
-          <section className="rounded-app border border-sub shadow-app">
-            <header className="px-4 py-3 border-b border-white/10 font-semibold">
-              People you might want to follow
-            </header>
-            <ul className="divide-y divide-white/10">
-              {(suggestPeople.length ? suggestPeople : []).map((u) => (
-                <li key={u.handle} className="flex items-center justify-between px-4 py-3">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <Image
-                      src={u.avatar || AVATAR_PH}
-                      alt=""
-                      width={40}
-                      height={40}
-                      className="rounded-full object-cover border border-white/15"
-                      sizes="40px"
-                    />
-                    <div className="min-w-0">
-                      <div className="font-medium truncate">{u.name}</div>
-                      <div className="text-sm opacity-70 truncate">@{u.handle}</div>
-                      {typeof u.followers === 'number' && (
-                        <div className="text-xs opacity-60">
-                          {Intl.NumberFormat().format(u.followers)} followers
+          <section className="px-4 pt-4">
+            <div className="rounded-app border border-sub shadow-app p-3">
+              <div className="px-1 pb-2 font-semibold">People you might want to follow</div>
+
+              {loadingSug && (
+                <ul className="divide-y divide-white/10">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <li key={i} className="flex items-center justify-between px-1 py-2">
+                      <div className="flex items-center gap-3">
+                        <div className="size-10 rounded-full bg-white/10 animate-pulse" />
+                        <div>
+                          <div className="h-3 w-28 bg-white/10 rounded animate-pulse" />
+                          <div className="h-3 w-20 bg-white/10 rounded mt-2 animate-pulse" />
                         </div>
-                   )}
-                    </div>
-                  </div>
-                  <button className="px-4 py-1.5 rounded-full bg-[var(--purple)] text-white hover:opacity-95">
-                    Follow
-                  </button>
-                </li>
-              ))}
-              {suggestPeople.length === 0 && (
-                <li className="px-4 py-6 text-sm opacity-70">Keine Vorschläge verfügbar</li>
+                      </div>
+                      <div className="h-8 w-24 rounded-full border border-white/15" />
+                    </li>
+                  ))}
+                </ul>
               )}
-            </ul>
+
+              {!loadingSug && (
+                <ul className="divide-y divide-white/10">
+                  {suggestions.map((u) => (
+                    <SuggestionItem
+                      key={u.handle}
+                      user={u}
+                      onRemove={() =>
+                        setSuggestions((prev) => prev.filter((x) => x.handle !== u.handle))
+                      }
+                    />
+                  ))}
+                  {suggestions.length === 0 && (
+                    <li className="px-1 py-4 text-sm opacity-70">No suggestions right now.</li>
+                  )}
+                </ul>
+              )}
+            </div>
           </section>
         </div>
       ) : (
@@ -302,46 +325,45 @@ export default function SearchPage() {
 
             {tabParam === 'top' && !loading && (
               <>
-                {/* Personen (ein paar, mit den meisten Followern) */}
+                {/* Personen */}
                 {topUsers.length > 0 && (
                   <section className="rounded-app border border-sub shadow-app">
-                    <header className="px-4 py-3 border-b border-white/10 font-semibold">
-                      Personen
-                    </header>
+                    <header className="px-4 py-3 border-b border-white/10 font-semibold">Personen</header>
                     <ul className="divide-y divide-white/10">
-                      {topUsers.map((u) => (
-                        <li
-                          key={u.handle}
-                          className="flex items-center justify-between px-4 py-3"
-                        >
-                          <div className="flex items-center gap-3 min-w-0">
-                            <Image
-                              src={u.avatar || AVATAR_PH}
-                              alt=""
-                              width={40}
-                              height={40}
-                              className="rounded-full object-cover border border-white/15"
-                            />
-                            <div className="min-w-0">
-                              <div className="font-medium truncate">{u.name}</div>
-                              <div className="text-sm opacity-70 truncate">@{u.handle}</div>
-                              {typeof u.followers === 'number' && (
-                                <div className="text-xs opacity-60">
-                                  {Intl.NumberFormat().format(u.followers)} followers
-                                </div>
-                              )}
+                      {topUsers.map((u) => {
+                        const followers = u.followersCount ?? u.followers;
+                        const avatar = u.avatarUrl ?? u.avatar ?? AVATAR_PH;
+                        const name = u.displayName ?? u.name ?? u.handle;
+                        return (
+                          <li key={u.handle} className="flex items-center justify-between px-4 py-3">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <Image
+                                src={avatar || AVATAR_PH}
+                                alt=""
+                                width={40}
+                                height={40}
+                                className="rounded-full object-cover border border-white/15"
+                              />
+                              <div className="min-w-0">
+                                <div className="font-medium truncate">{name}</div>
+                                <div className="text-sm opacity-70 truncate">@{u.handle}</div>
+                                {typeof followers === 'number' && (
+                                  <div className="text-xs opacity-60">
+                                    {Intl.NumberFormat().format(followers)} followers
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                          <button className="px-4 py-1.5 rounded-full bg-[var(--purple)] text-white hover:opacity-95">
-                            Follow
-                          </button>
-                        </li>
-                      ))}
+                            {/* In Ergebnissen entfernen wir nicht automatisch */}
+                            <FollowForm userId={u.id} handle={u.handle} initialFollowing={!!u.viewerFollows} />
+                          </li>
+                        );
+                      })}
                     </ul>
                   </section>
                 )}
 
-                {/* Passende Posts (Top nach Likes) */}
+                {/* Posts */}
                 <section className="rounded-app border border-sub shadow-app">
                   <header className="px-4 py-3 border-b border-white/10 font-semibold">Posts</header>
                   <ul className="divide-y divide-white/10">
@@ -358,9 +380,7 @@ export default function SearchPage() {
 
             {tabParam === 'latest' && !loading && (
               <section className="rounded-app border border-sub shadow-app">
-                <header className="px-4 py-3 border-b border-white/10 font-semibold">
-                  Neueste Posts
-                </header>
+                <header className="px-4 py-3 border-b border-white/10 font-semibold">Neueste Posts</header>
                 <ul className="divide-y divide-white/10">
                   {latestPosts.map((p) => (
                     <PostRow key={p.id} post={p} />
@@ -374,30 +394,31 @@ export default function SearchPage() {
 
             {tabParam === 'people' && !loading && (
               <section className="rounded-app border border-sub shadow-app">
-                <header className="px-4 py-3 border-b border-white/10 font-semibold">
-                  Personen
-                </header>
+                <header className="px-4 py-3 border-b border-white/10 font-semibold">Personen</header>
                 <ul className="divide-y divide-white/10">
-                  {people.map((u) => (
-                    <li key={u.handle} className="flex items-center justify-between px-4 py-3">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <Image
-                          src={u.avatar || AVATAR_PH}
-                          alt=""
-                          width={40}
-                          height={40}
-                          className="rounded-full object-cover border border-white/15"
-                        />
-                        <div className="min-w-0">
-                          <div className="font-medium truncate">{u.name}</div>
-                          <div className="text-sm opacity-70 truncate">@{u.handle}</div>
+                  {people.map((u) => {
+                    const avatar = u.avatarUrl ?? u.avatar ?? AVATAR_PH;
+                    const name = u.displayName ?? u.name ?? u.handle;
+                    return (
+                      <li key={u.handle} className="flex items-center justify-between px-4 py-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <Image
+                            src={avatar}
+                            alt=""
+                            width={40}
+                            height={40}
+                            className="rounded-full object-cover border border-white/15"
+                          />
+                          <div className="min-w-0">
+                            <div className="font-medium truncate">{name}</div>
+                            <div className="text-sm opacity-70 truncate">@{u.handle}</div>
+                          </div>
                         </div>
-                      </div>
-                      <button className="px-4 py-1.5 rounded-full bg-[var(--purple)] text-white hover:opacity-95">
-                        Follow
-                      </button>
-                    </li>
-                  ))}
+                        {/* In Ergebnissen entfernen wir nicht automatisch */}
+                        <FollowForm userId={u.id} handle={u.handle} initialFollowing={!!u.viewerFollows} />
+                      </li>
+                    );
+                  })}
                   {people.length === 0 && (
                     <li className="px-4 py-6 text-sm opacity-70">Keine Personen gefunden</li>
                   )}
@@ -407,6 +428,154 @@ export default function SearchPage() {
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+/* ---------- Suggestion item mit Delay + Fade-Removal ---------- */
+function SuggestionItem({
+  user,
+  onRemove,
+}: {
+  user: SearchUser;
+  onRemove: () => void;
+}) {
+  const [following, setFollowing] = React.useState<boolean>(!!user.viewerFollows);
+  const [fading, setFading] = React.useState(false);
+  const removeTimerRef = React.useRef<number | null>(null);
+  const fadeTimerRef = React.useRef<number | null>(null);
+
+  // Button-Klassen
+  const btnCls = following
+    ? 'px-4 py-1.5 rounded-full border border-white/25 hover:bg-white/5'
+    : 'px-4 py-1.5 rounded-full bg-[var(--purple)] text-white hover:opacity-95';
+
+  // Wenn gefolgt wird, kurzen Delay, dann fade & remove
+  const scheduleFadeAndRemove = React.useCallback(() => {
+    // 900ms warten, dann 300ms fade → remove
+    removeTimerRef.current = window.setTimeout(() => {
+      setFading(true);
+      fadeTimerRef.current = window.setTimeout(() => {
+        onRemove();
+      }, 320); // Fade-Dauer
+    }, 900); // Sichtfenster zum „Unfollow“ klicken
+  }, [onRemove]);
+
+  // Timer aufräumen (z.B. wenn User schnell wieder entfolgt)
+  const clearTimers = React.useCallback(() => {
+    if (removeTimerRef.current) {
+      window.clearTimeout(removeTimerRef.current);
+      removeTimerRef.current = null;
+    }
+    if (fadeTimerRef.current) {
+      window.clearTimeout(fadeTimerRef.current);
+      fadeTimerRef.current = null;
+    }
+  }, []);
+
+  React.useEffect(() => {
+    return () => clearTimers();
+  }, [clearTimers]);
+
+  const name = user.displayName ?? user.name ?? user.handle;
+  const avatar = user.avatarUrl ?? user.avatar ?? undefined;
+
+  return (
+    <li
+      className={`flex items-center justify-between px-1 py-2 transition-all duration-300 ${
+        fading ? 'opacity-0 translate-y-1 pointer-events-none' : ''
+      }`}
+    >
+      <div className="flex items-center gap-3 min-w-0">
+        <Avatar size={40} name={name} src={avatar} />
+        <div className="min-w-0">
+          <div className="font-medium truncate">{name}</div>
+          <div className="text-sm opacity-70 truncate">@{user.handle}</div>
+        </div>
+      </div>
+
+      <form
+        method="POST"
+        action={following ? unfollowAction : followAction}
+        onSubmit={() => {
+          const next = !following;
+          // Toggle Zustand optimistisch
+          setFollowing(next);
+
+          if (next) {
+            // Follow → verzögert ausblenden & entfernen
+            clearTimers();
+            scheduleFadeAndRemove();
+          } else {
+            // Unfollow (falls im Sichtfenster geklickt) → Entfernung abbrechen
+            clearTimers();
+            setFading(false);
+          }
+        }}
+      >
+        {user.id ? <input type="hidden" name="userId" value={user.id} /> : null}
+        <input type="hidden" name="handle" value={user.handle} />
+        <button type="submit" className={btnCls}>
+          {following ? 'Unfollow' : 'Follow'}
+        </button>
+      </form>
+    </li>
+  );
+}
+
+/* ---------- Follow/Unfollow (ohne Removal; für Ergebnislisten) ---------- */
+function FollowForm({
+  userId,
+  handle,
+  initialFollowing,
+}: {
+  userId?: string;
+  handle: string;
+  initialFollowing: boolean;
+}) {
+  const [following, setFollowing] = React.useState<boolean>(!!initialFollowing);
+
+  const cls = following
+    ? 'px-4 py-1.5 rounded-full border border-white/25 hover:bg-white/5'
+    : 'px-4 py-1.5 rounded-full bg-[var(--purple)] text-white hover:opacity-95';
+
+  return (
+    <form
+      method="POST"
+      action={following ? unfollowAction : followAction}
+      onSubmit={() => setFollowing((v) => !v)}
+    >
+      {userId ? <input type="hidden" name="userId" value={userId} /> : null}
+      <input type="hidden" name="handle" value={handle} />
+      <button type="submit" className={cls}>
+        {following ? 'Unfollow' : 'Follow'}
+      </button>
+    </form>
+  );
+}
+
+/* ---------- UI Bits ---------- */
+function Avatar({ src, name, size = 40 }: { src?: string; name: string; size?: number }) {
+  if (src) {
+    return (
+      <Image
+        src={src}
+        alt=""
+        width={size}
+        height={size}
+        className="rounded-full object-cover border border-white/15"
+        sizes={`${size}px`}
+      />
+    );
+  }
+  const initial = (name || '?').trim().charAt(0).toUpperCase();
+  return (
+    <div
+      className="grid place-items-center rounded-full bg-white/10 border border-white/20"
+      style={{ width: size, height: size }}
+      aria-hidden
+    >
+      <span className="font-semibold">{initial}</span>
     </div>
   );
 }
@@ -426,9 +595,7 @@ function PostRow({ post }: { post: PostItem }) {
           <div className="flex items-center gap-2 text-sm">
             <span className="font-medium truncate">{post.author.name}</span>
             <span className="opacity-70 truncate">@{post.author.handle}</span>
-            <span className="opacity-50">
-              · {new Date(post.createdAt).toLocaleDateString()}
-            </span>
+            <span className="opacity-50">· {new Date(post.createdAt).toLocaleDateString()}</span>
           </div>
           <div className="mt-1 whitespace-pre-wrap break-words">{post.text}</div>
           {post.mediaUrl && (
@@ -455,32 +622,15 @@ function PostRow({ post }: { post: PostItem }) {
 
 function SearchIcon() {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      width="18"
-      height="18"
-      aria-hidden
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-    >
+    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.8">
       <circle cx="11" cy="11" r="7" />
       <path d="M20 20l-3.2-3.2" />
     </svg>
   );
 }
-
 function CloseIcon() {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      width="18"
-      height="18"
-      aria-hidden
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-    >
+    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.8">
       <path d="M6 6l12 12M18 6L6 18" />
     </svg>
   );

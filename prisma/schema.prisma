@@ -173,15 +173,29 @@ model Post {
   updatedAt   DateTime   @updatedAt
   communityId String?
   nsfw        Boolean    @default(false)
-  bookmarks   Bookmark[]
-  Comment     Comment[]
-  Like        Like[]
+
+  repostOfId String?
+  repostOf   Post?      @relation("RepostOf", fields: [repostOfId], references: [id])
+  reposts    Post[]     @relation("RepostOf")
+
+  quoteOfId  String?
+  quoteOf    Post?      @relation("QuoteOf",  fields: [quoteOfId],  references: [id])
+  quotes     Post[]     @relation("QuoteOf")
+
+
   author      User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
   Community   Community? @relation(fields: [communityId], references: [id])
 
+  bookmarks   Bookmark[]
+  Comment     Comment[]
+  Like        Like[]
+
   @@index([authorId, createdAt])
   @@index([communityId, createdAt])
+  @@index([repostOfId])
+  @@index([quoteOfId])
 }
+
 
 model Comment {
   id        String   @id

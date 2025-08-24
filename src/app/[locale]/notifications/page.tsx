@@ -19,14 +19,6 @@ type ApiLike     = { id: string; kind: 'like';    time: string; user: ApiUser; t
 type ApiMention  = { id: string; kind: 'mention'; time: string; user: ApiUser; text: string; postId?: string };
 type ApiNoti     = ApiFollow | ApiLike | ApiMention;
 
-type SuggestUser = {
-  id?: string;                       // optional – falls nur handle geliefert wird
-  handle: string;
-  displayName: string;
-  avatarUrl?: string | null;
-  followersCount?: number;
-  viewerFollows?: boolean;
-};
 
 type NotiBase = {
   id: string;
@@ -94,8 +86,6 @@ export default function NotificationsPage() {
   const [items, setItems] = React.useState<Noti[]>([]);
   const [loadingNoti, setLoadingNoti] = React.useState(false);
 
-  const [suggestions, setSuggestions] = React.useState<SuggestUser[]>([]);
-  const [loadingSug, setLoadingSug] = React.useState(false);
 
   // Notifications laden
   React.useEffect(() => {
@@ -136,28 +126,6 @@ export default function NotificationsPage() {
     };
   }, [tab]);
 
-  // Suggestions laden
-  React.useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setLoadingSug(true);
-      try {
-        const res = await fetch(`/api/users/suggest?limit=6`, { cache: 'no-store' });
-        const j: { ok: boolean; users?: SuggestUser[] } = await res.json();
-        if (!cancelled && j?.ok && Array.isArray(j.users)) {
-          setSuggestions(j.users);
-        } else if (!cancelled) {
-          setSuggestions([]);
-        }
-      } finally {
-        if (!cancelled) setLoadingSug(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
   return (
     <div className="max-w-2xl mx-auto">
       {/* Header */}
@@ -188,51 +156,7 @@ export default function NotificationsPage() {
         </div>
       </div>
 
-      {/* People you might want to follow */}
-      <section className="px-4 pt-4">
-        <div className="rounded-app border border-sub shadow-app p-3">
-          <div className="px-1 pb-2 font-semibold">People you might want to follow</div>
-          {loadingSug && (
-            <ul className="divide-y divide-white/10">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <li key={i} className="flex items-center justify-between px-1 py-2">
-                  <div className="flex items-center gap-3">
-                    <div className="size-10 rounded-full bg-white/10 animate-pulse" />
-                    <div>
-                      <div className="h-3 w-28 bg-white/10 rounded animate-pulse" />
-                      <div className="h-3 w-20 bg-white/10 rounded mt-2 animate-pulse" />
-                    </div>
-                  </div>
-                  <div className="h-8 w-24 rounded-full border border-white/15" />
-                </li>
-              ))}
-            </ul>
-          )}
-          {!loadingSug && (
-            <ul className="divide-y divide-white/10">
-              {suggestions.map((u) => (
-                <li key={u.handle} className="flex items-center justify-between px-1 py-2">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <Avatar size={40} name={u.displayName || u.handle} src={u.avatarUrl ?? undefined} />
-                    <div className="min-w-0">
-                      <div className="font-medium truncate">{u.displayName}</div>
-                      <div className="text-sm opacity-70 truncate">@{u.handle}</div>
-                    </div>
-                  </div>
-                  <FollowForm
-                    userId={u.id}                          // wenn vorhanden, super
-                    handle={u.handle}                      // fallback – Actions können per handle auflösen
-                    initialFollowing={!!u.viewerFollows}   // initialer Status aus API
-                  />
-                </li>
-              ))}
-              {suggestions.length === 0 && (
-                <li className="px-1 py-4 text-sm opacity-70">No suggestions right now.</li>
-              )}
-            </ul>
-          )}
-        </div>
-      </section>
+
 
       {/* Notifications List */}
       <ul className="mt-4">

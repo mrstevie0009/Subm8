@@ -1,0 +1,2 @@
+﻿-- Beispielinhalt (dein SQL hier!)
+-- ALTER TABLE / CREATE TYPE / FK / INDEX … idempotent schreiben
