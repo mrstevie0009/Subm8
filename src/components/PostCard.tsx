@@ -8,14 +8,13 @@ import ProfileLink from '@/components/ProfileLink';
 import BookmarkButton from '@/components/BookmarkButton';
 import { likePostAction, unlikePostAction } from '@/app/actions/likes';
 import CommentComposer from '@/components/comments/CommentComposer';
-import { addCommentAction } from '@/app/actions/comments';
 
 const AVATAR_PH = '/images/avatar-placeholder.png';
 
 export type Post = {
   id: string;
   author: { name: string; role?: 'domme' | 'submissive'; handle: string; avatarUrl?: string };
-  createdAt: string;
+  createdAt: string; // relative/ISO – Anzeige
   text: string;
   mediaUrl?: string;
   mediaAlt?: string;
@@ -43,33 +42,52 @@ export default function PostCard({ post }: { post: Post }) {
   const [comments, setComments] = React.useState<number>(post.stats?.comments ?? 0);
   const [composerOpen, setComposerOpen] = React.useState<boolean>(false);
 
+  // „Reposts“ UI (Menü auf/zu), Zählwert lokal
   const [reposts, setReposts] = React.useState<number>(post.stats?.reposts ?? 0);
-  const [shareOpen, setShareOpen] = React.useState<boolean>(false);
+  const [repostMenuOpen, setRepostMenuOpen] = React.useState<boolean>(false);
 
+  // Avatar-Fallback
   const [avatarSrc, setAvatarSrc] = React.useState<string>(post.author.avatarUrl || AVATAR_PH);
 
+  // Transitions
   const [pendingLike, startLikeTransition] = React.useTransition();
 
-  const goToDetail = React.useCallback(() => {
-    router.push(`/${locale}/p/${post.id}`);
-  }, [router, locale, post.id]);
+  // Ganze Card klickbar → zum Detail
+  const goDetail = React.useCallback(
+    (e: React.MouseEvent) => {
+      // Wenn innerhalb eines interaktiven Elements geklickt wurde: abbrechen
+      const target = e.target as HTMLElement | null;
+      if (target && target.closest('[data-no-nav]')) return;
+      router.push(`/${locale}/p/${post.id}`);
+    },
+    [router, locale, post.id]
+  );
 
-  const stopClick: React.MouseEventHandler = (e) => e.stopPropagation();
-  const stopKey: React.KeyboardEventHandler = (e) => e.stopPropagation();
+  const onKeyActivate = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      // nur aktivieren, wenn Fokus nicht auf interaktivem Child liegt
+      const target = e.target as HTMLElement | null;
+      if (target && target.closest('[data-no-nav]')) return;
+      e.preventDefault();
+      router.push(`/${locale}/p/${post.id}`);
+    }
+  };
 
+  // LIKE: Server Action Form (mit Optimistic UI)
   function LikeForm() {
     const action = liked ? unlikePostAction : likePostAction;
     return (
       <form
-        action={async (fd: FormData) => {
-          await action(fd);
+        // Alles in diesem Bereich blockt das Card-Navigieren
+        data-no-nav
+        action={action}
+        onClick={(e) => e.stopPropagation()}
+        onSubmit={() => {
           startLikeTransition(() => {
             setLiked((v) => !v);
             setLikes((n) => (liked ? Math.max(0, n - 1) : n + 1));
           });
         }}
-        onClickCapture={stopClick}
-        onKeyDownCapture={stopKey}
       >
         <input type="hidden" name="postId" value={post.id} />
         <button
@@ -99,10 +117,12 @@ export default function PostCard({ post }: { post: Post }) {
     );
   }
 
+  // COMMENT: Button öffnet Composer
   function CommentButton() {
     return (
       <button
         type="button"
+        data-no-nav
         onClick={(e) => {
           e.stopPropagation();
           setComposerOpen((v) => !v);
@@ -115,12 +135,7 @@ export default function PostCard({ post }: { post: Post }) {
           style={{ width: 'clamp(18px,1.8vw,26px)', height: 'clamp(18px,1.8vw,26px)' }}
           aria-hidden
         >
-          <svg
-            viewBox="0 0 24 24"
-            fill="currentColor"
-            className="w-full h-full"
-            style={{ color: 'rgba(255,255,255,.95)' }}
-          >
+          <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full" style={{ color: 'rgba(255,255,255,.95)' }}>
             <path d="M4 7a5 5 0 0 1 5-5h6a5 5 0 0 1 5 5v4a5 5 0 0 1-5 5H11l-4 3v-3H9a5 5 0 0 1-5-5V7Z" />
           </svg>
         </span>
@@ -130,16 +145,15 @@ export default function PostCard({ post }: { post: Post }) {
     );
   }
 
-  function ShareButton() {
+  // REPOST: Menü (Repost / Quote)
+  function RepostButton() {
     return (
-      <>
+      <div className="relative" data-no-nav onClick={(e) => e.stopPropagation()}>
         <button
           type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            setShareOpen(true);
-          }}
           className="group flex items-center gap-2 rounded px-2 py-1 hover:bg-white/5"
+          onClick={() => setRepostMenuOpen((v) => !v)}
+          aria-expanded={repostMenuOpen || undefined}
         >
           <span
             className="inline-grid place-items-center"
@@ -152,38 +166,40 @@ export default function PostCard({ post }: { post: Post }) {
             </svg>
           </span>
           <Counter value={reposts} />
-          <span className="sr-only">Share</span>
+          <span className="sr-only">Repost</span>
         </button>
 
-        {shareOpen && (
-          <div className="mt-2 rounded-xl border border-white/10 bg-white/5 p-3" onClickCapture={stopClick}>
-            <div className="text-sm opacity-80 mb-2">Share this post</div>
-            <div className="flex items-center gap-2">
-              <input
-                readOnly
-                value={typeof window !== 'undefined' ? window.location.href : ''}
-                className="flex-1 px-2 py-1.5 rounded-md bg-transparent border border-white/10"
-              />
-              <button
-                type="button"
-                className="px-3 py-1.5 rounded-md border border-white/15 hover:bg-white/5"
-                onClick={async (e) => {
-                  e.stopPropagation();
-                  try {
-                    await navigator.clipboard.writeText(window.location.href);
-                    setReposts((n) => n + 1);
-                    setShareOpen(false);
-                  } catch {
-                    /* noop */
-                  }
-                }}
-              >
-                Copy
-              </button>
-            </div>
+        {repostMenuOpen && (
+          <div
+            data-no-nav
+            className="absolute z-20 mt-2 w-40 rounded-lg border border-white/10 bg-black/80 backdrop-blur p-1 shadow-lg"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              className="w-full text-left px-3 py-2 rounded hover:bg-white/10"
+              onClick={() => {
+                // hier deine Server Action/Route aufrufen
+                // z.B. await repostAction(post.id)
+                setReposts((n) => n + 1);
+                setRepostMenuOpen(false);
+              }}
+            >
+              Repost
+            </button>
+            <button
+              type="button"
+              className="w-full text-left px-3 py-2 rounded hover:bg-white/10"
+              onClick={() => {
+                // Quote: zum Composer mit Quote-Context navigieren oder eigenen Dialog öffnen
+                router.push(`/${locale}/compose?quote=${post.id}`);
+              }}
+            >
+              Quote post
+            </button>
           </div>
         )}
-      </>
+      </div>
     );
   }
 
@@ -204,29 +220,19 @@ export default function PostCard({ post }: { post: Post }) {
     );
   };
 
-  const commentAction = React.useCallback(async (fd: FormData) => {
-    await addCommentAction(fd);
-  }, []);
-
   return (
     <article
+      className="bg-card border border-sub rounded-app shadow-app p-4 md:p-5 cursor-pointer"
+      onClick={goDetail}
+      onKeyDown={onKeyActivate}
       role="button"
       tabIndex={0}
       aria-label="Open post"
-      onClick={goToDetail}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          goToDetail();
-        }
-      }}
-      className="cursor-pointer bg-card border border-sub rounded-app shadow-app p-4 md:p-5"
     >
       <header className="flex items-start gap-3">
         {/* Avatar + Rolle */}
         <div className="shrink-0 flex flex-col items-center w-[3.2em]">
-          {/* Wrapper stoppt die Karten-Navigation, ohne ProfileLink zu ändern */}
-          <span onClickCapture={stopClick} onKeyDownCapture={stopKey}>
+          <div data-no-nav onClick={(e) => e.stopPropagation()}>
             <ProfileLink
               handle={post.author.handle}
               className="block focus:outline-none focus:ring-2 focus:ring-[var(--purple)]/50 rounded-full"
@@ -243,32 +249,32 @@ export default function PostCard({ post }: { post: Post }) {
                 />
               </div>
             </ProfileLink>
-          </span>
+          </div>
           <RoleBadge role={post.author.role} />
         </div>
 
         {/* Name + Meta + Content */}
         <div className="min-w-0 flex-1">
           <div className="flex items-center">
-            <span onClickCapture={stopClick} onKeyDownCapture={stopKey}>
+            <div data-no-nav onClick={(e) => e.stopPropagation()}>
               <ProfileLink
                 handle={post.author.handle}
                 className="font-semibold leading-tight text-[0.95rem] md:text-[1rem] hover:underline focus:outline-none focus:ring-2 focus:ring-[var(--purple)]/50 rounded"
               >
                 {post.author.name}
               </ProfileLink>
-            </span>
+            </div>
 
             <span aria-hidden style={{ display: 'inline-block', width: 8 }} />
 
-            <span onClickCapture={stopClick} onKeyDownCapture={stopKey}>
+            <div data-no-nav onClick={(e) => e.stopPropagation()}>
               <ProfileLink
                 handle={post.author.handle}
                 className="text-muted truncate text-xs md:text-[11px] hover:underline focus:outline-none focus:ring-2 focus:ring-[var(--purple)]/50 rounded"
               >
                 @{post.author.handle}
               </ProfileLink>
-            </span>
+            </div>
 
             <span className="text-muted mx-2 text-xs md:text-[13px]" aria-hidden>
               ·
@@ -278,8 +284,6 @@ export default function PostCard({ post }: { post: Post }) {
               className="text-muted whitespace-nowrap text-xs md:text-[13px]"
               dateTime={post.createdAt}
               title={post.createdAt}
-              onClick={stopClick}
-              onKeyDown={stopKey}
             >
               {post.createdAt}
             </time>
@@ -288,11 +292,7 @@ export default function PostCard({ post }: { post: Post }) {
           <div className="mt-1 whitespace-pre-wrap leading-relaxed">{post.text}</div>
 
           {post.mediaUrl && (
-            <figure
-              className="mt-3 overflow-hidden rounded-xl border border-white/10 bg-black/20"
-              onClick={stopClick}
-              onKeyDown={stopKey}
-            >
+            <figure className="mt-3 overflow-hidden rounded-xl border border-white/10 bg-black/20">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={post.mediaUrl}
@@ -305,25 +305,25 @@ export default function PostCard({ post }: { post: Post }) {
           )}
 
           {/* Actions */}
-          <div className="mt-3 flex items-center gap-4 sm:gap-6" onClickCapture={stopClick} onKeyDownCapture={stopKey}>
+          <div className="mt-3 flex items-center gap-4 sm:gap-6" data-no-nav onClick={(e) => e.stopPropagation()}>
             <CommentButton />
-            <ShareButton />
+            <RepostButton />
             <LikeForm />
-            <div onClickCapture={stopClick} onKeyDownCapture={stopKey}>
+            <div data-no-nav onClick={(e) => e.stopPropagation()}>
               <BookmarkButton postId={post.id} initiallyBookmarked={post.initiallyBookmarked === true} />
             </div>
           </div>
 
-          {/* Composer */}
+          {/* Composer unter dem Post */}
           {composerOpen && (
-            <div className="mt-3" onClickCapture={stopClick} onKeyDownCapture={stopKey}>
+            <div data-no-nav onClick={(e) => e.stopPropagation()}>
               <CommentComposer
                 postId={post.id}
-                action={commentAction}
-                onSubmitted={() => {
-                  setComposerOpen(false);
+                onSuccess={() => {
                   setComments((n) => n + 1);
+                  setComposerOpen(false);
                 }}
+                onCancel={() => setComposerOpen(false)}
               />
             </div>
           )}
