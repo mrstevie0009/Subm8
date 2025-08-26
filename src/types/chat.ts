@@ -4,7 +4,7 @@ export type ChatUser = {
   id: string;
   displayName: string;
   username: string;     // handle ohne @
-  role: UserRole;
+  role: 'domme' | 'submissive';
   avatarUrl?: string;
   online?: boolean;
   dmOpen?: boolean;     // darf Sub initiieren?
@@ -16,9 +16,10 @@ export type ChatMessage = {
   convoId: string;
   senderId: string;
   text?: string;
-  mediaUrl?: string;
+  mediaUrl?: string | null;
   createdAt: string; // ISO
-  seen?: boolean;
+  seen: boolean;
+  mediaType?: string | null;
 };
 
 export type Conversation = {

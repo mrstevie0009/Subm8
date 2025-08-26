@@ -3,6 +3,7 @@
 import * as React from 'react';
 import Image from 'next/image';
 import AvatarCropper from '@/components/AvatarCropper';
+import { blobToDataUrl } from '@/utils/blobToDataUrl';
 
 const AVATAR_PH = '/images/avatar-placeholder.png';
 const BANNER_PH = '/images/banner-placeholder.png';
@@ -293,7 +294,7 @@ export default function EditProfileForm({
           });
 
           // Optional: für Server Action als Base64 mitgeben
-          const b64 = await blobToDataURL(blob);
+          const b64 = await blobToDataUrl(blob);
           setAvatarCroppedDataUrl(b64);
         }}
       />

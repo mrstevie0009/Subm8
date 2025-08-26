@@ -33,6 +33,12 @@ type ThreadOk = {
 type ThreadErr = { ok: false; error: string };
 type ThreadResponse = ThreadOk | ThreadErr;
 
+// UI-Message-Typ: erweitert ChatMessage um optionale Media-Felder
+type UiMessage = ChatMessage & {
+  mediaUrl?: string;
+  mediaType?: string;
+};
+
 export default function ChatThreadPage() {
   const { id } = useParams<{ id: string }>();
 
@@ -46,7 +52,7 @@ export default function ChatThreadPage() {
     dmOpen: boolean;
   } | null>(null);
 
-  const [messages, setMessages] = React.useState<ChatMessage[]>([]);
+  const [messages, setMessages] = React.useState<UiMessage[]>([]);
   const [error, setError] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [tipOpen, setTipOpen] = React.useState(false);
@@ -60,6 +66,14 @@ export default function ChatThreadPage() {
     try {
       setError(null);
       const res = await fetch(`/api/chat/${id}`, { cache: 'no-store' });
+      const ct = res.headers.get('content-type') || '';
+      if (!ct.includes('application/json')) {
+        const txt = await res.text().catch(() => '');
+        throw new Error(
+          `Unexpected response (${res.status}). ${txt ? txt.slice(0, 140) : 'Empty body'}`
+        );
+      }
+
       const json: ThreadResponse = await res.json();
       if (!json.ok) throw new Error(json.error || 'Failed to load');
 
@@ -74,13 +88,15 @@ export default function ChatThreadPage() {
         dmOpen: true,
       });
 
-      const mapped: ChatMessage[] = json.messages.map((m) => ({
+      const mapped: UiMessage[] = json.messages.map((m) => ({
         id: m.id,
         convoId: String(id),
         senderId: m.authorId,
-        text: m.text ?? (m.mediaUrl ? '[Media]' : ''),
+        text: m.text ?? (m.mediaUrl ? '' : ''),
         createdAt: m.at,
         seen: m.read,
+        mediaUrl: m.mediaUrl ?? undefined,
+        mediaType: m.mediaType ?? undefined,
       }));
       setMessages(mapped);
     } catch (e) {
@@ -102,21 +118,25 @@ export default function ChatThreadPage() {
     };
   }, [load]);
 
+  // Server-Call: akzeptiert { text, file? }
   const sendMessage = React.useCallback(
-    async (text: string) => {
-      await fetch(`/api/chat/${id}`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ text }),
-      });
+    async ({ text, file }: { text: string; file?: File }) => {
+      if (file) {
+        const fd = new FormData();
+        fd.append('text', text);
+        fd.append('file', file);
+        await fetch(`/api/chat/${id}`, { method: 'POST', body: fd });
+      } else {
+        await fetch(`/api/chat/${id}`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ text }),
+        });
+      }
       await load();
     },
     [id, load]
   );
-
-  const handleUpload = React.useCallback((file: File) => {
-    alert(`Upload kommt bald: ${file.name}`);
-  }, []);
 
   if (!loading && error) {
     return (
@@ -145,8 +165,7 @@ export default function ChatThreadPage() {
         <div
           className="mx-auto w-full max-w-[760px]"
           style={{
-            paddingTop:
-              'calc(var(--header-h, 56px) + var(--chat-header-h, 48px) + 8px)',
+            paddingTop: 'calc(var(--header-h, 56px) + var(--chat-header-h, 48px) + 8px)',
             paddingBottom: 'calc(var(--bottomnav-h, 72px) + 72px)',
           }}
         >
@@ -159,15 +178,38 @@ export default function ChatThreadPage() {
                 return (
                   <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
                     <div
-                      className={`max-w-[75%] rounded-2xl px-3 py-2 border ${
-                        mine
-                          ? 'bg-[var(--purple)]/90 border-[var(--purple)]/40 text-white'
-                          : 'bg-white/[.07] border-white/10'
-                      }`}
+                      className={`max-w-[75%] rounded-2xl px-3 py-2 border break-words
+                                  ${
+                                    mine
+                                      ? 'bg-[var(--purple)]/90 border-[var(--purple)]/40 text-white'
+                                      : 'bg-white/[.07] border-white/10'
+                                  }`}
                       title={new Date(m.createdAt).toLocaleString()}
                     >
-                      {m.text && <div className="whitespace-pre-wrap">{m.text}</div>}
-                      <div className="text-[11px] text-white/70 mt-1 opacity-80">
+                      {/* Media zuerst */}
+                      {m.mediaUrl && (
+                        <div className="mb-1">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={m.mediaUrl}
+                            alt=""
+                            loading="lazy"
+                            decoding="async"
+                            className="block max-w-full h-auto max-h-[60vh] rounded-lg border border-white/10 object-contain"
+                            onError={(e) => {
+                              (e.currentTarget as HTMLImageElement).style.display = 'none';
+                            }}
+                          />
+                        </div>
+                      )}
+                      {m.text && (
+                        <div className="whitespace-pre-wrap break-words">{m.text}</div>
+                      )}
+                      <div
+                        className={`text-[11px] mt-1 opacity-80 ${
+                          mine ? 'text-white/80' : 'text-white/70'
+                        }`}
+                      >
                         {new Date(m.createdAt).toLocaleTimeString([], {
                           hour: '2-digit',
                           minute: '2-digit',
@@ -182,23 +224,35 @@ export default function ChatThreadPage() {
         </div>
       </main>
 
+      {/* ChatComposer erwartet onSend: (text: string) => void */}
       <ChatComposer
         disabled={false}
-        onSend={sendMessage}
+        onSend={(text) => sendMessage({ text })}
         onTip={() => setTipOpen(true)}
-        onUpload={handleUpload}
+        onUpload={(file) => sendMessage({ text: '', file })}
       />
 
-      <TipModal
-        open={tipOpen}
-        onClose={() => setTipOpen(false)}
-        onConfirm={(cents) => sendMessage(`💜 Sent tip: $${(cents / 100).toFixed(2)}`)}
-        receipient={{
-          name: other?.displayName ?? '—',
-          role: other?.role ?? 'submissive',
-          avatarUrl: other?.avatarUrl ?? undefined,
-        }}
-      />
+      {other && (
+        <TipModal
+          open={tipOpen}
+          onClose={() => setTipOpen(false)}
+          toUserId={other.id}
+          toDisplayName={other.displayName}
+          toRole={other.role}
+          toAvatarUrl={other.avatarUrl}
+          conversationId={String(id)}
+          onSuccess={({ amountCents, currency, note }) => {
+            const amountStr = new Intl.NumberFormat(undefined, {
+              style: 'currency',
+              currency,
+            }).format(amountCents / 100); // Netto an die Domme
+            const lines = [`💜 Sent tip: ${amountStr}`];
+            if (note) lines.push(note);
+            void sendMessage({ text: lines.join('\n') });
+            setTipOpen(false);
+          }}
+        />
+      )}
     </>
   );
 }

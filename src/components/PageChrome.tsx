@@ -17,28 +17,27 @@ export default function PageChrome({
 }) {
   const pathname = usePathname();
 
-  // Auf /[locale]/settings/bookmarks den Header GAR NICHT mounten
-  // bestehend
+  // Bookmarks ohne Header
   const inBookmarks = pathname.startsWith(`/${locale}/settings/bookmarks`);
-  
-  // neu: Chat-Routen erkennen
-  const inChatList   = pathname === `/${locale}/chat`;
+
+  // Chats erkennen
   const inChatThread = pathname.startsWith(`/${locale}/chat/`);
-  const inChat       = inChatList || inChatThread;  
+  const inChat       = inChatThread;
 
-  // Header im Bookmarks-Bereich und im Chat ausblenden
-  const hideHeader = inBookmarks || inChat;
-
+  // Header/BottomNav ausblenden in Chats
+  const hideHeader    = inBookmarks || inChat;
   const hideBottomNav = inChat;
-  // Content-Padding: kleiner, wenn kein Header vorhanden
-  const contentTopPad = hideHeader
-    ? '12px'
-    : 'calc(clamp(24px, 2.8vw, 50px) + 20px)';
-// Platz nach unten – wenn BottomNav ausgeblendet ist, weniger Padding nötig
-  const contentBottomPad = hideBottomNav ? '12px' : '84px';
 
-  // Platz nach unten, damit nichts unter die BottomNav rutscht
-  //const contentBottomPad = '84px';
+  // Höhen/Padding berechnen
+  const contentTopPad    = hideHeader ? '12px' : 'calc(clamp(24px, 2.8vw, 50px) + 20px)';
+  const contentBottomPad = hideBottomNav ? '12px' : 'calc(var(--bottomnav-h, 72px) + 12px)';
+
+  // gleiche Formel wie in BottomNav (Icon + vertikaler Puffer + Safe-Area)
+  const bottomNavHeight = hideBottomNav
+    ? '0px'
+    : 'calc(clamp(24px, 2.8vw, 50px) + 20px + env(safe-area-inset-bottom))';
+
+  type CSSVars = React.CSSProperties & { ['--bottomnav-h']?: string };
 
   return (
     <>
@@ -46,23 +45,27 @@ export default function PageChrome({
 
       <div
         className="mx-auto w-full"
-        style={{
-          maxWidth: 760,
-          paddingTop: contentTopPad,
-          paddingLeft: 16,
-          paddingRight: 16,
-          paddingBottom: contentBottomPad,
-        }}
+        style={
+          {
+            maxWidth: 760,
+            paddingTop: contentTopPad,
+            paddingLeft: 16,
+            paddingRight: 16,
+            paddingBottom: contentBottomPad,
+            // WICHTIG: Für Chat-Seiten auf 0 setzen, sonst echte Höhe
+            ['--bottomnav-h']: bottomNavHeight,
+          } as CSSVars
+        }
       >
         {children}
       </div>
 
-      {/* BottomNav bleibt immer sichtbar */}
-      <BottomNav/>
+      {/* BottomNav nur rendern, wenn NICHT im Chat */}
+      {!hideBottomNav && <BottomNav />}
 
       {/* Globale Overlays / Drawer */}
-      <SettingsDrawerMount/>
-      <ComposePostOverlayMount/>
+      <SettingsDrawerMount />
+      <ComposePostOverlayMount />
     </>
   );
 }

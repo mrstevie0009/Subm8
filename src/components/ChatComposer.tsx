@@ -1,8 +1,9 @@
+// src/components/ChatComposer.tsx
 'use client';
 import * as React from 'react';
 
 type Props = {
-  disabled?: boolean;                    // z.B. wenn DM nicht geöffnet
+  disabled?: boolean;
   onSend: (text: string) => void;
   onTip: () => void;
   onUpload?: (file: File) => void;
@@ -10,104 +11,164 @@ type Props = {
 
 export default function ChatComposer({ disabled, onSend, onTip, onUpload }: Props) {
   const [text, setText] = React.useState('');
+  const taRef = React.useRef<HTMLTextAreaElement | null>(null);
+
+  // Auto-grow
+  const maxRows = 6;
+  const lineH = 20;  // px
+  const padY  = 12;  // px
+  const maxHeight = maxRows * lineH + padY;
+
+  const autosize = React.useCallback(() => {
+    const el = taRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, maxHeight) + 'px';
+  }, [maxHeight]);
+
+  React.useEffect(() => { autosize(); }, [text, autosize]);
 
   const submit = React.useCallback(() => {
     const t = text.trim();
-    if (!t) return;
+    if (!t || disabled) return;
     onSend(t);
     setText('');
-  }, [text, onSend]);
+    requestAnimationFrame(() => autosize());
+  }, [text, disabled, onSend, autosize]);
 
-  // Große, responsive Buttonfläche (mindestens 44px)
-  const btnSize = 'clamp(44px, 6.5vw, 52px)';
+  const circle = 'grid place-items-center rounded-full select-none';
+  const sendSize = 40;     // px
+  const toolSize = 40;     // px
 
   return (
     <div
-      className="fixed bottom-0 left-1/2 -translate-x-1/2 z-40
-                 w-[min(100vw,760px)]
-                 bg-black/60 backdrop-blur supports-[backdrop-filter]:bg-black/45
-                 border-t border-sub px-3 py-2"
-      style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+      className="fixed bottom-0 left-1/2 -translate-x-1/2 z-40 w-[min(100vw,760px)]
+                 border-t border-sub bg-black/60 backdrop-blur supports-[backdrop-filter]:bg-black/45
+                 px-3 pb-2 pt-2"
+      style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 8px)' }}
     >
-      <div className="flex items-end gap-2">
-        {/* LEFT: große Buttons (Upload + Tip) */}
-        <div className="flex items-center gap-2 mr-1">
-          {/* Upload */}
-          <label
-            className="shrink-0 inline-grid place-items-center rounded-xl border border-white/12 bg-white/6 hover:bg-white/10 cursor-pointer disabled:opacity-50"
-            style={{ width: btnSize, height: btnSize }}
-            aria-label="Upload media"
-          >
-            <input
-              type="file"
-              className="hidden"
-              accept="image/*,video/*"
+      <div className="rounded-3xl border border-white/10 bg-white/[.06] shadow-[0_2px_16px_rgba(0,0,0,.25)] px-3 py-2">
+        {/* 2 Spalten: links Text+Toolbar, rechts Send */}
+        <div className="grid grid-cols-[1fr_auto] items-end gap-2">
+          {/* LEFT: Text oben, Buttons darunter */}
+          <div className="flex flex-col">
+            <textarea
+              ref={taRef}
+              rows={1}
+              value={text}
               disabled={disabled}
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f && onUpload) onUpload(f);
-                e.currentTarget.value = ''; // reset (gleiches File erneut möglich)
+              onChange={(e) => setText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  submit();
+                }
               }}
+              placeholder={disabled ? 'DMs closed' : 'Message…'}
+              className="w-full resize-none bg-transparent outline-none placeholder:text-muted
+                         text-[14px] leading-5 px-3 pt-1 pb-1 rounded-2xl"
+              style={{ minHeight: 40, overflow: 'hidden' }}
             />
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                 strokeWidth="2" className="opacity-90"
-                 style={{ width: '58%', height: '58%' }} aria-hidden="true">
-              <path d="M12 5v9m0 0-3-3m3 3 3-3M5 19h14" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </label>
 
-          {/* Tip */}
+            {/* Toolbar */}
+            <div className="mt-2 flex items-center gap-8 pl-2">
+              {/* Upload */}
+              <label
+                className={`${circle} border border-white/12 bg-transparent hover:bg-white/10 cursor-pointer`}
+                style={{ width: toolSize, height: toolSize }}
+                aria-label="Upload media"
+                title="Upload media"
+              >
+                <input
+                  type="file"
+                  className="hidden"
+                  accept="image/*,video/*"
+                  disabled={disabled}
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f && onUpload) onUpload(f);
+                    e.currentTarget.value = '';
+                  }}
+                />
+                <PhotoIcon />
+              </label>
+
+              {/* Tip */}
+              <button
+                type="button"
+                onClick={onTip}
+                disabled={disabled}
+                className={`${circle} border border-white/12 bg-transparent hover:bg-white/10 disabled:opacity-50`}
+                style={{ width: toolSize, height: toolSize }}
+                aria-label="Send tip"
+                title="Send tip"
+              >
+                <DollarIcon />
+              </button>
+            </div>
+          </div>
+
+          {/* RIGHT: Send */}
           <button
             type="button"
-            onClick={onTip}
-            disabled={disabled}
-            className="shrink-0 inline-grid place-items-center rounded-xl disabled:opacity-50 focus-visible:outline focus-visible:outline-[var(--purple)]/60"
-            style={{ width: btnSize, height: btnSize }}
-            aria-label="Send tip"
-            title="Send tip"
+            onClick={submit}
+            disabled={!text.trim() || disabled}
+            className={`${circle} bg-[var(--purple)] text-white hover:opacity-95 disabled:opacity-50`}
+            style={{ width: sendSize, height: sendSize }}
+            aria-label="Send message"
+            title="Send"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
-                 aria-hidden="true"
-                 style={{ width: '62%', height: '62%', color: 'var(--purple)' }}>
-              <path d="M12 2.2v3.2M12 18.6v3.2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
-              <path d="M17 7c0-2.1-2.2-3.6-5-3.6S7 4.9 7 7s2.3 3.2 5 3.2 5 1.2 5 3.6S14.8 17.6 12 17.6 7 16.4 7 13.8"
-                    fill="none" stroke="currentColor" strokeWidth="1.8"
-                    strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
+            <SendIcon />
           </button>
         </div>
-
-        {/* MIDDLE: Message-Feld */}
-        <div className="flex-1">
-          <textarea
-            rows={1}
-            value={text}
-            disabled={disabled}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                submit();
-              }
-            }}
-            placeholder={disabled ? 'DMs closed' : 'Message…'}
-            className="w-full resize-none rounded-2xl border border-white/10 bg-white/[.06] px-3 py-2 outline-none placeholder:text-muted"
-            style={{ minHeight: '44px' }}
-          />
-        </div>
-
-        {/* RIGHT: Senden */}
-        <button
-          type="button"
-          onClick={submit}
-          disabled={!text.trim() || disabled}
-          className="shrink-0 px-4 py-2 rounded-xl bg-[var(--purple)] text-white hover:opacity-95 disabled:opacity-50"
-          aria-label="Send message"
-          style={{ minHeight: '44px' }}
-        >
-          Send
-        </button>
       </div>
     </div>
+  );
+}
+
+/* ===== Icons ===== */
+function SendIcon({ size = 18 }: { size?: number }) {
+  // Edles, gefülltes Paper-Plane mit feiner Falt-Linie.
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width={size}
+      height={size}
+      aria-hidden
+      className="drop-shadow-[0_1px_2px_rgba(0,0,0,.35)]"
+    >
+      {/* Körper */}
+      <path
+        d="M21.7 3.4c.7-.27 1.4.4 1.13 1.12l-6.9 18a1 1 0 0 1-1.85-.06l-2.15-6.13-6.13-2.15A1 1 0 0 1 5.64 12l18-6.9Z"
+        fill="currentColor"
+      />
+      {/* Falt-/Glanzlinie */}
+      <path
+        d="M11.8 14.3 21.1 5M9.4 11.9l11.3-4.2"
+        fill="none"
+        stroke="#000"
+        strokeOpacity=".22"
+        strokeWidth="1.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+function PhotoIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.8">
+      <rect x="3.5" y="5.5" width="17" height="13" rx="2" />
+      <path d="M8 12.5l2.5-2.5 4.5 5 2.5-2.5" />
+      <circle cx="9" cy="9.5" r="1.2" />
+    </svg>
+  );
+}
+function DollarIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.8">
+      <path d="M12 2.5v19" strokeLinecap="round" />
+      <path d="M16.5 7.5c0-2-2-3.5-4.5-3.5S7.5 5.5 7.5 7.5 9.6 10 12 10s4.5 1 4.5 3.5S14 17 12 17s-4.5-1-4.5-3.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   );
 }
