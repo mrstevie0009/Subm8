@@ -17,7 +17,7 @@ type Decision = {
 
 const GLOBAL_STORE_KEY = '__subm8_rate_limit_store__';
 const store: Map<string, Bucket> =
-  // @ts-ignore
+  // @ts-expect-error – Begründung: [kurz notieren, z.B. „Types weichen von lib X ab“]
   (globalThis[GLOBAL_STORE_KEY] ?? (globalThis[GLOBAL_STORE_KEY] = new Map()));
 
 function getOrCreateBucket(key: string, capacity: number, intervalMs: number): Bucket {

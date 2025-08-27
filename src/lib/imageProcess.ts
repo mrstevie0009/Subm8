@@ -20,7 +20,7 @@ export type ImageProcessResult = {
 
 /**
  * Prozessiert ein Bild (Auto-Rotate, Resize, EXIF strip).
- * Für GIF (möglicherweise animiert) wird aus Sicherheitsgründen standardmäßig NICHT konvertiert,
+ * Für GIF (möglicherweise animiert) wird standardmäßig NICHT konvertiert,
  * um Animation nicht zu zerstören.
  */
 export async function processImage(
@@ -33,29 +33,32 @@ export async function processImage(
     return { data: input, mime: 'image/gif', ext: '.gif' };
   }
 
-  // sharp dynamisch importieren (vermeidet Build-Probleme falls nicht installiert)
-  // Achtung: Stelle sicher, dass "sharp" in package.json installiert ist.
-  let sharpMod: any;
+  // sharp dynamisch importieren (robust für ESM und CJS), ohne "any"
+  type SharpModule = typeof import('sharp');
+  let sharpFactory: SharpModule;
   try {
-    sharpMod = await import('sharp');
+    const mod = (await import('sharp')) as unknown;
+    sharpFactory = (mod as { default?: SharpModule }).default ?? (mod as SharpModule);
   } catch {
     // Fallback: keine Verarbeitung, nur zurückgeben
     return mapBypass(input, mime);
   }
 
-  const sharp = sharpMod.default ?? sharpMod;
-  let img = sharp(input, { failOn: 'none' }).rotate(); // Auto-rotate gemäß EXIF
+  let img = sharpFactory(input, { failOn: 'none' }).rotate(); // Auto-rotate gemäß EXIF
 
   // Resize nur wenn größer als max
   const { maxW, maxH } = opts;
   img = img.resize({ width: maxW, height: maxH, fit: 'inside', withoutEnlargement: true });
 
-  const strip = opts.stripMetadata !== false; // default true
+  // Standard: strippen (== true), nur behalten wenn explizit false
+  const preserveMetadata = opts.stripMetadata === false;
   const quality = Number.isFinite(opts.quality) ? (opts.quality as number) : 82;
+
+  const toBuf = () => (preserveMetadata ? img.withMetadata().toBuffer() : img.toBuffer());
 
   if (opts.convertToWebP) {
     img = img.webp({ quality });
-    const data = await (strip ? img.withMetadata({ exif: undefined, icc: undefined }).toBuffer() : img.toBuffer());
+    const data = await toBuf();
     return { data, mime: 'image/webp', ext: '.webp' };
   }
 
@@ -63,18 +66,18 @@ export async function processImage(
   switch (mime) {
     case 'image/jpeg': {
       img = img.jpeg({ quality });
-      const data = await (strip ? img.withMetadata({ exif: undefined, icc: undefined }).toBuffer() : img.toBuffer());
+      const data = await toBuf();
       return { data, mime: 'image/jpeg', ext: '.jpg' };
     }
     case 'image/png': {
-      // PNG ist lossless; leichtes Quantizing durch Qualität nicht vorgesehen. Wir lassen PNG.
-      img = img.png();
-      const data = await (strip ? img.withMetadata({ exif: undefined, icc: undefined }).toBuffer() : img.toBuffer());
+      // PNG: optional kann quality (0-100) für Quantisierung genutzt werden
+      img = img.png({ quality });
+      const data = await toBuf();
       return { data, mime: 'image/png', ext: '.png' };
     }
     case 'image/webp': {
       img = img.webp({ quality });
-      const data = await (strip ? img.withMetadata({ exif: undefined, icc: undefined }).toBuffer() : img.toBuffer());
+      const data = await toBuf();
       return { data, mime: 'image/webp', ext: '.webp' };
     }
   }

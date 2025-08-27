@@ -22,9 +22,11 @@ export type EditInitial = {
 export default function EditProfileForm({
   locale,
   initial,
+  action, // <-- Server Action wird von außen übergeben
 }: {
   locale: string;
   initial: EditInitial;
+  action: (formData: FormData) => Promise<void>;
 }) {
   const [avatarPreview, setAvatarPreview] = React.useState<string>(
     initial.avatarUrl || AVATAR_PH
@@ -73,7 +75,12 @@ export default function EditProfileForm({
   const avatarOverlap = 0.0;
 
   return (
-    <form className="rounded-app border border-sub overflow-hidden shadow-app">
+    <form
+      action={action}
+      method="post"
+      encType="multipart/form-data"
+      className="rounded-app border border-sub overflow-hidden shadow-app"
+    >
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
         <div className="text-[18px] font-semibold">Edit profile</div>
@@ -128,6 +135,7 @@ export default function EditProfileForm({
             <input
               type="file"
               accept="image/*"
+              name="banner"           // <-- wichtig!
               className="sr-only"
               onChange={(e) => onBannerChange(e.currentTarget.files?.[0])}
             />
@@ -190,7 +198,7 @@ export default function EditProfileForm({
                 onChange={(e) => {
                   const file = e.currentTarget.files?.[0];
                   onAvatarChange(file);
-                  // Input zurücksetzen, damit man die gleiche Datei erneut wählen kann
+                  // gleiche Datei erneut wählen ermöglichen
                   e.currentTarget.value = '';
                 }}
               />
@@ -293,7 +301,7 @@ export default function EditProfileForm({
             return url;
           });
 
-          // Optional: für Server Action als Base64 mitgeben
+          // Für Server Action als Base64 mitgeben
           const b64 = await blobToDataUrl(blob);
           setAvatarCroppedDataUrl(b64);
         }}
@@ -327,12 +335,4 @@ function CameraIcon({ size = 20 }: { size?: number }) {
       <circle cx="12" cy="13" r="3.5" />
     </svg>
   );
-}
-
-function blobToDataURL(blob: Blob): Promise<string> {
-  return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve(String(reader.result));
-    reader.readAsDataURL(blob);
-  });
 }

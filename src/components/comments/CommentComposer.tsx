@@ -2,59 +2,66 @@
 'use client';
 
 import * as React from 'react';
-import { addCommentAction } from '@/app/actions/comments';
-
-type ActionFn = (formData: FormData) => void | Promise<void>;
+import { useFormStatus } from 'react-dom';
+import { addCommentActionVoid } from '@/app/actions/comments';
 
 type Props = {
   postId: string;
-  /** Optional: eigene Action überschreiben. Muss void | Promise<void> zurückgeben. */
-  action?: ActionFn;
-  /** Autofokus auf das Textfeld */
+  /** Optional: replace the default server action */
+  action?: (formData: FormData) => void | Promise<void>;
   autoFocus?: boolean;
-  /** Wird nach erfolgreichem Absenden aufgerufen (z.B. Zähler erhöhen, Composer schließen) */
-  onSuccess?: () => void;
-  /** Wird beim Abbrechen oder nach Success (wenn du willst) genutzt, um den Composer zu schließen */
+  /** Call this to close the composer (used for both outside-click and after send) */
   onCancel?: () => void;
   className?: string;
 };
+
+function SubmitButton({ disabled }: { disabled: boolean }) {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      type="submit"
+      data-no-nav
+      disabled={pending || disabled}
+      className="px-3 py-1.5 rounded-md bg-[var(--purple)] text-white disabled:opacity-60"
+    >
+      {pending ? 'Sending…' : 'Send'}
+    </button>
+  );
+}
 
 export default function CommentComposer({
   postId,
   action,
   autoFocus = true,
-  onSuccess,
   onCancel,
   className,
 }: Props) {
   const [text, setText] = React.useState('');
-  const [pending, startTransition] = React.useTransition();
   const textareaRef = React.useRef<HTMLTextAreaElement | null>(null);
+  const formRef = React.useRef<HTMLFormElement | null>(null);
 
-  // Default-Action in das erwartete Signaturformat bringen (Promise<void>)
-  const defaultAction: ActionFn = async (fd: FormData) => {
-    // addCommentAction kann irgendwas zurückgeben – wir ignorieren das bewusst,
-    // damit die Signatur Promise<void> bleibt.
-    await addCommentAction(fd);
-  };
-
-  // Wir wrappen die (ggf. übergebene) Action, um nach Erfolg Text zu leeren & Callback zu feuern
-  const wrappedAction: ActionFn = async (fd) => {
-    await (action ?? defaultAction)(fd);
-    // nur wenn das Absenden ohne Throw durch ging:
-    setText('');
-    onSuccess?.();
-  };
-
+  // Focus textarea
   React.useEffect(() => {
     if (autoFocus && textareaRef.current) {
-      textareaRef.current.focus();
-      // Cursor ans Ende
       const el = textareaRef.current;
+      el.focus();
       el.selectionStart = el.value.length;
       el.selectionEnd = el.value.length;
     }
   }, [autoFocus]);
+
+  // Close on outside click
+  React.useEffect(() => {
+    if (!onCancel) return;
+    const onDocPointerDown = (e: PointerEvent) => {
+      const root = formRef.current;
+      if (root && !root.contains(e.target as Node)) {
+        onCancel(); // close without sending
+      }
+    };
+    document.addEventListener('pointerdown', onDocPointerDown);
+    return () => document.removeEventListener('pointerdown', onDocPointerDown);
+  }, [onCancel]);
 
   function onKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === 'Escape') {
@@ -65,10 +72,15 @@ export default function CommentComposer({
 
   return (
     <form
-      action={wrappedAction}
-      // verhindert, dass der Klick auf den Composer die Card-Navigation auslöst
+      ref={formRef}
+      action={action ?? addCommentActionVoid}  // server action still runs
+      // close immediately after the browser kicks off the action
+      onSubmit={() => {
+        // let the submit proceed, then close the UI
+        setTimeout(() => onCancel?.(), 0);
+      }}
       data-no-nav
-      onClick={(e) => e.stopPropagation()}
+      onClick={(e) => e.stopPropagation()}     // don't bubble to card navigation
       className={className ?? 'mt-3 rounded-xl border border-white/10 bg-white/5 p-2'}
     >
       <input type="hidden" name="postId" value={postId} />
@@ -95,27 +107,11 @@ export default function CommentComposer({
                 onCancel();
               }}
               className="px-3 py-1.5 rounded-md border border-white/15 hover:bg-white/5"
-              disabled={pending}
             >
               Cancel
             </button>
           )}
-
-          <button
-            type="submit"
-            data-no-nav
-            disabled={pending || !text.trim()}
-            // Optimistisches Feedback: Wir lassen React die Action ausführen,
-            // aber sorgen mit Transition für Disabled/Loading-State.
-            onClick={(e) => {
-              e.stopPropagation();
-              // Optional: Hier kein setState, das übernimmt wrappedAction nach Erfolg.
-              startTransition(() => {});
-            }}
-            className="px-3 py-1.5 rounded-md bg-[var(--purple)] text-white disabled:opacity-60"
-          >
-            {pending ? 'Sending…' : 'Send'}
-          </button>
+          <SubmitButton disabled={!text.trim()} />
         </div>
       </div>
     </form>

@@ -2,20 +2,19 @@ import { redirect, notFound } from 'next/navigation';
 import EditProfileForm, { type EditInitial } from '@/components/EditProfileForm';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/currentUser';
+import { updateProfileAction } from '@/lib/profile';
 
 export default async function Page({
-  params,
+  params: { locale, handle },
 }: {
-  params: Promise<{ locale: string; handle: string }>;
+  params: { locale: string; handle: string };
 }) {
-  const { locale, handle } = await params;
-
   const me = await getCurrentUser();
   if (!me) {
     redirect(`/${locale}/signin?callbackUrl=/${locale}/u/${handle}/edit`);
   }
 
-  // Profil zum Handle finden
+  // Profil-Besitzer zum Handle ermitteln (nur id nötig)
   const owner = await prisma.user.findUnique({
     where: { handle: handle.toLowerCase() },
     select: { id: true },
@@ -27,7 +26,7 @@ export default async function Page({
     redirect(`/${locale}/u/${handle}`);
   }
 
-  // Initialwerte laden
+  // Alle Initialwerte laden
   const u = await prisma.user.findUnique({
     where: { id: me.id },
     select: {
@@ -49,14 +48,16 @@ export default async function Page({
     bio: u.bio ?? '',
     location: u.location ?? '',
     role: u.role === 'DOMME' ? 'domme' : 'submissive',
-    nsfwDefault: u.nsfwDefault ?? false,
+    nsfwDefault: !!u.nsfwDefault,
     avatarUrl: u.avatarUrl ?? undefined,
     bannerUrl: u.bannerUrl ?? undefined,
   };
 
   return (
-    <div className="max-w-3xl mx-auto p-4">
-      <EditProfileForm locale={locale} initial={initial} />
-    </div>
+    <EditProfileForm
+      locale={locale}
+      initial={initial}
+      action={updateProfileAction}
+    />
   );
 }
