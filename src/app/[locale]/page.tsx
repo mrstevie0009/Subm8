@@ -15,8 +15,8 @@ function toUiRole(role: Role): 'domme' | 'submissive' {
 // Extra-Feld ist ok; PostCard ignoriert Unbekanntes
 type FeedPost = PostCardPost & { initiallyBookmarked?: boolean };
 
-export default async function HomePage({ params }: { params: Promise<Params> }) {
-  const { locale } = await params;
+export default async function HomePage({ params }: { params: Params }) {
+  const { locale } = params;
 
   const me = await getCurrentUser().catch(() => null);
 
@@ -24,7 +24,16 @@ export default async function HomePage({ params }: { params: Promise<Params> }) 
     prisma.post.findMany({
       orderBy: { createdAt: 'desc' },
       include: {
-        author: true,
+        author: {
+          // <-- nur die Felder laden, die du wirklich brauchst
+          select: {
+            id: true,
+            handle: true,
+            displayName: true,
+            role: true,
+            avatarUrl: true,
+          },
+        },
         _count: { select: { Like: true, Comment: true } },
       },
       take: 30,
@@ -60,7 +69,7 @@ export default async function HomePage({ params }: { params: Promise<Params> }) 
     mediaAlt: p.mediaAlt ?? undefined,
     stats: {
       comments: p._count.Comment ?? 0,
-      reposts: 0,           // (kein Repost-Modell vorhanden)
+      reposts: 0,
       likes: p._count.Like ?? 0,
     },
     viewer: {

@@ -27,7 +27,7 @@ export default async function SettingsPage({ params }: { params: Promise<Params>
       icon: <UserIcon />,
     },
     {
-      href: `/${locale}/settings`, // Platzhalter für „Sicherheit & Zugriff“
+      href: `/${locale}/security`, // Platzhalter für „Sicherheit & Zugriff“
       title: 'Sicherheit & Zugriff',
       desc: 'Login-Sicherheit prüfen, verbundene Apps verwalten und Zugriff überwachen.',
       icon: <LockIcon />,
@@ -39,9 +39,9 @@ export default async function SettingsPage({ params }: { params: Promise<Params>
       icon: <PremiumIcon />,
     },
     {
-      href: `/${locale}/settings/payments`,
+      href: `/${locale}/monetization`,
       title: 'Monetarisierung',
-      desc: 'Einnahmen, Auszahlungen und Zahlungs­einstellungen verwalten.',
+      desc: 'Vom Tip bis zur Community. Alle Wege zu stabilen Einnahmen.',
       icon: <MoneyIcon />,
     },
     {

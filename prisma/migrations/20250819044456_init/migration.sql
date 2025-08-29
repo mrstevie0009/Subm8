@@ -271,6 +271,11 @@ CREATE TABLE IF NOT EXISTS "public"."Wallet" (
     CONSTRAINT "Wallet_pkey" PRIMARY KEY ("userId")
 );
 
+-- ===================================================
+-- Column guards for existing DBs (idempotent, crucial)
+-- ===================================================
+ALTER TABLE "public"."Post" ADD COLUMN IF NOT EXISTS "communityId" TEXT;
+
 -- =========================
 -- Indizes (idempotent)
 -- =========================
