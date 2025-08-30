@@ -51,7 +51,7 @@ export default async function SettingsPage({ params }: { params: Promise<Params>
       icon: <ShieldIcon />,
     },
     {
-      href: `/${locale}/notifications`,
+      href: `/${locale}/settings/notifications`,
       title: 'Mitteilungen',
       desc: 'Lege fest, über welche Aktivitäten, Empfehlungen und Nachrichten du benachrichtigt wirst.',
       icon: <BellIcon />,

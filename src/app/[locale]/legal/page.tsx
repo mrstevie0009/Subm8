@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic';
 export default function LegalPage() {
   return (
     <article className="p-6 prose prose-invert max-w-none">
-      <h2 className="mb-2">Terms of Service (Nutzungsbedingungen)</h2>
+      <h2 className="mb-2">Terms of Service</h2>
       <p className="text-white/60 text-sm mb-6">
         Zuletzt aktualisiert: {new Date().toLocaleDateString()}
       </p>
