@@ -2,7 +2,7 @@
 'use client';
 
 import * as React from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { useLocale } from 'next-intl';
 import Link from 'next/link';
 import { signIn } from 'next-auth/react';
@@ -13,11 +13,11 @@ function isValidEmail(e: string) {
 
 export default function SignupAccountPage() {
   const sp = useSearchParams();
-  const router = useRouter();
   const locale = useLocale();
 
   const handle = (sp.get('handle') || '').toLowerCase();
-  const role = sp.get('role') === 'DOMME' || sp.get('role') === 'SUBMISSIVE' ? sp.get('role')! : null;
+  const roleParam = sp.get('role');
+  const role = roleParam === 'DOMME' || roleParam === 'SUBMISSIVE' ? roleParam : null;
 
   const [email, setEmail] = React.useState('');
   const [pw, setPw] = React.useState('');
@@ -36,55 +36,34 @@ export default function SignupAccountPage() {
 
   const submit: React.FormEventHandler<HTMLFormElement> = async (ev) => {
     ev.preventDefault();
-    if (!ready) return;
+    if (!ready || loading) return;
+
     try {
       setLoading(true);
       setErr(null);
+
+      // 1) Account anlegen
       const res = await fetch('/api/signup/complete', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          handle,
-          role, // 'DOMME' | 'SUBMISSIVE'
-          email,
-          password: pw,
-        }),
+        body: JSON.stringify({ handle, role, email, password: pw }),
       });
-      const json = await res.json();
+      const json = await res.json().catch(() => null);
       if (!res.ok || !json?.ok) {
         setErr(json?.error || `HTTP ${res.status}`);
         return;
       }
-      // Signup fertig → z.B. auf Home oder Profil
-      router.replace(`/${locale}`);
-      // Signup fertig → direkt einloggen (Credentials)
-      // 1) Versuch: E-Mail + Passwort
-      const loginByEmail = await signIn('credentials', {
-        redirect: false,
-        email,
-        password: pw,
+
+      // 2) Direkt einloggen (Credentials) — harter Redirect durch NextAuth
+      // Wir übergeben EIN Feld "identifier": E-Mail, sonst Handle
+      await signIn('credentials', {
+        redirect: true,
         callbackUrl: `/${locale}`,
+        identifier: isValidEmail(email) ? email : handle,
+        password: pw,
       });
-      let login = loginByEmail;
 
-      // 2) Fallback: Handle + Passwort (falls dein Provider 'handle' erwartet)
-      if (loginByEmail?.error) {
-        const loginByHandle = await signIn('credentials', {
-          redirect: false,
-          handle,
-          password: pw,
-          callbackUrl: `/${locale}`,
-        });
-        login = loginByHandle;
-      }
-
-      if (login?.error) {
-        setErr(login.error);
-        return;
-      }
-
-      // Weiter auf Home/Feed
-      router.replace(login?.url ?? `/${locale}`);
+      // Kein weiterer Code hier nötig; NextAuth führt den Redirect aus.
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Failed to sign up');
     } finally {
@@ -154,7 +133,7 @@ export default function SignupAccountPage() {
               checked={agree}
               onChange={(e) => setAgree(e.target.checked)}
             />
-            I agree to the Terms & Privacy Policy.
+            I agree to the Terms &amp; Privacy Policy.
           </label>
 
           {err && <div className="text-sm text-red-400">{err}</div>}
@@ -169,7 +148,7 @@ export default function SignupAccountPage() {
             {loading ? 'Creating…' : 'Create account'}
           </button>
 
-          {/* Optional: OAuth (falls vorhanden) */}
+          {/* Optional: OAuth */}
           <div className="text-center">
             <Link
               prefetch={false}

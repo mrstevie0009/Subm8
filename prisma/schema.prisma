@@ -1,3 +1,4 @@
+// prisma/schema.prisma
 generator client {
   provider = "prisma-client-js"
 }
@@ -23,9 +24,19 @@ model User {
   nsfwDefault                   Boolean           @default(false)
   ageVerifiedAt                 DateTime?
   isDeactivated                 Boolean           @default(false)
+  isAdmin                       Boolean           @default(false) // <— Admin-Flag
   country                       String?           @db.VarChar(2)
   passwordHash                  String?
   phone                         String?
+
+  // 2FA / Security
+  twoFactorEnabled              Boolean           @default(false)
+  twoFactorType                 String?
+  twoFactorSecret               String?
+  twoFactorTempSecret           String?
+  passwordResetProtection       Boolean           @default(false)
+
+  // Relations
   accounts                      Account[]
   Bookmark                      Bookmark[]
   Comment                       Comment[]
@@ -46,11 +57,10 @@ model User {
   sentTips                      Tip[]             @relation("sentTips")
   receivedTips                  Tip[]             @relation("receivedTips")
   Wallet                        Wallet?
-  twoFactorEnabled          Boolean        @default(false)
-  twoFactorType             String?        // e.g. "TOTP" | "SMS" | "KEY"
-  twoFactorSecret           String?        // für TOTP
-  twoFactorTempSecret       String?        // während Setup
-  passwordResetProtection   Boolean        @default(false)
+
+  // Neu
+  notificationSettings          UserNotificationSettings?
+  reportsMade                   ContentReport[]
 }
 
 model Follow {
@@ -277,6 +287,10 @@ model Payment {
   Ledger                     Ledger[]
   User_Payment_payeeIdToUser User          @relation("Payment_payeeIdToUser", fields: [payeeId], references: [id], onDelete: Cascade)
   User_Payment_payerIdToUser User          @relation("Payment_payerIdToUser", fields: [payerId], references: [id], onDelete: Cascade)
+
+  @@index([createdAt])
+  @@index([payerId])
+  @@index([payeeId])
 }
 
 model Payout {
@@ -298,6 +312,59 @@ model Wallet {
   updatedAt    DateTime
   User         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
+
+/* ---------- NEW: Admin Reports & Notification Settings ---------- */
+
+enum ReportTargetType {
+  POST
+  USER
+}
+
+model ContentReport {
+  id              String           @id @default(cuid())
+  createdAt       DateTime         @default(now())
+  targetType      ReportTargetType
+  targetId        String
+  reporterUserId  String
+  reason          String?
+  resolvedAt      DateTime?
+
+  reporterUser    User             @relation(fields: [reporterUserId], references: [id], onDelete: Cascade)
+
+  @@index([targetType, targetId])
+  @@index([resolvedAt])
+}
+
+model UserNotificationSettings {
+  userId               String  @id
+  user                 User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  pushEnabled          Boolean @default(true)
+
+  dmMessages           Boolean @default(true)
+  dmReactions          Boolean @default(true)
+
+  mentions             Boolean @default(true)
+  comments             Boolean @default(true)
+  likes                Boolean @default(true)
+  newFollowers         Boolean @default(true)
+  photoTags            Boolean @default(true)
+
+  emailMessages        Boolean @default(false)
+  emailDigest          Boolean @default(false)
+
+  muteNotFollowing     Boolean @default(false)
+  muteNotFollowers     Boolean @default(false)
+  muteNewAccounts      Boolean @default(false)
+  muteNoAvatar         Boolean @default(false)
+  requireEmailVerified Boolean @default(false)
+  requirePhoneVerified Boolean @default(false)
+
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
+/* ------------------------------ Enums ------------------------------------- */
 
 enum Role {
   DOMME

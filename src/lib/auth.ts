@@ -10,7 +10,7 @@ import type { Session } from 'next-auth';
 import { getServerSession } from 'next-auth';
 import type { Role } from '@prisma/client';
 
-// --- Module Augmentation: eigene Felder in User, Session & JWT typisieren ---
+// --- Module Augmentation ---
 declare module 'next-auth' {
   interface User {
     handle: string;
@@ -54,29 +54,38 @@ export const authOptions: NextAuthOptions = {
       clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? '',
     }),
 
-    // Login mit E-Mail ODER Handle
+    // Login mit E-Mail ODER Handle ODER generischem "identifier"
     CredentialsProvider({
       name: 'Handle/E-Mail & Passwort',
       credentials: {
+        // Wir deklarieren mehrere mögliche Felder, damit UI/Altcode flexibel ist
         identifier: { label: 'E-Mail oder Handle', type: 'text' },
+        email: { label: 'E-Mail', type: 'text' },
+        handle: { label: 'Handle', type: 'text' },
         password: { label: 'Passwort', type: 'password' },
       },
       async authorize(credentials): Promise<NextAuthUser | null> {
         if (!credentials) return null;
 
-        const raw = (credentials.identifier ?? '').trim();
+        // Akzeptiere identifier ODER email ODER handle
+        const rawInput =
+          (credentials.identifier as string | undefined)?.trim() ||
+          (credentials.email as string | undefined)?.trim() ||
+          (credentials.handle as string | undefined)?.trim() ||
+          '';
+
         const password = String(credentials.password ?? '');
-        if (!raw || !password) return null;
+        if (!rawInput || !password) return null;
 
-        const emailLike = raw.toLowerCase();
-        const handle = raw.replace(/^@/, '').toLowerCase();
+        // E-Mail (lowercased) oder Handle (ohne @, lowercased)
+        const emailLike = rawInput.toLowerCase();
+        const handleLike = rawInput.replace(/^@/, '').toLowerCase();
 
-        // User per E-Mail ODER Handle finden (Handle case-insensitive)
         const user = await prisma.user.findFirst({
           where: {
             OR: [
               { email: emailLike },
-              { handle: { equals: handle, mode: 'insensitive' } },
+              { handle: { equals: handleLike, mode: 'insensitive' } },
             ],
           },
           select: {
@@ -87,14 +96,19 @@ export const authOptions: NextAuthOptions = {
             passwordHash: true,
             handle: true,
             role: true,
+            isDeactivated: true,
           },
         });
+
         if (!user || !user.passwordHash) return null;
+        if (user.isDeactivated) {
+          // Optional: klare Fehlermeldung (wird als CredentialsSignin angezeigt)
+          throw new Error('Account deactivated');
+        }
 
         const ok = await verifyPassword(password, user.passwordHash);
         if (!ok) return null;
 
-        // Wichtig: handle & role MIT zurückgeben (Projekt-Erweiterung von User)
         const authUser: NextAuthUser = {
           id: user.id,
           email: user.email ?? null,
@@ -112,13 +126,7 @@ export const authOptions: NextAuthOptions = {
   pages: { signIn: '/signin' },
 
   callbacks: {
-    async jwt({
-      token,
-      user,
-    }: {
-      token: JWT;
-      user?: NextAuthUser | undefined;
-    }) {
+    async jwt({ token, user }: { token: JWT; user?: NextAuthUser | undefined }) {
       // Bei Login: Basisdaten setzen
       if (user) {
         token.uid = user.id;
@@ -153,14 +161,7 @@ export const authOptions: NextAuthOptions = {
       return token;
     },
 
-    async session({
-      session,
-      token,
-    }: {
-      session: Session;
-      token: JWT;
-    }) {
-      // Session-User sicherstellen
+    async session({ session, token }: { session: Session; token: JWT }) {
       if (!session.user) {
         session.user = { id: token.uid ?? '' };
       }
