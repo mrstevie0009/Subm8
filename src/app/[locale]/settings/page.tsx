@@ -45,7 +45,7 @@ export default async function SettingsPage({ params }: { params: Promise<Params>
       icon: <MoneyIcon />,
     },
     {
-      href: `/${locale}/settings`, // Platzhalter für „Datenschutz“
+      href: `/${locale}/legal`, // Platzhalter für „Datenschutz“
       title: 'Datenschutz',
       desc: 'Steuere, welche Informationen du siehst und teilst, und passe deine Privatsphäre an.',
       icon: <ShieldIcon />,
