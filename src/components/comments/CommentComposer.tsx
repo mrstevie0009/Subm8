@@ -10,7 +10,9 @@ type Props = {
   /** Optional: replace the default server action */
   action?: (formData: FormData) => void | Promise<void>;
   autoFocus?: boolean;
-  /** Call this to close the composer (used for both outside-click and after send) */
+  /** Wird nach erfolgreichem Absenden (optimistisch) ausgelöst */
+  onSuccess?: () => void;
+  /** Zum Schließen des Composers (auch bei Outside-Click/Cancel) */
   onCancel?: () => void;
   className?: string;
 };
@@ -33,6 +35,7 @@ export default function CommentComposer({
   postId,
   action,
   autoFocus = true,
+  onSuccess,
   onCancel,
   className,
 }: Props) {
@@ -73,14 +76,19 @@ export default function CommentComposer({
   return (
     <form
       ref={formRef}
-      action={action ?? addCommentActionVoid}  // server action still runs
-      // close immediately after the browser kicks off the action
+      action={action ?? addCommentActionVoid} // server action still runs
+      // Optimistisch: UI sofort schließen & Success-Callback triggern
       onSubmit={() => {
-        // let the submit proceed, then close the UI
-        setTimeout(() => onCancel?.(), 0);
+        // kurz warten, damit Browser das Submit anstößt, dann UI zu
+        setTimeout(() => {
+          onSuccess?.();
+          onCancel?.();
+          // optional: Textfeld leeren (falls nicht sofort geschlossen)
+          setText('');
+        }, 0);
       }}
       data-no-nav
-      onClick={(e) => e.stopPropagation()}     // don't bubble to card navigation
+      onClick={(e) => e.stopPropagation()} // don't bubble to card navigation
       className={className ?? 'mt-3 rounded-xl border border-white/10 bg-white/5 p-2'}
     >
       <input type="hidden" name="postId" value={postId} />

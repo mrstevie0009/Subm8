@@ -3,12 +3,13 @@
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/currentUser';
 import { randomUUID } from 'crypto';
-import { revalidatePath /*, revalidateTag */ } from 'next/cache';
+import { revalidatePath } from 'next/cache';
 import { headers } from 'next/headers';
+import { assertCanInteractForPostId } from '@/app/actions/blocks';
 
 export type AddCommentResult =
   | { ok: true; id: string }
-  | { ok: false; error: 'UNAUTHORIZED' | 'INVALID_INPUT' | 'SERVER_ERROR' };
+  | { ok: false; error: 'UNAUTHORIZED' | 'INVALID_INPUT' | 'SERVER_ERROR' | 'INTERACTION_BLOCKED' };
 
 export async function addCommentAction(formData: FormData): Promise<AddCommentResult> {
   try {
@@ -19,9 +20,16 @@ export async function addCommentAction(formData: FormData): Promise<AddCommentRe
     const text = String(formData.get('text') ?? '').trim();
     if (!postId || !text) return { ok: false, error: 'INVALID_INPUT' };
 
+    // ❗ block-check
+    try {
+      await assertCanInteractForPostId(me.id, postId);
+    } catch {
+      return { ok: false, error: 'INTERACTION_BLOCKED' };
+    }
+
     const created = await prisma.comment.create({
       data: {
-        id: randomUUID(), // falls dein Prisma-Schema keine Default-ID hat
+        id: randomUUID(),
         postId,
         userId: me.id,
         text,
@@ -29,20 +37,17 @@ export async function addCommentAction(formData: FormData): Promise<AddCommentRe
       select: { id: true },
     });
 
-    // 🔁 Revalidate the page the request came from (derived from Referer)
+    // Revalidate die Seite, von der der Request kam (best-effort)
     try {
-      const hdrs = await headers();               // <-- await here
-      const referer = hdrs.get('referer');
+      const hdrs = headers();
+      const referer = (await hdrs).get('referer');
       if (referer) {
         const url = new URL(referer);
         revalidatePath(url.pathname, 'page');
       }
     } catch {
-      // ignore if headers() or URL parsing fails
+      // ignore
     }
-
-    // Alternative if your comments query uses a tag:
-    // revalidateTag(`post:${postId}`);
 
     return { ok: true, id: created.id };
   } catch {

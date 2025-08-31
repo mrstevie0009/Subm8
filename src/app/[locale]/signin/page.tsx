@@ -1,13 +1,15 @@
+// src/app/[locale]/signin/page.tsx
 'use client';
 
 import * as React from 'react';
 import { signIn } from 'next-auth/react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { useLocale } from 'next-intl';
 import Link from 'next/link';
 
 export default function SignInPage() {
   const sp = useSearchParams();
+  const router = useRouter();
   const locale = useLocale();
 
   // sowohl ?email= als auch ?handle= als Vorausfüllung unterstützen
@@ -17,22 +19,41 @@ export default function SignInPage() {
     '';
 
   const registered = sp.get('registered') === '1';
-  const errorMsg = sp.get('error');
+  const topErrorMsg = sp.get('error'); // z.B. von externen Redirects
 
   const [identifier, setIdentifier] = React.useState(preset);
   const [password, setPassword] = React.useState('');
   const [loading, setLoading] = React.useState(false);
 
+  // lokale Fehlerdarstellung (bleibt auf der Seite)
+  const [invalid, setInvalid] = React.useState(false);
+  const [inlineError, setInlineError] = React.useState<string | null>(null);
+
   async function handleCredentials(e: React.FormEvent) {
     e.preventDefault();
+    if (loading) return;
     setLoading(true);
+    setInvalid(false);
+    setInlineError(null);
+
     try {
-      await signIn('credentials', {
-        redirect: true,
-        callbackUrl: `/${locale}`, // Redirect ins aktuelle Locale
-        identifier,                // <— neu: Email ODER Handle
+      const res = await signIn('credentials', {
+        redirect: false,          // <— wichtig: nicht umleiten
+        callbackUrl: `/${locale}`,// Ziel bei Erfolg
+        identifier,               // E-Mail ODER Handle
         password,
       });
+
+      if (res?.error) {
+        // Fehler lokal anzeigen und Felder rot markieren
+        setInvalid(true);
+        setInlineError('E-Mail/Handle oder Passwort ist falsch.');
+        return;
+      }
+
+      // Erfolg: zur Ziel-URL wechseln (Session-Cookie ist gesetzt)
+      const url = res?.url ?? `/${locale}`;
+      router.replace(url);
     } finally {
       setLoading(false);
     }
@@ -42,7 +63,7 @@ export default function SignInPage() {
     <div className="mx-auto max-w-sm p-6 space-y-6">
       <h1 className="text-xl font-semibold">Anmelden</h1>
 
-      {(registered || errorMsg) && (
+      {(registered || topErrorMsg) && (
         <div
           className={`rounded-md border p-3 text-sm ${
             registered
@@ -50,34 +71,62 @@ export default function SignInPage() {
               : 'border-red-200 bg-red-50 text-red-800'
           }`}
         >
-          {registered ? 'Registrierung erfolgreich. Bitte einloggen.' : errorMsg}
+          {registered ? 'Registrierung erfolgreich. Bitte einloggen.' : topErrorMsg}
         </div>
       )}
 
-      <form onSubmit={handleCredentials} className="space-y-3">
+      <form onSubmit={handleCredentials} className="space-y-3" noValidate>
         <div className="space-y-1">
-          <label className="block text-sm">E-Mail oder Handle</label>
+          <label htmlFor="identifier" className="block text-sm">E-Mail oder Handle</label>
           <input
+            id="identifier"
             value={identifier}
-            onChange={(e) => setIdentifier(e.target.value)}
-            type="text"                 // wichtig: kein "email", damit @handle erlaubt ist
+            onChange={(e) => {
+              setIdentifier(e.target.value);
+              if (invalid) { setInvalid(false); setInlineError(null); }
+            }}
+            type="text" // kein "email", damit @handle erlaubt ist
             autoComplete="username"
             required
             placeholder="you@example.com oder @deinhandle"
-            className="w-full rounded-md border px-3 py-2"
+            aria-invalid={invalid || undefined}
+            aria-describedby={invalid ? 'identifier-error' : undefined}
+            className={`w-full rounded-md border px-3 py-2 outline-none
+              ${invalid ? 'border-red-400 focus:ring-2 focus:ring-red-500/40' : 'border-white/10 focus:ring-2 focus:ring-[var(--purple)]/40'}
+            `}
           />
+          {invalid && (
+            <p id="identifier-error" className="text-xs text-red-400">
+              {inlineError}
+            </p>
+          )}
         </div>
+
         <div className="space-y-1">
-          <label className="block text-sm">Passwort</label>
+          <label htmlFor="password" className="block text-sm">Passwort</label>
           <input
+            id="password"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) => {
+              setPassword(e.target.value);
+              if (invalid) { setInvalid(false); setInlineError(null); }
+            }}
             type="password"
             autoComplete="current-password"
             required
-            className="w-full rounded-md border px-3 py-2"
+            aria-invalid={invalid || undefined}
+            aria-describedby={invalid ? 'password-error' : undefined}
+            className={`w-full rounded-md border px-3 py-2 outline-none
+              ${invalid ? 'border-red-400 focus:ring-2 focus:ring-red-500/40' : 'border-white/10 focus:ring-2 focus:ring-[var(--purple)]/40'}
+            `}
           />
+          {invalid && (
+            <p id="password-error" className="text-xs text-red-400">
+              {inlineError}
+            </p>
+          )}
         </div>
+
         <button
           type="submit"
           disabled={loading}

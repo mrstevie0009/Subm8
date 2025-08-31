@@ -8,18 +8,27 @@ import ProfileLink from '@/components/ProfileLink';
 import BookmarkButton from '@/components/BookmarkButton';
 import { likePostAction, unlikePostAction } from '@/app/actions/likes';
 import CommentComposer from '@/components/comments/CommentComposer';
+import { reportPostAction } from '@/app/actions/reports';
+import { blockUserAction, unblockUserAction } from '@/app/actions/blocks';
 
 const AVATAR_PH = '/images/avatar-placeholder.png';
 
 export type Post = {
   id: string;
   author: { name: string; role?: 'domme' | 'submissive'; handle: string; avatarUrl?: string };
-  createdAt: string; // relative/ISO – Anzeige
+  createdAt: string;
   text: string;
   mediaUrl?: string;
   mediaAlt?: string;
   stats?: { comments?: number; reposts?: number; likes?: number };
-  viewer?: { liked?: boolean; bookmarked?: boolean };
+  viewer?: {
+    liked?: boolean;
+    bookmarked?: boolean;
+    /** ob ICH den Autor blockiert habe (für UI) */
+    hasBlockedAuthor?: boolean;
+    /** ob der Autor MICH blockiert (dann sind Interaktionen serverseitig verboten) */
+    blockedByAuthor?: boolean;
+  };
   initiallyBookmarked?: boolean;
 };
 
@@ -42,20 +51,25 @@ export default function PostCard({ post }: { post: Post }) {
   const [comments, setComments] = React.useState<number>(post.stats?.comments ?? 0);
   const [composerOpen, setComposerOpen] = React.useState<boolean>(false);
 
-  // „Reposts“ UI (Menü auf/zu), Zählwert lokal
   const [reposts, setReposts] = React.useState<number>(post.stats?.reposts ?? 0);
   const [repostMenuOpen, setRepostMenuOpen] = React.useState<boolean>(false);
+
+  const [moreOpen, setMoreOpen] = React.useState(false);
+
+  // Block-Status (UI)
+  const initialHasBlocked = !!post.viewer?.hasBlockedAuthor;
+  const initialBlockedByAuthor = !!post.viewer?.blockedByAuthor;
+  const [hasBlockedAuthor, setHasBlockedAuthor] = React.useState<boolean>(initialHasBlocked);
+  const blockedByEither = initialBlockedByAuthor || hasBlockedAuthor;
 
   // Avatar-Fallback
   const [avatarSrc, setAvatarSrc] = React.useState<string>(post.author.avatarUrl || AVATAR_PH);
 
-  // Transitions
   const [pendingLike, startLikeTransition] = React.useTransition();
 
   // Ganze Card klickbar → zum Detail
   const goDetail = React.useCallback(
     (e: React.MouseEvent) => {
-      // Wenn innerhalb eines interaktiven Elements geklickt wurde: abbrechen
       const target = e.target as HTMLElement | null;
       if (target && target.closest('[data-no-nav]')) return;
       router.push(`/${locale}/p/${post.id}`);
@@ -65,7 +79,6 @@ export default function PostCard({ post }: { post: Post }) {
 
   const onKeyActivate = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') {
-      // nur aktivieren, wenn Fokus nicht auf interaktivem Child liegt
       const target = e.target as HTMLElement | null;
       if (target && target.closest('[data-no-nav]')) return;
       e.preventDefault();
@@ -73,16 +86,18 @@ export default function PostCard({ post }: { post: Post }) {
     }
   };
 
-  // LIKE: Server Action Form (mit Optimistic UI)
+  /* ----------------------------- LIKE ----------------------------- */
   function LikeForm() {
     const action = liked ? unlikePostAction : likePostAction;
+
+    const disabled = blockedByEither || pendingLike;
     return (
       <form
-        // Alles in diesem Bereich blockt das Card-Navigieren
         data-no-nav
         action={action}
         onClick={(e) => e.stopPropagation()}
         onSubmit={() => {
+          if (blockedByEither) return; // keine optimistic UI bei Block
           startLikeTransition(() => {
             setLiked((v) => !v);
             setLikes((n) => (liked ? Math.max(0, n - 1) : n + 1));
@@ -92,9 +107,11 @@ export default function PostCard({ post }: { post: Post }) {
         <input type="hidden" name="postId" value={post.id} />
         <button
           type="submit"
-          disabled={pendingLike}
-          className="group flex items-center gap-2 rounded px-2 py-1 hover:bg-white/5"
+          disabled={disabled}
+          className="group flex items-center gap-2 rounded px-2 py-1 hover:bg-white/5 disabled:opacity-50"
           aria-pressed={liked || undefined}
+          aria-disabled={disabled || undefined}
+          title={blockedByEither ? 'Interaktionen sind blockiert' : undefined}
         >
           <span
             className="inline-grid place-items-center"
@@ -117,18 +134,22 @@ export default function PostCard({ post }: { post: Post }) {
     );
   }
 
-  // COMMENT: Button öffnet Composer
+  /* --------------------------- COMMENT BTN --------------------------- */
   function CommentButton() {
+    const disabled = blockedByEither;
     return (
       <button
         type="button"
         data-no-nav
+        disabled={disabled}
         onClick={(e) => {
           e.stopPropagation();
-          setComposerOpen((v) => !v);
+          if (!disabled) setComposerOpen((v) => !v);
         }}
-        className="group flex items-center gap-2 rounded px-2 py-1 hover:bg-white/5"
+        className="group flex items-center gap-2 rounded px-2 py-1 hover:bg-white/5 disabled:opacity-50"
         aria-expanded={composerOpen || undefined}
+        aria-disabled={disabled || undefined}
+        title={disabled ? 'Interaktionen sind blockiert' : undefined}
       >
         <span
           className="inline-grid place-items-center"
@@ -145,15 +166,19 @@ export default function PostCard({ post }: { post: Post }) {
     );
   }
 
-  // REPOST: Menü (Repost / Quote)
+  /* ---------------------------- REPOST BTN ---------------------------- */
   function RepostButton() {
+    const disabled = blockedByEither;
     return (
       <div className="relative" data-no-nav onClick={(e) => e.stopPropagation()}>
         <button
           type="button"
-          className="group flex items-center gap-2 rounded px-2 py-1 hover:bg-white/5"
-          onClick={() => setRepostMenuOpen((v) => !v)}
+          className="group flex items-center gap-2 rounded px-2 py-1 hover:bg-white/5 disabled:opacity-50"
+          onClick={() => !disabled && setRepostMenuOpen((v) => !v)}
+          disabled={disabled}
           aria-expanded={repostMenuOpen || undefined}
+          aria-disabled={disabled || undefined}
+          title={disabled ? 'Interaktionen sind blockiert' : undefined}
         >
           <span
             className="inline-grid place-items-center"
@@ -179,8 +204,6 @@ export default function PostCard({ post }: { post: Post }) {
               type="button"
               className="w-full text-left px-3 py-2 rounded hover:bg-white/10"
               onClick={() => {
-                // hier deine Server Action/Route aufrufen
-                // z.B. await repostAction(post.id)
                 setReposts((n) => n + 1);
                 setRepostMenuOpen(false);
               }}
@@ -191,12 +214,109 @@ export default function PostCard({ post }: { post: Post }) {
               type="button"
               className="w-full text-left px-3 py-2 rounded hover:bg-white/10"
               onClick={() => {
-                // Quote: zum Composer mit Quote-Context navigieren oder eigenen Dialog öffnen
                 router.push(`/${locale}/compose?quote=${post.id}`);
               }}
             >
               Quote post
             </button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Kopieren
+  async function copyPostText() {
+    try {
+      await navigator.clipboard.writeText(post.text ?? '');
+    } catch {
+      // noop
+    }
+  }
+
+  /* ----------------------------- MORE MENU ----------------------------- */
+  function MoreMenu() {
+    return (
+      <div className="relative" data-no-nav onClick={(e) => e.stopPropagation()}>
+        <button
+          type="button"
+          aria-label="Mehr"
+          className="rounded p-1.5 hover:bg-white/5"
+          onClick={() => setMoreOpen((v) => !v)}
+        >
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth={2}>
+            <circle cx="5" cy="12" r="1.6" />
+            <circle cx="12" cy="12" r="1.6" />
+            <circle cx="19" cy="12" r="1.6" />
+          </svg>
+        </button>
+
+        {moreOpen && (
+          <div
+            className="absolute right-0 z-30 mt-2 w-64 rounded-xl border border-white/10 bg-black/85 backdrop-blur shadow-lg p-1"
+            role="menu"
+          >
+            <button
+              type="button"
+              className="flex w-full items-center justify-between px-3 py-2 rounded hover:bg-white/10"
+              onClick={() => {
+                copyPostText();
+                setMoreOpen(false);
+              }}
+            >
+              <span>Post-Text kopieren</span>
+            </button>
+
+            {/* Mute (Stub) */}
+            <button
+              type="button"
+              className="w-full text-left px-3 py-2 rounded hover:bg-white/10"
+              onClick={() => {
+                setMoreOpen(false);
+                alert('Account stummschalten – coming soon');
+              }}
+            >
+              Account stummschalten
+            </button>
+
+            {/* Block / Unblock */}
+            {!hasBlockedAuthor ? (
+              <form
+                action={blockUserAction}
+                onSubmit={() => {
+                  setHasBlockedAuthor(true); // sofortige UI-Reaktion
+                  setMoreOpen(false);
+                }}
+              >
+                {/* WICHTIG: Name muss zu Server-Action passen */}
+                <input type="hidden" name="blockedHandle" value={post.author.handle} />
+                <button className="w-full text-left px-3 py-2 rounded hover:bg-white/10">
+                  Account blockieren
+                </button>
+              </form>
+            ) : (
+              <form
+                action={unblockUserAction}
+                onSubmit={() => {
+                  setHasBlockedAuthor(false);
+                  setMoreOpen(false);
+                }}
+              >
+                <input type="hidden" name="blockedHandle" value={post.author.handle} />
+                <button className="w-full text-left px-3 py-2 rounded hover:bg-white/10">
+                  Account entblocken
+                </button>
+              </form>
+            )}
+
+            {/* Melden */}
+            <form action={reportPostAction} onSubmit={() => setMoreOpen(false)}>
+              <input type="hidden" name="postId" value={post.id} />
+              <input type="hidden" name="reason" value="OTHER" />
+              <button className="w-full text-left px-3 py-2 rounded hover:bg-white/10 text-red-300" title="Post melden">
+                Post melden
+              </button>
+            </form>
           </div>
         )}
       </div>
@@ -222,13 +342,18 @@ export default function PostCard({ post }: { post: Post }) {
 
   return (
     <article
-      className="bg-card border border-sub rounded-app shadow-app p-4 md:p-5 cursor-pointer"
+      className="relative bg-card border border-sub rounded-app shadow-app p-4 md:p-5 cursor-pointer"
       onClick={goDetail}
       onKeyDown={onKeyActivate}
       role="button"
       tabIndex={0}
       aria-label="Open post"
     >
+      {/* Mehr-Menü Button oben rechts */}
+      <div className="absolute top-2 right-2" data-no-nav onClick={(e) => e.stopPropagation()}>
+        <MoreMenu />
+      </div>
+
       <header className="flex items-start gap-3">
         {/* Avatar + Rolle */}
         <div className="shrink-0 flex flex-col items-center w-[3.2em]">
@@ -280,11 +405,7 @@ export default function PostCard({ post }: { post: Post }) {
               ·
             </span>
 
-            <time
-              className="text-muted whitespace-nowrap text-xs md:text-[13px]"
-              dateTime={post.createdAt}
-              title={post.createdAt}
-            >
+            <time className="text-muted whitespace-nowrap text-xs md:text-[13px]" dateTime={post.createdAt} title={post.createdAt}>
               {post.createdAt}
             </time>
           </div>
@@ -315,7 +436,7 @@ export default function PostCard({ post }: { post: Post }) {
           </div>
 
           {/* Composer unter dem Post */}
-          {composerOpen && (
+          {composerOpen && !blockedByEither && (
             <div data-no-nav onClick={(e) => e.stopPropagation()}>
               <CommentComposer
                 postId={post.id}
@@ -326,6 +447,9 @@ export default function PostCard({ post }: { post: Post }) {
                 onCancel={() => setComposerOpen(false)}
               />
             </div>
+          )}
+          {composerOpen && blockedByEither && (
+            <div className="mt-2 text-[12px] text-white/60">Du kannst mit diesem Account nicht interagieren.</div>
           )}
         </div>
       </header>
