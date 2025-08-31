@@ -1,3 +1,4 @@
+// src/app/actions/reposts.ts
 'use server';
 
 import { prisma } from '@/lib/prisma';
@@ -15,15 +16,10 @@ export async function repostPostAction(formData: FormData): Promise<void> {
   if (!me) throw new Error('Unauthorized');
 
   const postId = assertStr(formData.get('postId'));
-
-  await assertCanInteractForPostId(me.id, postId);
+  await assertCanInteractForPostId(postId, me.id);
 
   await prisma.post.create({
-    data: {
-      authorId: me.id,
-      text: '',
-      repostOfId: postId,
-    },
+    data: { authorId: me.id, text: '', repostOfId: postId },
   });
 
   revalidatePath('/');
@@ -36,15 +32,10 @@ export async function quotePostAction(formData: FormData): Promise<void> {
 
   const postId = assertStr(formData.get('postId'));
   const text   = assertStr(formData.get('text'));
-
-  await assertCanInteractForPostId(me.id, postId);
+  await assertCanInteractForPostId(postId, me.id);
 
   await prisma.post.create({
-    data: {
-      authorId: me.id,
-      text,
-      quoteOfId: postId,
-    },
+    data: { authorId: me.id, text, quoteOfId: postId },
   });
 
   revalidatePath('/');

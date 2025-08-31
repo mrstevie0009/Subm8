@@ -1,3 +1,4 @@
+// src/components/ProfileHeader.tsx
 'use client';
 
 import * as React from 'react';
@@ -6,6 +7,8 @@ import Image from 'next/image';
 import { useLocale } from 'next-intl';
 import type { Profile } from '@/types/profile';
 import { followAction, unfollowAction } from '@/app/actions/follow';
+import { blockUserAction, unblockUserAction } from '@/app/actions/blocks';
+import { reportUserAction } from '@/app/actions/reports';
 
 const AVATAR_PH = '/images/avatar-placeholder.png';
 const BANNER_PH = '/images/banner-placeholder.png';
@@ -16,13 +19,14 @@ function Chip({
   size = 'sm',
 }: {
   children: React.ReactNode;
-  tone?: 'neutral' | 'purple' | 'success';
+  tone?: 'neutral' | 'purple' | 'success' | 'danger';
   size?: 'sm' | 'md' | 'lg';
 }) {
   const styles: Record<string, React.CSSProperties> = {
     neutral: { color: 'rgba(255,255,255,.9)', background: 'rgba(255,255,255,.08)', border: '1px solid rgba(255,255,255,.12)' },
     purple:  { color: 'var(--purple)', background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.25)' },
     success: { color: '#4ade80', background: 'rgba(74,222,128,.12)', border: '1px solid rgba(74,222,128,.25)' },
+    danger:  { color: '#fca5a5', background: 'rgba(239,68,68,.12)', border: '1px solid rgba(239,68,68,.25)' },
   };
   const sizeCls: Record<'sm'|'md'|'lg', string> = {
     sm: 'text-[11px] px-2 py-1',
@@ -52,7 +56,12 @@ type Props = {
   initialIsFollowing?: boolean;
   activeTab?: 'posts' | 'gallery' | 'leaderboard';
   onTabChange?: (t: 'posts' | 'gallery' | 'leaderboard') => void;
-  showTabs?: boolean; // default: true
+  showTabs?: boolean;
+
+  /** Viewer-Kontext: ich blockiere dieses Profil */
+  viewerHasBlocked?: boolean;
+  /** Viewer-Kontext: dieses Profil blockiert mich */
+  isBlockedByProfile?: boolean;
 };
 
 export default function ProfileHeader({
@@ -62,6 +71,8 @@ export default function ProfileHeader({
   activeTab = 'posts',
   onTabChange,
   showTabs = true,
+  viewerHasBlocked = false,
+  isBlockedByProfile = false,
 }: Props) {
   const locale = useLocale();
 
@@ -74,6 +85,10 @@ export default function ProfileHeader({
   const [isFollowing, setIsFollowing] = React.useState<boolean>(!!initialIsFollowing);
   const [pending, startTransition] = React.useTransition();
 
+  // Lokaler Block-State für sofortige UI
+  const [hasBlocked, setHasBlocked] = React.useState<boolean>(viewerHasBlocked);
+  const blockedEither = hasBlocked || isBlockedByProfile;
+
   type CSSVars = React.CSSProperties & { ['--avatar']?: string };
   const avatarStyle: CSSVars = {
     width: avatarSize,
@@ -81,6 +96,108 @@ export default function ProfileHeader({
     marginTop: 'calc(-0.5 * var(--avatar))',
     '--avatar': avatarSize,
   };
+
+  function DotIcon(props: React.SVGProps<SVGSVGElement>) {
+    return (
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth={2} {...props}>
+        <circle cx="5" cy="12" r="1.6" />
+        <circle cx="12" cy="12" r="1.6" />
+        <circle cx="19" cy="12" r="1.6" />
+      </svg>
+    );
+  }
+
+  function BanIcon(props: React.SVGProps<SVGSVGElement>) {
+    return (
+      <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} {...props}>
+        <circle cx="12" cy="12" r="9" />
+        <path d="M8 8l8 8" />
+      </svg>
+    );
+  }
+
+  async function copyProfileLink() {
+    try {
+      const href = `${window.location.origin}/${locale}/u/${profile.username}`;
+      await navigator.clipboard.writeText(href);
+    } catch {
+      // ignore
+    }
+  }
+
+  function MoreMenu() {
+    const [open, setOpen] = React.useState(false);
+
+    return (
+      <div className="relative">
+        <button
+          type="button"
+          aria-label="More"
+          className="rounded-full p-1.5 border border-white/15 hover:bg-white/5"
+          onClick={() => setOpen(v => !v)}
+        >
+          <DotIcon />
+        </button>
+
+        {open && (
+          <div
+            className="absolute right-0 z-30 mt-2 w-60 rounded-xl border border-white/10 bg-black/85 backdrop-blur shadow-lg p-1"
+            role="menu"
+          >
+            {/* Link kopieren */}
+            <button
+              type="button"
+              className="w-full text-left px-3 py-2 rounded hover:bg-white/10"
+              onClick={() => {
+                copyProfileLink();
+                setOpen(false);
+              }}
+            >
+              Copy profile link
+            </button>
+
+            {/* Block / Unblock */}
+            {!hasBlocked ? (
+              <form
+                action={blockUserAction}
+                onSubmit={() => {
+                  setHasBlocked(true);
+                  setOpen(false);
+                }}
+              >
+                <input type="hidden" name="blockedHandle" value={profile.username} />
+                <button className="w-full text-left px-3 py-2 rounded hover:bg-white/10  text-red-300">
+                  Block User
+                </button>
+              </form>
+            ) : (
+              <form
+                action={unblockUserAction}
+                onSubmit={() => {
+                  setHasBlocked(false);
+                  setOpen(false);
+                }}
+              >
+                <input type="hidden" name="blockedHandle" value={profile.username} />
+                <button className="w-full text-left px-3 py-2 rounded hover:bg-white/10  text-red-300">
+                  Unblock User
+                </button>
+              </form>
+            )}
+
+            {/* Melden */}
+            <form action={reportUserAction} onSubmit={() => setOpen(false)}>
+              <input type="hidden" name="handle" value={profile.username} />
+              <input type="hidden" name="reason" value="OTHER" />
+              <button className="w-full text-left px-3 py-2 rounded hover:bg-white/10 text-red-300">
+                Report User
+              </button>
+            </form>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <section className="rounded-app border border-sub overflow-hidden shadow-app relative">
@@ -123,16 +240,37 @@ export default function ProfileHeader({
             </div>
           </div>
 
-          {/* Name + Handle */}
+          {/* Name + Handle; Badges neben dem Displayname */}
           <div className="min-w-0">
-            <h1 className="text-[22px] md:text-[24px] font-bold leading-tight truncate">
-              {profile.displayName}
-            </h1>
-            <div className="mt-0.5 text-muted text-[13px] truncate">@{profile.username}</div>
+            <div className="flex items-center gap-2 min-w-0">
+              <h1 className="text-[22px] md:text-[24px] font-bold leading-tight truncate">
+                {profile.displayName}
+              </h1>
+
+              {isBlockedByProfile && (
+                <Chip tone="danger" size="sm">
+                  <span className="inline-flex items-center gap-1">
+                    <BanIcon /> Blocked you
+                  </span>
+                </Chip>
+              )}
+
+              {!isBlockedByProfile && hasBlocked && (
+                <Chip tone="danger" size="sm">
+                  <span className="inline-flex items-center gap-1">
+                    <BanIcon /> You blocked
+                  </span>
+                </Chip>
+              )}
+            </div>
+
+            <div className="mt-0.5 text-muted text-[13px] truncate">
+              @{profile.username}
+            </div>
           </div>
 
-          {/* Actions */}
-          <div className="flex justify-end">
+          {/* Actions + More */}
+          <div className="flex items-center gap-2 justify-end">
             {isOwner ? (
               <Link
                 href={`/${locale}/u/${profile.username}/edit`}
@@ -141,31 +279,56 @@ export default function ProfileHeader({
                 Edit Profile
               </Link>
             ) : (
-              <div className="flex items-center gap-2">
-                <form
-                  action={isFollowing ? unfollowAction : followAction}
-                  onSubmit={() => startTransition(() => setIsFollowing((v) => !v))}
-                >
-                  <input type="hidden" name="userId" value={profile.id} />
-                  <button
-                    type="submit"
-                    disabled={pending}
-                    className={`px-4 py-1.5 rounded-full ${
-                      isFollowing
-                        ? 'border border-white/25 hover:bg-white/5'
-                        : 'bg-[var(--purple)] text-white hover:opacity-95'
-                    }`}
+              <>
+                {!blockedEither ? (
+                  <form
+                    action={isFollowing ? unfollowAction : followAction}
+                    onSubmit={() => startTransition(() => setIsFollowing((v) => !v))}
                   >
-                    {isFollowing ? 'Unfollow' : 'Follow'}
+                    <input type="hidden" name="userId" value={profile.id} />
+                    <button
+                      type="submit"
+                      disabled={pending}
+                      className={`px-4 py-1.5 rounded-full ${
+                        isFollowing
+                          ? 'border border-white/25 hover:bg-white/5'
+                          : 'bg-[var(--purple)] text-white hover:opacity-95'
+                      }`}
+                    >
+                      {isFollowing ? 'Unfollow' : 'Follow'}
+                    </button>
+                  </form>
+                ) : (
+                  <button
+                    type="button"
+                    disabled
+                    title={isBlockedByProfile ? 'This user has blocked you' : 'You have blocked this user'}
+                    className="px-4 py-1.5 rounded-full border border-white/20 text-white/60 cursor-not-allowed"
+                  >
+                    Follow
                   </button>
-                </form>
-                <Link
-                  href={`/${locale}/chat/new?to=${profile.username}`}
-                  className="px-3 py-1.5 rounded-full border border-white/20 hover:bg-white/5"
-                >
-                  Message
-                </Link>
-              </div>
+                )}
+
+                {!blockedEither ? (
+                  <Link
+                    href={`/${locale}/chat/new?to=${profile.username}`}
+                    className="px-3 py-1.5 rounded-full border border-white/20 hover:bg-white/5"
+                  >
+                    Message
+                  </Link>
+                ) : (
+                  <span
+                    className="px-3 py-1.5 rounded-full border border-white/20 text-white/60 cursor-not-allowed"
+                    title="Messaging is disabled due to blocking"
+                    aria-disabled="true"
+                  >
+                    Message
+                  </span>
+                )}
+
+                {/* 3-Punkte-Menü */}
+                <MoreMenu />
+              </>
             )}
           </div>
         </div>
@@ -200,7 +363,7 @@ export default function ProfileHeader({
           )}
         </div>
 
-        {/* Following · Followers (klickbar) */}
+        {/* Following · Followers */}
         <div className="mt-3 text-[14px]">
           <Link href={`/${locale}/u/${profile.username}/following`} className="hover:underline" prefetch={false}>
             <strong className="text-white/95">{profile.stats.following}</strong> Following

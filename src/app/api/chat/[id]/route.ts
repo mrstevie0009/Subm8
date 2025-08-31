@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 
 type Ctx = { params: { id: string } };
 
-// --- helpers ---------------------------------------------------------------
+/* ---------------------------- helpers ----------------------------------- */
 
 function sanitizeFileName(name: string) {
   // keep extension, strip weird chars
@@ -21,7 +21,19 @@ function isAllowedMime(type: string) {
   return /^image\//.test(type) || /^video\//.test(type);
 }
 
-// --- GET -------------------------------------------------------------------
+/** Prüft, ob A B blockiert oder B A blockiert (beide Richtungen). */
+async function getBlockFlags(aUserId: string, bUserId: string) {
+  const [aBlocksB, bBlocksA] = await Promise.all([
+    prisma.block.findFirst({ where: { blockerId: aUserId, blockedId: bUserId } }),
+    prisma.block.findFirst({ where: { blockerId: bUserId, blockedId: aUserId } }),
+  ]);
+  return {
+    viewerHasBlocked: !!aBlocksB,   // „ich habe den anderen blockiert“
+    isBlockedByOther: !!bBlocksA,   // „der andere hat mich blockiert“
+  };
+}
+
+/* -------------------------------- GET ----------------------------------- */
 
 export async function GET(_req: Request, { params }: Ctx) {
   try {
@@ -35,8 +47,8 @@ export async function GET(_req: Request, { params }: Ctx) {
         id: true,
         dommeId: true,
         subId: true,
-        domme: { select: { id: true, handle: true, displayName: true, avatarUrl: true } },
-        sub:   { select: { id: true, handle: true, displayName: true, avatarUrl: true } },
+        domme: { select: { id: true, handle: true, displayName: true, avatarUrl: true, role: true } },
+        sub:   { select: { id: true, handle: true, displayName: true, avatarUrl: true, role: true } },
       },
     });
     if (!convo) return Response.json({ ok: false, error: 'Not found' }, { status: 404 });
@@ -46,6 +58,9 @@ export async function GET(_req: Request, { params }: Ctx) {
 
     const iAmDomme = convo.dommeId === me.id;
     const other = iAmDomme ? convo.sub : convo.domme;
+
+    // Block-Status in beide Richtungen
+    const { viewerHasBlocked, isBlockedByOther } = await getBlockFlags(me.id, other.id);
 
     const messages = await prisma.message.findMany({
       where: { conversationId: id },
@@ -62,7 +77,7 @@ export async function GET(_req: Request, { params }: Ctx) {
       },
     });
 
-    // mark as read (only messages from the other user that aren't marked yet)
+    // Als gelesen markieren (nur Nachrichten des Anderen, die noch nicht gelesen sind)
     const unreadIds = messages
       .filter((m) => m.authorId !== me.id && m.reads.length === 0)
       .map((m) => m.id);
@@ -77,7 +92,7 @@ export async function GET(_req: Request, { params }: Ctx) {
     return Response.json({
       ok: true,
       me: { id: me.id },
-      other,
+      other, // enthält jetzt auch role
       messages: messages.map((m) => ({
         id: m.id,
         at: m.createdAt.toISOString(),
@@ -87,6 +102,9 @@ export async function GET(_req: Request, { params }: Ctx) {
         mediaType: m.mediaType,
         read: m.reads.length > 0 || m.authorId === me.id,
       })),
+      // Flags für die UI (Composer sperren, Badges etc.)
+      viewerHasBlocked,
+      isBlockedByOther,
     });
   } catch (e) {
     console.error('GET /api/chat/[id] failed:', e);
@@ -94,7 +112,7 @@ export async function GET(_req: Request, { params }: Ctx) {
   }
 }
 
-// --- POST (JSON or multipart/form-data) ------------------------------------
+/* -------------------------------- POST ---------------------------------- */
 
 export async function POST(req: Request, { params }: Ctx) {
   try {
@@ -109,6 +127,14 @@ export async function POST(req: Request, { params }: Ctx) {
     if (!convo) return Response.json({ ok: false, error: 'Not found' }, { status: 404 });
     if (convo.dommeId !== me.id && convo.subId !== me.id) {
       return Response.json({ ok: false, error: 'Forbidden' }, { status: 403 });
+    }
+
+    const otherUserId = convo.dommeId === me.id ? convo.subId : convo.dommeId;
+
+    // ❗ Senden verhindern, wenn blockiert (eine der beiden Richtungen reicht)
+    const { viewerHasBlocked, isBlockedByOther } = await getBlockFlags(me.id, otherUserId);
+    if (viewerHasBlocked || isBlockedByOther) {
+      return Response.json({ ok: false, error: 'INTERACTION_BLOCKED' }, { status: 403 });
     }
 
     const ct = req.headers.get('content-type') || '';

@@ -1,3 +1,4 @@
+// src/app/actions/comments.ts
 'use server';
 
 import { prisma } from '@/lib/prisma';
@@ -20,9 +21,9 @@ export async function addCommentAction(formData: FormData): Promise<AddCommentRe
     const text = String(formData.get('text') ?? '').trim();
     if (!postId || !text) return { ok: false, error: 'INVALID_INPUT' };
 
-    // ❗ block-check
+    // ❗ Interaktions-Block prüfen (Autor blockiert mich ODER ich Autor)
     try {
-      await assertCanInteractForPostId(me.id, postId);
+      await assertCanInteractForPostId(postId, me.id); // (postId, actorUserId)
     } catch {
       return { ok: false, error: 'INTERACTION_BLOCKED' };
     }
@@ -37,10 +38,10 @@ export async function addCommentAction(formData: FormData): Promise<AddCommentRe
       select: { id: true },
     });
 
-    // Revalidate die Seite, von der der Request kam (best-effort)
+    // Best-effort: die Seite revalidieren, von der der Request kam
     try {
-      const hdrs = headers();
-      const referer = (await hdrs).get('referer');
+      const hdrs = await headers();
+      const referer = hdrs.get('referer');
       if (referer) {
         const url = new URL(referer);
         revalidatePath(url.pathname, 'page');
@@ -55,7 +56,7 @@ export async function addCommentAction(formData: FormData): Promise<AddCommentRe
   }
 }
 
-/** Void adapter so <form action={...}> matches React's expected signature */
+/** Void-Adapter, damit <form action={...}> keine TS-Fehler wirft */
 export async function addCommentActionVoid(formData: FormData): Promise<void> {
   await addCommentAction(formData);
 }

@@ -29,6 +29,9 @@ type ThreadOk = {
     mediaType?: string | null;
     read: boolean;
   }[];
+  /** ⬇️ NEU: Block-Flags für die Viewer-Perspektive */
+  viewerHasBlocked: boolean;   // ich habe "other" blockiert
+  isBlockedByOther: boolean;   // "other" hat mich blockiert
 };
 type ThreadErr = { ok: false; error: string };
 type ThreadResponse = ThreadOk | ThreadErr;
@@ -51,6 +54,9 @@ export default function ChatThreadPage() {
     role: 'domme' | 'submissive';
     dmOpen: boolean;
   } | null>(null);
+
+  const [viewerHasBlocked, setViewerHasBlocked] = React.useState(false);
+  const [isBlockedByOther, setIsBlockedByOther] = React.useState(false);
 
   const [messages, setMessages] = React.useState<UiMessage[]>([]);
   const [error, setError] = React.useState<string | null>(null);
@@ -79,13 +85,19 @@ export default function ChatThreadPage() {
 
       setMeId(json.me.id);
 
+      // ⬇️ Block-Flags merken
+      setViewerHasBlocked(json.viewerHasBlocked ?? false);
+      setIsBlockedByOther(json.isBlockedByOther ?? false);
+
+      const disabled = (json.viewerHasBlocked ?? false) || (json.isBlockedByOther ?? false);
+
       setOther({
         id: json.other.id,
         username: json.other.handle,
         displayName: json.other.displayName,
         avatarUrl: json.other.avatarUrl ?? undefined,
         role: mapRole(json.other.role),
-        dmOpen: true,
+        dmOpen: !disabled,
       });
 
       const mapped: UiMessage[] = json.messages.map((m) => ({
@@ -121,6 +133,9 @@ export default function ChatThreadPage() {
   // Server-Call: akzeptiert { text, file? }
   const sendMessage = React.useCallback(
     async ({ text, file }: { text: string; file?: File }) => {
+      // ⬇️ Sende-Guard falls UI noch nicht disabled ist
+      if (viewerHasBlocked || isBlockedByOther) return;
+
       if (file) {
         const fd = new FormData();
         fd.append('text', text);
@@ -135,8 +150,15 @@ export default function ChatThreadPage() {
       }
       await load();
     },
-    [id, load]
+    [id, load, viewerHasBlocked, isBlockedByOther]
   );
+
+  const disabled = viewerHasBlocked || isBlockedByOther;
+  const disabledNotice = disabled
+    ? isBlockedByOther
+      ? 'Du kannst dieser Person keine Direktnachrichten mehr senden.'
+      : 'Du hast diese Person blockiert. Senden ist deaktiviert.'
+    : undefined;
 
   if (!loading && error) {
     return (
@@ -158,6 +180,9 @@ export default function ChatThreadPage() {
             role: other.role,
             dmOpen: other.dmOpen,
           }}
+          // ⬇️ an den Header weitergeben (Badges + 3-Punkte-Menü Logik)
+          viewerHasBlocked={viewerHasBlocked}
+          isBlockedByOther={isBlockedByOther}
         />
       )}
 
@@ -202,9 +227,7 @@ export default function ChatThreadPage() {
                           />
                         </div>
                       )}
-                      {m.text && (
-                        <div className="whitespace-pre-wrap break-words">{m.text}</div>
-                      )}
+                      {m.text && <div className="whitespace-pre-wrap break-words">{m.text}</div>}
                       <div
                         className={`text-[11px] mt-1 opacity-80 ${
                           mine ? 'text-white/80' : 'text-white/70'
@@ -224,9 +247,10 @@ export default function ChatThreadPage() {
         </div>
       </main>
 
-      {/* ChatComposer erwartet onSend: (text: string) => void */}
+      {/* Composer mit Sperrhinweis */}
       <ChatComposer
-        disabled={false}
+        disabled={disabled}
+        disabledNotice={disabledNotice}
         onSend={(text) => sendMessage({ text })}
         onTip={() => setTipOpen(true)}
         onUpload={(file) => sendMessage({ text: '', file })}
@@ -245,7 +269,7 @@ export default function ChatThreadPage() {
             const amountStr = new Intl.NumberFormat(undefined, {
               style: 'currency',
               currency,
-            }).format(amountCents / 100); // Netto an die Domme
+            }).format(amountCents / 100);
             const lines = [`💜 Sent tip: ${amountStr}`];
             if (note) lines.push(note);
             void sendMessage({ text: lines.join('\n') });

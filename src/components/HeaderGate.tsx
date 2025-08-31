@@ -2,12 +2,11 @@
 'use client';
 import { usePathname } from 'next/navigation';
 import { useLocale } from 'next-intl';
-import ChatHeader from './ChatHeader';
 
-export default function HeaderGate() {
+export default function HeaderGate({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const locale = useLocale();
   const hide = pathname?.startsWith(`/${locale}/chat`);
-  if (hide) return null;
-  return <ChatHeader/>;
+  if (hide) return null;          // auf Chat-Seiten keinen globalen Header
+  return <>{children}</>;         // sonst den übergebenen Header rendern
 }

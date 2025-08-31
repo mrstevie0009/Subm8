@@ -1,3 +1,4 @@
+// src/app/[locale]/u/[handle]/ClientProfile.tsx
 'use client';
 
 import * as React from 'react';
@@ -11,9 +12,19 @@ type Props = {
   profile: Profile;
   isOwner: boolean;
   initialIsFollowing?: boolean;
+
+  /** Vom Server berechnete Block-Flags (Viewer-Kontext) */
+  viewerHasBlocked?: boolean;   // ich blockiere dieses Profil
+  isBlockedByProfile?: boolean; // dieses Profil blockiert mich
 };
 
-export default function ClientProfile({ profile, isOwner, initialIsFollowing = false }: Props) {
+export default function ClientProfile({
+  profile,
+  isOwner,
+  initialIsFollowing = false,
+  viewerHasBlocked = false,
+  isBlockedByProfile = false,
+}: Props) {
   const [tab, setTab] = React.useState<Tab>('posts');
 
   return (
@@ -22,12 +33,14 @@ export default function ClientProfile({ profile, isOwner, initialIsFollowing = f
         profile={profile}
         isOwner={isOwner}
         initialIsFollowing={initialIsFollowing}
+        viewerHasBlocked={viewerHasBlocked}
+        isBlockedByProfile={isBlockedByProfile}
         activeTab={tab}
         onTabChange={setTab}
-        showTabs={true}         // Tabs NUR im Header anzeigen
+        showTabs={true}
       />
 
-      {/* Inhalte – Tabs hier NICHT rendern, nur Content nach aktivem Tab */}
+      {/* Tabs-Inhalte – Header rendert die Tab-Leiste, hier nur Content je aktivem Tab */}
       <ProfileTabsContent
         handle={profile.username}
         activeTab={tab}

@@ -5,12 +5,25 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useLocale } from 'next-intl';
 import type { ChatUser } from '@/types/chat';
+import { blockUserAction, unblockUserAction } from '@/app/actions/blocks';
+import { reportUserAction } from '@/app/actions/reports';
+
+type Props = {
+  other: ChatUser & { role: 'domme' | 'submissive' | 'DOMME' | 'SUBMISSIVE' };
+  /** ob ICH die/den andere:n blockiert habe (Initialwert) */
+  viewerHasBlocked?: boolean;
+  /** ob die/der andere MICH blockiert (Initialwert) */
+  isBlockedByOther?: boolean;
+  /** optional: Parent informieren (z.B. um Composer zu sperren) */
+  onBlockStateChange?: (blockedEither: boolean) => void;
+};
 
 export default function ChatHeader({
   other,
-}: {
-  other: ChatUser & { role: 'domme' | 'submissive' | 'DOMME' | 'SUBMISSIVE' };
-}) {
+  viewerHasBlocked = false,
+  isBlockedByOther = false,
+  onBlockStateChange,
+}: Props) {
   const locale = useLocale();
 
   // Responsive Größen
@@ -24,12 +37,37 @@ export default function ChatHeader({
   React.useLayoutEffect(() => {
     const root = document.documentElement;
     const prev = root.style.getPropertyValue('--chat-header-h');
-    root.style.setProperty('--chat-header-h', `calc(${headerH} + 18px)`); // + vert. Padding
+    root.style.setProperty('--chat-header-h', `calc(${headerH} + 18px)`);
     return () => root.style.setProperty('--chat-header-h', prev || '');
   }, [headerH]);
 
   const isDomme = String(other.role).toUpperCase() === 'DOMME';
   const roleLabel = isDomme ? 'Domme' : 'Sub';
+
+  // Block-UI-State
+  const [iBlocked, setIBlocked] = React.useState<boolean>(!!viewerHasBlocked);
+  const blockedEither = iBlocked || isBlockedByOther;
+
+  React.useEffect(() => {
+    onBlockStateChange?.(blockedEither);
+    // als Fallback zusätzlich ein CustomEvent dispatchen (falls Parent das nutzt)
+    try {
+      window.dispatchEvent(new CustomEvent('chat:block-change', { detail: { blocked: blockedEither } }));
+    } catch {}
+  }, [blockedEither, onBlockStateChange]);
+
+  // 3-Punkte-Menü
+  const [menuOpen, setMenuOpen] = React.useState(false);
+  const menuRef = React.useRef<HTMLDivElement | null>(null);
+
+  React.useEffect(() => {
+    function onDocClick(e: MouseEvent) {
+      const t = e.target as Node | null;
+      if (!menuRef.current?.contains(t as Node)) setMenuOpen(false);
+    }
+    if (menuOpen) document.addEventListener('mousedown', onDocClick);
+    return () => document.removeEventListener('mousedown', onDocClick);
+  }, [menuOpen]);
 
   return (
     <header className="sticky top-0 z-40 border-b border-white/10 bg-black/65 backdrop-blur">
@@ -63,12 +101,14 @@ export default function ChatHeader({
             />
           </div>
 
-          {/* Name + Handle */}
+          {/* Name + Handle + Badges */}
           <div className="min-w-0 flex-1 leading-tight">
             <div className="flex items-center gap-2">
               <h1 className="font-semibold truncate" style={{ fontSize: titleSz, lineHeight: 1.1 }}>
                 {other.displayName}
               </h1>
+
+              {/* Rolle */}
               <span
                 className="px-2 py-[2px] rounded-full text-[10px] leading-none"
                 style={{
@@ -79,6 +119,14 @@ export default function ChatHeader({
               >
                 {roleLabel}
               </span>
+
+              {/* Block-Badges */}
+              {isBlockedByOther && (
+                <Badge tone="danger">Blocked you</Badge>
+              )}
+              {!isBlockedByOther && iBlocked && (
+                <Badge tone="danger">You blocked</Badge>
+              )}
             </div>
             <div className="text-muted truncate" style={{ fontSize: metaSz }}>
               @{other.username}
@@ -86,20 +134,107 @@ export default function ChatHeader({
           </div>
 
           {/* More */}
-          <button
-            aria-label="More"
-            className="inline-grid place-items-center rounded hover:bg-white/5"
-            style={{ width: iconSize, height: iconSize }}
-          >
-            <svg viewBox="0 0 24 24" fill="currentColor"
-                 style={{ width: '56%', height: '56%', color: 'rgba(255,255,255,.95)' }}>
-              <circle cx="12" cy="5" r="2" />
-              <circle cx="12" cy="12" r="2" />
-              <circle cx="12" cy="19" r="2" />
-            </svg>
-          </button>
+          <div className="relative" ref={menuRef}>
+            <button
+              aria-label="More"
+              className="inline-grid place-items-center rounded hover:bg-white/5"
+              style={{ width: iconSize, height: iconSize }}
+              onClick={() => setMenuOpen(v => !v)}
+            >
+              <svg viewBox="0 0 24 24" fill="currentColor"
+                   style={{ width: '56%', height: '56%', color: 'rgba(255,255,255,.95)' }}>
+                <circle cx="12" cy="5" r="2" />
+                <circle cx="12" cy="12" r="2" />
+                <circle cx="12" cy="19" r="2" />
+              </svg>
+            </button>
+
+            {menuOpen && (
+              <div
+                className="absolute right-0 mt-2 w-56 rounded-xl border border-white/10 bg-black/85 backdrop-blur shadow-lg p-1 z-50"
+                role="menu"
+              >
+                <Link
+                  href={`/${locale}/u/${other.username}`}
+                  className="block px-3 py-2 rounded hover:bg-white/10"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  View profile
+                </Link>
+
+                {/* Mute (Stub) */}
+                <button
+                  type="button"
+                  className="w-full text-left px-3 py-2 rounded hover:bg-white/10"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    alert('Mute conversation – coming soon');
+                  }}
+                >
+                  Mute conversation
+                </button>
+                {/* Block/Unblock */}
+                {!iBlocked ? (
+                  <form
+                    action={blockUserAction}
+                    onSubmit={() => {
+                      setIBlocked(true);
+                      setMenuOpen(false);
+                    }}
+                  >
+                    {/* akzeptiert in unseren Actions sowohl blockedHandle als auch handle */}
+                    <input type="hidden" name="blockedHandle" value={other.username} />
+                    <input type="hidden" name="handle" value={other.username} />
+                    <button className="w-full text-left px-3 py-2 rounded hover:bg-white/10  text-red-300">
+                      Block user
+                    </button>
+                  </form>
+                ) : (
+                  <form
+                    action={unblockUserAction}
+                    onSubmit={() => {
+                      setIBlocked(false);
+                      setMenuOpen(false);
+                    }}
+                  >
+                    <input type="hidden" name="blockedHandle" value={other.username} />
+                    <input type="hidden" name="handle" value={other.username} />
+                    <button className="w-full text-left px-3 py-2 rounded hover:bg-white/10  text-red-300">
+                      Unblock user
+                    </button>
+                  </form>
+                )}
+
+                {/* Report user (Chat) */}
+                <form
+                  action={reportUserAction}
+                  onSubmit={() => setMenuOpen(false)}
+                >
+                  <input type="hidden" name="handle" value={other.username} />
+                  <input type="hidden" name="reason" value="DM_ABUSE" />
+                  <button className="w-full text-left px-3 py-2 rounded hover:bg-white/10 text-red-300">
+                    Report Conversation
+                  </button>
+                </form>
+
+                
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </header>
+  );
+}
+
+function Badge({ children, tone = 'danger' }: { children: React.ReactNode; tone?: 'danger' | 'info' }) {
+  const styles =
+    tone === 'danger'
+      ? { color: '#fca5a5', background: 'rgba(239,68,68,.12)', border: '1px solid rgba(239,68,68,.25)' }
+      : { color: 'rgba(255,255,255,.9)', background: 'rgba(255,255,255,.08)', border: '1px solid rgba(255,255,255,.12)' };
+  return (
+    <span className="px-2 py-[2px] text-[10px] leading-none rounded-full" style={styles}>
+      {children}
+    </span>
   );
 }

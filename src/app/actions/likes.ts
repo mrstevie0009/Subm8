@@ -1,3 +1,4 @@
+// src/app/actions/likes.ts
 'use server';
 
 import { prisma } from '@/lib/prisma';
@@ -11,12 +12,7 @@ export async function likePostAction(formData: FormData): Promise<void> {
   const postId = String(formData.get('postId') || '');
   if (!postId) return;
 
-  // ❗ Autor hat mich blockiert?
-  try {
-    await assertCanInteractForPostId(session.user.id, postId);
-  } catch {
-    return; // keine Like-Änderung
-  }
+  await assertCanInteractForPostId(postId, session.user.id);
 
   await prisma.like.upsert({
     where: { userId_postId: { userId: session.user.id, postId } },
@@ -34,7 +30,8 @@ export async function unlikePostAction(formData: FormData): Promise<void> {
   const postId = String(formData.get('postId') || '');
   if (!postId) return;
 
-  // Unliken erlauben (auch wenn inzwischen blockiert)
+  await assertCanInteractForPostId(postId, session.user.id);
+
   await prisma.like.deleteMany({
     where: { userId: session.user.id, postId },
   });

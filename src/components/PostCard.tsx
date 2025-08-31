@@ -40,6 +40,69 @@ function Counter({ value, active }: { value: number; active?: boolean }) {
   );
 }
 
+/* ----------------------------- Icons ----------------------------- */
+function BanIcon({ size = 12 }: { size?: number }) {
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden>
+      <path
+        d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm5.657 3.343L6.343 17.657M5.3 9.9a7 7 0 0 1 8.8-4.6m4.6 8.8a7 7 0 0 1-8.8 4.6"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function ShieldOffIcon({ size = 12 }: { size?: number }) {
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden>
+      <path
+        d="M19.5 12.5v-6l-7.5-3-7.5 3v6c0 4.2 3.2 7.7 7.5 8 1.6-.11 3.2-.71 4.5-1.66M3 3l18 18"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+/* ------------------------ Blockstatus-Badges ------------------------ */
+function BlockBadges({
+  hasBlockedAuthor,
+  blockedByAuthor,
+}: {
+  hasBlockedAuthor: boolean;
+  blockedByAuthor: boolean;
+}) {
+  if (!hasBlockedAuthor && !blockedByAuthor) return null;
+
+  return (
+    <span className="ml-2 inline-flex items-center gap-1" data-no-nav>
+      {hasBlockedAuthor && (
+        <span
+          className="inline-flex items-center gap-1 rounded-full border border-red-400/40 bg-red-500/10 px-2 py-0.5 text-[10px] uppercase tracking-wide text-red-300"
+          title="Du blockierst diesen Account"
+        >
+          <BanIcon />
+          Du blockierst
+        </span>
+      )}
+      {blockedByAuthor && (
+        <span
+          className="inline-flex items-center gap-1 rounded-full border border-red-400/40 bg-red-500/10 px-2 py-0.5 text-[10px] uppercase tracking-wide text-red-300"
+          title="Dieser Account blockiert dich"
+        >
+          <ShieldOffIcon />
+          Blockiert dich
+        </span>
+      )}
+    </span>
+  );
+}
+
 export default function PostCard({ post }: { post: Post }) {
   const router = useRouter();
   const { locale } = useParams() as { locale: string };
@@ -288,7 +351,6 @@ export default function PostCard({ post }: { post: Post }) {
                   setMoreOpen(false);
                 }}
               >
-                {/* WICHTIG: Name muss zu Server-Action passen */}
                 <input type="hidden" name="blockedHandle" value={post.author.handle} />
                 <button className="w-full text-left px-3 py-2 rounded hover:bg-white/10">
                   Account blockieren
@@ -380,7 +442,7 @@ export default function PostCard({ post }: { post: Post }) {
 
         {/* Name + Meta + Content */}
         <div className="min-w-0 flex-1">
-          <div className="flex items-center">
+          <div className="flex items-center flex-wrap">
             <div data-no-nav onClick={(e) => e.stopPropagation()}>
               <ProfileLink
                 handle={post.author.handle}
@@ -401,11 +463,21 @@ export default function PostCard({ post }: { post: Post }) {
               </ProfileLink>
             </div>
 
+            {/* Block-Badges direkt neben dem Handle */}
+            <BlockBadges
+              hasBlockedAuthor={hasBlockedAuthor}
+              blockedByAuthor={initialBlockedByAuthor}
+            />
+
             <span className="text-muted mx-2 text-xs md:text-[13px]" aria-hidden>
               ·
             </span>
 
-            <time className="text-muted whitespace-nowrap text-xs md:text-[13px]" dateTime={post.createdAt} title={post.createdAt}>
+            <time
+              className="text-muted whitespace-nowrap text-xs md:text-[13px]"
+              dateTime={post.createdAt}
+              title={post.createdAt}
+            >
               {post.createdAt}
             </time>
           </div>

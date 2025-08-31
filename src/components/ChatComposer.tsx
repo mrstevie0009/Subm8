@@ -4,19 +4,19 @@ import * as React from 'react';
 
 type Props = {
   disabled?: boolean;
+  disabledNotice?: string; // ⬅️ NEU
   onSend: (text: string) => void;
   onTip: () => void;
   onUpload?: (file: File) => void;
 };
 
-export default function ChatComposer({ disabled, onSend, onTip, onUpload }: Props) {
+export default function ChatComposer({ disabled, disabledNotice, onSend, onTip, onUpload }: Props) {
   const [text, setText] = React.useState('');
   const taRef = React.useRef<HTMLTextAreaElement | null>(null);
 
-  // Auto-grow
   const maxRows = 6;
-  const lineH = 20;  // px
-  const padY  = 12;  // px
+  const lineH = 20;
+  const padY  = 12;
   const maxHeight = maxRows * lineH + padY;
 
   const autosize = React.useCallback(() => {
@@ -37,8 +37,8 @@ export default function ChatComposer({ disabled, onSend, onTip, onUpload }: Prop
   }, [text, disabled, onSend, autosize]);
 
   const circle = 'grid place-items-center rounded-full select-none';
-  const sendSize = 40;     // px
-  const toolSize = 40;     // px
+  const sendSize = 40;
+  const toolSize = 40;
 
   return (
     <div
@@ -47,10 +47,16 @@ export default function ChatComposer({ disabled, onSend, onTip, onUpload }: Prop
                  px-3 pb-2 pt-2"
       style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 8px)' }}
     >
+      {/* ⬇️ Hinweiszeile bei gesperrtem Chat */}
+      {disabled && disabledNotice && (
+        <div className="mb-2 text-center text-[13px] text-white/80">
+          {disabledNotice}{' '}
+          Diese Konversation wurde Blockiert.
+        </div>
+      )}
+
       <div className="rounded-3xl border border-white/10 bg-white/[.06] shadow-[0_2px_16px_rgba(0,0,0,.25)] px-3 py-2">
-        {/* 2 Spalten: links Text+Toolbar, rechts Send */}
         <div className="grid grid-cols-[1fr_auto] items-end gap-2">
-          {/* LEFT: Text oben, Buttons darunter */}
           <div className="flex flex-col">
             <textarea
               ref={taRef}
@@ -64,15 +70,13 @@ export default function ChatComposer({ disabled, onSend, onTip, onUpload }: Prop
                   submit();
                 }
               }}
-              placeholder={disabled ? 'DMs closed' : 'Message…'}
+              placeholder={disabled ? 'DMs geschlossen' : 'Message…'}
               className="w-full resize-none bg-transparent outline-none placeholder:text-muted
                          text-[14px] leading-5 px-3 pt-1 pb-1 rounded-2xl"
               style={{ minHeight: 40, overflow: 'hidden' }}
             />
 
-            {/* Toolbar */}
             <div className="mt-2 flex items-center gap-8 pl-2">
-              {/* Upload */}
               <label
                 className={`${circle} border border-white/12 bg-transparent hover:bg-white/10 cursor-pointer`}
                 style={{ width: toolSize, height: toolSize }}
@@ -93,7 +97,6 @@ export default function ChatComposer({ disabled, onSend, onTip, onUpload }: Prop
                 <PhotoIcon />
               </label>
 
-              {/* Tip */}
               <button
                 type="button"
                 onClick={onTip}
@@ -108,7 +111,6 @@ export default function ChatComposer({ disabled, onSend, onTip, onUpload }: Prop
             </div>
           </div>
 
-          {/* RIGHT: Send */}
           <button
             type="button"
             onClick={submit}
@@ -126,32 +128,11 @@ export default function ChatComposer({ disabled, onSend, onTip, onUpload }: Prop
   );
 }
 
-/* ===== Icons ===== */
 function SendIcon({ size = 18 }: { size?: number }) {
-  // Edles, gefülltes Paper-Plane mit feiner Falt-Linie.
   return (
-    <svg
-      viewBox="0 0 24 24"
-      width={size}
-      height={size}
-      aria-hidden
-      className="drop-shadow-[0_1px_2px_rgba(0,0,0,.35)]"
-    >
-      {/* Körper */}
-      <path
-        d="M21.7 3.4c.7-.27 1.4.4 1.13 1.12l-6.9 18a1 1 0 0 1-1.85-.06l-2.15-6.13-6.13-2.15A1 1 0 0 1 5.64 12l18-6.9Z"
-        fill="currentColor"
-      />
-      {/* Falt-/Glanzlinie */}
-      <path
-        d="M11.8 14.3 21.1 5M9.4 11.9l11.3-4.2"
-        fill="none"
-        stroke="#000"
-        strokeOpacity=".22"
-        strokeWidth="1.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+    <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden className="drop-shadow-[0_1px_2px_rgba(0,0,0,.35)]">
+      <path d="M21.7 3.4c.7-.27 1.4.4 1.13 1.12l-6.9 18a1 1 0 0 1-1.85-.06l-2.15-6.13-6.13-2.15A1 1 0 0 1 5.64 12l18-6.9Z" fill="currentColor" />
+      <path d="M11.8 14.3 21.1 5M9.4 11.9l11.3-4.2" fill="none" stroke="#000" strokeOpacity=".22" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

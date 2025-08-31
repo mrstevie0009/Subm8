@@ -1,4 +1,3 @@
-// src/app/actions/follow.ts
 'use server';
 
 import { prisma } from '@/lib/prisma';
@@ -23,12 +22,43 @@ async function resolveTargetUserId(fd: FormData): Promise<string | null> {
   return null;
 }
 
+function revalidateCommon() {
+  revalidatePath('/');           // Feed
+  revalidatePath('/[locale]');   // locale-Startseite, falls verwendet
+  revalidatePath('/[locale]/notifications');
+}
+
 export async function followAction(formData: FormData) {
   const session = await getAuth();
   if (!session?.user?.id) return;
 
   const targetId = await resolveTargetUserId(formData);
   if (!targetId || targetId === session.user.id) return;
+
+  // **NEU**: Folgen verhindern, wenn irgendein Block existiert
+  const isBlockedEither = await prisma.block.findFirst({
+    where: {
+      OR: [
+        { blockerId: session.user.id, blockedId: targetId }, // ich blockiere ihn/sie
+        { blockerId: targetId,          blockedId: session.user.id }, // er/sie blockiert mich
+      ],
+    },
+    select: { blockerId: true },
+  });
+
+  if (isBlockedEither) {
+    // Sicherheitshalber alle Follows in beide Richtungen entfernen
+    await prisma.follow.deleteMany({
+      where: {
+        OR: [
+          { followerId: session.user.id, followeeId: targetId },
+          { followerId: targetId,        followeeId: session.user.id },
+        ],
+      },
+    });
+    revalidateCommon();
+    return; // kein Follow erlaubt
+  }
 
   // upsert, falls Follow schon existiert
   await prisma.follow.upsert({
@@ -37,9 +67,7 @@ export async function followAction(formData: FormData) {
     update: {},
   });
 
-  // Seiten, die häufig Follow-Status anzeigen, neu validieren
-  revalidatePath(`/${'en'}`); // Home (ersetze 'en' ggf. durch deine Default-Locale oder eigenes Revalidate-Konzept)
-  revalidatePath(`/${'en'}/notifications`);
+  revalidateCommon();
 }
 
 export async function unfollowAction(formData: FormData) {
@@ -53,6 +81,5 @@ export async function unfollowAction(formData: FormData) {
     where: { followerId: session.user.id, followeeId: targetId },
   });
 
-  revalidatePath(`/${'en'}`);
-  revalidatePath(`/${'en'}/notifications`);
+  revalidateCommon();
 }
