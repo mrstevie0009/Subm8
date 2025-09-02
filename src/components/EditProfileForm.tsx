@@ -23,10 +23,12 @@ export default function EditProfileForm({
   locale,
   initial,
   action, // <-- Server Action wird von außen übergeben
+  renderUnderUsername, // ⬅️ NEU: optionaler Slot direkt unter dem Username-Feld
 }: {
   locale: string;
   initial: EditInitial;
   action: (formData: FormData) => Promise<void>;
+  renderUnderUsername?: React.ReactNode;
 }) {
   const [avatarPreview, setAvatarPreview] = React.useState<string>(
     initial.avatarUrl || AVATAR_PH
@@ -238,6 +240,8 @@ export default function EditProfileForm({
               required
             />
           </div>
+          {/* ⬇️ NEU: Slot direkt UNTER dem Username-Feld */}
+          {renderUnderUsername && <div className="mt-2">{renderUnderUsername}</div>}
         </Field>
 
         <Field label="Bio">

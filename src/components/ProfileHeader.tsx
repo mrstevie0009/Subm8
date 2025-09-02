@@ -57,11 +57,11 @@ type Props = {
   activeTab?: 'posts' | 'gallery' | 'leaderboard';
   onTabChange?: (t: 'posts' | 'gallery' | 'leaderboard') => void;
   showTabs?: boolean;
-
-  /** Viewer-Kontext: ich blockiere dieses Profil */
   viewerHasBlocked?: boolean;
-  /** Viewer-Kontext: dieses Profil blockiert mich */
   isBlockedByProfile?: boolean;
+
+  /** Optional: Callback für den runden Inline-Button neben dem Display-Namen */
+  onInlineButtonClick?: () => void;
 };
 
 export default function ProfileHeader({
@@ -73,6 +73,7 @@ export default function ProfileHeader({
   showTabs = true,
   viewerHasBlocked = false,
   isBlockedByProfile = false,
+  onInlineButtonClick,
 }: Props) {
   const locale = useLocale();
 
@@ -85,7 +86,6 @@ export default function ProfileHeader({
   const [isFollowing, setIsFollowing] = React.useState<boolean>(!!initialIsFollowing);
   const [pending, startTransition] = React.useTransition();
 
-  // Lokaler Block-State für sofortige UI
   const [hasBlocked, setHasBlocked] = React.useState<boolean>(viewerHasBlocked);
   const blockedEither = hasBlocked || isBlockedByProfile;
 
@@ -97,6 +97,37 @@ export default function ProfileHeader({
     '--avatar': avatarSize,
   };
 
+  function BanIcon(props: React.SVGProps<SVGSVGElement>) {
+    return (
+      <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} {...props}>
+        <circle cx="12" cy="12" r="9" />
+        <path d="M8 8l8 8" />
+      </svg>
+    );
+  }
+
+  /** Kreis-Icon mit Geschenk (als "Offers"-Symbol) für den Inline-Button */
+  function OfferCircleIcon(props: React.SVGProps<SVGSVGElement>) {
+    return (
+      <svg
+        viewBox="0 0 24 24"
+        width={35}
+        height={35}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={1.8}
+        {...props}
+      >
+        <circle cx="12" cy="12" r="9" />
+        <rect x="7.5" y="9" width="9" height="2.6" rx="0.8" />
+        <rect x="8" y="11" width="8" height="6" rx="1.2" />
+        <line x1="12" y1="9" x2="12" y2="17" />
+        <path d="M12 9c-1-2-4-2-4 0" strokeLinecap="round" />
+        <path d="M12 9c1-2 4-2 4 0"  strokeLinecap="round" />
+      </svg>
+    );
+  }
+
   function DotIcon(props: React.SVGProps<SVGSVGElement>) {
     return (
       <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth={2} {...props}>
@@ -107,27 +138,18 @@ export default function ProfileHeader({
     );
   }
 
-  function BanIcon(props: React.SVGProps<SVGSVGElement>) {
-    return (
-      <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} {...props}>
-        <circle cx="12" cy="12" r="9" />
-        <path d="M8 8l8 8" />
-      </svg>
-    );
-  }
-
   async function copyProfileLink() {
     try {
       const href = `${window.location.origin}/${locale}/u/${profile.username}`;
       await navigator.clipboard.writeText(href);
     } catch {
-      // ignore
+      /* ignore */
     }
   }
 
+  /** 3-Punkte-Menü rechts in der Action-Leiste */
   function MoreMenu() {
     const [open, setOpen] = React.useState(false);
-
     return (
       <div className="relative">
         <button
@@ -144,7 +166,6 @@ export default function ProfileHeader({
             className="absolute right-0 z-30 mt-2 w-60 rounded-xl border border-white/10 bg-black/85 backdrop-blur shadow-lg p-1"
             role="menu"
           >
-            {/* Link kopieren */}
             <button
               type="button"
               className="w-full text-left px-3 py-2 rounded hover:bg-white/10"
@@ -156,7 +177,6 @@ export default function ProfileHeader({
               Copy profile link
             </button>
 
-            {/* Block / Unblock */}
             {!hasBlocked ? (
               <form
                 action={blockUserAction}
@@ -166,7 +186,7 @@ export default function ProfileHeader({
                 }}
               >
                 <input type="hidden" name="blockedHandle" value={profile.username} />
-                <button className="w-full text-left px-3 py-2 rounded hover:bg-white/10  text-red-300">
+                <button className="w-full text-left px-3 py-2 rounded hover:bg-white/10 text-red-300">
                   Block User
                 </button>
               </form>
@@ -179,13 +199,12 @@ export default function ProfileHeader({
                 }}
               >
                 <input type="hidden" name="blockedHandle" value={profile.username} />
-                <button className="w-full text-left px-3 py-2 rounded hover:bg-white/10  text-red-300">
+                <button className="w-full text-left px-3 py-2 rounded hover:bg-white/10 text-red-300">
                   Unblock User
                 </button>
               </form>
             )}
 
-            {/* Melden */}
             <form action={reportUserAction} onSubmit={() => setOpen(false)}>
               <input type="hidden" name="handle" value={profile.username} />
               <input type="hidden" name="reason" value="OTHER" />
@@ -240,26 +259,32 @@ export default function ProfileHeader({
             </div>
           </div>
 
-          {/* Name + Handle; Badges neben dem Displayname */}
+          {/* Name + Handle + Badges + INLINE-BUTTON */}
           <div className="min-w-0">
             <div className="flex items-center gap-2 min-w-0">
               <h1 className="text-[22px] md:text-[24px] font-bold leading-tight truncate">
                 {profile.displayName}
               </h1>
 
+              {/* Runder Offer-Button – fixierte Größe + rein visuell nach unten versetzt */}
+              <button
+                type="button"
+                onClick={onInlineButtonClick}
+                className="ml-1.5 inline-grid place-items-center rounded-full border border-white/15 hover:bg-white/5 w-10 h-10 translate-y-[10px]"
+                aria-label="Offers"
+                title="Offers"
+              >
+                <OfferCircleIcon />
+              </button>
+
               {isBlockedByProfile && (
                 <Chip tone="danger" size="sm">
-                  <span className="inline-flex items-center gap-1">
-                    <BanIcon /> Blocked you
-                  </span>
+                  <span className="inline-flex items-center gap-1"><BanIcon /> Blocked you</span>
                 </Chip>
               )}
-
               {!isBlockedByProfile && hasBlocked && (
                 <Chip tone="danger" size="sm">
-                  <span className="inline-flex items-center gap-1">
-                    <BanIcon /> You blocked
-                  </span>
+                  <span className="inline-flex items-center gap-1"><BanIcon /> You blocked</span>
                 </Chip>
               )}
             </div>
@@ -267,9 +292,16 @@ export default function ProfileHeader({
             <div className="mt-0.5 text-muted text-[13px] truncate">
               @{profile.username}
             </div>
+
+            {/* Schlanke Bio */}
+            {profile.bio && profile.bio.trim() && (
+              <p className="mt-2 text-[15px] leading-relaxed text-white/90 whitespace-pre-wrap max-w-[65ch]">
+                {profile.bio}
+              </p>
+            )}
           </div>
 
-          {/* Actions + More */}
+          {/* Actions – inkl. 3-Punkte-Menü */}
           <div className="flex items-center gap-2 justify-end">
             {isOwner ? (
               <Link
@@ -333,28 +365,45 @@ export default function ProfileHeader({
           </div>
         </div>
 
-        {/* Bio */}
-        {profile.bio && <p className="mt-3 leading-relaxed">{profile.bio}</p>}
-
-        <div className="mt-10" />
+        <div className="mt-6" />
 
         {/* Meta */}
         <div className="flex items-center text-[12px] leading-[1.35] text-muted">
           {profile.location && (
             <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-              <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 relative top-[0.5px]" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <svg
+                viewBox="0 0 24 24"
+                className="w-3.5 h-3.5 relative top-[0.5px]"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={1.8}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
                 <path d="M12 21s-7-7.6-7-12a7 7 0 0 1 14 0c0 4.4-7 12-7 12Z" />
                 <circle cx="12" cy="9" r="2.5" />
               </svg>
               {profile.location}
             </span>
           )}
+
           {profile.location && profile.createdAt && (
             <span className="mx-3 select-none" aria-hidden="true">·</span>
           )}
+
           {profile.createdAt && (
             <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-              <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 relative top-[0.5px]" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <svg
+                viewBox="0 0 24 24"
+                className="w-3.5 h-3.5 relative top-[0.5px]"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={1.8}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
                 <rect x="3.5" y="5.5" width="17" height="15" rx="2" />
                 <path d="M8 3.5v4M16 3.5v4M3.5 9.5h17" />
               </svg>

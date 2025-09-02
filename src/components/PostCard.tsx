@@ -10,6 +10,7 @@ import { likePostAction, unlikePostAction } from '@/app/actions/likes';
 import CommentComposer from '@/components/comments/CommentComposer';
 import { reportPostAction } from '@/app/actions/reports';
 import { blockUserAction, unblockUserAction } from '@/app/actions/blocks';
+import RichText from '@/components/RichText';
 
 const AVATAR_PH = '/images/avatar-placeholder.png';
 
@@ -482,7 +483,9 @@ export default function PostCard({ post }: { post: Post }) {
             </time>
           </div>
 
-          <div className="mt-1 whitespace-pre-wrap leading-relaxed">{post.text}</div>
+          <div className="mt-1 leading-relaxed">
+            <RichText text={post.text} locale={locale} validateMentions />
+          </div>
 
           {post.mediaUrl && (
             <figure className="mt-3 overflow-hidden rounded-xl border border-white/10 bg-black/20">

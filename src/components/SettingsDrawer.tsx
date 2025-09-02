@@ -8,10 +8,20 @@ import Link from 'next/link';
 import { useSession, signOut } from 'next-auth/react';
 import { useLocale } from 'next-intl';
 import { usePathname, useSearchParams } from 'next/navigation';
+import { followAction, unfollowAction } from '@/app/actions/follow';
 
 const AVATAR_PH = '/images/avatar-placeholder.png';
 
 type Props = { open: boolean; onClose: () => void };
+
+type Suggestion = {
+  id: string;
+  handle: string;
+  displayName: string;
+  avatarUrl: string | null;
+  role: 'DOMME' | 'SUBMISSIVE';
+  isFollowing: boolean;
+};
 
 export default function SettingsDrawer({ open, onClose }: Props) {
   const { data: session } = useSession();
@@ -37,12 +47,11 @@ export default function SettingsDrawer({ open, onClose }: Props) {
   const roleRaw = (u.role ?? '').toString().toUpperCase();
   const roleLabel = roleRaw === 'DOMME' ? 'Domina' : roleRaw ? 'Sub' : '—';
 
-  // Stats-States mit 0 als Default → nie „—“
+  // Stats
   const [followers, setFollowers] = React.useState<number>(0);
   const [following, setFollowing] = React.useState<number>(0);
   const [statsError, setStatsError] = React.useState<string | null>(null);
 
-  // Stats laden, wenn geöffnet & eingeloggt
   React.useEffect(() => {
     if (!open || !isAuth) return;
     let cancelled = false;
@@ -51,7 +60,8 @@ export default function SettingsDrawer({ open, onClose }: Props) {
         setStatsError(null);
         const res = await fetch('/api/me/stats', { cache: 'no-store' });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const json: { ok?: boolean; followers?: number; following?: number; error?: string } = await res.json();
+        const json: { ok?: boolean; followers?: number; following?: number; error?: string } =
+          await res.json();
         if (!json?.ok) throw new Error(json?.error || 'Unknown error');
         if (!cancelled) {
           setFollowers(Number(json.followers ?? 0));
@@ -60,7 +70,6 @@ export default function SettingsDrawer({ open, onClose }: Props) {
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : 'Fehler beim Laden der Stats';
         if (!cancelled) setStatsError(msg);
-        // Fallback bleibt 0
       }
     })();
     return () => {
@@ -68,23 +77,74 @@ export default function SettingsDrawer({ open, onClose }: Props) {
     };
   }, [open, isAuth]);
 
+  // Vorschläge laden
+  const [headline, setHeadline] = React.useState<string>('Loading…');
+  const [sugs, setSugs] = React.useState<Suggestion[]>([]);
+  const [suggErr, setSuggErr] = React.useState<string | null>(null);
+
+  const loadSuggestions = React.useCallback(async () => {
+    try {
+      setSuggErr(null);
+      setHeadline('Loading…');
+      const res = await fetch('/api/suggestions', { cache: 'no-store' });
+      const json = await res.json();
+      if (!json?.ok) throw new Error(json?.error || 'Failed to load suggestions');
+      setHeadline(String(json.headline || 'Recommended profiles'));
+      setSugs(json.users as Suggestion[]);
+    } catch (e) {
+      setHeadline('Recommended profiles');
+      setSuggErr(e instanceof Error ? e.message : 'Failed to load');
+      setSugs([]);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    if (!open) return;
+    void loadSuggestions();
+  }, [open, loadSuggestions]);
+
+  // Replacement: einen neuen Vorschlag für eine bestimmte Zeile nachladen
+  const replaceSuggestion = React.useCallback(
+    async (goneId: string) => {
+      const exclude = sugs.map((x) => x.id);
+      // 1 neuen Kandidaten abholen
+      const res = await fetch(`/api/suggestions?take=1&exclude=${encodeURIComponent(exclude.join(','))}`, {
+        cache: 'no-store',
+      }).catch(() => null);
+
+      let next: Suggestion | null = null;
+      if (res && res.ok) {
+        const json = await res.json().catch(() => null);
+        next = json?.users?.[0] ?? null;
+      }
+
+      setSugs((prev) => {
+        const idx = prev.findIndex((p) => p.id === goneId);
+        if (idx === -1) return prev;
+        const copy = [...prev];
+        if (next) copy[idx] = next;
+        else copy.splice(idx, 1); // wenn nichts da ist, Zeile entfernen
+        return copy;
+      });
+    },
+    [sugs]
+  );
+
+  // Drawer mount/animations
   const [mounted, setMounted] = React.useState(false);
   const [show, setShow] = React.useState(false);
-
   React.useEffect(() => setMounted(true), []);
   React.useEffect(() => {
     if (!open) return setShow(false);
     const id = requestAnimationFrame(() => setShow(true));
     return () => cancelAnimationFrame(id);
   }, [open]);
-
   React.useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [open, onClose]);
-
   React.useEffect(() => {
     if (!open) return;
     const prev = document.body.style.overflow;
@@ -163,7 +223,6 @@ export default function SettingsDrawer({ open, onClose }: Props) {
               >
                 <Image src={image} alt="Profile avatar" fill className="object-cover" sizes="64px" priority />
               </div>
-
               <span
                 style={{
                   marginTop: 6,
@@ -182,15 +241,7 @@ export default function SettingsDrawer({ open, onClose }: Props) {
             </div>
 
             {/* Name + Handle */}
-            <div
-              style={{
-                lineHeight: 1.1,
-                marginTop: 10,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 2,
-              }}
-            >
+            <div style={{ lineHeight: 1.1, marginTop: 10, display: 'flex', flexDirection: 'column', gap: 2 }}>
               <div style={{ fontWeight: 600 }}>{displayName}</div>
               <div style={{ opacity: 0.7, fontSize: 14 }}>{handle ? `@${handle}` : '—'}</div>
             </div>
@@ -221,12 +272,28 @@ export default function SettingsDrawer({ open, onClose }: Props) {
 
         <div style={{ height: 1, background: 'rgba(255,255,255,0.1)', margin: '10px 0' }} />
 
-        {/* Vorschläge (Dummy) */}
+        {/* Vorschläge */}
         <section>
-          <div style={{ fontSize: 14, opacity: 0.7, marginBottom: 8 }}>Findomme for hire</div>
-          <HireRow name="Evelin" role="Domina" />
-          <HireRow name="Sluuut" role="Domina" />
-          <HireRow name="Samantha" role="Domina" />
+          <div style={{ fontSize: 14, opacity: 0.7, marginBottom: 8 }}>{headline}</div>
+
+          {suggErr && (
+            <div className="text-[12px]" style={{ color: '#fca5a5', marginBottom: 6 }}>
+              {suggErr}
+            </div>
+          )}
+
+          {sugs.map((s) => (
+            <SuggestionRow
+              key={s.id}
+              s={s}
+              locale={locale}
+              onReplace={replaceSuggestion}
+            />
+          ))}
+
+          {!suggErr && sugs.length === 0 && (
+            <div className="text-[13px] text-white/70">No suggestions right now.</div>
+          )}
         </section>
 
         <div style={{ height: 1, background: 'rgba(255,255,255,0.1)', margin: '10px 0' }} />
@@ -283,14 +350,86 @@ function MenuItem({
   );
 }
 
-function HireRow({ name, role }: { name: string; role: string }) {
+function SuggestionRow({
+  s,
+  locale,
+  onReplace,
+}: {
+  s: Suggestion;
+  locale: string;
+  onReplace: (goneId: string) => void | Promise<void>;
+}) {
+  const [isFollowing, setIsFollowing] = React.useState<boolean>(s.isFollowing);
+  const [pending, startTransition] = React.useTransition();
+  const [fading, setFading] = React.useState(false);
+
+  // CSS Transition-Dauer muss zum Timeout passen (hier 300ms)
+  const durationMs = 300;
+
   return (
-    <div style={{ display: 'flex', gap: 12, alignItems: 'center', padding: '8px 0' }}>
-      <div style={{ width: 40, height: 40, borderRadius: 9999, background: 'rgba(255,255,255,.12)' }} />
-      <div style={{ lineHeight: 1.1 }}>
-        <div style={{ fontWeight: 500 }}>{name}</div>
-        <div style={{ opacity: 0.7, fontSize: 14 }}>{role}</div>
-      </div>
+    <div
+      className={`flex items-center justify-between gap-3 py-2 transition-all duration-300 ${
+        fading ? 'opacity-0 translate-y-1' : 'opacity-100'
+      }`}
+      style={{ padding: '6px 0' }}
+    >
+      {/* Linkbarer Bereich (Avatar + Name + Handle) */}
+      <Link
+        href={`/${locale}/u/${s.handle}`}
+        className="flex items-center gap-3 min-w-0"
+        prefetch={false}
+      >
+        <div
+          className="relative overflow-hidden rounded-full bg-white/10"
+          style={{ width: 40, height: 40 }}
+          aria-hidden="true"
+        >
+          <Image
+            src={s.avatarUrl || AVATAR_PH}
+            alt=""
+            fill
+            className="object-cover"
+            sizes="40px"
+          />
+        </div>
+        <div className="min-w-0 leading-tight">
+          <div className="font-medium truncate">{s.displayName}</div>
+          <div className="text-[12px] text-white/70 truncate">@{s.handle}</div>
+        </div>
+      </Link>
+
+      {/* Follow / Unfollow rechts */}
+      <form
+        action={isFollowing ? unfollowAction : followAction}
+        onSubmit={() => {
+          const wasFollowing = isFollowing;
+          startTransition(() => setIsFollowing((v) => !v));
+
+          // Nur beim FOLLOW (nicht beim Unfollow) Reihe austauschen
+          if (!wasFollowing) {
+            // mini-Verzögerung, dann sanft ausblenden…
+            setTimeout(() => setFading(true), 80);
+            // …und nach Ende der Transition ersetzen
+            setTimeout(() => {
+              void onReplace(s.id);
+            }, 80 + durationMs);
+          }
+        }}
+      >
+        <input type="hidden" name="userId" value={s.id} />
+        <button
+          type="submit"
+          disabled={pending}
+          className={`px-3 py-1.5 rounded-full text-[13px] transition-colors ${
+            isFollowing
+              ? 'border border-white/25 hover:bg-white/5'
+              : 'bg-[var(--purple)] text-white hover:opacity-95'
+          }`}
+          title={isFollowing ? 'Unfollow' : 'Follow'}
+        >
+          {isFollowing ? 'Unfollow' : 'Follow'}
+        </button>
+      </form>
     </div>
   );
 }

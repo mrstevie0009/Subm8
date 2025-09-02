@@ -3,10 +3,12 @@
 
 import * as React from 'react';
 import { useParams } from 'next/navigation';
+import { useLocale } from 'next-intl';
 import ChatHeader from '@/components/ChatHeader';
 import ChatComposer from '@/components/ChatComposer';
 import TipModal from '@/components/TipModal';
 import type { ChatMessage } from '@/types/chat';
+import RichText from '@/components/RichText';
 
 type DbRole = 'DOMME' | 'SUBMISSIVE';
 
@@ -29,14 +31,12 @@ type ThreadOk = {
     mediaType?: string | null;
     read: boolean;
   }[];
-  /** ⬇️ NEU: Block-Flags für die Viewer-Perspektive */
-  viewerHasBlocked: boolean;   // ich habe "other" blockiert
-  isBlockedByOther: boolean;   // "other" hat mich blockiert
+  viewerHasBlocked: boolean;
+  isBlockedByOther: boolean;
 };
 type ThreadErr = { ok: false; error: string };
 type ThreadResponse = ThreadOk | ThreadErr;
 
-// UI-Message-Typ: erweitert ChatMessage um optionale Media-Felder
 type UiMessage = ChatMessage & {
   mediaUrl?: string;
   mediaType?: string;
@@ -44,6 +44,7 @@ type UiMessage = ChatMessage & {
 
 export default function ChatThreadPage() {
   const { id } = useParams<{ id: string }>();
+  const locale = useLocale();
 
   const [meId, setMeId] = React.useState<string | null>(null);
   const [other, setOther] = React.useState<{
@@ -84,8 +85,6 @@ export default function ChatThreadPage() {
       if (!json.ok) throw new Error(json.error || 'Failed to load');
 
       setMeId(json.me.id);
-
-      // ⬇️ Block-Flags merken
       setViewerHasBlocked(json.viewerHasBlocked ?? false);
       setIsBlockedByOther(json.isBlockedByOther ?? false);
 
@@ -130,10 +129,8 @@ export default function ChatThreadPage() {
     };
   }, [load]);
 
-  // Server-Call: akzeptiert { text, file? }
   const sendMessage = React.useCallback(
     async ({ text, file }: { text: string; file?: File }) => {
-      // ⬇️ Sende-Guard falls UI noch nicht disabled ist
       if (viewerHasBlocked || isBlockedByOther) return;
 
       if (file) {
@@ -180,7 +177,6 @@ export default function ChatThreadPage() {
             role: other.role,
             dmOpen: other.dmOpen,
           }}
-          // ⬇️ an den Header weitergeben (Badges + 3-Punkte-Menü Logik)
           viewerHasBlocked={viewerHasBlocked}
           isBlockedByOther={isBlockedByOther}
         />
@@ -211,7 +207,6 @@ export default function ChatThreadPage() {
                                   }`}
                       title={new Date(m.createdAt).toLocaleString()}
                     >
-                      {/* Media zuerst */}
                       {m.mediaUrl && (
                         <div className="mb-1">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -227,7 +222,14 @@ export default function ChatThreadPage() {
                           />
                         </div>
                       )}
-                      {m.text && <div className="whitespace-pre-wrap break-words">{m.text}</div>}
+                      {m.text && (
+                        <RichText
+                          text={m.text}
+                          locale={locale}
+                          validateMentions
+                          className="break-words"
+                        />
+                      )}
                       <div
                         className={`text-[11px] mt-1 opacity-80 ${
                           mine ? 'text-white/80' : 'text-white/70'
@@ -247,7 +249,6 @@ export default function ChatThreadPage() {
         </div>
       </main>
 
-      {/* Composer mit Sperrhinweis */}
       <ChatComposer
         disabled={disabled}
         disabledNotice={disabledNotice}

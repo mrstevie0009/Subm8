@@ -1,3 +1,4 @@
+// src/app/[locale]/page.tsx
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/currentUser';
 import PostCard from '@/components/PostCard';
@@ -13,11 +14,12 @@ function toUiRole(role: Role): 'domme' | 'submissive' {
   return role === 'DOMME' ? 'domme' : 'submissive';
 }
 
-// Extra-Feld ist ok; PostCard ignoriert Unbekanntes
 type FeedPost = PostCardPost & { initiallyBookmarked?: boolean };
 
-export default async function HomePage({ params }: { params: Params }) {
-  const { locale } = params;
+export default async function HomePage({ params }: { params: Promise<Params> }) {
+  // ⬇️ params ist jetzt ein Promise
+  const { locale } = await params;
+
   const me = await getCurrentUser().catch(() => null);
 
   const [posts, likedByMe, bookmarkedByMe] = await Promise.all([
@@ -54,13 +56,12 @@ export default async function HomePage({ params }: { params: Params }) {
   const likedSet = new Set(likedByMe.map((l) => l.postId));
   const bookmarkedSet = new Set(bookmarkedByMe.map((b) => b.postId));
 
-  // --- Block-Flags für die Viewer-Perspektive berechnen ---
+  // Block-Flags (Viewer vs. Autoren)
   let hasBlockedSet = new Set<string>();
   let blockedBySet = new Set<string>();
 
   if (me) {
     const authorIds = Array.from(new Set(posts.map((p) => p.author.id)));
-
     if (authorIds.length > 0) {
       const [myBlocks, blocksMe] = await Promise.all([
         prisma.block.findMany({
@@ -72,7 +73,6 @@ export default async function HomePage({ params }: { params: Params }) {
           select: { blockerId: true },
         }),
       ]);
-
       hasBlockedSet = new Set(myBlocks.map((b) => b.blockedId));
       blockedBySet = new Set(blocksMe.map((b) => b.blockerId));
     }

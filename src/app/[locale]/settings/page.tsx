@@ -27,7 +27,7 @@ export default async function SettingsPage({ params }: { params: Promise<Params>
       icon: <UserIcon />,
     },
     {
-      href: `/${locale}/security`, // Platzhalter für „Sicherheit & Zugriff“
+      href: `/${locale}/security`, 
       title: 'Sicherheit & Zugriff',
       desc: 'Login-Sicherheit prüfen, verbundene Apps verwalten und Zugriff überwachen.',
       icon: <LockIcon />,
@@ -45,7 +45,7 @@ export default async function SettingsPage({ params }: { params: Promise<Params>
       icon: <MoneyIcon />,
     },
     {
-      href: `/${locale}/legal`, // Platzhalter für „Datenschutz“
+      href: `/${locale}/legal`,
       title: 'Datenschutz',
       desc: 'Steuere, welche Informationen du siehst und teilst, und passe deine Privatsphäre an.',
       icon: <ShieldIcon />,

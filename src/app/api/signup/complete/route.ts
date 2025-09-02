@@ -1,54 +1,81 @@
 // src/app/api/signup/complete/route.ts
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
-import { Role } from '@prisma/client'; // ⬅️ Enum direkt importieren
+import { Role } from '@prisma/client';
+
+export const dynamic = 'force-dynamic';
 
 type Body = {
-  handle: string;
-  role: 'domme' | 'submissive';
-  email: string;
-  password: string;
+  handle?: string;
+  role?: string; // accept any string; we'll normalize
+  email?: string;
+  password?: string;
 };
+
+function isValidHandle(h: string) {
+  return /^[a-z0-9_]{3,20}$/.test(h);
+}
+function isValidEmail(e: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+}
 
 export async function POST(req: Request) {
   try {
-    const { handle, role, email, password } = (await req.json()) as Body;
+    const body = (await req.json()) as Body | null;
 
-    const h = (handle || '').toLowerCase();
-    if (!/^[a-z0-9_]{3,20}$/.test(h)) {
+    const handleRaw = (body?.handle ?? '').toString().toLowerCase();
+    const roleRaw   = (body?.role ?? '').toString();
+    const email     = (body?.email ?? '').toString().trim();
+    const password  = (body?.password ?? '').toString();
+
+    if (!isValidHandle(handleRaw)) {
       return Response.json({ ok: false, error: 'Invalid handle' }, { status: 400 });
     }
-    if (!email || !password) {
-      return Response.json({ ok: false, error: 'Missing email/password' }, { status: 400 });
+    if (!isValidEmail(email)) {
+      return Response.json({ ok: false, error: 'Invalid email' }, { status: 400 });
+    }
+    if (password.length < 8) {
+      return Response.json({ ok: false, error: 'Password too short' }, { status: 400 });
     }
 
+    // normalize & validate role (accepts 'DOMME'/'SUBMISSIVE' or 'domme'/'submissive')
+    const roleUpper = roleRaw.toUpperCase();
+    if (roleUpper !== 'DOMME' && roleUpper !== 'SUBMISSIVE') {
+      return Response.json({ ok: false, error: 'Invalid role' }, { status: 400 });
+    }
+    const dbRole: Role = roleUpper === 'DOMME' ? Role.DOMME : Role.SUBMISSIVE;
+
+    // uniqueness checks
     const dupHandle = await prisma.user.findFirst({
-      where: { handle: { equals: h, mode: 'insensitive' } },
+      where: { handle: { equals: handleRaw, mode: 'insensitive' } },
       select: { id: true },
     });
-    if (dupHandle) return Response.json({ ok: false, error: 'Handle already taken' }, { status: 409 });
+    if (dupHandle) {
+      return Response.json({ ok: false, error: 'Handle already taken' }, { status: 409 });
+    }
 
-    const dupEmail = await prisma.user.findUnique({ where: { email } });
-    if (dupEmail) return Response.json({ ok: false, error: 'Email already in use' }, { status: 409 });
+    const dupEmail = await prisma.user.findUnique({ where: { email }, select: { id: true } });
+    if (dupEmail) {
+      return Response.json({ ok: false, error: 'Email already in use' }, { status: 409 });
+    }
 
+    // hash & create
     const passwordHash = await bcrypt.hash(password, 12);
-
-    // ⬅️ korrekt getyptes Enum-Mapping
-    const dbRole: Role = role === 'domme' ? Role.DOMME : Role.SUBMISSIVE;
 
     await prisma.user.create({
       data: {
-        handle: h,
-        displayName: h,
-        role: dbRole,
+        handle: handleRaw,
+        displayName: handleRaw, // oder eigenen DisplayName setzen
+        role: dbRole,           // ← jetzt korrekt gesetzt
         email,
-        passwordHash,        // ggf. an dein Schema anpassen
+        passwordHash,
         nsfwDefault: false,
       },
     });
 
     return Response.json({ ok: true });
-  } catch {
+  } catch (e) {
+    console.error('signup/complete error', e);
     return Response.json({ ok: false, error: 'Unexpected error' }, { status: 500 });
   }
 }
