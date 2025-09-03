@@ -1,10 +1,10 @@
-// src/components/ChatComposer.tsx
 'use client';
 import * as React from 'react';
+import MentionSuggestChat from '@/components/MentionSuggestChat';
 
 type Props = {
   disabled?: boolean;
-  disabledNotice?: string; // ⬅️ NEU
+  disabledNotice?: string;
   onSend: (text: string) => void;
   onTip: () => void;
   onUpload?: (file: File) => void;
@@ -13,6 +13,9 @@ type Props = {
 export default function ChatComposer({ disabled, disabledNotice, onSend, onTip, onUpload }: Props) {
   const [text, setText] = React.useState('');
   const taRef = React.useRef<HTMLTextAreaElement | null>(null);
+
+  // ⬇️ Anker für Mention-Panel
+  const suggestAnchorRef = React.useRef<HTMLDivElement>(null);
 
   const maxRows = 6;
   const lineH = 20;
@@ -47,16 +50,14 @@ export default function ChatComposer({ disabled, disabledNotice, onSend, onTip, 
                  px-3 pb-2 pt-2"
       style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 8px)' }}
     >
-      {/* ⬇️ Hinweiszeile bei gesperrtem Chat */}
       {disabled && disabledNotice && (
         <div className="mb-2 text-center text-[13px] text-white/80">
-          {disabledNotice}{' '}
-          Diese Konversation wurde Blockiert.
+          {disabledNotice} Diese Konversation wurde Blockiert.
         </div>
       )}
 
       <div className="rounded-3xl border border-white/10 bg-white/[.06] shadow-[0_2px_16px_rgba(0,0,0,.25)] px-3 py-2">
-        <div className="grid grid-cols-[1fr_auto] items-end gap-2">
+        <div ref={suggestAnchorRef} className="grid grid-cols-[1fr_auto] items-end gap-2">
           <div className="flex flex-col">
             <textarea
               ref={taRef}
@@ -124,6 +125,14 @@ export default function ChatComposer({ disabled, disabledNotice, onSend, onTip, 
           </button>
         </div>
       </div>
+
+      {/* Mentions (Portal, fixed, immer sichtbar über dem Footer) */}
+      <MentionSuggestChat
+        anchorRef={suggestAnchorRef as React.RefObject<HTMLElement>}
+        value={text}
+        onChange={setText}
+        limit={8}
+      />
     </div>
   );
 }

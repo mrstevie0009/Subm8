@@ -9,6 +9,7 @@ import type { Profile } from '@/types/profile';
 import { followAction, unfollowAction } from '@/app/actions/follow';
 import { blockUserAction, unblockUserAction } from '@/app/actions/blocks';
 import { reportUserAction } from '@/app/actions/reports';
+import OfferViewerModal from '@/components/OfferViewerModal';
 
 const AVATAR_PH = '/images/avatar-placeholder.png';
 const BANNER_PH = '/images/banner-placeholder.png';
@@ -31,7 +32,7 @@ function Chip({
   const sizeCls: Record<'sm'|'md'|'lg', string> = {
     sm: 'text-[11px] px-2 py-1',
     md: 'text-[12px] px-2.5 py-[6px]',
-    lg: 'text-[14px] px-3 py-[3px]',
+    lg: 'text-[14px] px-3 py-[6px]',
   };
   return (
     <span className={`rounded-full leading-none whitespace-nowrap ${sizeCls[size]}`} style={styles[tone]}>
@@ -59,8 +60,6 @@ type Props = {
   showTabs?: boolean;
   viewerHasBlocked?: boolean;
   isBlockedByProfile?: boolean;
-
-  /** Optional: Callback für den runden Inline-Button neben dem Display-Namen */
   onInlineButtonClick?: () => void;
 };
 
@@ -77,7 +76,7 @@ export default function ProfileHeader({
 }: Props) {
   const locale = useLocale();
 
-  const avatarSize = 'clamp(80px, 18vw, 128px)';
+  const avatarSize = 'clamp(88px, 18vw, 136px)';
   const bannerH    = 'clamp(160px, 26vw, 260px)';
 
   const [bannerSrc, setBannerSrc] = React.useState<string>(profile.bannerUrl || BANNER_PH);
@@ -89,11 +88,13 @@ export default function ProfileHeader({
   const [hasBlocked, setHasBlocked] = React.useState<boolean>(viewerHasBlocked);
   const blockedEither = hasBlocked || isBlockedByProfile;
 
+  const [offerOpen, setOfferOpen] = React.useState(false);
+  const handleOfferClick = onInlineButtonClick ?? (() => setOfferOpen(true));
+
   type CSSVars = React.CSSProperties & { ['--avatar']?: string };
   const avatarStyle: CSSVars = {
     width: avatarSize,
     height: avatarSize,
-    marginTop: 'calc(-0.5 * var(--avatar))',
     '--avatar': avatarSize,
   };
 
@@ -102,28 +103,6 @@ export default function ProfileHeader({
       <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} {...props}>
         <circle cx="12" cy="12" r="9" />
         <path d="M8 8l8 8" />
-      </svg>
-    );
-  }
-
-  /** Kreis-Icon mit Geschenk (als "Offers"-Symbol) für den Inline-Button */
-  function OfferCircleIcon(props: React.SVGProps<SVGSVGElement>) {
-    return (
-      <svg
-        viewBox="0 0 24 24"
-        width={35}
-        height={35}
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={1.8}
-        {...props}
-      >
-        <circle cx="12" cy="12" r="9" />
-        <rect x="7.5" y="9" width="9" height="2.6" rx="0.8" />
-        <rect x="8" y="11" width="8" height="6" rx="1.2" />
-        <line x1="12" y1="9" x2="12" y2="17" />
-        <path d="M12 9c-1-2-4-2-4 0" strokeLinecap="round" />
-        <path d="M12 9c1-2 4-2 4 0"  strokeLinecap="round" />
       </svg>
     );
   }
@@ -142,12 +121,9 @@ export default function ProfileHeader({
     try {
       const href = `${window.location.origin}/${locale}/u/${profile.username}`;
       await navigator.clipboard.writeText(href);
-    } catch {
-      /* ignore */
-    }
+    } catch {}
   }
 
-  /** 3-Punkte-Menü rechts in der Action-Leiste */
   function MoreMenu() {
     const [open, setOpen] = React.useState(false);
     return (
@@ -162,55 +138,31 @@ export default function ProfileHeader({
         </button>
 
         {open && (
-          <div
-            className="absolute right-0 z-30 mt-2 w-60 rounded-xl border border-white/10 bg-black/85 backdrop-blur shadow-lg p-1"
-            role="menu"
-          >
+          <div className="absolute right-0 z-30 mt-2 w-60 rounded-xl border border-white/10 bg-black/85 backdrop-blur shadow-lg p-1" role="menu">
             <button
               type="button"
               className="w-full text-left px-3 py-2 rounded hover:bg-white/10"
-              onClick={() => {
-                copyProfileLink();
-                setOpen(false);
-              }}
+              onClick={() => { copyProfileLink(); setOpen(false); }}
             >
               Copy profile link
             </button>
 
             {!hasBlocked ? (
-              <form
-                action={blockUserAction}
-                onSubmit={() => {
-                  setHasBlocked(true);
-                  setOpen(false);
-                }}
-              >
+              <form action={blockUserAction} onSubmit={() => { setHasBlocked(true); setOpen(false); }}>
                 <input type="hidden" name="blockedHandle" value={profile.username} />
-                <button className="w-full text-left px-3 py-2 rounded hover:bg-white/10 text-red-300">
-                  Block User
-                </button>
+                <button className="w-full text-left px-3 py-2 rounded hover:bg-white/10 text-red-300">Block User</button>
               </form>
             ) : (
-              <form
-                action={unblockUserAction}
-                onSubmit={() => {
-                  setHasBlocked(false);
-                  setOpen(false);
-                }}
-              >
+              <form action={unblockUserAction} onSubmit={() => { setHasBlocked(false); setOpen(false); }}>
                 <input type="hidden" name="blockedHandle" value={profile.username} />
-                <button className="w-full text-left px-3 py-2 rounded hover:bg-white/10 text-red-300">
-                  Unblock User
-                </button>
+                <button className="w-full text-left px-3 py-2 rounded hover:bg-white/10 text-red-300">Unblock User</button>
               </form>
             )}
 
             <form action={reportUserAction} onSubmit={() => setOpen(false)}>
               <input type="hidden" name="handle" value={profile.username} />
               <input type="hidden" name="reason" value="OTHER" />
-              <button className="w-full text-left px-3 py-2 rounded hover:bg-white/10 text-red-300">
-                Report User
-              </button>
+              <button className="w-full text-left px-3 py-2 rounded hover:bg-white/10 text-red-300">Report User</button>
             </form>
           </div>
         )}
@@ -230,7 +182,8 @@ export default function ProfileHeader({
           sizes="100vw"
           onError={() => setBannerSrc(BANNER_PH)}
         />
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/20" />
+        {/* subtiler Verlauf für Lesbarkeit */}
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/30 via-black/0 to-black/35" />
       </div>
 
       {/* Content */}
@@ -238,75 +191,70 @@ export default function ProfileHeader({
         <div className="grid grid-cols-[auto_1fr_auto] items-start gap-3">
           {/* Avatar + Role */}
           <div className="flex flex-col items-center">
-            <div
-              className="relative shrink-0 rounded-full overflow-hidden ring-2 ring-black/40 border border-white/20 bg-white/10"
-              style={avatarStyle}
-              aria-hidden="true"
-            >
-              <Image
-                src={avatarSrc}
-                alt={`${profile.displayName} avatar`}
-                fill
-                className="object-cover"
-                sizes="(min-width:1024px) 128px, (min-width:640px) 96px, 80px"
-                onError={() => setAvatarSrc(AVATAR_PH)}
-              />
+            {/* hübscher Gradient-Ring */}
+            <div className="rounded-full p-[2px] bg-gradient-to-br from-[var(--purple)]/70 via-fuchsia-500/50 to-sky-400/50">
+              <div
+                className="relative rounded-full overflow-hidden bg-white/10 ring-1 ring-white/20 shadow-[0_6px_30px_-10px_rgba(0,0,0,.8)]"
+                style={avatarStyle}
+                aria-hidden="true"
+              >
+                <Image
+                  src={avatarSrc}
+                  alt={`${profile.displayName} avatar`}
+                  fill
+                  className="object-cover"
+                  sizes="(min-width:1024px) 136px, (min-width:640px) 104px, 88px"
+                  onError={() => setAvatarSrc(AVATAR_PH)}
+                />
+              </div>
             </div>
             <div className="mt-2">
-              <Chip tone="purple" size="lg">
-                {profile.role === 'domme' ? 'Domme' : 'Sub'}
-              </Chip>
+              <Chip tone="purple" size="lg">{profile.role === 'domme' ? 'Domme' : 'Sub'}</Chip>
             </div>
           </div>
 
-          {/* Name + Handle + Badges + INLINE-BUTTON */}
+          {/* Name + Offer-Button */}
           <div className="min-w-0">
             <div className="flex items-center gap-2 min-w-0">
-              <h1 className="text-[22px] md:text-[24px] font-bold leading-tight truncate">
+              <h1 className="text-[24px] md:text-[28px] font-extrabold leading-tight tracking-tight truncate">
                 {profile.displayName}
               </h1>
 
-              {/* Runder Offer-Button – fixierte Größe + rein visuell nach unten versetzt */}
+              {/* Prominenter Offer-Button */}
               <button
                 type="button"
-                onClick={onInlineButtonClick}
-                className="ml-1.5 inline-grid place-items-center rounded-full border border-white/15 hover:bg-white/5 w-10 h-10 translate-y-[10px]"
-                aria-label="Offers"
-                title="Offers"
+                onClick={handleOfferClick}
+                className="ml-1.5 h-9 px-4 rounded-full bg-[var(--purple)]/95 text-white text-[13px] font-semibold shadow-[0_8px_30px_-12px_rgba(139,92,246,.9)]
+                           hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--purple)]/60"
+                aria-label="Offer Menu"
+                title="Offer Menu"
               >
-                <OfferCircleIcon />
+                Offer Menu
               </button>
 
               {isBlockedByProfile && (
-                <Chip tone="danger" size="sm">
-                  <span className="inline-flex items-center gap-1"><BanIcon /> Blocked you</span>
-                </Chip>
+                <Chip tone="danger" size="sm"><span className="inline-flex items-center gap-1"><BanIcon /> Blocked you</span></Chip>
               )}
               {!isBlockedByProfile && hasBlocked && (
-                <Chip tone="danger" size="sm">
-                  <span className="inline-flex items-center gap-1"><BanIcon /> You blocked</span>
-                </Chip>
+                <Chip tone="danger" size="sm"><span className="inline-flex items-center gap-1"><BanIcon /> You blocked</span></Chip>
               )}
             </div>
 
-            <div className="mt-0.5 text-muted text-[13px] truncate">
-              @{profile.username}
-            </div>
+            <div className="mt-0.5 text-white/60 text-[13px] truncate">@{profile.username}</div>
 
-            {/* Schlanke Bio */}
             {profile.bio && profile.bio.trim() && (
-              <p className="mt-2 text-[15px] leading-relaxed text-white/90 whitespace-pre-wrap max-w-[65ch]">
+              <p className="mt-2 text-[15px] leading-relaxed text-white/90 whitespace-pre-wrap max-w-[68ch]">
                 {profile.bio}
               </p>
             )}
           </div>
 
-          {/* Actions – inkl. 3-Punkte-Menü */}
+          {/* Actions + More */}
           <div className="flex items-center gap-2 justify-end">
             {isOwner ? (
               <Link
                 href={`/${locale}/u/${profile.username}/edit`}
-                className="px-4 py-1.5 rounded-full border border-white/20 hover:bg-white/5 inline-block"
+                className="px-4 h-9 inline-flex items-center rounded-full border border-white/20 hover:bg-white/5"
               >
                 Edit Profile
               </Link>
@@ -315,13 +263,13 @@ export default function ProfileHeader({
                 {!blockedEither ? (
                   <form
                     action={isFollowing ? unfollowAction : followAction}
-                    onSubmit={() => startTransition(() => setIsFollowing((v) => !v))}
+                    onSubmit={() => startTransition(() => setIsFollowing(v => !v))}
                   >
                     <input type="hidden" name="userId" value={profile.id} />
                     <button
                       type="submit"
                       disabled={pending}
-                      className={`px-4 py-1.5 rounded-full ${
+                      className={`px-4 h-9 rounded-full inline-flex items-center ${
                         isFollowing
                           ? 'border border-white/25 hover:bg-white/5'
                           : 'bg-[var(--purple)] text-white hover:opacity-95'
@@ -335,7 +283,7 @@ export default function ProfileHeader({
                     type="button"
                     disabled
                     title={isBlockedByProfile ? 'This user has blocked you' : 'You have blocked this user'}
-                    className="px-4 py-1.5 rounded-full border border-white/20 text-white/60 cursor-not-allowed"
+                    className="px-4 h-9 rounded-full border border-white/20 text-white/60 cursor-not-allowed"
                   >
                     Follow
                   </button>
@@ -344,66 +292,39 @@ export default function ProfileHeader({
                 {!blockedEither ? (
                   <Link
                     href={`/${locale}/chat/new?to=${profile.username}`}
-                    className="px-3 py-1.5 rounded-full border border-white/20 hover:bg-white/5"
+                    className="px-3 h-9 inline-flex items-center rounded-full border border-white/20 hover:bg-white/5"
                   >
                     Message
                   </Link>
                 ) : (
-                  <span
-                    className="px-3 py-1.5 rounded-full border border-white/20 text-white/60 cursor-not-allowed"
-                    title="Messaging is disabled due to blocking"
-                    aria-disabled="true"
-                  >
+                  <span className="px-3 h-9 inline-flex items-center rounded-full border border-white/20 text-white/60 cursor-not-allowed" title="Messaging is disabled due to blocking" aria-disabled="true">
                     Message
                   </span>
                 )}
 
-                {/* 3-Punkte-Menü */}
                 <MoreMenu />
               </>
             )}
           </div>
         </div>
 
-        <div className="mt-6" />
+        <div className="mt-5" />
 
         {/* Meta */}
-        <div className="flex items-center text-[12px] leading-[1.35] text-muted">
+        <div className="flex items-center text-[12px] leading-[1.35] text-white/65">
           {profile.location && (
             <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-              <svg
-                viewBox="0 0 24 24"
-                className="w-3.5 h-3.5 relative top-[0.5px]"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={1.8}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-              >
+              <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 relative top-[0.5px]" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M12 21s-7-7.6-7-12a7 7 0 0 1 14 0c0 4.4-7 12-7 12Z" />
                 <circle cx="12" cy="9" r="2.5" />
               </svg>
               {profile.location}
             </span>
           )}
-
-          {profile.location && profile.createdAt && (
-            <span className="mx-3 select-none" aria-hidden="true">·</span>
-          )}
-
+          {profile.location && profile.createdAt && <span className="mx-3 select-none" aria-hidden="true">·</span>}
           {profile.createdAt && (
             <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-              <svg
-                viewBox="0 0 24 24"
-                className="w-3.5 h-3.5 relative top-[0.5px]"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={1.8}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-              >
+              <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 relative top-[0.5px]" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <rect x="3.5" y="5.5" width="17" height="15" rx="2" />
                 <path d="M8 3.5v4M16 3.5v4M3.5 9.5h17" />
               </svg>
@@ -417,7 +338,7 @@ export default function ProfileHeader({
           <Link href={`/${locale}/u/${profile.username}/following`} className="hover:underline" prefetch={false}>
             <strong className="text-white/95">{profile.stats.following}</strong> Following
           </Link>
-          <span className="mx-2 text-muted">·</span>
+          <span className="mx-2 text-white/55">·</span>
           <Link href={`/${locale}/u/${profile.username}/followers`} className="hover:underline" prefetch={false}>
             <strong className="text-white/95">{profile.stats.followers}</strong> Followers
           </Link>
@@ -435,6 +356,9 @@ export default function ProfileHeader({
           </ul>
         </nav>
       )}
+
+      {/* Offer Viewer */}
+      <OfferViewerModal open={offerOpen} onClose={() => setOfferOpen(false)} handle={profile.username} />
     </section>
   );
 }

@@ -227,7 +227,8 @@ export default function ChatThreadPage() {
                           text={m.text}
                           locale={locale}
                           validateMentions
-                          className="break-words"
+                          className="break-words "
+                          variant={mine ? 'chat' : 'default'}
                         />
                       )}
                       <div

@@ -1,8 +1,10 @@
+// src/components/ComposePostModal.tsx
 'use client';
 
 import * as React from 'react';
 import { createPortal } from 'react-dom';
 import { createPost } from '@/app/actions/posts';
+import MentionSuggest from '@/components/MentionSuggest';
 
 type Props = {
   open: boolean;
@@ -14,6 +16,10 @@ export default function ComposePostModal({ open, onClose }: Props) {
   React.useEffect(() => setMounted(true), []);
 
   const [text, setText] = React.useState('');
+
+  // Refs MÜSSEN vor einem möglichen return deklariert werden
+  const textareaRef = React.useRef<HTMLTextAreaElement | HTMLInputElement>(null);
+  const anchorRef = React.useRef<HTMLElement | null>(null);
 
   // File + Preview
   const [mediaFile, setMediaFile] = React.useState<File | null>(null);
@@ -39,11 +45,14 @@ export default function ComposePostModal({ open, onClose }: Props) {
     setMediaPreview(null);
   };
 
+  // Modal scroll lock
   React.useEffect(() => {
     if (!open) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = prev; };
+    return () => {
+      document.body.style.overflow = prev;
+    };
   }, [open]);
 
   if (!mounted || !open) return null;
@@ -71,7 +80,9 @@ export default function ComposePostModal({ open, onClose }: Props) {
   const modal = (
     <div
       style={overlayStyle}
-      onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
       role="dialog"
       aria-modal="true"
       aria-label="Compose post"
@@ -89,27 +100,38 @@ export default function ComposePostModal({ open, onClose }: Props) {
         </div>
 
         <form
-          // WICHTIG: Keine method/encType hier angeben, weil action eine Funktion ist!
           // ts-expect-error — Client Action, erhält FormData von React
           action={async (fd: FormData) => {
-            // Datei sicherstellen (FormData enthält i.d.R. schon "media")
             if (mediaFile) fd.set('media', mediaFile);
             await createPost(fd);
             onClose();
           }}
         >
           <div className="px-4 pt-4 pb-3 grid gap-3">
-            <textarea
-              name="text"
-              rows={3}
-              placeholder="Was gibt's Neues?"
-              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-[var(--purple)]/40"
-              maxLength={4000}
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-            />
+            {/* Anchor für MentionSuggest */}
+            <div ref={anchorRef as React.RefObject<HTMLDivElement>} className="relative">
+              <textarea
+                ref={textareaRef as React.RefObject<HTMLTextAreaElement>}
+                name="text"
+                rows={3}
+                placeholder="Was gibt's Neues?"
+                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-[var(--purple)]/40"
+                maxLength={4000}
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.defaultPrevented) return; // Suggest fängt Enter ab
+                }}
+              />
 
-            {/* Preview mit <img>, damit blob: URLs funktionieren */}
+              <MentionSuggest
+                anchorRef={anchorRef as React.RefObject<HTMLElement>}
+                value={text}
+                onChange={setText}
+                limit={8}
+              />
+            </div>
+
             {mediaPreview && (
               <figure className="relative overflow-hidden rounded-xl border border-white/10 bg-black/20">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -137,14 +159,23 @@ export default function ComposePostModal({ open, onClose }: Props) {
                     name="media"
                     accept="image/*"
                     className="sr-only"
-                    onChange={(e) => onPickImage(e.currentTarget.files?.[0] ?? null)}
+                    onChange={(e) =>
+                      onPickImage(e.currentTarget.files?.[0] ?? null)
+                    }
                   />
                   <span
                     className="inline-grid place-items-center"
                     style={{ width: 24, height: 24, color: 'var(--purple)' }}
                     aria-hidden
                   >
-                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
+                    <svg
+                      viewBox="0 0 24 24"
+                      width="20"
+                      height="20"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
                       <rect x="3.5" y="5.5" width="17" height="13" rx="2.2" />
                       <path d="M7.5 14.5 10.5 11l3 3 2.5-2.5 3 3" />
                       <circle cx="9" cy="9" r="1.5" />

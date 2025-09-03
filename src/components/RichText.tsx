@@ -10,6 +10,12 @@ type Props = {
   className?: string;
   /** Nur Styling-Hinweis – keine Netz-Checks hier */
   validateMentions?: boolean;
+  /**
+   * Steuert die Link-Farbe für @mentions/#hashtags.
+   * - "default": globales Styling (lila)
+   * - "chat": für Chat-Bubbles (hell/weiß auf lila Hintergrund)
+   */
+  variant?: 'default' | 'chat';
 };
 
 // Grund-Patterns
@@ -23,10 +29,23 @@ const TOKEN = new RegExp(`(${MENTION.source})|(${HASHTAG.source})`, 'giu');
 const IS_MENTION = new RegExp(`^${MENTION.source}$`, 'iu');
 const IS_HASHTAG = new RegExp(`^${HASHTAG.source}$`, 'iu');
 
-export default function RichText({ text, locale, className }: Props) {
+export default function RichText({
+  text,
+  locale,
+  className,
+  variant = 'default',
+}: Props) {
   const parts = React.useMemo(() => text.split(TOKEN).filter(Boolean), [text]);
 
-  // Hilfs-Handler: verhindert, dass die Card/Zeile klickt
+  // Link-Styles: nur im Chat anders
+  const linkCls =
+    variant === 'chat'
+      ? // auf lila Bubble: sehr hohe Lesbarkeit
+        'text-purple-800 underline decoration-purple-800 hover:decoration-purple font-semibold'
+      : // global: lila wie gehabt
+        'text-[var(--purple)] hover:underline font-medium';
+
+  // Hilfs-Handler: verhindert, dass z. B. Cards den Klick „schlucken”
   const stop = (e: React.SyntheticEvent) => {
     e.stopPropagation();
   };
@@ -41,7 +60,7 @@ export default function RichText({ text, locale, className }: Props) {
             <Link
               key={`m-${i}-${handle}`}
               href={`/${locale}/u/${handle}`}
-              className="text-[var(--purple)] hover:underline font-medium"
+              className={linkCls}
               prefetch={false}
               title={`@${handle}`}
               data-no-nav
@@ -61,7 +80,7 @@ export default function RichText({ text, locale, className }: Props) {
             <Link
               key={`h-${i}-${tag}`}
               href={`/${locale}/search?q=${encodeURIComponent('#' + tag)}`}
-              className="text-[var(--purple)] hover:underline font-medium"
+              className={linkCls}
               prefetch={false}
               title={`#${tag}`}
               data-no-nav

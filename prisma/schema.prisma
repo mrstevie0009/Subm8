@@ -62,9 +62,13 @@ model User {
   receivedTips                  Tip[]             @relation("receivedTips")
   Wallet                        Wallet?
 
-  // Neu
   notificationSettings          UserNotificationSettings?
   reportsMade                   ContentReport[]
+
+  offerTitle String?  @db.Text
+  offerText  String?  @db.Text
+  offerBgUrl String?
+  offerBgDim Float?   @default(0)
 }
 
 model Follow {
