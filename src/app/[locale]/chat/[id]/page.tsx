@@ -1,4 +1,3 @@
-// src/app/[locale]/chat/[id]/page.tsx
 'use client';
 
 import * as React from 'react';
@@ -14,7 +13,7 @@ type DbRole = 'DOMME' | 'SUBMISSIVE';
 
 type ThreadOk = {
   ok: true;
-  me: { id: string };
+  me: { id: string; role: DbRole }; // ⬅️ Rolle des Viewers kommt mit
   other: {
     id: string;
     handle: string;
@@ -47,6 +46,8 @@ export default function ChatThreadPage() {
   const locale = useLocale();
 
   const [meId, setMeId] = React.useState<string | null>(null);
+  const [meRole, setMeRole] = React.useState<'domme' | 'submissive' | null>(null);
+
   const [other, setOther] = React.useState<{
     id: string;
     username: string;
@@ -85,6 +86,8 @@ export default function ChatThreadPage() {
       if (!json.ok) throw new Error(json.error || 'Failed to load');
 
       setMeId(json.me.id);
+      setMeRole(mapRole(json.me.role)); // ⬅️ UI-Rolle merken
+
       setViewerHasBlocked(json.viewerHasBlocked ?? false);
       setIsBlockedByOther(json.isBlockedByOther ?? false);
 
@@ -250,7 +253,9 @@ export default function ChatThreadPage() {
         </div>
       </main>
 
+      {/* ⬇️ Rolle an den Composer übergeben */}
       <ChatComposer
+        viewerRole={meRole ?? 'submissive'}  // Fallback falls noch lädt
         disabled={disabled}
         disabledNotice={disabledNotice}
         onSend={(text) => sendMessage({ text })}

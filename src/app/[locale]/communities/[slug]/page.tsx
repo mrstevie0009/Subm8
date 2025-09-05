@@ -1,13 +1,14 @@
-// src/app/[locale]/communities/[slug]/page.tsx
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/currentUser';
-import PostCard, { type Post as PostCardPost } from '@/components/PostCard';
-import { relativeTime } from '@/lib/relativeTime';
 import type { Role } from '@prisma/client';
+import { relativeTime } from '@/lib/relativeTime';
+import type { Post as PostCardPost } from '@/components/PostCard';
 import CommunityJoinButton from '@/components/CommunityJoinButton';
 import CommunityComposer from '@/components/CommunityComposer';
 import BackButton from '@/components/BackButton';
 import { notFound } from 'next/navigation';
+import CommunityCompactHeader from '@/components/CommunityCompactHeader';
+import CommunityFeedClient from '@/components/CommunityFeedClient';
 
 type Params = { locale: string; slug: string };
 
@@ -15,11 +16,10 @@ function toUiRole(role: Role): 'domme' | 'submissive' {
   return role === 'DOMME' ? 'domme' : 'submissive';
 }
 
-export default async function CommunityPage({
-  params,
-}: { params: Promise<Params> }) {
-  const { locale, slug } = await params;
+type FeedPost = PostCardPost & { createdAtISO: string };
 
+export default async function CommunityPage({ params }: { params: Promise<Params> }) {
+  const { locale, slug } = await params;
   const me = await getCurrentUser().catch(() => null);
 
   const community = await prisma.community.findUnique({
@@ -35,9 +35,7 @@ export default async function CommunityPage({
     },
   });
 
-  if (!community) {
-    notFound();
-  }
+  if (!community) notFound();
 
   const joined = me
     ? !!(await prisma.communityMember.findUnique({
@@ -49,11 +47,21 @@ export default async function CommunityPage({
   const posts = await prisma.post.findMany({
     where: { communityId: community.id },
     orderBy: { createdAt: 'desc' },
-    include: { author: true },
+    include: {
+      author: {
+        select: {
+          displayName: true,
+          handle: true,
+          role: true,
+          avatarUrl: true,
+        },
+      },
+      _count: { select: { Like: true, Comment: true } },
+    },
     take: 30,
   });
 
-  const items: PostCardPost[] = posts.map((p) => ({
+  const items: FeedPost[] = posts.map((p) => ({
     id: p.id,
     author: {
       name: p.author.displayName,
@@ -62,15 +70,20 @@ export default async function CommunityPage({
       avatarUrl: p.author.avatarUrl ?? undefined,
     },
     createdAt: relativeTime(p.createdAt, locale),
+    createdAtISO: p.createdAt.toISOString(),
     text: p.text,
     mediaUrl: p.mediaUrl ?? undefined,
     mediaAlt: p.mediaAlt ?? undefined,
-    stats: { comments: 0, reposts: 0, likes: 0 },
+    stats: {
+      comments: p._count.Comment ?? 0,
+      reposts: 0,
+      likes: p._count.Like ?? 0,
+    },
   }));
 
   return (
     <section className="grid gap-4 max-w-2xl mx-auto">
-      {/* Header */}
+      {/* --- GROSSER HEADER --- */}
       <header className="rounded-app border border-sub shadow-app p-4 overflow-hidden">
         {community.bannerUrl && (
           <div className="-mx-4 -mt-4 mb-3 h-28 relative">
@@ -81,7 +94,7 @@ export default async function CommunityPage({
         )}
 
         <div className="flex items-start justify-between gap-3">
-          {/* Linker Block: Back-Button absolut, Text mit identischem Einzug */}
+          {/* Links: Back + Texte */}
           <div className="min-w-0 relative pl-10">
             <div className="absolute left-0 top-0.5">
               <BackButton fallbackHref={`/${locale}/communities`} />
@@ -106,6 +119,15 @@ export default async function CommunityPage({
         </div>
       </header>
 
+      {/* Compact Header (fixed, blendet ein beim Scrollen) */}
+      <CommunityCompactHeader
+        locale={locale}
+        name={community.name}
+        slug={community.slug}
+        initialJoined={joined}
+        initialMembers={community._count.CommunityMember}
+      />
+
       {/* Composer – nur wenn Mitglied */}
       {joined && (
         <div className="rounded-app border border-sub shadow-app p-4">
@@ -113,17 +135,8 @@ export default async function CommunityPage({
         </div>
       )}
 
-      {/* Feed */}
-      <div className="grid gap-3">
-        {items.map((post) => (
-          <PostCard key={post.id} post={post} />
-        ))}
-        {items.length === 0 && (
-          <div className="rounded-app border border-sub shadow-app p-8 text-center opacity-70">
-            Noch keine Posts in dieser Community.
-          </div>
-        )}
-      </div>
+      {/* FEED + New-Posts-Button (Client) */}
+      <CommunityFeedClient initialItems={items} locale={locale} slug={community.slug} />
     </section>
   );
 }

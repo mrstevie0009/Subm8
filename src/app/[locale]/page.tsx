@@ -1,10 +1,9 @@
-// src/app/[locale]/page.tsx
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/currentUser';
-import PostCard from '@/components/PostCard';
 import type { Post as PostCardPost } from '@/components/PostCard';
 import { relativeTime } from '@/lib/relativeTime';
 import type { Role } from '@prisma/client';
+import HomeFeedClient from '@/components/HomeFeedClient';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,12 +13,13 @@ function toUiRole(role: Role): 'domme' | 'submissive' {
   return role === 'DOMME' ? 'domme' : 'submissive';
 }
 
-type FeedPost = PostCardPost & { initiallyBookmarked?: boolean };
+export type FeedPost = PostCardPost & {
+  initiallyBookmarked?: boolean;
+  createdAtISO: string; // für spätere Abfragen im Client
+};
 
 export default async function HomePage({ params }: { params: Promise<Params> }) {
-  // ⬇️ params ist jetzt ein Promise
   const { locale } = await params;
-
   const me = await getCurrentUser().catch(() => null);
 
   const [posts, likedByMe, bookmarkedByMe] = await Promise.all([
@@ -40,16 +40,10 @@ export default async function HomePage({ params }: { params: Promise<Params> }) 
       take: 30,
     }),
     me
-      ? prisma.like.findMany({
-          where: { userId: me.id },
-          select: { postId: true },
-        })
+      ? prisma.like.findMany({ where: { userId: me.id }, select: { postId: true } })
       : Promise.resolve([] as { postId: string }[]),
     me
-      ? prisma.bookmark.findMany({
-          where: { userId: me.id },
-          select: { postId: true },
-        })
+      ? prisma.bookmark.findMany({ where: { userId: me.id }, select: { postId: true } })
       : Promise.resolve([] as { postId: string }[]),
   ]);
 
@@ -59,7 +53,6 @@ export default async function HomePage({ params }: { params: Promise<Params> }) 
   // Block-Flags (Viewer vs. Autoren)
   let hasBlockedSet = new Set<string>();
   let blockedBySet = new Set<string>();
-
   if (me) {
     const authorIds = Array.from(new Set(posts.map((p) => p.author.id)));
     if (authorIds.length > 0) {
@@ -87,6 +80,7 @@ export default async function HomePage({ params }: { params: Promise<Params> }) 
       avatarUrl: p.author.avatarUrl ?? undefined,
     },
     createdAt: relativeTime(p.createdAt, locale),
+    createdAtISO: p.createdAt.toISOString(),
     text: p.text,
     mediaUrl: p.mediaUrl ?? undefined,
     mediaAlt: p.mediaAlt ?? undefined,
@@ -104,11 +98,5 @@ export default async function HomePage({ params }: { params: Promise<Params> }) 
     initiallyBookmarked: bookmarkedSet.has(p.id),
   }));
 
-  return (
-    <section className="grid gap-3">
-      {items.map((post) => (
-        <PostCard key={post.id} post={post} />
-      ))}
-    </section>
-  );
+  return <HomeFeedClient initialItems={items} locale={locale} />;
 }

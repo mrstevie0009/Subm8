@@ -76,8 +76,9 @@ export default function ProfileHeader({
 }: Props) {
   const locale = useLocale();
 
-  const avatarSize = 'clamp(88px, 18vw, 136px)';
-  const bannerH    = 'clamp(160px, 26vw, 260px)';
+  const AVATAR_BIG   = 'clamp(88px, 18vw, 136px)';
+  const AVATAR_SMALL = '40px';
+  const BANNER_H     = 'clamp(160px, 26vw, 260px)';
 
   const [bannerSrc, setBannerSrc] = React.useState<string>(profile.bannerUrl || BANNER_PH);
   const [avatarSrc, setAvatarSrc] = React.useState<string>(profile.avatarUrl || AVATAR_PH);
@@ -91,28 +92,54 @@ export default function ProfileHeader({
   const [offerOpen, setOfferOpen] = React.useState(false);
   const handleOfferClick = onInlineButtonClick ?? (() => setOfferOpen(true));
 
-  type CSSVars = React.CSSProperties & { ['--avatar']?: string };
-  const avatarStyle: CSSVars = {
-    width: avatarSize,
-    height: avatarSize,
-    '--avatar': avatarSize,
-  };
+  // ---- Compact Header Logik
+  const [compact, setCompact] = React.useState(false);
+  const sentinelRef = React.useRef<HTMLDivElement | null>(null);
 
-  function BanIcon(props: React.SVGProps<SVGSVGElement>) {
-    return (
-      <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} {...props}>
-        <circle cx="12" cy="12" r="9" />
-        <path d="M8 8l8 8" />
-      </svg>
+  React.useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver(
+      ([entry]) => setCompact(!entry.isIntersecting),
+      { rootMargin: '-64px 0px 0px 0px', threshold: 0 }
     );
-  }
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
 
+  type CSSVars = React.CSSProperties & { ['--avatar']?: string; ['--bannerH']?: string };
+  const rootVars: CSSVars = { ['--avatar']: compact ? AVATAR_SMALL : AVATAR_BIG, ['--bannerH']: BANNER_H };
+  const avatarStyle: React.CSSProperties = {
+    width: 'var(--avatar)',
+    height: 'var(--avatar)',
+    transition: 'width .2s ease, height .2s ease',
+  };
+  
   function DotIcon(props: React.SVGProps<SVGSVGElement>) {
     return (
       <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth={2} {...props}>
         <circle cx="5" cy="12" r="1.6" />
         <circle cx="12" cy="12" r="1.6" />
         <circle cx="19" cy="12" r="1.6" />
+      </svg>
+    );
+  }
+  function MessageIcon(props: React.SVGProps<SVGSVGElement>) {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} {...props}>
+        <path d="M7 8h10M7 12h6" />
+        <path d="M20 12a8 8 0 1 0-3.08 6.3L20 20l-.7-2.92A7.96 7.96 0 0 0 20 12Z" />
+      </svg>
+    );
+  }
+  function GiftIcon(props: React.SVGProps<SVGSVGElement>) {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} {...props}>
+        <path d="M20 7H4v4h16V7Z" />
+        <path d="M12 7v14" />
+        <path d="M7.5 7C6 7 5 5.8 5 4.5S6 2 7.5 2 11 5 12 7" />
+        <path d="M16.5 7C18 7 19 5.8 19 4.5S18 2 16.5 2 13 5 12 7" />
+        <path d="M4 11h16v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-7Z" />
       </svg>
     );
   }
@@ -138,7 +165,7 @@ export default function ProfileHeader({
         </button>
 
         {open && (
-          <div className="absolute right-0 z-30 mt-2 w-60 rounded-xl border border-white/10 bg-black/85 backdrop-blur shadow-lg p-1" role="menu">
+          <div className="absolute right-0 z-50 mt-2 w-60 rounded-xl border border-white/10 bg-black/85 backdrop-blur shadow-lg p-1" role="menu">
             <button
               type="button"
               className="w-full text-left px-3 py-2 rounded hover:bg-white/10"
@@ -170,29 +197,168 @@ export default function ProfileHeader({
     );
   }
 
+  const roleFull  = profile.role === 'domme' ? 'Domme' : 'Sub';
+  const roleShort = profile.role === 'domme' ? 'Dom'   : 'Sub';
+
   return (
-    <section className="rounded-app border border-sub overflow-hidden shadow-app relative">
-      {/* Banner */}
-      <div className="relative" style={{ height: bannerH }}>
-        <Image
-          src={bannerSrc}
-          alt=""
-          fill
-          className="object-cover"
-          sizes="100vw"
-          onError={() => setBannerSrc(BANNER_PH)}
-        />
-        {/* subtiler Verlauf für Lesbarkeit */}
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/30 via-black/0 to-black/35" />
+    <section className="rounded-app border border-sub overflow-hidden shadow-app relative" style={rootVars}>
+      {/* FIXED MINI HEADER */}
+      <div
+        className={`
+          fixed top-0 left-0 right-0 z-[60]
+          border-b border-white/10
+          backdrop-blur bg-black/55
+          transition-all duration-200
+          ${compact ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 -translate-y-3 pointer-events-none'}
+        `}
+        role="banner"
+      >
+        <div className="max-w-screen-xl mx-auto">
+          <div className="h-[56px] px-3 flex items-center gap-2">
+            <div className="rounded-full overflow-hidden shrink-0" style={{ width: 32, height: 32 }}>
+              <Image src={avatarSrc} alt="" width={32} height={32} className="object-cover" />
+            </div>
+            <div className="min-w-0 mr-auto">
+              <div className="text-[15px] font-semibold truncate">{profile.displayName}</div>
+              <div className="text-[12px] text-white/60 truncate">@{profile.username}</div>
+            </div>
+            {!isOwner && !blockedEither && (
+              <Link
+                href={`/${locale}/chat/new?to=${profile.username}`}
+                prefetch={false}
+                aria-label="Message"
+                title="Message"
+                className="inline-grid place-items-center rounded-full border border-white/20 hover:bg-white/5 h-8 w-8"
+              >
+                <MessageIcon className="w-[16px] h-[16px]" />
+              </Link>
+            )}
+            {/* In der Compact-Version bleibt das MoreMenu hier */}
+            <MoreMenu />
+          </div>
+
+          {showTabs && (
+            <nav className="px-1 border-t border-white/10">
+              <ul className="grid grid-cols-3 text-center text-[14px] font-medium">
+                <TabBtn label="Posts"       active={activeTab === 'posts'}       onClick={() => onTabChange?.('posts')} />
+                <TabBtn label="Galerie"     active={activeTab === 'gallery'}     onClick={() => onTabChange?.('gallery')} />
+                <TabBtn label="Leaderboard" active={activeTab === 'leaderboard'} onClick={() => onTabChange?.('leaderboard')} />
+              </ul>
+            </nav>
+          )}
+        </div>
       </div>
+
+      {/* Banner */}
+      <div className="relative" style={{ height: 'var(--bannerH)' }}>
+        <Image src={bannerSrc} alt="" fill className="object-cover" sizes="100vw" onError={() => setBannerSrc(BANNER_PH)} />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/30 via-black/0 to-black/35" />
+
+        {/* Drei-Punkte-Icon als Overlay oben rechts über dem Banner */}
+        <div className="absolute top-2 right-2 z-10">
+          <MoreMenu />
+        </div>
+      </div>
+
+      {/* Sentinel */}
+      <div ref={sentinelRef} aria-hidden className="h-1" />
 
       {/* Content */}
       <div className="px-4 pb-0">
-        <div className="grid grid-cols-[auto_1fr_auto] items-start gap-3">
-          {/* Avatar + Role */}
-          <div className="flex flex-col items-center">
-            {/* hübscher Gradient-Ring */}
-            <div className="rounded-full p-[2px] bg-gradient-to-br from-[var(--purple)]/70 via-fuchsia-500/50 to-sky-400/50">
+        {/* Top-Zeile: Role links (mit Padding, damit sie rechts neben dem Avatar startet), Actions rechts */}
+        <div
+          className="flex items-center justify-between gap-2 pt-2 sm:pt-3"
+          style={{ paddingLeft: 'calc(var(--avatar) + 16px)' }}
+        >
+          <Chip tone="purple" size="lg">
+            <span className="sm:hidden">{roleShort}</span>
+            <span className="hidden sm:inline">{roleFull}</span>
+          </Chip>
+
+          <div className="flex items-center gap-2 flex-wrap justify-end">
+            {isOwner ? (
+              <Link
+                href={`/${locale}/u/${profile.username}/edit`}
+                className="px-3 sm:px-4 h-9 inline-flex items-center rounded-full border border-white/20 hover:bg-white/5 text-[12px] sm:text-[13px]"
+              >
+                Edit Profile
+              </Link>
+            ) : (
+              <>
+                {!blockedEither ? (
+                  <form
+                    action={isFollowing ? unfollowAction : followAction}
+                    onSubmit={() => startTransition(() => setIsFollowing(v => !v))}
+                  >
+                    <input type="hidden" name="userId" value={profile.id} />
+                    <button
+                      type="submit"
+                      disabled={pending}
+                      className={`px-3 sm:px-4 h-9 rounded-full inline-flex items-center text-[12px] sm:text-[13px] ${
+                        isFollowing
+                          ? 'border border-white/25 hover:bg-white/5'
+                          : 'bg-[var(--purple)] text-white hover:opacity-95'
+                      }`}
+                    >
+                      {isFollowing ? 'Unfollow' : 'Follow'}
+                    </button>
+                  </form>
+                ) : (
+                  <button
+                    type="button"
+                    disabled
+                    title={isBlockedByProfile ? 'This user has blocked you' : 'You have blocked this user'}
+                    className="px-3 sm:px-4 h-9 rounded-full border border-white/20 text-white/60 cursor-not-allowed text-[12px] sm:text-[13px]"
+                  >
+                    Follow
+                  </button>
+                )}
+
+                {!blockedEither ? (
+                  <Link
+                    href={`/${locale}/chat/new?to=${profile.username}`}
+                    prefetch={false}
+                    aria-label="Message"
+                    title="Message"
+                    className="inline-grid place-items-center rounded-full border border-white/20 hover:bg-white/5 h-9 w-9"
+                  >
+                    <MessageIcon className="w-[18px] h-[18px]" />
+                    <span className="sr-only">Message</span>
+                  </Link>
+                ) : (
+                  <span
+                    aria-hidden
+                    title="Messaging is disabled due to blocking"
+                    className="inline-grid place-items-center rounded-full border border-white/20 text-white/60 h-9 w-9 cursor-not-allowed"
+                  >
+                    <MessageIcon className="w-[18px] h-[18px] opacity-60" />
+                  </span>
+                )}
+
+                {/* Offer: XS Icon, ab sm Text */}
+                <button
+                  type="button"
+                  onClick={handleOfferClick}
+                  className="h-9 inline-flex items-center rounded-full bg-[var(--purple)]/95 text-white text-[12px] sm:text-[13px] font-semibold shadow-[0_8px_30px_-12px_rgba(139,92,246,.9)]
+                             hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--purple)]/60 px-2 sm:px-4"
+                  aria-label="Offer Menu"
+                  title="Offer Menu"
+                >
+                  <GiftIcon className="w-[18px] h-[18px] sm:mr-1.5" />
+                  <span className="hidden sm:inline">Offer</span>
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Avatar + Name/Handle direkt darunter */}
+        <div className="grid grid-cols-[auto_1fr] gap-x-3 items-start">
+          <div className="col-start-1">
+            <div
+              className="inline-block w-fit rounded-full p-[2px] bg-gradient-to-br from-[var(--purple)]/70 via-fuchsia-500/50 to-sky-400/50"
+              style={{ marginTop: 'calc(var(--avatar) * -0.5)' }}
+            >
               <div
                 className="relative rounded-full overflow-hidden bg-white/10 ring-1 ring-white/20 shadow-[0_6px_30px_-10px_rgba(0,0,0,.8)]"
                 style={avatarStyle}
@@ -208,110 +374,24 @@ export default function ProfileHeader({
                 />
               </div>
             </div>
-            <div className="mt-2">
-              <Chip tone="purple" size="lg">{profile.role === 'domme' ? 'Domme' : 'Sub'}</Chip>
-            </div>
           </div>
 
-          {/* Name + Offer-Button */}
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 min-w-0">
-              <h1 className="text-[24px] md:text-[28px] font-extrabold leading-tight tracking-tight truncate">
-                {profile.displayName}
-              </h1>
-
-              {/* Prominenter Offer-Button */}
-              <button
-                type="button"
-                onClick={handleOfferClick}
-                className="ml-1.5 h-9 px-4 rounded-full bg-[var(--purple)]/95 text-white text-[13px] font-semibold shadow-[0_8px_30px_-12px_rgba(139,92,246,.9)]
-                           hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--purple)]/60"
-                aria-label="Offer Menu"
-                title="Offer Menu"
-              >
-                Offer Menu
-              </button>
-
-              {isBlockedByProfile && (
-                <Chip tone="danger" size="sm"><span className="inline-flex items-center gap-1"><BanIcon /> Blocked you</span></Chip>
-              )}
-              {!isBlockedByProfile && hasBlocked && (
-                <Chip tone="danger" size="sm"><span className="inline-flex items-center gap-1"><BanIcon /> You blocked</span></Chip>
-              )}
-            </div>
-
-            <div className="mt-0.5 text-white/60 text-[13px] truncate">@{profile.username}</div>
-
-            {profile.bio && profile.bio.trim() && (
-              <p className="mt-2 text-[15px] leading-relaxed text-white/90 whitespace-pre-wrap max-w-[68ch]">
-                {profile.bio}
-              </p>
-            )}
-          </div>
-
-          {/* Actions + More */}
-          <div className="flex items-center gap-2 justify-end">
-            {isOwner ? (
-              <Link
-                href={`/${locale}/u/${profile.username}/edit`}
-                className="px-4 h-9 inline-flex items-center rounded-full border border-white/20 hover:bg-white/5"
-              >
-                Edit Profile
-              </Link>
-            ) : (
-              <>
-                {!blockedEither ? (
-                  <form
-                    action={isFollowing ? unfollowAction : followAction}
-                    onSubmit={() => startTransition(() => setIsFollowing(v => !v))}
-                  >
-                    <input type="hidden" name="userId" value={profile.id} />
-                    <button
-                      type="submit"
-                      disabled={pending}
-                      className={`px-4 h-9 rounded-full inline-flex items-center ${
-                        isFollowing
-                          ? 'border border-white/25 hover:bg-white/5'
-                          : 'bg-[var(--purple)] text-white hover:opacity-95'
-                      }`}
-                    >
-                      {isFollowing ? 'Unfollow' : 'Follow'}
-                    </button>
-                  </form>
-                ) : (
-                  <button
-                    type="button"
-                    disabled
-                    title={isBlockedByProfile ? 'This user has blocked you' : 'You have blocked this user'}
-                    className="px-4 h-9 rounded-full border border-white/20 text-white/60 cursor-not-allowed"
-                  >
-                    Follow
-                  </button>
-                )}
-
-                {!blockedEither ? (
-                  <Link
-                    href={`/${locale}/chat/new?to=${profile.username}`}
-                    className="px-3 h-9 inline-flex items-center rounded-full border border-white/20 hover:bg-white/5"
-                  >
-                    Message
-                  </Link>
-                ) : (
-                  <span className="px-3 h-9 inline-flex items-center rounded-full border border-white/20 text-white/60 cursor-not-allowed" title="Messaging is disabled due to blocking" aria-disabled="true">
-                    Message
-                  </span>
-                )}
-
-                <MoreMenu />
-              </>
-            )}
+          <div className="col-start-1 mt-1 min-w-0">
+            <h1 className="text-[clamp(18px,5.5vw,28px)] font-extrabold leading-tight tracking-tight truncate">
+              {profile.displayName}
+            </h1>
+            <div className="text-white/60 text-[13px] truncate">@{profile.username}</div>
           </div>
         </div>
 
-        <div className="mt-5" />
+        {/* Bio & Meta */}
+        {profile.bio && profile.bio.trim() && (
+          <p className="mt-3 text-[15px] leading-relaxed text-white/90 whitespace-pre-wrap">
+            {profile.bio}
+          </p>
+        )}
 
-        {/* Meta */}
-        <div className="flex items-center text-[12px] leading-[1.35] text-white/65">
+        <div className="mt-3 flex items-center text-[12px] leading-[1.35] text-white/65 flex-wrap gap-x-3 gap-y-1">
           {profile.location && (
             <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
               <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 relative top-[0.5px]" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -321,7 +401,6 @@ export default function ProfileHeader({
               {profile.location}
             </span>
           )}
-          {profile.location && profile.createdAt && <span className="mx-3 select-none" aria-hidden="true">·</span>}
           {profile.createdAt && (
             <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
               <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 relative top-[0.5px]" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -333,22 +412,12 @@ export default function ProfileHeader({
           )}
         </div>
 
-        {/* Following · Followers */}
-        <div className="mt-3 text-[14px]">
-          <Link href={`/${locale}/u/${profile.username}/following`} className="hover:underline" prefetch={false}>
-            <strong className="text-white/95">{profile.stats.following}</strong> Following
-          </Link>
-          <span className="mx-2 text-white/55">·</span>
-          <Link href={`/${locale}/u/${profile.username}/followers`} className="hover:underline" prefetch={false}>
-            <strong className="text-white/95">{profile.stats.followers}</strong> Followers
-          </Link>
-        </div>
-
-        <div className="mt-6" />
+        <div className="mt-4" />
       </div>
 
+      {/* Tabs nur im großen Header wenn nicht compact */}
       {showTabs && (
-        <nav className="border-t border-white/10">
+        <nav className={`border-t border-white/10 ${compact ? 'hidden' : 'block'}`}>
           <ul className="grid grid-cols-3 text-center text-[14px] font-medium">
             <TabBtn label="Posts"       active={activeTab === 'posts'}       onClick={() => onTabChange?.('posts')} />
             <TabBtn label="Galerie"     active={activeTab === 'gallery'}     onClick={() => onTabChange?.('gallery')} />
@@ -357,7 +426,6 @@ export default function ProfileHeader({
         </nav>
       )}
 
-      {/* Offer Viewer */}
       <OfferViewerModal open={offerOpen} onClose={() => setOfferOpen(false)} handle={profile.username} />
     </section>
   );

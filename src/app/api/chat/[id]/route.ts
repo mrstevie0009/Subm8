@@ -7,7 +7,7 @@ import { getCurrentUser } from '@/lib/currentUser';
 
 export const dynamic = 'force-dynamic';
 
-type Ctx = { params: { id: string } };
+type Ctx = { params: Promise<{ id: string }> };
 
 /* ---------------------------- helpers ----------------------------------- */
 
@@ -28,8 +28,8 @@ async function getBlockFlags(aUserId: string, bUserId: string) {
     prisma.block.findFirst({ where: { blockerId: bUserId, blockedId: aUserId } }),
   ]);
   return {
-    viewerHasBlocked: !!aBlocksB,   // „ich habe den anderen blockiert“
-    isBlockedByOther: !!bBlocksA,   // „der andere hat mich blockiert“
+    viewerHasBlocked: !!aBlocksB, // „ich habe den anderen blockiert“
+    isBlockedByOther: !!bBlocksA, // „der andere hat mich blockiert“
   };
 }
 
@@ -37,7 +37,7 @@ async function getBlockFlags(aUserId: string, bUserId: string) {
 
 export async function GET(_req: Request, { params }: Ctx) {
   try {
-    const { id } = params;
+    const { id } = await params; // ⬅️ params awaiten
     const me = await getCurrentUser();
     if (!me) return Response.json({ ok: false, error: 'Not authenticated' }, { status: 401 });
 
@@ -89,10 +89,15 @@ export async function GET(_req: Request, { params }: Ctx) {
       });
     }
 
+    // Rolle des angemeldeten Users sicherstellen (Fallback, falls getCurrentUser die Rolle nicht liefert)
+    const meRole =
+      (me).role ??
+      (await prisma.user.findUnique({ where: { id: me.id }, select: { role: true } }))?.role;
+
     return Response.json({
       ok: true,
-      me: { id: me.id },
-      other, // enthält jetzt auch role
+      me: { id: me.id, role: meRole },
+      other, // enthält role
       messages: messages.map((m) => ({
         id: m.id,
         at: m.createdAt.toISOString(),
@@ -116,7 +121,7 @@ export async function GET(_req: Request, { params }: Ctx) {
 
 export async function POST(req: Request, { params }: Ctx) {
   try {
-    const { id } = params;
+    const { id } = await params; // ⬅️ params awaiten
     const me = await getCurrentUser();
     if (!me) return Response.json({ ok: false, error: 'Not authenticated' }, { status: 401 });
 

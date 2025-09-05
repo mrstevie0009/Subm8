@@ -69,6 +69,8 @@ export default function ChatHeader({
     return () => document.removeEventListener('mousedown', onDocClick);
   }, [menuOpen]);
 
+  const profileHref = `/${locale}/u/${other.username}`;
+
   return (
     <header className="sticky top-0 z-40 border-b border-white/10 bg-black/65 backdrop-blur">
       <div className="mx-auto w-full max-w-[760px] px-3 py-2">
@@ -86,11 +88,13 @@ export default function ChatHeader({
             </svg>
           </Link>
 
-          {/* Avatar */}
-          <div
-            className="relative overflow-hidden rounded-full border border-white/15 bg-white/10"
+          {/* Avatar → Profil */}
+          <Link
+            href={profileHref}
+            prefetch={false}
+            aria-label={`${other.displayName} profile`}
+            className="relative overflow-hidden rounded-full border border-white/15 bg-white/10 block"
             style={{ width: avatar, height: avatar }}
-            aria-hidden="true"
           >
             <Image
               src={other.avatarUrl || '/images/avatar-placeholder.png'}
@@ -99,13 +103,21 @@ export default function ChatHeader({
               className="object-cover"
               sizes={avatar}
             />
-          </div>
+          </Link>
 
           {/* Name + Handle + Badges */}
           <div className="min-w-0 flex-1 leading-tight">
             <div className="flex items-center gap-2">
+              {/* Displayname → Profil */}
               <h1 className="font-semibold truncate" style={{ fontSize: titleSz, lineHeight: 1.1 }}>
-                {other.displayName}
+                <Link
+                  href={profileHref}
+                  prefetch={false}
+                  className="hover:underline truncate"
+                  rel="author"
+                >
+                  {other.displayName}
+                </Link>
               </h1>
 
               {/* Rolle */}
@@ -128,8 +140,17 @@ export default function ChatHeader({
                 <Badge tone="danger">You blocked</Badge>
               )}
             </div>
-            <div className="text-muted truncate" style={{ fontSize: metaSz }}>
-              @{other.username}
+
+            {/* Handle → Profil */}
+            <div className="truncate" style={{ fontSize: metaSz }}>
+              <Link
+                href={profileHref}
+                prefetch={false}
+                className="text-muted hover:underline"
+                rel="author"
+              >
+                @{other.username}
+              </Link>
             </div>
           </div>
 
@@ -155,7 +176,7 @@ export default function ChatHeader({
                 role="menu"
               >
                 <Link
-                  href={`/${locale}/u/${other.username}`}
+                  href={profileHref}
                   className="block px-3 py-2 rounded hover:bg-white/10"
                   onClick={() => setMenuOpen(false)}
                 >
@@ -173,6 +194,7 @@ export default function ChatHeader({
                 >
                   Mute conversation
                 </button>
+
                 {/* Block/Unblock */}
                 {!iBlocked ? (
                   <form
@@ -216,8 +238,6 @@ export default function ChatHeader({
                     Report Conversation
                   </button>
                 </form>
-
-                
               </div>
             )}
           </div>
