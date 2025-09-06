@@ -1,3 +1,4 @@
+// src/lib/vat.ts
 export type VatInfo = { country: string; rateBps: number };
 
 // sehr kleine EU-Map – ergänzbar

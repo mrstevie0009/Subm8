@@ -15,24 +15,29 @@ export default function PageChrome({
   children: React.ReactNode;
   locale: string;
 }) {
-  const pathname = usePathname();
+  const pathnameRaw = usePathname();
+  // trailing slash entfernen, damit "/en/chat/" === "/en/chat"
+  const pathname = React.useMemo(
+    () => (pathnameRaw === '/' ? '/' : pathnameRaw.replace(/\/+$/, '')),
+    [pathnameRaw]
+  );
 
   // Bookmarks ohne Header
   const inBookmarks = pathname.startsWith(`/${locale}/settings/bookmarks`);
 
-  // Chats erkennen
-  const inChatThread = pathname.startsWith(`/${locale}/chat/`);
-  const inChat       = inChatThread;
+  // Chat-Übersicht vs. Chat-Thread
+  const chatBase = `/${locale}/chat`;
+  const inChatThread   = pathname.startsWith(`${chatBase}/`);
 
-  // Header/BottomNav ausblenden in Chats
-  const hideHeader    = inBookmarks || inChat;
-  const hideBottomNav = inChat;
+  // Header/Navi in Threads ausblenden – in der Übersicht Header anzeigen
+  const hideHeader    = inBookmarks || inChatThread;
+  const hideBottomNav = inChatThread;
 
-  // Höhen/Padding berechnen
+  // Höhen/Padding
   const contentTopPad    = hideHeader ? '12px' : 'calc(clamp(24px, 2.8vw, 50px) + 20px)';
   const contentBottomPad = hideBottomNav ? '12px' : 'calc(var(--bottomnav-h, 72px) + 12px)';
 
-  // gleiche Formel wie in BottomNav (Icon + vertikaler Puffer + Safe-Area)
+  // gleiche Formel wie in BottomNav
   const bottomNavHeight = hideBottomNav
     ? '0px'
     : 'calc(clamp(24px, 2.8vw, 50px) + 20px + env(safe-area-inset-bottom))';
@@ -52,7 +57,6 @@ export default function PageChrome({
             paddingLeft: 16,
             paddingRight: 16,
             paddingBottom: contentBottomPad,
-            // WICHTIG: Für Chat-Seiten auf 0 setzen, sonst echte Höhe
             ['--bottomnav-h']: bottomNavHeight,
           } as CSSVars
         }
@@ -60,10 +64,8 @@ export default function PageChrome({
         {children}
       </div>
 
-      {/* BottomNav nur rendern, wenn NICHT im Chat */}
       {!hideBottomNav && <BottomNav />}
 
-      {/* Globale Overlays / Drawer */}
       <SettingsDrawerMount />
       <ComposePostOverlayMount />
     </>

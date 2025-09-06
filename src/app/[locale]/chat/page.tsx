@@ -11,8 +11,81 @@ import { useRouter } from 'next/navigation';
 import { reportUserAction } from '@/app/actions/reports';
 import { blockUserAction } from '@/app/actions/blocks';
 
+
 const AVATAR_PH = '/images/avatar-placeholder.png';
 const PINS_STORAGE_KEY = 'chat:pinned:v1';
+
+/* ---------- Spezielle System-Message Prefixe (wie im Thread) ---------- */
+const TIPREQ_PREFIX  = 'TIPREQ::';
+const TIPPAID_PREFIX = 'TIPPAID::';
+const OWNREQ_PREFIX  = 'OWNREQ::';
+const OWNACC_PREFIX  = 'OWNACC::';
+
+function fmtCurrency(cents: number, currency = 'EUR') {
+  return new Intl.NumberFormat(undefined, { style: 'currency', currency }).format((cents || 0) / 100);
+}
+
+type OwnershipReqSnippet = {
+  avatar?: true;
+  banner?: true;
+  bio?: string;
+  avatarUrl?: string;
+  bannerUrl?: string;
+  avatarDataUrl?: string;
+  bannerDataUrl?: string;
+};
+
+function prettySnippet(raw: string): string {
+  if (!raw) return '';
+
+  // Ownership accepted
+  if (raw.startsWith(OWNACC_PREFIX)) {
+    return 'Ownership accepted';
+  }
+
+  // Ownership request
+  if (raw.startsWith(OWNREQ_PREFIX)) {
+    try {
+      const p = JSON.parse(raw.slice(OWNREQ_PREFIX.length)) as OwnershipReqSnippet;
+
+      const hasAvatar = Boolean(p.avatar || p.avatarUrl || p.avatarDataUrl);
+      const hasBanner = Boolean(p.banner || p.bannerUrl || p.bannerDataUrl);
+      const hasBio    = typeof p.bio === 'string' && p.bio.trim().length > 0;
+
+      const parts: string[] = [];
+      if (hasAvatar) parts.push('Avatar');
+      if (hasBanner) parts.push('Banner');
+      if (hasBio) parts.push('Bio');
+
+      return parts.length ? `Ownership request: ${parts.join(', ')}` : 'Ownership request';
+    } catch {
+      return 'Ownership request';
+    }
+  }
+
+  // Tip Request
+  if (raw.startsWith(TIPREQ_PREFIX)) {
+    try {
+      const body = JSON.parse(raw.slice(TIPREQ_PREFIX.length)) as { amountCents?: number; currency?: string };
+      if (typeof body?.amountCents === 'number') {
+        return `Tip request: ${fmtCurrency(body.amountCents, body?.currency || 'EUR')}`;
+      }
+    } catch {}
+  }
+
+  // Tip Paid / Accepted
+  if (raw.startsWith(TIPPAID_PREFIX)) {
+    try {
+      const body = JSON.parse(raw.slice(TIPPAID_PREFIX.length)) as { amountCents?: number; currency?: string };
+      if (typeof body?.amountCents === 'number') {
+        return `Tip paid: ${fmtCurrency(body.amountCents, body?.currency || 'EUR')}`;
+      }
+    } catch {}
+  }
+
+  // Fallback: normale Nachricht grob säubern
+  return raw.replace(/\s+/g, ' ').trim();
+}
 
 function timeAgoShort(iso: string) {
   const now = Date.now();
@@ -103,12 +176,12 @@ function ActionMenu({ anchorRect, onClose, children }: MenuProps) {
     compute();
   }, [compute]);
 
-  // Close on outside pointerdown (works for mouse + touch)
+  // Close on outside pointerdown
   React.useEffect(() => {
     const onOutside = (e: PointerEvent) => {
       const target = e.target as Node | null;
       if (!panelRef.current) return;
-      if (target && panelRef.current.contains(target)) return; // click INSIDE → ignorieren
+      if (target && panelRef.current.contains(target)) return;
       onClose();
     };
     document.addEventListener('pointerdown', onOutside, { passive: true });
@@ -249,6 +322,9 @@ function ChatRow({
   // Profil-URL
   const profileHref = `/${locale}/u/${c.other.username}`;
 
+  // Snippet hübsch machen
+  const snippet = React.useMemo(() => prettySnippet(c.lastSnippet), [c.lastSnippet]);
+
   return (
     <div
       ref={rowRef}
@@ -314,7 +390,7 @@ function ChatRow({
             </span>
           )}
         </div>
-        <div className="text-sm text-muted truncate">{c.lastSnippet}</div>
+        <div className="text-sm text-muted truncate">{snippet}</div>
       </div>
 
       {/* Meta rechts */}
@@ -406,7 +482,6 @@ export default function ChatListPage() {
       localStorage.setItem(PINS_STORAGE_KEY, JSON.stringify(Array.from(next)));
     } catch {}
   }, []);
-
 
   React.useEffect(() => {
     let cancelled = false;

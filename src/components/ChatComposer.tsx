@@ -1,19 +1,28 @@
-// src/components/ChatComposer.tsx
 'use client';
 
 import * as React from 'react';
 import { createPortal } from 'react-dom';
 import MentionSuggestChat from '@/components/MentionSuggestChat';
+import TipRequestCreateModal from '@/components/TipRequestCreateModal';
+import OwnershipRequestCreateModal, {
+  type OwnershipReqPayload as OwnReqPayload,
+} from '@/components/OwnershipRequestCreateModal';
 
 type RoleLike = 'domme' | 'submissive' | 'DOMME' | 'SUBMISSIVE';
+type TipRequestPayload = { amountCents: number; note?: string; currency?: string };
 
 type Props = {
   disabled?: boolean;
   disabledNotice?: string;
-  viewerRole: RoleLike;              // ⬅️ NEU: Rolle des eingeloggten Users
+  viewerRole: RoleLike;
+  /** eigene User-ID des Viewers (für Ownership-Draft LocalStorage) */
+  selfUserId: string;
+  /** Anzeige im Ownership-Modal (@handle des Subs) */
+  targetHandle: string;
   onSend: (text: string) => void;
   onTip: () => void;
   onUpload?: (file: File) => void;
+  onCreateTipRequest?: (payload: TipRequestPayload) => void;
 };
 
 /* ---------- kleines Popover/ActionMenu via Portal ---------- */
@@ -100,10 +109,7 @@ function ActionMenu({
 
   const panel = (
     <div style={style}>
-      <div
-        ref={panelRef}
-        className="rounded-xl border border-white/12 bg-black/90 backdrop-blur p-1 shadow-2xl"
-      >
+      <div ref={panelRef} className="rounded-xl border border-white/12 bg-black/90 backdrop-blur p-1 shadow-2xl">
         {children}
       </div>
     </div>
@@ -117,14 +123,16 @@ export default function ChatComposer({
   disabled,
   disabledNotice,
   viewerRole,
+  selfUserId,
+  targetHandle,
   onSend,
   onTip,
   onUpload,
+  onCreateTipRequest,
 }: Props) {
   const [text, setText] = React.useState('');
   const taRef = React.useRef<HTMLTextAreaElement | null>(null);
 
-  // ⬇️ Anker für Mention-Panel
   const suggestAnchorRef = React.useRef<HTMLDivElement>(null);
 
   const maxRows = 6;
@@ -169,6 +177,10 @@ export default function ChatComposer({
     setMenuOpen(true);
   }, []);
 
+  // Modals
+  const [tipReqOpen, setTipReqOpen] = React.useState(false);
+  const [ownReqOpen, setOwnReqOpen] = React.useState(false);
+
   return (
     <div
       className="fixed bottom-0 left-1/2 -translate-x-1/2 z-40 w-[min(100vw,760px)]
@@ -176,11 +188,7 @@ export default function ChatComposer({
                  px-3 pb-2 pt-2"
       style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 8px)' }}
     >
-      {disabled && disabledNotice && (
-        <div className="mb-2 text-center text-[13px] text-white/80">
-          {disabledNotice} Diese Konversation wurde Blockiert.
-        </div>
-      )}
+      {disabled && disabledNotice && <div className="mb-2 text-center text-[13px] text-white/80">{disabledNotice} Diese Konversation wurde Blockiert.</div>}
 
       <div className="rounded-3xl border border-white/10 bg-white/[.06] shadow-[0_2px_16px_rgba(0,0,0,.25)] px-3 py-2">
         <div ref={suggestAnchorRef} className="grid grid-cols-[1fr_auto] items-end gap-2">
@@ -225,7 +233,6 @@ export default function ChatComposer({
               </label>
 
               {isSub ? (
-                // SUB → Tip-Button
                 <button
                   type="button"
                   onClick={onTip}
@@ -238,7 +245,6 @@ export default function ChatComposer({
                   <DollarIcon />
                 </button>
               ) : (
-                // DOMME → Plus-Button öffnet Menü
                 <>
                   <button
                     ref={plusBtnRef}
@@ -258,7 +264,10 @@ export default function ChatComposer({
                       <button
                         type="button"
                         className="w-full text-left px-3 py-2 rounded-lg hover:bg-white/10"
-                        onClick={() => setMenuOpen(false)}
+                        onClick={() => {
+                          setMenuOpen(false);
+                          setTipReqOpen(true);
+                        }}
                       >
                         Tip request
                       </button>
@@ -272,7 +281,10 @@ export default function ChatComposer({
                       <button
                         type="button"
                         className="w-full text-left px-3 py-2 rounded-lg hover:bg-white/10"
-                        onClick={() => setMenuOpen(false)}
+                        onClick={() => {
+                          setMenuOpen(false);
+                          setOwnReqOpen(true);
+                        }}
                       >
                         Ownership request
                       </button>
@@ -297,12 +309,33 @@ export default function ChatComposer({
         </div>
       </div>
 
-      {/* Mentions (Portal, fixed, immer sichtbar über dem Footer) */}
-      <MentionSuggestChat
-        anchorRef={suggestAnchorRef as React.RefObject<HTMLElement>}
-        value={text}
-        onChange={setText}
-        limit={8}
+      <MentionSuggestChat anchorRef={suggestAnchorRef as React.RefObject<HTMLElement>} value={text} onChange={setText} limit={8} />
+
+      <TipRequestCreateModal
+        open={tipReqOpen}
+        onClose={() => setTipReqOpen(false)}
+        onCreate={(payload) => {
+          setTipReqOpen(false);
+          if (onCreateTipRequest) {
+            onCreateTipRequest(payload);
+            return;
+          }
+          const currency = payload.currency ?? 'EUR';
+          const amountStr = new Intl.NumberFormat(undefined, { style: 'currency', currency }).format(payload.amountCents / 100);
+          const msg = `🧾 Tip request: ${amountStr}${payload.note ? `\n${payload.note}` : ''}`;
+          onSend(msg);
+        }}
+      />
+
+      <OwnershipRequestCreateModal
+        open={ownReqOpen}
+        onClose={() => setOwnReqOpen(false)}
+        userId={selfUserId}
+        handle={targetHandle}
+        onCreate={(payload: OwnReqPayload) => {
+          setOwnReqOpen(false);
+          onSend(`OWNREQ::${JSON.stringify(payload)}`);
+        }}
       />
     </div>
   );

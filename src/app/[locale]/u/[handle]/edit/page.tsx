@@ -4,6 +4,7 @@ import EditProfileForm, { type EditInitial } from '@/components/EditProfileForm'
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/currentUser';
 import { updateProfileAction } from '@/lib/profile';
+import EditProfileTabs from '@/components/EditProfileTabs';
 
 export default async function Page({
   params: { locale, handle },
@@ -28,6 +29,7 @@ export default async function Page({
   const u = await prisma.user.findUnique({
     where: { id: me.id },
     select: {
+      id: true,
       handle: true,
       displayName: true,
       bio: true,
@@ -51,12 +53,17 @@ export default async function Page({
     bannerUrl: u.bannerUrl ?? undefined,
   };
 
+  const isDomme = u.role === 'DOMME';
+
   return (
-    <EditProfileForm
+    <EditProfileTabs
       locale={locale}
+      userId={u.id}
+      handle={u.handle}
+      isDomme={isDomme}
       initial={initial}
       action={updateProfileAction}
-      /* Der „Edit Offer Menu“-Button kommt direkt aus EditProfileForm. */
+      EditFormComponent={EditProfileForm}
     />
   );
 }
