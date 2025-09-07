@@ -1,25 +1,15 @@
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/currentUser';
-import type { Post as PostCardPost } from '@/components/PostCard';
-import { relativeTime } from '@/lib/relativeTime';
-import type { Role } from '@prisma/client';
 import HomeFeedClient from '@/components/HomeFeedClient';
+import type { FeedPost } from '@/components/PostCard';
 
 export const dynamic = 'force-dynamic';
 
 type Params = { locale: string };
 
-function toUiRole(role: Role): 'domme' | 'submissive' {
-  return role === 'DOMME' ? 'domme' : 'submissive';
-}
-
-export type FeedPost = PostCardPost & {
-  initiallyBookmarked?: boolean;
-  createdAtISO: string; // für spätere Abfragen im Client
-};
-
 export default async function HomePage({ params }: { params: Promise<Params> }) {
-  const { locale } = await params;
+  await params; // locale wird hier nicht benötigt
+
   const me = await getCurrentUser().catch(() => null);
 
   const [posts, likedByMe, bookmarkedByMe] = await Promise.all([
@@ -35,7 +25,46 @@ export default async function HomePage({ params }: { params: Promise<Params> }) 
             avatarUrl: true,
           },
         },
-        _count: { select: { Like: true, Comment: true } },
+        // Repost: Wir brauchen die Counts vom Original
+        repostOf: {
+          select: {
+            id: true,
+            text: true,
+            mediaUrl: true,
+            mediaAlt: true,
+            createdAt: true,
+            author: {
+              select: {
+                id: true,
+                handle: true,
+                displayName: true,
+                role: true,
+                avatarUrl: true,
+              },
+            },
+            _count: { select: { Like: true, Comment: true, reposts: true } },
+          },
+        },
+        // Quote: eingebetteter Original-Post
+        quoteOf: {
+          select: {
+            id: true,
+            text: true,
+            mediaUrl: true,
+            mediaAlt: true,
+            createdAt: true,
+            author: {
+              select: {
+                id: true,
+                handle: true,
+                displayName: true,
+                role: true,
+                avatarUrl: true,
+              },
+            },
+          },
+        },
+        _count: { select: { Like: true, Comment: true, reposts: true } },
       },
       take: 30,
     }),
@@ -50,19 +79,19 @@ export default async function HomePage({ params }: { params: Promise<Params> }) 
   const likedSet = new Set(likedByMe.map((l) => l.postId));
   const bookmarkedSet = new Set(bookmarkedByMe.map((b) => b.postId));
 
-  // Block-Flags (Viewer vs. Autoren)
+  // Block-Flags bezogen auf den Feed-Item-Autor (bei Repost = Reposter)
   let hasBlockedSet = new Set<string>();
   let blockedBySet = new Set<string>();
   if (me) {
-    const authorIds = Array.from(new Set(posts.map((p) => p.author.id)));
-    if (authorIds.length > 0) {
+    const feedAuthorIds = Array.from(new Set(posts.map((p) => p.author.id)));
+    if (feedAuthorIds.length > 0) {
       const [myBlocks, blocksMe] = await Promise.all([
         prisma.block.findMany({
-          where: { blockerId: me.id, blockedId: { in: authorIds } },
+          where: { blockerId: me.id, blockedId: { in: feedAuthorIds } },
           select: { blockedId: true },
         }),
         prisma.block.findMany({
-          where: { blockerId: { in: authorIds }, blockedId: me.id },
+          where: { blockerId: { in: feedAuthorIds }, blockedId: me.id },
           select: { blockerId: true },
         }),
       ]);
@@ -71,32 +100,89 @@ export default async function HomePage({ params }: { params: Promise<Params> }) 
     }
   }
 
-  const items: FeedPost[] = posts.map((p) => ({
-    id: p.id,
-    author: {
-      name: p.author.displayName,
-      role: toUiRole(p.author.role),
-      handle: p.author.handle,
-      avatarUrl: p.author.avatarUrl ?? undefined,
-    },
-    createdAt: relativeTime(p.createdAt, locale),
-    createdAtISO: p.createdAt.toISOString(),
-    text: p.text,
-    mediaUrl: p.mediaUrl ?? undefined,
-    mediaAlt: p.mediaAlt ?? undefined,
-    stats: {
-      comments: p._count.Comment ?? 0,
-      reposts: 0,
-      likes: p._count.Like ?? 0,
-    },
-    viewer: {
-      liked: likedSet.has(p.id),
-      bookmarked: bookmarkedSet.has(p.id),
-      hasBlockedAuthor: me ? hasBlockedSet.has(p.author.id) : false,
-      blockedByAuthor: me ? blockedBySet.has(p.author.id) : false,
-    },
-    initiallyBookmarked: bookmarkedSet.has(p.id),
-  }));
+  const items: FeedPost[] = posts.map((p) => {
+    const isRepost = !!p.repostOf;
+    const isQuote = !!p.quoteOf;
 
-  return <HomeFeedClient initialItems={items} locale={locale} />;
+    // Inhalt (für Repost: Original; für normale/Quote-Posts: eigener Inhalt + optionale Quote-Box)
+    const content = isRepost
+      ? {
+          id: p.repostOf!.id,
+          text: p.repostOf!.text ?? '',
+          mediaUrl: p.repostOf!.mediaUrl,
+          mediaAlt: p.repostOf!.mediaAlt,
+          createdAt: p.repostOf!.createdAt.toISOString(),
+          author: {
+            id: p.repostOf!.author.id,
+            handle: p.repostOf!.author.handle,
+            displayName: p.repostOf!.author.displayName,
+            role: p.repostOf!.author.role,
+            avatarUrl: p.repostOf!.author.avatarUrl,
+          },
+          quote: null,
+        }
+      : {
+          id: p.id,
+          text: p.text ?? '',
+          mediaUrl: p.mediaUrl,
+          mediaAlt: p.mediaAlt,
+          createdAt: p.createdAt.toISOString(),
+          author: {
+            id: p.author.id,
+            handle: p.author.handle,
+            displayName: p.author.displayName,
+            role: p.author.role,
+            avatarUrl: p.author.avatarUrl,
+          },
+          quote: isQuote
+            ? {
+                id: p.quoteOf!.id,
+                text: p.quoteOf!.text ?? '',
+                mediaUrl: p.quoteOf!.mediaUrl,
+                mediaAlt: p.quoteOf!.mediaAlt,
+                createdAt: p.quoteOf!.createdAt.toISOString(),
+                author: {
+                  id: p.quoteOf!.author.id,
+                  handle: p.quoteOf!.author.handle,
+                  displayName: p.quoteOf!.author.displayName,
+                  role: p.quoteOf!.author.role,
+                  avatarUrl: p.quoteOf!.author.avatarUrl,
+                },
+              }
+            : null,
+        };
+
+    // Repost → Stats vom Original; Quote/Normal → eigene Stats
+    const statSource = isRepost ? p.repostOf! : p;
+
+    // Viewer-Flags: Like/Bookmark-Ziel bestimmen
+    const viewerTargetId = isRepost ? p.repostOf!.id : p.id;
+
+    return {
+      id: p.id,
+      createdAtISO: p.createdAt.toISOString(),
+      content,
+      reposter: isRepost
+        ? {
+            id: p.author.id,
+            handle: p.author.handle,
+            displayName: p.author.displayName,
+          }
+        : null,
+      stats: {
+        comments: statSource._count.Comment ?? 0,
+        reposts: statSource._count.reposts ?? 0,
+        likes: statSource._count.Like ?? 0,
+      },
+      viewer: {
+        liked: likedSet.has(viewerTargetId),
+        bookmarked: bookmarkedSet.has(viewerTargetId),
+        hasBlockedAuthor: me ? hasBlockedSet.has(p.author.id) : false,
+        blockedByAuthor: me ? blockedBySet.has(p.author.id) : false,
+      },
+      initiallyBookmarked: bookmarkedSet.has(viewerTargetId),
+    } satisfies FeedPost;
+  });
+
+  return <HomeFeedClient initialItems={items} />;
 }

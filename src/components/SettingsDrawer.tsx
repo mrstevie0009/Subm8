@@ -23,6 +23,14 @@ type Suggestion = {
   isFollowing: boolean;
 };
 
+// 🔹 Frisches Profil aus der DB (wie im Profil-Header)
+type MeBasic = {
+  displayName: string;
+  handle: string;
+  avatarUrl: string | null;
+  role: 'DOMME' | 'SUBMISSIVE';
+};
+
 export default function SettingsDrawer({ open, onClose }: Props) {
   const { data: session } = useSession();
   const locale = useLocale();
@@ -36,15 +44,38 @@ export default function SettingsDrawer({ open, onClose }: Props) {
     return qs ? `${pathname}?${qs}` : pathname;
   }, [pathname, search]);
 
+  // 🔹 Frische Me-Daten (DB), als Quelle #1
+  const [meBasic, setMeBasic] = React.useState<MeBasic | null>(null);
+
+  React.useEffect(() => {
+    if (!open || !isAuth) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/me/basic', { cache: 'no-store' });
+        if (!res.ok) return; // 401/404 etc. ignorieren – wir haben noch Session-Fallback
+        const json = (await res.json()) as { ok?: boolean; me?: MeBasic };
+        if (!json?.ok || !json?.me) return;
+        if (!cancelled) setMeBasic(json.me);
+      } catch {
+        // stiller Fallback auf Session
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, isAuth]);
+
+  // 🔹 Session-Fallback (Quelle #2)
   const u =
     (session?.user as
       | { name?: string; handle?: string; image?: string | null; role?: string | null }
       | undefined) ?? {};
 
-  const displayName = u.name ?? 'Guest';
-  const handle = u.handle ?? '';
-  const image = u.image ?? AVATAR_PH;
-  const roleRaw = (u.role ?? '').toString().toUpperCase();
+  const displayName = meBasic?.displayName ?? u.name ?? 'Guest';
+  const handle = meBasic?.handle ?? u.handle ?? '';
+  const image = meBasic?.avatarUrl ?? u.image ?? AVATAR_PH;
+  const roleRaw = (meBasic?.role ?? (u.role ?? '')).toString().toUpperCase();
   const roleLabel = roleRaw === 'DOMME' ? 'Domina' : roleRaw ? 'Sub' : '—';
 
   // Stats
@@ -103,14 +134,14 @@ export default function SettingsDrawer({ open, onClose }: Props) {
     void loadSuggestions();
   }, [open, loadSuggestions]);
 
-  // Replacement: einen neuen Vorschlag für eine bestimmte Zeile nachladen
+  // Replacement: neuen Vorschlag nachladen
   const replaceSuggestion = React.useCallback(
     async (goneId: string) => {
       const exclude = sugs.map((x) => x.id);
-      // 1 neuen Kandidaten abholen
-      const res = await fetch(`/api/suggestions?take=1&exclude=${encodeURIComponent(exclude.join(','))}`, {
-        cache: 'no-store',
-      }).catch(() => null);
+      const res = await fetch(
+        `/api/suggestions?take=1&exclude=${encodeURIComponent(exclude.join(','))}`,
+        { cache: 'no-store' }
+      ).catch(() => null);
 
       let next: Suggestion | null = null;
       if (res && res.ok) {
@@ -123,7 +154,7 @@ export default function SettingsDrawer({ open, onClose }: Props) {
         if (idx === -1) return prev;
         const copy = [...prev];
         if (next) copy[idx] = next;
-        else copy.splice(idx, 1); // wenn nichts da ist, Zeile entfernen
+        else copy.splice(idx, 1);
         return copy;
       });
     },
@@ -221,7 +252,8 @@ export default function SettingsDrawer({ open, onClose }: Props) {
                   background: 'rgba(255,255,255,0.08)',
                 }}
               >
-                <Image src={image} alt="Profile avatar" fill className="object-cover" sizes="64px" priority />
+                {/* key sorgt dafür, dass Next/Image bei URL-Wechsel neu rendert */}
+                <Image key={image} src={image} alt="Profile avatar" fill className="object-cover" sizes="64px" priority />
               </div>
               <span
                 style={{
@@ -261,7 +293,7 @@ export default function SettingsDrawer({ open, onClose }: Props) {
           )}
         </div>
 
-        {/* Menüpunkte */}
+        {/* Menüs */}
         <nav style={{ paddingTop: 8 }}>
           <MenuItem icon={ProfileIcon} label="Profile" href={hrefs.profile} onClick={onClose} />
           <MenuItem icon={CogIcon} label="Settings" href={hrefs.settings} onClick={onClose} />
@@ -273,28 +305,13 @@ export default function SettingsDrawer({ open, onClose }: Props) {
         <div style={{ height: 1, background: 'rgba(255,255,255,0.1)', margin: '10px 0' }} />
 
         {/* Vorschläge */}
-        <section>
-          <div style={{ fontSize: 14, opacity: 0.7, marginBottom: 8 }}>{headline}</div>
-
-          {suggErr && (
-            <div className="text-[12px]" style={{ color: '#fca5a5', marginBottom: 6 }}>
-              {suggErr}
-            </div>
-          )}
-
-          {sugs.map((s) => (
-            <SuggestionRow
-              key={s.id}
-              s={s}
-              locale={locale}
-              onReplace={replaceSuggestion}
-            />
-          ))}
-
-          {!suggErr && sugs.length === 0 && (
-            <div className="text-[13px] text-white/70">No suggestions right now.</div>
-          )}
-        </section>
+        <SuggestionsSection
+          headline={headline}
+          suggErr={suggErr}
+          sugs={sugs}
+          locale={locale}
+          onReplace={replaceSuggestion}
+        />
 
         <div style={{ height: 1, background: 'rgba(255,255,255,0.1)', margin: '10px 0' }} />
 
@@ -324,7 +341,41 @@ export default function SettingsDrawer({ open, onClose }: Props) {
   return createPortal(root, document.body);
 }
 
-/* Hilfs-Komponenten */
+function SuggestionsSection({
+  headline,
+  suggErr,
+  sugs,
+  locale,
+  onReplace,
+}: {
+  headline: string;
+  suggErr: string | null;
+  sugs: Suggestion[];
+  locale: string;
+  onReplace: (goneId: string) => void | Promise<void>;
+}) {
+  return (
+    <section>
+      <div style={{ fontSize: 14, opacity: 0.7, marginBottom: 8 }}>{headline}</div>
+
+      {suggErr && (
+        <div className="text-[12px]" style={{ color: '#fca5a5', marginBottom: 6 }}>
+          {suggErr}
+        </div>
+      )}
+
+      {sugs.map((s) => (
+        <SuggestionRow key={s.id} s={s} locale={locale} onReplace={onReplace} />
+      ))}
+
+      {!suggErr && sugs.length === 0 && (
+        <div className="text-[13px] text-white/70">No suggestions right now.</div>
+      )}
+    </section>
+  );
+}
+
+/* Hilfs-Komponenten & Icons bleiben gleich */
 function MenuItem({
   icon: Icon,
   label,
@@ -362,8 +413,6 @@ function SuggestionRow({
   const [isFollowing, setIsFollowing] = React.useState<boolean>(s.isFollowing);
   const [pending, startTransition] = React.useTransition();
   const [fading, setFading] = React.useState(false);
-
-  // CSS Transition-Dauer muss zum Timeout passen (hier 300ms)
   const durationMs = 300;
 
   return (
@@ -373,24 +422,9 @@ function SuggestionRow({
       }`}
       style={{ padding: '6px 0' }}
     >
-      {/* Linkbarer Bereich (Avatar + Name + Handle) */}
-      <Link
-        href={`/${locale}/u/${s.handle}`}
-        className="flex items-center gap-3 min-w-0"
-        prefetch={false}
-      >
-        <div
-          className="relative overflow-hidden rounded-full bg-white/10"
-          style={{ width: 40, height: 40 }}
-          aria-hidden="true"
-        >
-          <Image
-            src={s.avatarUrl || AVATAR_PH}
-            alt=""
-            fill
-            className="object-cover"
-            sizes="40px"
-          />
+      <Link href={`/${locale}/u/${s.handle}`} className="flex items-center gap-3 min-w-0" prefetch={false}>
+        <div className="relative overflow-hidden rounded-full bg-white/10" style={{ width: 40, height: 40 }} aria-hidden="true">
+          <Image src={s.avatarUrl || AVATAR_PH} alt="" fill className="object-cover" sizes="40px" />
         </div>
         <div className="min-w-0 leading-tight">
           <div className="font-medium truncate">{s.displayName}</div>
@@ -398,18 +432,13 @@ function SuggestionRow({
         </div>
       </Link>
 
-      {/* Follow / Unfollow rechts */}
       <form
         action={isFollowing ? unfollowAction : followAction}
         onSubmit={() => {
           const wasFollowing = isFollowing;
           startTransition(() => setIsFollowing((v) => !v));
-
-          // Nur beim FOLLOW (nicht beim Unfollow) Reihe austauschen
           if (!wasFollowing) {
-            // mini-Verzögerung, dann sanft ausblenden…
             setTimeout(() => setFading(true), 80);
-            // …und nach Ende der Transition ersetzen
             setTimeout(() => {
               void onReplace(s.id);
             }, 80 + durationMs);
@@ -421,9 +450,7 @@ function SuggestionRow({
           type="submit"
           disabled={pending}
           className={`px-3 py-1.5 rounded-full text-[13px] transition-colors ${
-            isFollowing
-              ? 'border border-white/25 hover:bg-white/5'
-              : 'bg-[var(--purple)] text-white hover:opacity-95'
+            isFollowing ? 'border border-white/25 hover:bg-white/5' : 'bg-[var(--purple)] text-white hover:opacity-95'
           }`}
           title={isFollowing ? 'Unfollow' : 'Follow'}
         >
@@ -434,7 +461,6 @@ function SuggestionRow({
   );
 }
 
-/* Icons */
 function ProfileIcon(c: string) {
   return (
     <svg viewBox="0 0 24 24" style={{ width: 20, height: 20, color: c }} aria-hidden="true">

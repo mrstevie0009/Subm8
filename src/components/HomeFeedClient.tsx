@@ -1,16 +1,121 @@
+// src/components/HomeFeedClient.tsx
 'use client';
 
 import * as React from 'react';
 import PostCard from '@/components/PostCard';
-import type { FeedPost } from '@/app/[locale]/page';
-import { relativeTime } from '@/lib/relativeTime';
+import type { FeedPost } from '@/components/PostCard';
 
 type Props = {
   initialItems: FeedPost[];
-  locale: string;
 };
 
-export default function HomeFeedClient({ initialItems, locale }: Props) {
+// Shape, das /api/feed liefert
+type ApiPost = {
+  id: string;
+  text: string | null;
+  mediaUrl: string | null;
+  mediaAlt: string | null;
+  createdAt: string;
+  _count: { Like: number; Comment: number; reposts: number };
+  author: {
+    id: string; handle: string; displayName: string;
+    role: 'DOMME' | 'SUBMISSIVE' | null;
+    avatarUrl: string | null;
+  };
+  repostOf: null | {
+    id: string; text: string;
+    mediaUrl: string | null; mediaAlt: string | null; createdAt: string;
+    author: {
+      id: string; handle: string; displayName: string;
+      role: 'DOMME' | 'SUBMISSIVE' | null;
+      avatarUrl: string | null;
+    };
+  };
+  quoteOf: null | {
+    id: string; text: string;
+    mediaUrl: string | null; mediaAlt: string | null; createdAt: string;
+    author: {
+      id: string; handle: string; displayName: string;
+      role: 'DOMME' | 'SUBMISSIVE' | null;
+      avatarUrl: string | null;
+    };
+  };
+  viewer: {
+    liked: boolean;
+    bookmarked: boolean;
+    hasBlockedAuthor: boolean;
+    blockedByAuthor: boolean;
+  };
+};
+
+function mapApiPost(p: ApiPost): FeedPost {
+  const isRepost = !!p.repostOf;
+
+  const content = isRepost
+    ? {
+        id: p.repostOf!.id,
+        text: p.repostOf!.text,
+        mediaUrl: p.repostOf!.mediaUrl,
+        mediaAlt: p.repostOf!.mediaAlt,
+        createdAt: p.repostOf!.createdAt,
+        author: {
+          id: p.repostOf!.author.id,
+          handle: p.repostOf!.author.handle,
+          displayName: p.repostOf!.author.displayName,
+          role: p.repostOf!.author.role,
+          avatarUrl: p.repostOf!.author.avatarUrl,
+        },
+        // bei Repost gibt es kein content.quote
+        quote: null,
+      }
+    : {
+        id: p.id,
+        text: p.text ?? '',
+        mediaUrl: p.mediaUrl,
+        mediaAlt: p.mediaAlt,
+        createdAt: p.createdAt,
+        author: {
+          id: p.author.id,
+          handle: p.author.handle,
+          displayName: p.author.displayName,
+          role: p.author.role,
+          avatarUrl: p.author.avatarUrl,
+        },
+        // Quote-Box (optional)
+        quote: p.quoteOf
+          ? {
+              id: p.quoteOf.id,
+              text: p.quoteOf.text,
+              mediaUrl: p.quoteOf.mediaUrl,
+              mediaAlt: p.quoteOf.mediaAlt,
+              createdAt: p.quoteOf.createdAt,
+              author: {
+                id: p.quoteOf.author.id,
+                handle: p.quoteOf.author.handle,
+                displayName: p.quoteOf.author.displayName,
+                role: p.quoteOf.author.role,
+                avatarUrl: p.quoteOf.author.avatarUrl,
+              },
+            }
+          : null,
+      };
+
+  return {
+    id: p.id,
+    createdAtISO: p.createdAt,
+    content,
+    reposter: isRepost ? { id: p.author.id, handle: p.author.handle, displayName: p.author.displayName } : null,
+    stats: {
+      comments: p._count.Comment ?? 0,
+      reposts: p._count.reposts ?? 0,
+      likes: p._count.Like ?? 0,
+    },
+    viewer: p.viewer,
+    initiallyBookmarked: p.viewer.bookmarked,
+  };
+}
+
+export default function HomeFeedClient({ initialItems }: Props) {
   const [items, setItems] = React.useState<FeedPost[]>(initialItems);
   const [newCount, setNewCount] = React.useState(0);
   const [loadingNew, setLoadingNew] = React.useState(false);
@@ -18,45 +123,32 @@ export default function HomeFeedClient({ initialItems, locale }: Props) {
 
   const topSentinelRef = React.useRef<HTMLDivElement | null>(null);
 
-  // ——— Headerhöhe + aktuelle Position messen
-  const [headerHeight, setHeaderHeight] = React.useState(64); // Fallback
+  // Headerhöhe + Button-Position
+  const [headerHeight, setHeaderHeight] = React.useState(64);
   const [buttonTop, setButtonTop] = React.useState(12);
 
   React.useEffect(() => {
     const header = document.getElementById('app-global-header');
     if (!header) return;
 
-    const measureHeight = () => {
-      const h = header.getBoundingClientRect().height;
-      setHeaderHeight(h || 64);
-    };
-    const measureTop = () => {
+    const measure = () => {
       const rect = header.getBoundingClientRect();
-      // Button sitzt direkt unter dem Header; wenn Header weg-geschoben ist, mind. 8px vom Viewport-Top
-      const top = Math.max(8, Math.round(rect.bottom) + 8);
-      setButtonTop(top);
+      setHeaderHeight(rect.height || 64);
+      setButtonTop(Math.max(8, Math.round(rect.bottom) + 8));
     };
 
-    measureHeight();
-    measureTop();
-
-    const ro = new ResizeObserver(() => {
-      measureHeight();
-      measureTop();
-    });
+    measure();
+    const ro = new ResizeObserver(measure);
     ro.observe(header);
 
-    const onScroll = () => {
-      // Header bewegt sich (translateY), also Position aktualisieren
-      measureTop();
-    };
+    const onScroll = () => measure();
     window.addEventListener('scroll', onScroll, { passive: true });
-    window.addEventListener('resize', measureTop);
+    window.addEventListener('resize', measure);
 
     return () => {
       ro.disconnect();
       window.removeEventListener('scroll', onScroll);
-      window.removeEventListener('resize', measureTop);
+      window.removeEventListener('resize', measure);
     };
   }, []);
 
@@ -65,7 +157,7 @@ export default function HomeFeedClient({ initialItems, locale }: Props) {
     [items]
   );
 
-  // Top-Erkennung: Sentinel muss den oberen Bereich + Headerhöhe passieren
+  // Top-Erkennung
   React.useEffect(() => {
     const el = topSentinelRef.current;
     if (!el) return;
@@ -108,46 +200,8 @@ export default function HomeFeedClient({ initialItems, locale }: Props) {
       const res = await fetch(`/api/feed?since=${encodeURIComponent(latestISO)}`, { cache: 'no-store' });
       if (!res.ok) return;
 
-      const data = (await res.json()) as {
-        posts: Array<{
-          id: string;
-          text: string | null;
-          mediaUrl: string | null;
-          mediaAlt: string | null;
-          createdAt: string;
-          _count: { Like: number; Comment: number };
-          author: {
-            displayName: string;
-            handle: string;
-            role: 'DOMME' | 'SUBMISSIVE';
-            avatarUrl: string | null;
-          };
-          viewer: {
-            liked: boolean;
-            bookmarked: boolean;
-            hasBlockedAuthor: boolean;
-            blockedByAuthor: boolean;
-          };
-        }>;
-      };
-
-      const mapped: FeedPost[] = data.posts.map((p) => ({
-        id: p.id,
-        author: {
-          name: p.author.displayName,
-          role: p.author.role === 'DOMME' ? 'domme' : 'submissive',
-          handle: p.author.handle,
-          avatarUrl: p.author.avatarUrl ?? undefined,
-        },
-        createdAt: relativeTime(new Date(p.createdAt), locale),
-        createdAtISO: p.createdAt,
-        text: p.text ?? '', // Schema: required
-        mediaUrl: p.mediaUrl ?? undefined,
-        mediaAlt: p.mediaAlt ?? undefined,
-        stats: { comments: p._count.Comment ?? 0, reposts: 0, likes: p._count.Like ?? 0 },
-        viewer: p.viewer,
-        initiallyBookmarked: p.viewer.bookmarked,
-      }));
+      const data = (await res.json()) as { posts: ApiPost[] };
+      const mapped = data.posts.map(mapApiPost);
 
       setItems((prev) => [...mapped, ...prev]);
       setNewCount(0);
@@ -163,10 +217,10 @@ export default function HomeFeedClient({ initialItems, locale }: Props) {
 
   return (
     <>
-      {/* Sentinel direkt unter dem (globalen) Header */}
+      {/* Sentinel */}
       <div ref={topSentinelRef} style={{ height: 1 }} />
 
-      {/* New-Posts Button – klebt immer direkt unter dem Header */}
+      {/* New-Posts Button */}
       <div
         className={`
           fixed left-1/2 -translate-x-1/2 z-[70]
