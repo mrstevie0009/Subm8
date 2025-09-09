@@ -1,4 +1,3 @@
-// src/app/actions/comments.ts
 'use server';
 
 import { prisma } from '@/lib/prisma';
@@ -19,13 +18,22 @@ export async function addCommentAction(formData: FormData): Promise<AddCommentRe
 
     const postId = String(formData.get('postId') ?? '');
     const text = String(formData.get('text') ?? '').trim();
+    const parentIdRaw = formData.get('parentId');
+    const parentId = parentIdRaw ? String(parentIdRaw) : null;
+
     if (!postId || !text) return { ok: false, error: 'INVALID_INPUT' };
 
-    // ❗ Interaktions-Block prüfen (Autor blockiert mich ODER ich Autor)
+    // Block prüfen
     try {
-      await assertCanInteractForPostId(postId, me.id); // (postId, actorUserId)
+      await assertCanInteractForPostId(postId, me.id);
     } catch {
       return { ok: false, error: 'INTERACTION_BLOCKED' };
+    }
+
+    // Wenn es eine Antwort ist, sicherstellen, dass der Parent existiert und zum selben Post gehört
+    if (parentId) {
+      const parent = await prisma.comment.findUnique({ where: { id: parentId }, select: { postId: true } });
+      if (!parent || parent.postId !== postId) return { ok: false, error: 'INVALID_INPUT' };
     }
 
     const created = await prisma.comment.create({
@@ -34,11 +42,12 @@ export async function addCommentAction(formData: FormData): Promise<AddCommentRe
         postId,
         userId: me.id,
         text,
+        parentId, // <— wichtig für Replies/Notifications
       },
       select: { id: true },
     });
 
-    // Best-effort: die Seite revalidieren, von der der Request kam
+    // Seite revalidieren (best-effort)
     try {
       const hdrs = await headers();
       const referer = hdrs.get('referer');
@@ -46,9 +55,7 @@ export async function addCommentAction(formData: FormData): Promise<AddCommentRe
         const url = new URL(referer);
         revalidatePath(url.pathname, 'page');
       }
-    } catch {
-      // ignore
-    }
+    } catch {}
 
     return { ok: true, id: created.id };
   } catch {
@@ -56,7 +63,6 @@ export async function addCommentAction(formData: FormData): Promise<AddCommentRe
   }
 }
 
-/** Void-Adapter, damit <form action={...}> keine TS-Fehler wirft */
 export async function addCommentActionVoid(formData: FormData): Promise<void> {
   await addCommentAction(formData);
 }

@@ -1,35 +1,43 @@
-// src/app/[locale]/notifications/page.tsx
 'use client';
 
 import * as React from 'react';
 import Image from 'next/image';
 import { followAction, unfollowAction } from '@/app/actions/follow';
+import { useParams, useRouter } from 'next/navigation';
 
-// ---------- Types ----------
+// ---------- Types returned by /api/notifications ----------
 type ApiUser = {
-  id?: string;                       // optional – falls deine API noch keine id liefert
+  id?: string;
   handle: string;
   displayName: string;
   avatarUrl?: string | null;
-  viewerFollows?: boolean;           // muss von deiner API berechnet werden
+  viewerFollows?: boolean;
 };
 
-type ApiFollow   = { id: string; kind: 'follow';  time: string; user: ApiUser };
-type ApiLike     = { id: string; kind: 'like';    time: string; user: ApiUser; text: string; postId: string };
-type ApiMention  = { id: string; kind: 'mention'; time: string; user: ApiUser; text: string; postId?: string };
-type ApiNoti     = ApiFollow | ApiLike | ApiMention;
+type ApiFollow       = { id: string; kind: 'follow';        time: string; user: ApiUser };
+type ApiLike         = { id: string; kind: 'like';          time: string; user: ApiUser; text: string; postId: string };
+type ApiMention      = { id: string; kind: 'mention';       time: string; user: ApiUser; text: string; postId?: string };
+type ApiComment      = { id: string; kind: 'comment';       time: string; user: ApiUser; text: string; postId: string };
+type ApiReply        = { id: string; kind: 'reply';         time: string; user: ApiUser; text: string; postId: string };
+type ApiCommentLike  = { id: string; kind: 'comment_like';  time: string; user: ApiUser; text: string; postId: string };
+type ApiNoti = ApiFollow | ApiLike | ApiMention | ApiComment | ApiReply | ApiCommentLike;
 
-
+// ---------- UI Types ----------
 type NotiBase = {
   id: string;
   time: string; // relative
   user: { id?: string; handle: string; name?: string; avatar?: string; viewerFollows?: boolean };
+  postId?: string;
+  text?: string;
 };
 
 type Noti =
   | (NotiBase & { kind: 'follow' })
-  | (NotiBase & { kind: 'like'; text: string })
-  | (NotiBase & { kind: 'mention'; text: string });
+  | (NotiBase & { kind: 'like' })
+  | (NotiBase & { kind: 'mention' })
+  | (NotiBase & { kind: 'comment' })
+  | (NotiBase & { kind: 'reply' })
+  | (NotiBase & { kind: 'comment_like' });
 
 // ---------- Helpers ----------
 function timeAgo(date: Date): string {
@@ -69,7 +77,6 @@ function FollowForm({
       action={following ? unfollowAction : followAction}
       onSubmit={() => startTransition(() => setFollowing((v) => !v))}
     >
-      {/* Wir geben BEIDES mit: userId (falls vorhanden) UND handle als Fallback */}
       {userId ? <input type="hidden" name="userId" value={userId} /> : null}
       <input type="hidden" name="handle" value={handle} />
       <button type="submit" disabled={pending} className={cls}>
@@ -82,10 +89,11 @@ function FollowForm({
 // ---------- Page ----------
 export default function NotificationsPage() {
   const [tab, setTab] = React.useState<'all' | 'mentions'>('all');
-
   const [items, setItems] = React.useState<Noti[]>([]);
   const [loadingNoti, setLoadingNoti] = React.useState(false);
 
+  const router = useRouter();
+  const { locale } = useParams() as { locale: string };
 
   // Notifications laden
   React.useEffect(() => {
@@ -108,10 +116,11 @@ export default function NotificationsPage() {
                 avatar: n.user.avatarUrl ?? undefined,
                 viewerFollows: n.user.viewerFollows,
               },
+              // optional on some kinds:
+              postId: 'postId' in n ? n.postId : undefined,
+              text: 'text' in n ? n.text : undefined,
             };
-            if (n.kind === 'follow') return { ...base, kind: 'follow' };
-            if (n.kind === 'like') return { ...base, kind: 'like', text: n.text };
-            return { ...base, kind: 'mention', text: n.text };
+            return { ...base, kind: n.kind } as Noti;
           });
           setItems(mapped);
         } else if (!cancelled) {
@@ -156,8 +165,6 @@ export default function NotificationsPage() {
         </div>
       </div>
 
-
-
       {/* Notifications List */}
       <ul className="mt-4">
         {loadingNoti && (
@@ -183,13 +190,14 @@ export default function NotificationsPage() {
         {items.map((n) => (
           <li key={n.id} className="px-4 py-3 hover:bg-white/5 border-b border-white/10">
             <div className="flex items-start gap-3">
-              {/* Avatar + Kind-Badge */}
+              {/* Avatar + kind badge */}
               <div className="relative">
                 <Avatar size={40} name={n.user.name ?? n.user.handle} src={n.user.avatar} />
                 <div className="absolute -bottom-1 -right-1 grid place-items-center rounded-full border border-black size-5 bg-[var(--purple)] text-white">
                   {n.kind === 'follow' && <SmallUserPlusIcon />}
                   {n.kind === 'mention' && <SmallAtIcon />}
-                  {n.kind === 'like' && <SmallHeartIcon />}
+                  {(n.kind === 'like' || n.kind === 'comment_like') && <SmallHeartIcon />}
+                  {(n.kind === 'comment' || n.kind === 'reply') && <SmallCommentIcon />}
                 </div>
               </div>
 
@@ -201,6 +209,7 @@ export default function NotificationsPage() {
                     <span className="text-xs opacity-60">· {n.time}</span>
                   </div>
                 )}
+
                 {n.kind === 'mention' && (
                   <div>
                     <b>@{n.user.handle}</b> mentioned you:{' '}
@@ -208,9 +217,34 @@ export default function NotificationsPage() {
                     <span className="text-xs opacity-60">· {n.time}</span>
                   </div>
                 )}
+
                 {n.kind === 'like' && (
                   <div>
                     <b>@{n.user.handle}</b> liked your post:{' '}
+                    <span className="opacity-90">{n.text}</span>{' '}
+                    <span className="text-xs opacity-60">· {n.time}</span>
+                  </div>
+                )}
+
+                {n.kind === 'comment' && (
+                  <div>
+                    <b>@{n.user.handle}</b> commented on your post:{' '}
+                    <span className="opacity-90">{n.text}</span>{' '}
+                    <span className="text-xs opacity-60">· {n.time}</span>
+                  </div>
+                )}
+
+                {n.kind === 'reply' && (
+                  <div>
+                    <b>@{n.user.handle}</b> replied to your comment:{' '}
+                    <span className="opacity-90">{n.text}</span>{' '}
+                    <span className="text-xs opacity-60">· {n.time}</span>
+                  </div>
+                )}
+
+                {n.kind === 'comment_like' && (
+                  <div>
+                    <b>@{n.user.handle}</b> liked your comment:{' '}
                     <span className="opacity-90">{n.text}</span>{' '}
                     <span className="text-xs opacity-60">· {n.time}</span>
                   </div>
@@ -225,7 +259,10 @@ export default function NotificationsPage() {
                   initialFollowing={!!n.user.viewerFollows}
                 />
               ) : (
-                <button className="px-3 py-1.5 rounded-full border border-white/20 hover:bg-white/5">
+                <button
+                  className="px-3 py-1.5 rounded-full border border-white/20 hover:bg-white/5"
+                  onClick={() => n.postId && router.push(`/${locale}/p/${n.postId}`)}
+                >
                   View
                 </button>
               )}
@@ -307,6 +344,13 @@ function SmallHeartIcon() {
   return (
     <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor" aria-hidden>
       <path d="M20.8 8.8a5.5 5.5 0 0 0-9.4-3.9l-.9.9-.9-.9a5.5 5.5 0 0 0-7.8 7.8l.9.9L10.5 21l8.7-7.4.9-.9a5.5 5.5 0 0 0 0-3.9z" />
+    </svg>
+  );
+}
+function SmallCommentIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor" aria-hidden>
+      <path d="M4 7a5 5 0 0 1 5-5h6a5 5 0 0 1 5 5v4a5 5 0 0 1-5 5H11l-4 3v-3H9a5 5 0 0 1-5-5V7Z" />
     </svg>
   );
 }

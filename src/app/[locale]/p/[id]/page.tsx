@@ -62,7 +62,6 @@ export default async function PostDetailPage({ params }: { params: Promise<Param
           role: p.repostOf!.author.role,
           avatarUrl: p.repostOf!.author.avatarUrl,
         },
-        // Reposts betten nichts ein
         quote: null,
       }
     : {
@@ -78,7 +77,6 @@ export default async function PostDetailPage({ params }: { params: Promise<Param
           role: p.author.role,
           avatarUrl: p.author.avatarUrl,
         },
-        // Eingebetteter Quote-Post (falls vorhanden)
         quote: p.quoteOf
           ? {
               id: p.quoteOf.id,
@@ -97,11 +95,10 @@ export default async function PostDetailPage({ params }: { params: Promise<Param
           : null,
       };
 
-  // Für Likes/Comments/Reposts orientieren wir uns – wie im Feed – am Original bei Repost
   const statSource = isRepost ? p.repostOf! : p;
 
   const item: FeedPost = {
-    id: p.id, // Detail zeigt das Feed-Item (bei Repost = Repost-ID)
+    id: p.id,
     createdAtISO: p.createdAt.toISOString(),
     content,
     reposter: isRepost
@@ -112,7 +109,6 @@ export default async function PostDetailPage({ params }: { params: Promise<Param
       reposts: statSource._count.reposts ?? 0,
       likes: statSource._count.Like ?? 0,
     },
-    // Viewer-Flags auf der Detailseite neutral (falls benötigt später ergänzen)
     viewer: {
       liked: false,
       bookmarked: false,
@@ -127,7 +123,6 @@ export default async function PostDetailPage({ params }: { params: Promise<Param
       <PostDetailHeader />
       <section className="max-w-2xl mx-auto grid gap-4">
         <PostCard post={item} />
-        {/* Kommentare zum Feed-Item (bei Repost: Kommentare hängen am Repost-Item) */}
         <CommentsThread postId={item.id} />
       </section>
     </>

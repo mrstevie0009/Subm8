@@ -1,4 +1,3 @@
-//prism/schema.prisma
 generator client {
   provider = "prisma-client-js"
 }
@@ -10,24 +9,24 @@ datasource db {
 }
 
 model User {
-  id              String   @id @default(cuid())
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  email           String?  @unique
-  handle          String   @unique @db.VarChar(20)
-  displayName     String   @db.VarChar(40)
-  role            Role
-  avatarUrl       String?
-  bannerUrl       String?
-  bio             String?  @db.VarChar(300)
-  location        String?
-  nsfwDefault     Boolean  @default(false)
-  ageVerifiedAt   DateTime?
-  isDeactivated   Boolean  @default(false)
-  isAdmin         Boolean  @default(false)
-  country         String?  @db.VarChar(2)
-  passwordHash    String?
-  phone           String?
+  id            String    @id @default(cuid())
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  email         String?   @unique
+  handle        String    @unique @db.VarChar(20)
+  displayName   String    @db.VarChar(40)
+  role          Role
+  avatarUrl     String?
+  bannerUrl     String?
+  bio           String?   @db.VarChar(300)
+  location      String?
+  nsfwDefault   Boolean   @default(false)
+  ageVerifiedAt DateTime?
+  isDeactivated Boolean   @default(false)
+  isAdmin       Boolean   @default(false)
+  country       String?   @db.VarChar(2)
+  passwordHash  String?
+  phone         String?
 
   blocks    Block[] @relation("UserBlocks")
   blockedBy Block[] @relation("UserBlockedBy")
@@ -43,24 +42,27 @@ model User {
   Comment                       Comment[]
   Community                     Community[]
   CommunityMember               CommunityMember[]
-  conversationsAsDomme          Conversation[] @relation("domme")
-  conversationsAsSub            Conversation[] @relation("sub")
-  followers                     Follow[]       @relation("followee")
-  following                     Follow[]       @relation("follower")
+  conversationsAsDomme          Conversation[]    @relation("domme")
+  conversationsAsSub            Conversation[]    @relation("sub")
+  followers                     Follow[]          @relation("followee")
+  following                     Follow[]          @relation("follower")
   Like                          Like[]
   messages                      Message[]
   reads                         MessageRead[]
-  Payment_Payment_payeeIdToUser Payment[]     @relation("Payment_payeeIdToUser")
-  Payment_Payment_payerIdToUser Payment[]     @relation("Payment_payerIdToUser")
+  Payment_Payment_payeeIdToUser Payment[]         @relation("Payment_payeeIdToUser")
+  Payment_Payment_payerIdToUser Payment[]         @relation("Payment_payerIdToUser")
   Payout                        Payout[]
   Post                          Post[]
   sessions                      Session[]
-  sentTips                      Tip[]         @relation("sentTips")
-  receivedTips                  Tip[]         @relation("receivedTips")
+  sentTips                      Tip[]             @relation("sentTips")
+  receivedTips                  Tip[]             @relation("receivedTips")
   Wallet                        Wallet?
 
   notificationSettings UserNotificationSettings?
-  reportsMade         ContentReport[]
+  reportsMade          ContentReport[]
+
+  // NEU: Gegenrelation für CommentLike
+  commentLikes CommentLike[] // <— diese Zeile ergänzt die fehlende Relation
 
   // Offer-Editor
   offerTitle String? @db.Text
@@ -216,18 +218,49 @@ model Post {
   @@index([quoteOfId])
 }
 
+/**
+ * ----------------- NEU: Threaded Comments + Likes -------------------
+ */
+
 model Comment {
-  id        String   @id
+  id        String   @id @default(cuid())
   userId    String
   postId    String
+  parentId  String?
   text      String
   createdAt DateTime @default(now())
-  Post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
-  User      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  updatedAt DateTime @updatedAt
+
+  Post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  User User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Self-Relation (Parent -> Replies)
+  parent  Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies Comment[] @relation("CommentReplies")
+
+  likes CommentLike[]
 
   @@index([postId, createdAt])
   @@index([userId, createdAt])
+  @@index([parentId, createdAt])
 }
+
+model CommentLike {
+  userId    String
+  commentId String
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  comment Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@id([userId, commentId])
+  @@index([commentId])
+  @@index([userId])
+}
+
+/**
+ * --------------------------------------------------------------------
+ */
 
 model Community {
   id              String              @id
@@ -254,7 +287,9 @@ model CommunityMember {
   @@id([communityId, userId])
 }
 
-/* --------- Ledger (bestehend) --------- */
+/**
+ * --------- Ledger (bestehend) ---------
+ */
 
 model Ledger {
   id          String          @id
@@ -279,7 +314,9 @@ model Like {
   @@index([userId])
 }
 
-/* --------- Payment (erweitert) --------- */
+/**
+ * --------- Payment (erweitert) ---------
+ */
 
 model Payment {
   id                    String        @id
@@ -301,11 +338,11 @@ model Payment {
   createdAt             DateTime      @default(now())
   updatedAt             DateTime      @updatedAt
 
-  Ledger                Ledger[]
-  evidences             BuyerEvidence[]
-  vatEntries            VatLedger[]
-  platformRevenue       PlatformRevenue?
-  processorFees         ProcessorFeeLedger[]
+  Ledger          Ledger[]
+  evidences       BuyerEvidence[]
+  vatEntries      VatLedger[]
+  platformRevenue PlatformRevenue?
+  processorFees   ProcessorFeeLedger[]
 
   User_Payment_payeeIdToUser User @relation("Payment_payeeIdToUser", fields: [payeeId], references: [id], onDelete: Cascade)
   User_Payment_payerIdToUser User @relation("Payment_payerIdToUser", fields: [payerId], references: [id], onDelete: Cascade)
@@ -315,7 +352,9 @@ model Payment {
   @@index([payeeId])
 }
 
-/* --------- Payout / Wallet ---------- */
+/**
+ * --------- Payout / Wallet ----------
+ */
 
 model Payout {
   id             String       @id
@@ -337,7 +376,9 @@ model Wallet {
   User         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-/* ---------- NEW: Evidence & Finance Ledgers ---------- */
+/**
+ * ---------- NEW: Evidence & Finance Ledgers ----------
+ */
 
 enum EvidenceType {
   IP_GEO
@@ -347,27 +388,27 @@ enum EvidenceType {
 }
 
 model BuyerEvidence {
-  id         String       @id @default(cuid())
-  createdAt  DateTime     @default(now())
-  paymentId  String
-  payment    Payment      @relation(fields: [paymentId], references: [id], onDelete: Cascade)
-  type       EvidenceType
-  country    String?      @db.VarChar(2)
-  source     String?
-  value      String?
+  id        String       @id @default(cuid())
+  createdAt DateTime     @default(now())
+  paymentId String
+  payment   Payment      @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  type      EvidenceType
+  country   String?      @db.VarChar(2)
+  source    String?
+  value     String?
 
   @@index([paymentId])
 }
 
 model VatLedger {
-  id              String   @id @default(cuid())
-  paymentId       String
-  payment         Payment  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
-  country         String?  @db.VarChar(2)
-  rate            Int      // z.B. 19 = 19%
-  vatAmountCents  Int
-  status          String   @default("open")
-  createdAt       DateTime @default(now())
+  id             String   @id @default(cuid())
+  paymentId      String
+  payment        Payment  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  country        String?  @db.VarChar(2)
+  rate           Int
+  vatAmountCents Int
+  status         String   @default("open")
+  createdAt      DateTime @default(now())
 
   @@index([paymentId])
   @@index([status])
@@ -396,7 +437,9 @@ model ProcessorFeeLedger {
   @@index([paymentId])
 }
 
-/* ---------- NEW/UPDATED Enums ---------- */
+/**
+ * ---------- NEW/UPDATED Enums ----------
+ */
 
 enum ReportTargetType {
   POST
@@ -419,24 +462,24 @@ model ContentReport {
 }
 
 model UserNotificationSettings {
-  userId               String  @id
-  user                 User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  pushEnabled          Boolean @default(true)
-  dmMessages           Boolean @default(true)
-  dmReactions          Boolean @default(true)
-  mentions             Boolean @default(true)
-  comments             Boolean @default(true)
-  likes                Boolean @default(true)
-  newFollowers         Boolean @default(true)
-  photoTags            Boolean @default(true)
-  emailMessages        Boolean @default(false)
-  emailDigest          Boolean @default(false)
-  muteNotFollowing     Boolean @default(false)
-  muteNotFollowers     Boolean @default(false)
-  muteNewAccounts      Boolean @default(false)
-  muteNoAvatar         Boolean @default(false)
-  requireEmailVerified Boolean @default(false)
-  requirePhoneVerified Boolean @default(false)
+  userId               String   @id
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pushEnabled          Boolean  @default(true)
+  dmMessages           Boolean  @default(true)
+  dmReactions          Boolean  @default(true)
+  mentions             Boolean  @default(true)
+  comments             Boolean  @default(true)
+  likes                Boolean  @default(true)
+  newFollowers         Boolean  @default(true)
+  photoTags            Boolean  @default(true)
+  emailMessages        Boolean  @default(false)
+  emailDigest          Boolean  @default(false)
+  muteNotFollowing     Boolean  @default(false)
+  muteNotFollowers     Boolean  @default(false)
+  muteNewAccounts      Boolean  @default(false)
+  muteNoAvatar         Boolean  @default(false)
+  requireEmailVerified Boolean  @default(false)
+  requirePhoneVerified Boolean  @default(false)
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 }
@@ -445,14 +488,16 @@ model Block {
   blockerId String
   blockedId String
   createdAt DateTime @default(now())
-  blocker   User @relation("UserBlocks",    fields: [blockerId], references: [id], onDelete: Cascade)
-  blocked   User @relation("UserBlockedBy", fields: [blockedId], references: [id], onDelete: Cascade)
+  blocker   User     @relation("UserBlocks", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked   User     @relation("UserBlockedBy", fields: [blockedId], references: [id], onDelete: Cascade)
 
   @@id([blockerId, blockedId])
   @@index([blockedId, blockerId], name: "Block_blocked_idx")
 }
 
-/* ------------------------------ Enums ------------------------------------- */
+/**
+ * ------------------------------ Enums -------------------------------------
+ */
 
 enum Role {
   DOMME

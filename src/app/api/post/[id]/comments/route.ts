@@ -1,14 +1,49 @@
-// src/app/api/post/[id]/comments/route.ts
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
-// Optional: du kannst 'force-dynamic' weglassen; Route Handlers sind ohnehin dynamisch.
-// export const dynamic = 'force-dynamic';
-
 type Params = { id: string };
 
-// --- einfacher In-Memory-Rate-Limiter (pro Client+Post) ---
-const MIN_GAP_MS = 800; // Mindestabstand zwischen Requests
+// ---------------- Types ----------------
+
+type UserSlim = {
+  id: string;
+  handle: string;
+  displayName: string;
+  avatarUrl: string | null;
+  role: 'DOMME' | 'SUBMISSIVE';
+};
+
+type CommentRow = {
+  id: string;
+  text: string;
+  createdAt: Date;
+  parentId: string | null;
+  User: {
+    id: string;
+    handle: string;
+    displayName: string;
+    avatarUrl: string | null;
+    role: 'DOMME' | 'SUBMISSIVE';
+  };
+  _count: {
+    likes: number;
+    replies: number;
+  };
+};
+
+export type TreeComment = {
+  id: string;
+  text: string;
+  createdAt: string; // ISO
+  parentId: string | null;
+  author: UserSlim;
+  counts: { likes: number; replies: number };
+  children: TreeComment[];
+};
+
+// ----------- small in-memory limiter -----------
+
+const MIN_GAP_MS = 800;
 const lastHit = new Map<string, number>();
 
 function clientKey(req: Request, postId: string) {
@@ -20,93 +55,113 @@ function clientKey(req: Request, postId: string) {
   return `${ip}:${postId}:${ua.slice(0, 40)}`;
 }
 
+// ----------------- Handler -----------------
+
 export async function GET(req: Request, ctx: { params: Promise<Params> }) {
   const { id } = await ctx.params;
 
-  // 1) offensichtliche Prefetches ignorieren (Next / Browser)
+  // ignore prefetches
   const prefetch =
     req.headers.get('purpose') === 'prefetch' ||
     req.headers.get('sec-purpose') === 'prefetch' ||
     req.headers.get('x-middleware-prefetch') === '1' ||
     req.headers.get('next-router-prefetch') === '1';
-  if (prefetch) {
-    return new NextResponse(null, { status: 204 }); // kein Body, kein Log-Spam
-  }
+  if (prefetch) return new NextResponse(null, { status: 204 });
 
-  // 2) Mindestabstand pro Client × Post
+  // rate limit per client × post
   const key = clientKey(req, id);
   const now = Date.now();
   const last = lastHit.get(key) ?? 0;
   if (now - last < MIN_GAP_MS) {
     return NextResponse.json(
-      { ok: true, throttled: true, items: [], nextCursor: null },
-      {
-        status: 200,
-        headers: {
-          'Cache-Control': 'no-store',
-          'X-Comments-Throttled': '1',
-        },
-      },
+      { ok: true, throttled: true, items: [] as TreeComment[], nextCursor: null as string | null },
+      { status: 200, headers: { 'Cache-Control': 'no-store', 'X-Comments-Throttled': '1' } },
     );
   }
   lastHit.set(key, now);
 
   try {
-    // Cursor aus Query lesen (optional)
     const { searchParams } = new URL(req.url);
-    const cursor = searchParams.get('cursor'); // id des letzten Elements
+    const after = searchParams.get('after');
+    const take = 25;
 
-    const take = 50; // page size – passe an deine UI an
-    const rows = await prisma.comment.findMany({
-      where: { postId: id },
+    // 1) top-level comments
+    const top: CommentRow[] = await prisma.comment.findMany({
+      where: { postId: id, parentId: null },
       orderBy: { createdAt: 'asc' },
-      // Cursor-Pagination (skip=1 bei Cursor)
-      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+      ...(after ? { cursor: { id: after }, skip: 1 } : {}),
       take,
       select: {
         id: true,
-        createdAt: true,
         text: true,
-        User: {
-          select: {
-            id: true,
-            handle: true,
-            displayName: true,
-            avatarUrl: true,
-          },
-        },
+        createdAt: true,
+        parentId: true,
+        User: { select: { id: true, handle: true, displayName: true, avatarUrl: true, role: true } },
+        _count: { select: { likes: true, replies: true } },
       },
     });
 
-    const items = rows.map((c) => ({
-      id: c.id,
-      createdAt: c.createdAt.toISOString(),
-      text: c.text,
-      author: {
-        id: c.User.id,
-        handle: c.User.handle,
-        displayName: c.User.displayName,
-        avatarUrl: c.User.avatarUrl ?? null,
-      },
-    }));
+    // 2) fetch all children of these nodes (BFS)
+    const queue: string[] = top.map((c) => c.id);
+    const nodes: Record<string, CommentRow> = {};
+    for (const c of top) nodes[c.id] = c;
 
-    const nextCursor = rows.length === take ? rows[rows.length - 1]!.id : null;
+    while (queue.length) {
+      const parentIds = queue.splice(0, 30);
+      const children: CommentRow[] = await prisma.comment.findMany({
+        where: { parentId: { in: parentIds } },
+        orderBy: { createdAt: 'asc' },
+        select: {
+          id: true,
+          text: true,
+          createdAt: true,
+          parentId: true,
+          User: { select: { id: true, handle: true, displayName: true, avatarUrl: true, role: true } },
+          _count: { select: { likes: true, replies: true } },
+        },
+      });
+      for (const ch of children) {
+        nodes[ch.id] = ch;
+        queue.push(ch.id);
+      }
+    }
+
+    // 3) parentId -> children map
+    const byParent: Map<string | null, CommentRow[]> = new Map();
+    Object.values(nodes).forEach((n) => {
+      const k = n.parentId;
+      const list = byParent.get(k) ?? [];
+      list.push(n);
+      byParent.set(k, list);
+    });
+
+    // 4) transform to tree
+    const toTree = (parentId: string | null): TreeComment[] =>
+      (byParent.get(parentId) ?? []).map<TreeComment>((n) => ({
+        id: n.id,
+        text: n.text,
+        createdAt: n.createdAt.toISOString(),
+        parentId: n.parentId,
+        author: {
+          id: n.User.id,
+          handle: n.User.handle,
+          displayName: n.User.displayName,
+          avatarUrl: n.User.avatarUrl,
+          role: n.User.role,
+        },
+        counts: { likes: n._count.likes, replies: n._count.replies },
+        children: toTree(n.id),
+      }));
+
+    const items: TreeComment[] = toTree(null);
+    const nextCursor: string | null = top.length === take ? top[top.length - 1]!.id : null;
 
     return NextResponse.json(
       { ok: true, items, nextCursor },
-      {
-        headers: {
-          // kein HTTP-Caching, aber auch keine Proxies, die „helfen“ wollen
-          'Cache-Control': 'no-store, no-cache, must-revalidate',
-        },
-      },
+      { headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' } },
     );
   } catch (e) {
     console.error('GET /api/post/[id]/comments failed:', e);
-    return NextResponse.json(
-        { ok: false, error: 'Failed to load comments' },
-        { status: 500 },
-    );
+    return NextResponse.json({ ok: false, error: 'Failed to load comments' }, { status: 500 });
   }
-
 }
