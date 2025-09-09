@@ -1,5 +1,7 @@
+// src/app/api/post/[id]/comments/route.ts
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getCurrentUser } from '@/lib/currentUser';
 
 type Params = { id: string };
 
@@ -18,6 +20,8 @@ type CommentRow = {
   text: string;
   createdAt: Date;
   parentId: string | null;
+  mediaUrl: string | null;
+  mediaAlt: string | null;
   User: {
     id: string;
     handle: string;
@@ -36,8 +40,11 @@ export type TreeComment = {
   text: string;
   createdAt: string; // ISO
   parentId: string | null;
+  mediaUrl: string | null;
+  mediaAlt: string | null;
   author: UserSlim;
   counts: { likes: number; replies: number };
+  viewer: { liked: boolean };
   children: TreeComment[];
 };
 
@@ -81,6 +88,8 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
   lastHit.set(key, now);
 
   try {
+    const me = await getCurrentUser();
+
     const { searchParams } = new URL(req.url);
     const after = searchParams.get('after');
     const take = 25;
@@ -96,6 +105,8 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
         text: true,
         createdAt: true,
         parentId: true,
+        mediaUrl: true,
+        mediaAlt: true,
         User: { select: { id: true, handle: true, displayName: true, avatarUrl: true, role: true } },
         _count: { select: { likes: true, replies: true } },
       },
@@ -116,6 +127,8 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
           text: true,
           createdAt: true,
           parentId: true,
+          mediaUrl: true,
+          mediaAlt: true,
           User: { select: { id: true, handle: true, displayName: true, avatarUrl: true, role: true } },
           _count: { select: { likes: true, replies: true } },
         },
@@ -135,6 +148,17 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
       byParent.set(k, list);
     });
 
+    // viewer.liked: alle IDs sammeln und Likes des Viewers ziehen
+    const allIds = Object.keys(nodes);
+    const likedSet = new Set<string>();
+    if (me && allIds.length) {
+      const liked = await prisma.commentLike.findMany({
+        where: { userId: me.id, commentId: { in: allIds } },
+        select: { commentId: true },
+      });
+      for (const r of liked) likedSet.add(r.commentId);
+    }
+
     // 4) transform to tree
     const toTree = (parentId: string | null): TreeComment[] =>
       (byParent.get(parentId) ?? []).map<TreeComment>((n) => ({
@@ -142,6 +166,8 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
         text: n.text,
         createdAt: n.createdAt.toISOString(),
         parentId: n.parentId,
+        mediaUrl: n.mediaUrl,
+        mediaAlt: n.mediaAlt,
         author: {
           id: n.User.id,
           handle: n.User.handle,
@@ -150,6 +176,7 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
           role: n.User.role,
         },
         counts: { likes: n._count.likes, replies: n._count.replies },
+        viewer: { liked: likedSet.has(n.id) },
         children: toTree(n.id),
       }));
 

@@ -1,4 +1,3 @@
-// src/app/api/chat/[id]/route.ts
 import path from 'node:path';
 import { promises as fs } from 'node:fs';
 import { randomUUID } from 'node:crypto';
@@ -89,7 +88,7 @@ export async function GET(_req: Request, { params }: Ctx) {
       });
     }
 
-    // Rolle des angemeldeten Users sicherstellen (Fallback, falls getCurrentUser die Rolle nicht liefert)
+    // Rolle des angemeldeten Users sicherstellen (Fallback)
     const meRole =
       (me).role ??
       (await prisma.user.findUnique({ where: { id: me.id }, select: { role: true } }))?.role;
@@ -107,7 +106,6 @@ export async function GET(_req: Request, { params }: Ctx) {
         mediaType: m.mediaType,
         read: m.reads.length > 0 || m.authorId === me.id,
       })),
-      // Flags für die UI (Composer sperren, Badges etc.)
       viewerHasBlocked,
       isBlockedByOther,
     });

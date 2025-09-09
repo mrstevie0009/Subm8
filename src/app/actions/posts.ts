@@ -1,4 +1,3 @@
-// src/app/actions/posts.ts
 'use server';
 
 import { prisma } from '@/lib/prisma';
@@ -21,7 +20,7 @@ function toURL(base: string, params: Record<string, string | number | undefined>
  * Server Action: normalen Post ODER Quote-Post erstellen.
  * Erwartete FormData-Felder:
  * - text (string)
- * - media (File, optional)
+ * - media (File, optional)  ← Bild ODER Video
  * - mediaAlt (string, optional)
  * - quoteOfId (string, optional)
  * - returnTo (string) → Zielroute nach Erfolg/Fehler
@@ -53,25 +52,28 @@ export async function createPost(formData: FormData): Promise<void> {
   const quoteOfIdRaw = formData.get('quoteOfId');
   const quoteOfId = typeof quoteOfIdRaw === 'string' && quoteOfIdRaw.length > 0 ? quoteOfIdRaw : null;
 
-  // Mindestens Text ODER Bild ODER Quote notwendig
+  // Mindestens Text ODER Media ODER Quote notwendig
   if (!text && !file && !quoteOfId) {
-    redirect(toURL(returnTo, { error: 'Bitte Text, Bild oder eine Quote auswählen.' }));
+    redirect(toURL(returnTo, { error: 'Bitte Text, Bild/Video oder eine Quote auswählen.' }));
   }
 
   const mediaAlt: string | null = mediaAltRaw ? mediaAltRaw.slice(0, 200) : null;
 
-  // Optionaler Upload
+  // Optionaler Upload (Bild oder Video)
   let mediaUrl: string | null = null;
+
   if (file && file.size > 0) {
-    const maxBytes = envMaxUploadBytes(5);
+    const mime = file.type || '';
+    const isVideo = mime.startsWith('video/'); // nur für die Größenbegrenzung relevant
+    const maxBytes = isVideo ? envMaxUploadBytes(200) : envMaxUploadBytes(10); // 200MB Video, 10MB Bild
     const res = await guardAndSave(file, { maxSize: maxBytes, publicSubdir: 'uploads' });
     if (!res.ok) {
       redirect(toURL(returnTo, { error: res.message }));
     }
-    mediaUrl = res.publicPath;
+    mediaUrl = res.publicPath; // z. B. /uploads/uuid_dateiname.mp4
   }
 
-  // Quote-Ziel prüfen
+  // Quote-Ziel prüfen (falls gesetzt)
   if (quoteOfId) {
     const target = await prisma.post.findUnique({ where: { id: quoteOfId }, select: { id: true } });
     if (!target) {
@@ -86,6 +88,7 @@ export async function createPost(formData: FormData): Promise<void> {
         text,        // darf leer sein, wenn nur Quote/Media
         mediaUrl,
         mediaAlt,
+        // ❌ KEIN mediaType hier – das Feld existiert im Schema nicht
         quoteOfId,   // ← macht den Post zum Quote-Post
       },
     });
@@ -100,5 +103,5 @@ export async function createPost(formData: FormData): Promise<void> {
   redirect(returnTo);
 }
 
-// 🔁 Alias-Export für bestehende Importe (QuoteOverlay)
+// 🔁 Alias-Export für bestehende Importe (QuoteOverlay etc.)
 export { createPost as createPostAction };

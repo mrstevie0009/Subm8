@@ -31,15 +31,39 @@ export async function GET(req: Request) {
       },
       repostOf: {
         select: {
-          id: true, text: true, mediaUrl: true, mediaAlt: true, createdAt: true,
-          author: { select: { id: true, handle: true, displayName: true, role: true, avatarUrl: true } },
+          id: true,
+          text: true,
+          mediaUrl: true,
+          mediaAlt: true,
+          createdAt: true,
+          author: {
+            select: {
+              id: true,
+              handle: true,
+              displayName: true,
+              role: true,
+              avatarUrl: true,
+            },
+          },
           _count: { select: { Like: true, Comment: true, reposts: true } },
         },
       },
       quoteOf: {
         select: {
-          id: true, text: true, mediaUrl: true, mediaAlt: true, createdAt: true,
-          author: { select: { id: true, handle: true, displayName: true, role: true, avatarUrl: true } },
+          id: true,
+          text: true,
+          mediaUrl: true,
+          mediaAlt: true,
+          createdAt: true,
+          author: {
+            select: {
+              id: true,
+              handle: true,
+              displayName: true,
+              role: true,
+              avatarUrl: true,
+            },
+          },
         },
       },
       _count: { select: { Like: true, Comment: true, reposts: true } },
@@ -49,36 +73,48 @@ export async function GET(req: Request) {
 
   // Für Likes/Bookmarks/Block-Status:
   const likeTargetIds = posts.map((p) => (p.repostOf ? p.repostOf.id : p.id)); // Likes auf's Original bei Repost
-  const bookmarkIds  = posts.map((p) => p.id);                                  // Bookmarks auf das Feed-Item
-  const authorIds    = Array.from(new Set(posts.map((p) => p.authorId)));
+  const bookmarkIds = posts.map((p) => p.id); // Bookmarks aufs Feed-Item
+  const authorIds = Array.from(new Set(posts.map((p) => p.authorId)));
 
   const [likes, bms, myBlocks, blocksMe] = await Promise.all([
     me
-      ? prisma.like.findMany({ where: { userId: me.id, postId: { in: likeTargetIds } }, select: { postId: true } })
+      ? prisma.like.findMany({
+          where: { userId: me.id, postId: { in: likeTargetIds } },
+          select: { postId: true },
+        })
       : Promise.resolve([] as { postId: string }[]),
     me
-      ? prisma.bookmark.findMany({ where: { userId: me.id, postId: { in: bookmarkIds } }, select: { postId: true } })
+      ? prisma.bookmark.findMany({
+          where: { userId: me.id, postId: { in: bookmarkIds } },
+          select: { postId: true },
+        })
       : Promise.resolve([] as { postId: string }[]),
     me
-      ? prisma.block.findMany({ where: { blockerId: me.id, blockedId: { in: authorIds } }, select: { blockedId: true } })
+      ? prisma.block.findMany({
+          where: { blockerId: me.id, blockedId: { in: authorIds } },
+          select: { blockedId: true },
+        })
       : Promise.resolve([] as { blockedId: string }[]),
     me
-      ? prisma.block.findMany({ where: { blockerId: { in: authorIds }, blockedId: me.id }, select: { blockerId: true } })
+      ? prisma.block.findMany({
+          where: { blockerId: { in: authorIds }, blockedId: me.id },
+          select: { blockerId: true },
+        })
       : Promise.resolve([] as { blockerId: string }[]),
   ]);
 
-  const likedSet      = new Set(likes.map((l) => l.postId));
+  const likedSet = new Set(likes.map((l) => l.postId));
   const bookmarkedSet = new Set(bms.map((b) => b.postId));
   const hasBlockedSet = new Set(myBlocks.map((b) => b.blockedId));
-  const blockedBySet  = new Set(blocksMe.map((b) => b.blockerId));
+  const blockedBySet = new Set(blocksMe.map((b) => b.blockerId));
 
   return NextResponse.json({
     posts: posts.map((p) => {
       const isRepost = !!p.repostOf;
-      const isQuote  = !!p.quoteOf;
+      const isQuote = !!p.quoteOf;
 
-      const statSource = isRepost ? p.repostOf! : p;      // Repost: Zähler vom Original
-      const likeRefId  = isRepost ? p.repostOf!.id : p.id; // Likes aufs Original bei Repost
+      const statSource = isRepost ? p.repostOf! : p; // Repost: Zähler vom Original
+      const likeRefId = isRepost ? p.repostOf!.id : p.id; // Likes aufs Original bei Repost
 
       return {
         id: p.id,
@@ -88,7 +124,7 @@ export async function GET(req: Request) {
         createdAt: p.createdAt.toISOString(),
 
         _count: {
-          Like:    statSource._count.Like    ?? 0,
+          Like: statSource._count.Like ?? 0,
           Comment: statSource._count.Comment ?? 0,
           reposts: statSource._count.reposts ?? 0,
         },
@@ -139,7 +175,7 @@ export async function GET(req: Request) {
           liked: likedSet.has(likeRefId),
           bookmarked: bookmarkedSet.has(p.id),
           hasBlockedAuthor: me ? hasBlockedSet.has(p.authorId) : false,
-          blockedByAuthor:  me ? blockedBySet.has(p.authorId)  : false,
+          blockedByAuthor: me ? blockedBySet.has(p.authorId) : false,
         },
       };
     }),

@@ -3,13 +3,12 @@
 
 import * as React from 'react';
 import { createPortal } from 'react-dom';
+import Image from 'next/image';
 import { createPost } from '@/app/actions/posts';
 import MentionSuggest from '@/components/MentionSuggest';
 
-type Props = {
-  open: boolean;
-  onClose: () => void;
-};
+type Props = { open: boolean; onClose: () => void };
+type MediaKind = 'image' | 'video' | null;
 
 export default function ComposePostModal({ open, onClose }: Props) {
   const [mounted, setMounted] = React.useState(false);
@@ -17,13 +16,14 @@ export default function ComposePostModal({ open, onClose }: Props) {
 
   const [text, setText] = React.useState('');
 
-  // Refs MÜSSEN vor einem möglichen return deklariert werden
+  // Refs müssen vor return existieren
   const textareaRef = React.useRef<HTMLTextAreaElement | HTMLInputElement>(null);
   const anchorRef = React.useRef<HTMLElement | null>(null);
 
   // File + Preview
   const [mediaFile, setMediaFile] = React.useState<File | null>(null);
   const [mediaPreview, setMediaPreview] = React.useState<string | null>(null);
+  const [mediaKind, setMediaKind] = React.useState<MediaKind>(null);
 
   React.useEffect(() => {
     return () => {
@@ -31,18 +31,21 @@ export default function ComposePostModal({ open, onClose }: Props) {
     };
   }, [mediaPreview]);
 
-  const onPickImage = (file?: File | null) => {
+  const onPickMedia = (file?: File | null) => {
     if (!file) return;
     if (mediaPreview?.startsWith('blob:')) URL.revokeObjectURL(mediaPreview);
     const url = URL.createObjectURL(file);
+    const kind: MediaKind = file.type?.startsWith('video') ? 'video' : 'image';
     setMediaFile(file);
     setMediaPreview(url);
+    setMediaKind(kind);
   };
 
-  const clearImage = () => {
+  const clearMedia = () => {
     if (mediaPreview?.startsWith('blob:')) URL.revokeObjectURL(mediaPreview);
     setMediaFile(null);
     setMediaPreview(null);
+    setMediaKind(null);
   };
 
   // Modal scroll lock
@@ -100,7 +103,7 @@ export default function ComposePostModal({ open, onClose }: Props) {
         </div>
 
         <form
-          // ts-expect-error — Client Action, erhält FormData von React
+          // ts-expect-error — Client Action, React übergibt FormData
           action={async (fd: FormData) => {
             if (mediaFile) fd.set('media', mediaFile);
             await createPost(fd);
@@ -114,16 +117,12 @@ export default function ComposePostModal({ open, onClose }: Props) {
                 ref={textareaRef as React.RefObject<HTMLTextAreaElement>}
                 name="text"
                 rows={3}
-                placeholder="Was gibt's Neues?"
+                placeholder="What's happening?"
                 className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-[var(--purple)]/40"
                 maxLength={4000}
                 value={text}
                 onChange={(e) => setText(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.defaultPrevented) return; // Suggest fängt Enter ab
-                }}
               />
-
               <MentionSuggest
                 anchorRef={anchorRef as React.RefObject<HTMLElement>}
                 value={text}
@@ -132,19 +131,44 @@ export default function ComposePostModal({ open, onClose }: Props) {
               />
             </div>
 
-            {mediaPreview && (
+            {/* IMAGE PREVIEW */}
+            {mediaPreview && mediaKind === 'image' && (
               <figure className="relative overflow-hidden rounded-xl border border-white/10 bg-black/20">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
+                <Image
                   src={mediaPreview}
                   alt=""
+                  width={1200}
+                  height={800}
+                  unoptimized
+                  sizes="100vw"
                   className="block mx-auto max-w-full h-auto max-h-[65vh] sm:max-h-[70vh]"
                 />
                 <button
                   type="button"
-                  onClick={clearImage}
+                  onClick={clearMedia}
                   className="absolute top-2 right-2 px-2 py-1 rounded-md bg-black/70 border border-white/20 hover:bg-black/80 text-[13px]"
-                  title="Bild entfernen"
+                  title="Remove image"
+                >
+                  Remove
+                </button>
+              </figure>
+            )}
+
+            {/* VIDEO PREVIEW */}
+            {mediaPreview && mediaKind === 'video' && (
+              <figure className="relative overflow-hidden rounded-xl border border-white/10 bg-black">
+                <video
+                  src={mediaPreview}
+                  className="block w-full h-auto max-h-[65vh] sm:max-h-[70vh]"
+                  controls
+                  playsInline
+                  muted
+                />
+                <button
+                  type="button"
+                  onClick={clearMedia}
+                  className="absolute top-2 right-2 px-2 py-1 rounded-md bg-black/70 border border-white/20 hover:bg-black/80 text-[13px]"
+                  title="Remove video"
                 >
                   Remove
                 </button>
@@ -153,21 +177,20 @@ export default function ComposePostModal({ open, onClose }: Props) {
 
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
+                {/* EINZIGER Media-Picker (Bild ODER Video) */}
                 <label className="inline-flex items-center gap-2 px-2 py-1 rounded hover:bg-white/5 cursor-pointer">
                   <input
                     type="file"
-                    name="media"
-                    accept="image/*"
+                    accept="image/*,video/*"
                     className="sr-only"
-                    onChange={(e) =>
-                      onPickImage(e.currentTarget.files?.[0] ?? null)
-                    }
+                    onChange={(e) => onPickMedia(e.currentTarget.files?.[0] ?? null)}
                   />
                   <span
                     className="inline-grid place-items-center"
                     style={{ width: 24, height: 24, color: 'var(--purple)' }}
                     aria-hidden
                   >
+                    {/* Bild-Icon wiederverwendet */}
                     <svg
                       viewBox="0 0 24 24"
                       width="20"
@@ -181,7 +204,7 @@ export default function ComposePostModal({ open, onClose }: Props) {
                       <circle cx="9" cy="9" r="1.5" />
                     </svg>
                   </span>
-                  <span className="text-sm text-white/80">Bild</span>
+                  <span className="text-sm text-white/80">Media</span>
                 </label>
               </div>
 

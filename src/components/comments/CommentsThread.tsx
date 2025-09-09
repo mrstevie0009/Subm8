@@ -1,3 +1,4 @@
+// src/components/comments/CommentsThread.tsx
 'use client';
 
 import * as React from 'react';
@@ -11,6 +12,8 @@ type TreeComment = {
   text: string;
   createdAt: string;
   parentId: string | null;
+  mediaUrl: string | null;
+  mediaAlt: string | null;
   author: {
     id: string;
     handle: string;
@@ -54,7 +57,7 @@ export default function CommentsThread({ postId }: { postId: string }) {
         setLoading(false);
       }
     },
-    [postId, nextCursor],
+    [postId, nextCursor]
   );
 
   React.useEffect(() => {
@@ -105,14 +108,13 @@ function CommentNode({
   onChanged: () => void;
 }) {
   const [showReply, setShowReply] = React.useState(false);
-  const [liked, setLiked] = React.useState(node.viewer.liked);   // <— initial vom Server
+  const [liked, setLiked] = React.useState(Boolean(node.viewer?.liked));
   const [likeCount, setLikeCount] = React.useState(node.counts.likes);
 
   React.useEffect(() => {
-    // falls der Knoten neu geladen wurde
-    setLiked(node.viewer.liked);
+    setLiked(Boolean(node.viewer?.liked));
     setLikeCount(node.counts.likes);
-  }, [node.viewer.liked, node.counts.likes]);
+  }, [node.viewer?.liked, node.counts.likes]);
 
   async function toggleLike() {
     const res = await fetch(`/api/comments/${node.id}/like`, { method: 'POST' });
@@ -140,14 +142,30 @@ function CommentNode({
               <span className="text-muted">@{node.author.handle}</span>{' '}
               <span className="text-muted">· {timeAgoShort(node.createdAt)}</span>
             </div>
-            <div className="mt-1 whitespace-pre-wrap break-words">{node.text}</div>
+
+            {/* Text */}
+            {node.text && <div className="mt-1 whitespace-pre-wrap break-words">{node.text}</div>}
+
+            {/* Bild/GIF im Kommentar – begrenzte Größe */}
+            {node.mediaUrl && (
+              <figure className="mt-2 overflow-hidden rounded-xl border border-white/10 bg-black/20">
+                <Image
+                  src={node.mediaUrl}
+                  alt={node.mediaAlt ?? ''}
+                  width={1200}
+                  height={900}
+                  sizes="(max-width: 768px) 100vw, 720px"
+                  className="block mx-auto h-auto w-auto max-w-full max-h-[50vh] sm:max-h-[60vh] object-contain"
+                />
+              </figure>
+            )}
 
             <div className="mt-2 flex items-center gap-4 text-sm">
               <button className="text-muted hover:text-white" onClick={() => setShowReply((s) => !s)}>
                 Reply
               </button>
 
-              {/* Like exakt wie PostCard */}
+              {/* Like wie in PostCard */}
               <button
                 type="button"
                 data-no-nav
@@ -216,25 +234,74 @@ function Composer({
   const [text, setText] = React.useState('');
   const [busy, setBusy] = React.useState(false);
 
+  // Bildauswahl + Vorschau
+  const [file, setFile] = React.useState<File | null>(null);
+  const [preview, setPreview] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    return () => {
+      if (preview?.startsWith('blob:')) URL.revokeObjectURL(preview);
+    };
+  }, [preview]);
+
+  function onPick(f?: File | null) {
+    const img = f ?? null;
+    if (!img) return;
+    if (preview?.startsWith('blob:')) URL.revokeObjectURL(preview);
+    const url = URL.createObjectURL(img);
+    setFile(img);
+    setPreview(url);
+  }
+  function clearFile() {
+    if (preview?.startsWith('blob:')) URL.revokeObjectURL(preview);
+    setFile(null);
+    setPreview(null);
+  }
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     const t = text.trim();
-    if (!t) return;
+    if (!t && !file) return;
     setBusy(true);
     const fd = new FormData();
     fd.set('postId', postId);
     fd.set('text', t);
     if (parentId) fd.set('parentId', parentId);
+    if (file) fd.set('media', file);
     const res = await addCommentAction(fd);
     setBusy(false);
     if (res.ok) {
       setText('');
+      clearFile();
       onDone();
     }
   }
 
   return (
     <form onSubmit={submit} className="rounded-xl border border-white/10 bg-white/5 p-2 shadow-sm">
+      {/* Bild-Vorschau (begrenzt) */}
+      {preview && (
+        <figure className="relative mb-2 overflow-hidden rounded-xl border border-white/10 bg-black/20">
+          <Image
+            src={preview}
+            alt=""
+            width={1200}
+            height={900}
+            unoptimized
+            sizes="100vw"
+            className="block mx-auto w-auto h-auto max-w-full max-h-[55vh] sm:max-h-[60vh] object-contain"
+          />
+          <button
+            type="button"
+            onClick={clearFile}
+            className="absolute top-2 right-2 px-2 py-1 rounded-md bg-black/70 border border-white/20 hover:bg-black/80 text-[13px]"
+            title="Remove"
+          >
+            Remove
+          </button>
+        </figure>
+      )}
+
       <div className="flex items-end gap-2">
         <textarea
           value={text}
@@ -243,15 +310,40 @@ function Composer({
           className="flex-1 min-h-[60px] max-h-[180px] resize-y rounded-lg bg-transparent p-2 text-sm outline-none
                      placeholder:text-white/40 focus:ring-2 focus:ring-subm8-purple/40 border border-white/10"
         />
-        <button
-          type="submit"
-          disabled={busy || !text.trim()}
-          className="h-9 px-4 rounded-lg bg-subm8-purple text-white font-medium shadow
-                     hover:brightness-110 active:translate-y-px disabled:opacity-50
-                     transition-colors"
-        >
-          Send
-        </button>
+
+        {/* Toolbar rechts: Bild-Icon + Send-Icon auf gleicher Höhe */}
+        <div className="flex items-center gap-2 pb-[2px]">
+          <label
+            className="inline-grid place-items-center size-9 rounded-md border border-white/15 hover:bg-white/5 cursor-pointer"
+            title="Attach image"
+          >
+            <input
+              type="file"
+              accept="image/*"
+              className="sr-only"
+              onChange={(e) => onPick(e.currentTarget.files?.[0] ?? null)}
+            />
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="3.5" y="5.5" width="17" height="13" rx="2.2" />
+              <path d="M7.5 14.5 10.5 11l3 3 2.5-2.5 3 3" />
+              <circle cx="9" cy="9" r="1.5" />
+            </svg>
+          </label>
+
+          <button
+            type="submit"
+            disabled={busy || (!text.trim() && !file)}
+            className="inline-grid place-items-center size-9 rounded-md bg-[var(--purple)] text-white shadow
+                       hover:brightness-110 active:translate-y-px disabled:opacity-50"
+            title="Send"
+          >
+            {/* Send (Paper plane) */}
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden>
+              <path d="M22 2 11 13" />
+              <path d="M22 2 15 22l-4-9-9-4 20-7Z" />
+            </svg>
+          </button>
+        </div>
       </div>
     </form>
   );

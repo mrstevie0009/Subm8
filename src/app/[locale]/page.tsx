@@ -1,3 +1,4 @@
+// src/app/[locale]/page.tsx
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/currentUser';
 import HomeFeedClient from '@/components/HomeFeedClient';
@@ -25,7 +26,7 @@ export default async function HomePage({ params }: { params: Promise<Params> }) 
             avatarUrl: true,
           },
         },
-        // Repost: Wir brauchen die Counts vom Original
+        // Repost: Zähler & Daten vom Original
         repostOf: {
           select: {
             id: true,
@@ -104,7 +105,7 @@ export default async function HomePage({ params }: { params: Promise<Params> }) 
     const isRepost = !!p.repostOf;
     const isQuote = !!p.quoteOf;
 
-    // Inhalt (für Repost: Original; für normale/Quote-Posts: eigener Inhalt + optionale Quote-Box)
+    // Inhalt (bei Repost: Original; sonst eigener Inhalt + optionale Quote-Box)
     const content = isRepost
       ? {
           id: p.repostOf!.id,

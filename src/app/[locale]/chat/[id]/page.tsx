@@ -1,4 +1,3 @@
-// src/app/[locale]/chat/[id]/page.tsx
 'use client';
 
 import * as React from 'react';
@@ -246,6 +245,10 @@ export default function ChatThreadPage() {
     );
   }
 
+  // Hilfsfunktion: Video erkennen (mediaType oder Dateiendung)
+  const isVideo = (url?: string, mime?: string) =>
+    (mime ?? '').startsWith('video/') || (url ? /\.(mp4|webm|ogg|mov)$/i.test(url) : false);
+
   return (
     <>
       {other && (
@@ -423,6 +426,8 @@ export default function ChatThreadPage() {
                 const mineBubble =
                   mine ? 'bg-[var(--purple)]/90 border-[var(--purple)]/40 text-white' : 'bg-white/[.07] border-white/10';
 
+                const showVideo = isVideo(m.mediaUrl, m.mediaType);
+
                 return (
                   <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
                     <div
@@ -431,17 +436,26 @@ export default function ChatThreadPage() {
                     >
                       {m.mediaUrl && (
                         <div className="mb-1">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={m.mediaUrl}
-                            alt=""
-                            loading="lazy"
-                            decoding="async"
-                            className="block max-w-full h-auto max-h-[60vh] rounded-lg border border-white/10 object-contain"
-                            onError={(e) => {
-                              (e.currentTarget as HTMLImageElement).style.display = 'none';
-                            }}
-                          />
+                          {showVideo ? (
+                            <video
+                              src={m.mediaUrl}
+                              controls
+                              playsInline
+                              className="block max-w-full h-auto max-h-[60vh] rounded-lg border border-white/10 object-contain"
+                            />
+                          ) : (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={m.mediaUrl}
+                              alt=""
+                              loading="lazy"
+                              decoding="async"
+                              className="block max-w-full h-auto max-h-[60vh] rounded-lg border border-white/10 object-contain"
+                              onError={(e) => {
+                                (e.currentTarget as HTMLImageElement).style.display = 'none';
+                              }}
+                            />
+                          )}
                         </div>
                       )}
                       {m.text && (
@@ -470,7 +484,7 @@ export default function ChatThreadPage() {
         viewerRole={meRole ?? 'submissive'}
         disabled={disabled}
         disabledNotice={disabledNotice}
-        selfUserId={meId ?? ''}                // ⬅️ NEU: richtige eigene User-ID
+        selfUserId={meId ?? ''}                // ⬅️ richtige eigene User-ID
         targetHandle={other?.username ?? ''}   // nur Anzeige im Modal
         onSend={(text) => sendMessage({ text })}
         onTip={() => setTipOpen(true)}
@@ -525,7 +539,7 @@ export default function ChatThreadPage() {
           open={!!ownToAccept}
           onClose={() => setOwnToAccept(null)}
           payload={ownToAccept}
-          selfUserId={meId ?? undefined}   // ⬅️ hier deine eigene User-ID durchreichen
+          selfUserId={meId ?? undefined}
           onSuccess={async () => {
             await sendMessage({ text: `${OWNACC_PREFIX}{}` });
             setOwnToAccept(null);

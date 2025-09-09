@@ -1,3 +1,4 @@
+// prisma/schema.prisma
 generator client {
   provider = "prisma-client-js"
 }
@@ -196,6 +197,7 @@ model Post {
   text        String
   mediaUrl    String?
   mediaAlt    String?
+  mediaType   String?    // <-- NEU: z.B. "image/png" oder "video/mp4"
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
   communityId String?
@@ -240,6 +242,9 @@ model Comment {
 
   likes CommentLike[]
 
+  mediaUrl  String?
+  mediaAlt  String?
+  
   @@index([postId, createdAt])
   @@index([userId, createdAt])
   @@index([parentId, createdAt])

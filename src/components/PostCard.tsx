@@ -12,6 +12,7 @@ import { reportPostAction } from '@/app/actions/reports';
 import { blockUserAction, unblockUserAction } from '@/app/actions/blocks';
 import RichText from '@/components/RichText';
 import QuoteOverlay from '@/components/quotes/QuoteOverlay';
+import VideoPlayer from '@/components/VideoPlayer';
 
 const AVATAR_PH = '/images/avatar-placeholder.png';
 
@@ -124,6 +125,70 @@ function BlockBadges({ hasBlockedAuthor, blockedByAuthor }: { hasBlockedAuthor: 
         </span>
       )}
     </span>
+  );
+}
+
+/* ------------------------ Media Helper ------------------------ */
+function isVideoUrl(url?: string | null): boolean {
+  if (!url) return false;
+  const clean = url.split('?')[0].toLowerCase();
+  return /\.(mp4|webm|ogg|ogv|mov|m4v|mkv)$/i.test(clean);
+}
+
+/** Media-Renderer:
+ *  - Für VIDEOS: mit data-no-nav + gestopptem Event-Bubbling, damit Play/Seek etc. nie navigiert.
+ *  - Für BILDER: weiterhin klickbar (öffnet den Post).
+ */
+function MediaView({
+  url,
+  alt,
+  priority = false,
+}: { url?: string | null; alt?: string | null; priority?: boolean }) {
+  if (!url) return null;
+
+  if (isVideoUrl(url)) {
+    const stop = (e: React.SyntheticEvent) => {
+      // jegliches Bubbling zum Artikel unterbinden
+      e.stopPropagation();
+    };
+    return (
+      <figure
+        className="mt-3 overflow-hidden rounded-xl border border-white/10 bg-black/20"
+        data-no-nav
+        onClick={stop}
+        onDoubleClick={stop}
+        onPointerDownCapture={stop}
+        onKeyDownCapture={(e) => {
+          // Space/Enter in Video sollen nicht den Artikel "aktivieren"
+          if ((e as React.KeyboardEvent).key === ' ' || (e as React.KeyboardEvent).key === 'Enter') {
+            e.stopPropagation();
+          }
+        }}
+      >
+        <VideoPlayer
+          src={url}
+          className="w-full h-auto max-h-[65vh] sm:max-h-[70vh]"
+        />
+      </figure>
+    );
+  }
+
+  // Bild – Navigationsklicks weiterhin erlaubt
+  return (
+    <figure className="mt-3 overflow-hidden rounded-xl border border-white/10 bg-black/20">
+      <div className="relative w-full">
+        {/* Feste Abmessungen für CLS ↓ (Seitenverhältnis 4:3 als Default) */}
+        <Image
+          src={url}
+          alt={alt ?? ''}
+          width={1200}
+          height={900}
+          className="block mx-auto h-auto w-auto max-w-full max-h-[65vh] sm:max-h-[70vh]"
+          priority={priority}
+          draggable={false}
+        />
+      </div>
+    </figure>
   );
 }
 
@@ -281,7 +346,7 @@ export default function PostCard({ post }: { post: FeedPost }) {
               className="w-full text-left px-3 py-2 rounded hover:bg-white/10"
               onClick={() => {
                 setRepostMenuOpen(false);
-                setQuoteOpen(true);   // ⟵ Overlay öffnen
+                setQuoteOpen(true);   // Overlay öffnen
               }}
             >
               Quote post
@@ -393,11 +458,10 @@ export default function PostCard({ post }: { post: FeedPost }) {
               <span className="opacity-50">· {timeAgoShort(q.createdAt)}</span>
             </div>
             <div className="mt-1 text-[0.95rem] whitespace-pre-wrap break-words">{q.text}</div>
+
+            {/* Quote-Media (Video oder Bild) */}
             {q.mediaUrl && (
-              <figure className="mt-2 overflow-hidden rounded-lg border border-white/10">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={q.mediaUrl} alt={q.mediaAlt ?? ''} className="block max-h-64 w-auto mx-auto" />
-              </figure>
+              <MediaView url={q.mediaUrl} alt={q.mediaAlt ?? ''} />
             )}
           </div>
         </div>
@@ -466,11 +530,9 @@ export default function PostCard({ post }: { post: FeedPost }) {
             <RichText text={c.text} locale={locale} validateMentions />
           </div>
 
+          {/* Haupt-Media (Video oder Bild) */}
           {c.mediaUrl && (
-            <figure className="mt-3 overflow-hidden rounded-xl border border-white/10 bg-black/20">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={c.mediaUrl} alt={c.mediaAlt ?? ''} loading="lazy" decoding="async" className="block mx-auto max-w-full h-auto max-h-[65vh] sm:max-h-[70vh]" />
-            </figure>
+            <MediaView url={c.mediaUrl} alt={c.mediaAlt ?? ''} priority />
           )}
 
           {/* Eingebettete Quote (falls vorhanden) */}

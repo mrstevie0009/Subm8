@@ -1,3 +1,4 @@
+// src/app/actions/comments.ts
 'use server';
 
 import { prisma } from '@/lib/prisma';
@@ -6,6 +7,7 @@ import { randomUUID } from 'crypto';
 import { revalidatePath } from 'next/cache';
 import { headers } from 'next/headers';
 import { assertCanInteractForPostId } from '@/app/actions/blocks';
+import { guardAndSave, envMaxUploadBytes } from '@/lib/uploadGuard';
 
 export type AddCommentResult =
   | { ok: true; id: string }
@@ -17,11 +19,18 @@ export async function addCommentAction(formData: FormData): Promise<AddCommentRe
     if (!me) return { ok: false, error: 'UNAUTHORIZED' };
 
     const postId = String(formData.get('postId') ?? '');
-    const text = String(formData.get('text') ?? '').trim();
+    const rawText = String(formData.get('text') ?? '');
+    const text = rawText.trim();
     const parentIdRaw = formData.get('parentId');
     const parentId = parentIdRaw ? String(parentIdRaw) : null;
 
-    if (!postId || !text) return { ok: false, error: 'INVALID_INPUT' };
+    // optionales Bild/GIF (keine Videos)
+    const file = (formData.get('media') as File | null) ?? null;
+    const mediaAltRaw = String(formData.get('mediaAlt') ?? '').trim();
+    const mediaAlt = mediaAltRaw ? mediaAltRaw.slice(0, 200) : null;
+
+    // Mindestens Text ODER Bild
+    if (!postId || (!text && !file)) return { ok: false, error: 'INVALID_INPUT' };
 
     // Block prüfen
     try {
@@ -30,10 +39,23 @@ export async function addCommentAction(formData: FormData): Promise<AddCommentRe
       return { ok: false, error: 'INTERACTION_BLOCKED' };
     }
 
-    // Wenn es eine Antwort ist, sicherstellen, dass der Parent existiert und zum selben Post gehört
+    // Parent prüfen (Antwort)
     if (parentId) {
       const parent = await prisma.comment.findUnique({ where: { id: parentId }, select: { postId: true } });
       if (!parent || parent.postId !== postId) return { ok: false, error: 'INVALID_INPUT' };
+    }
+
+    // Datei speichern (nur Bilder/GIFs – uploadGuard erzwingt das per Magic Bytes)
+    let mediaUrl: string | null = null;
+    if (file && file.size > 0) {
+      const res = await guardAndSave(file, {
+        maxSize: envMaxUploadBytes(8), // Default 8 MB (via ENV überschreibbar)
+        publicSubdir: 'comment-media',
+      });
+      if (!res.ok) {
+        return { ok: false, error: 'INVALID_INPUT' };
+      }
+      mediaUrl = res.publicPath;
     }
 
     const created = await prisma.comment.create({
@@ -41,8 +63,11 @@ export async function addCommentAction(formData: FormData): Promise<AddCommentRe
         id: randomUUID(),
         postId,
         userId: me.id,
-        text,
-        parentId, // <— wichtig für Replies/Notifications
+        // Prisma erwartet string, also bei Bild-only: ''
+        text: text || '',
+        parentId,
+        mediaUrl,   // ⬅️ jetzt bekannt im Schema
+        mediaAlt,   // ⬅️ jetzt bekannt im Schema
       },
       select: { id: true },
     });
@@ -55,10 +80,13 @@ export async function addCommentAction(formData: FormData): Promise<AddCommentRe
         const url = new URL(referer);
         revalidatePath(url.pathname, 'page');
       }
-    } catch {}
+    } catch {
+      // ignore
+    }
 
     return { ok: true, id: created.id };
-  } catch {
+  } catch (e) {
+    console.error('addCommentAction failed:', e);
     return { ok: false, error: 'SERVER_ERROR' };
   }
 }

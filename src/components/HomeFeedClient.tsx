@@ -1,4 +1,3 @@
-// src/components/HomeFeedClient.tsx
 'use client';
 
 import * as React from 'react';

@@ -8,7 +8,7 @@ const nextConfig = {
     turbopack: {}, // Turbopack ist jetzt stable
     experimental: {
     serverActions: {
-      bodySizeLimit: '16mb', // z.B. 10mb, 16mb, 25mb …
+      bodySizeLimit: '200mb', // z.B. 10mb, 16mb, 25mb …
     },
   },
 };

@@ -8,10 +8,17 @@ import { randomUUID } from 'node:crypto';
 import { processImage } from './imageProcess';
 
 export type AllowedMime =
+  // images
   | 'image/jpeg'
   | 'image/png'
   | 'image/webp'
-  | 'image/gif';
+  | 'image/gif'
+  // videos
+  | 'video/mp4'
+  | 'video/webm'
+  | 'video/ogg'
+  | 'video/quicktime'     // .mov
+  | 'video/x-matroska';   // .mkv
 
 export type GuardOptions = {
   allowed?: AllowedMime[];
@@ -36,37 +43,101 @@ export type GuardResult =
       message: string;
     };
 
-const DEFAULT_ALLOWED: AllowedMime[] = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+// Standard: Bilder + gängige Videos
+const DEFAULT_ALLOWED: AllowedMime[] = [
+  // images
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+  // videos
+  'video/mp4',
+  'video/webm',
+  'video/ogg',
+  'video/quicktime',
+  'video/x-matroska',
+];
+
 const DEFAULT_MAX = 5 * 1024 * 1024; // 5 MB
+
+function isImageMime(mime: AllowedMime): boolean {
+  return mime.startsWith('image/');
+}
 
 function extForMime(mime: AllowedMime): string {
   switch (mime) {
-    case 'image/jpeg': return '.jpg';
-    case 'image/png':  return '.png';
-    case 'image/webp': return '.webp';
-    case 'image/gif':  return '.gif';
-    default:           return '.bin';
+    // images
+    case 'image/jpeg':  return '.jpg';
+    case 'image/png':   return '.png';
+    case 'image/webp':  return '.webp';
+    case 'image/gif':   return '.gif';
+    // videos
+    case 'video/mp4':        return '.mp4';
+    case 'video/webm':       return '.webm';
+    case 'video/ogg':        return '.ogv';
+    case 'video/quicktime':  return '.mov';
+    case 'video/x-matroska': return '.mkv';
+    default:                 return '.bin';
   }
 }
 
-// Simple magic-bytes sniffing
+/**
+ * Magic-Bytes/MINIMAL container sniffing.
+ * Für WebM/MKV lesen wir etwas mehr vom Header (bis 512 B), um DocType zu erkennen.
+ */
 function sniffMime(bytes: Uint8Array): AllowedMime | null {
+  // --- IMAGES ---
+  // JPEG
   if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return 'image/jpeg';
+  // PNG
   if (
     bytes.length >= 8 &&
     bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47 &&
     bytes[4] === 0x0d && bytes[5] === 0x0a && bytes[6] === 0x1a && bytes[7] === 0x0a
   ) return 'image/png';
+  // WebP (RIFF....WEBP)
   if (
     bytes.length >= 12 &&
-    bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46 &&
-    bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42 && bytes[11] === 0x50
+    bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46 && // "RIFF"
+    bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42 && bytes[11] === 0x50  // "WEBP"
   ) return 'image/webp';
+  // GIF (GIF87a/GIF89a)
   if (
     bytes.length >= 6 &&
     bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x38 &&
     (bytes[4] === 0x37 || bytes[4] === 0x39) && bytes[5] === 0x61
   ) return 'image/gif';
+
+  // --- VIDEOS ---
+  // ISO BMFF (MP4/MOV): 00 00 00 ?? 66 74 79 70 ("ftyp" an Offset 4)
+  if (
+    bytes.length >= 12 &&
+    bytes[4] === 0x66 && bytes[5] === 0x74 && bytes[6] === 0x79 && bytes[7] === 0x70 // "ftyp"
+  ) {
+    // Brand an Offset 8..11
+    const brand = String.fromCharCode(bytes[8], bytes[9], bytes[10], bytes[11]);
+    if (brand === 'qt  ') return 'video/quicktime';
+    // sonst MP4 (isom/mp42/avc1/…)
+    return 'video/mp4';
+  }
+
+  // Ogg (z.B. Theora/Ogg)
+  if (
+    bytes.length >= 4 &&
+    bytes[0] === 0x4f && bytes[1] === 0x67 && bytes[2] === 0x67 && bytes[3] === 0x53 // "OggS"
+  ) return 'video/ogg';
+
+  // EBML (Matroska/WebM): 1A 45 DF A3
+  if (
+    bytes.length >= 4 &&
+    bytes[0] === 0x1a && bytes[1] === 0x45 && bytes[2] === 0xdf && bytes[3] === 0xa3
+  ) {
+    // Suche "webm" / "matroska" im Header (bis 512 B)
+    const headStr = new TextDecoder().decode(bytes);
+    if (headStr.toLowerCase().includes('webm')) return 'video/webm';
+    return 'video/x-matroska';
+  }
+
   return null;
 }
 
@@ -96,39 +167,42 @@ export async function guardAndSave(file: File | Blob, opts: GuardOptions = {}): 
       };
     }
 
-    // MIME sniff (Magic Bytes)
-    const header = new Uint8Array(await file.slice(0, 16).arrayBuffer());
+    // Mehr Header lesen (bis 512 B), um Video-Container besser zu erkennen
+    const sniffLen = Math.min(size, 512);
+    const header = new Uint8Array(await file.slice(0, sniffLen).arrayBuffer());
     const detected = sniffMime(header);
     if (!detected || !allowed.includes(detected)) {
       return {
         ok: false,
         code: 'MIME_NOT_ALLOWED',
-        message: 'Dateityp nicht erlaubt. Erlaubt: JPEG, PNG, WebP, GIF.',
+        message: 'Dateityp nicht erlaubt. Erlaubt: JPEG, PNG, WebP, GIF, MP4, WebM, OGG, MOV, MKV.',
       };
     }
 
     // Daten lesen
-    const ab = await file.arrayBuffer();                       // -> ArrayBuffer | SharedArrayBuffer
-    let dataToSave = Buffer.from(ab as ArrayBuffer) as unknown as Buffer; // TS: hart auf Node-Buffer casten
+    const ab = await file.arrayBuffer(); // -> ArrayBuffer | SharedArrayBuffer
+    let dataToSave = Buffer.from(ab as ArrayBuffer) as unknown as Buffer;
     let finalMime: AllowedMime = detected;
     let finalExt = extForMime(detected);
 
-    // Bildverarbeitung (optional; falls sharp nicht installiert → try/catch)
-    try {
-      const { IMG_MAX_W, IMG_MAX_H, IMG_QUALITY, IMG_CONVERT_TO_WEBP } = readImageEnv();
-      const processed = await processImage(dataToSave, detected, {
-        maxW: IMG_MAX_W,
-        maxH: IMG_MAX_H,
-        quality: IMG_QUALITY,
-        convertToWebP: IMG_CONVERT_TO_WEBP,
-        stripMetadata: true,
-      });
-      // TS: ebenfalls auf Node-Buffer casten, falls processImage generische Buffer-Typen liefert
-      dataToSave = (processed.data as unknown) as Buffer;
-      finalMime  = processed.mime;
-      finalExt   = processed.ext;
-    } catch {
-      // Fallback: original speichern
+    // Nur Bilder optional verarbeiten (resize/reencode); Videos NICHT anfassen
+    if (isImageMime(detected)) {
+      try {
+        const { IMG_MAX_W, IMG_MAX_H, IMG_QUALITY, IMG_CONVERT_TO_WEBP } = readImageEnv();
+        const processed = await processImage(dataToSave, detected, {
+          maxW: IMG_MAX_W,
+          maxH: IMG_MAX_H,
+          quality: IMG_QUALITY,
+          convertToWebP: IMG_CONVERT_TO_WEBP,
+          stripMetadata: true,
+        });
+        // TS-Safety: generische Buffer-Typen auf Node-Buffer abbilden
+        dataToSave = (processed.data as unknown) as Buffer;
+        finalMime  = processed.mime as AllowedMime;
+        finalExt   = processed.ext;
+      } catch {
+        // Fallback: original speichern
+      }
     }
 
     // Zielverzeichnis sicherstellen
