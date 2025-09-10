@@ -1,8 +1,10 @@
+// src/app/[locale]/chat/[id]/page.tsx
 'use client';
 
 import * as React from 'react';
 import { useParams } from 'next/navigation';
 import { useLocale } from 'next-intl';
+import Image from 'next/image';
 import ChatHeader from '@/components/ChatHeader';
 import ChatComposer from '@/components/ChatComposer';
 import TipModal from '@/components/TipModal';
@@ -16,7 +18,8 @@ type DbRole = 'DOMME' | 'SUBMISSIVE';
 
 type ThreadOk = {
   ok: true;
-  me: { id: string; role: DbRole };
+  // 👉 Avatar optional zulassen
+  me: { id: string; role: DbRole; avatarUrl?: string | null };
   other: {
     id: string;
     handle: string;
@@ -44,44 +47,29 @@ type UiMessage = ChatMessage & {
   mediaType?: string;
 };
 
-/* ------------ Envelope helpers ------------ */
-// TIP REQUEST
+const AVATAR_PH = '/images/avatar-placeholder.png';
+
+/* ------------ Envelope helpers (unverändert) ------------ */
 const TIPREQ_PREFIX = 'TIPREQ::';
 type TipRequestPayload = { id?: string; amountCents: number; currency: string; note?: string };
 function parseTipRequest(text?: string | null): TipRequestPayload | null {
   if (!text || !text.startsWith(TIPREQ_PREFIX)) return null;
-  try {
-    const obj = JSON.parse(text.slice(TIPREQ_PREFIX.length));
-    if (typeof obj?.amountCents === 'number' && obj?.currency) return obj as TipRequestPayload;
-  } catch {}
+  try { const obj = JSON.parse(text.slice(TIPREQ_PREFIX.length)); if (typeof obj?.amountCents === 'number' && obj?.currency) return obj as TipRequestPayload; } catch {}
   return null;
 }
-
-// TIP PAID
 const TIPPAID_PREFIX = 'TIPPAID::';
 type TipPaidPayload = { id?: string; amountCents: number; currency: string; note?: string };
 function parseTipPaid(text?: string | null): TipPaidPayload | null {
   if (!text || !text.startsWith(TIPPAID_PREFIX)) return null;
-  try {
-    const obj = JSON.parse(text.slice(TIPPAID_PREFIX.length));
-    if (typeof obj?.amountCents === 'number' && obj?.currency) return obj as TipPaidPayload;
-  } catch {}
+  try { const obj = JSON.parse(text.slice(TIPPAID_PREFIX.length)); if (typeof obj?.amountCents === 'number' && obj?.currency) return obj as TipPaidPayload; } catch {}
   return null;
 }
-
-// OWNERSHIP REQUEST / ACCEPTED
 const OWNREQ_PREFIX = 'OWNREQ::';
 const OWNACC_PREFIX = 'OWNACC::';
-
-/** exakt wie im OwnershipRequestAcceptModal: neue Referenzen + Legacy-DataURLs */
 type OwnershipReqPayload = AcceptOwnReqPayload;
-
 function parseOwnReq(text?: string | null): OwnershipReqPayload | null {
   if (!text || !text.startsWith(OWNREQ_PREFIX)) return null;
-  try {
-    const obj = JSON.parse(text.slice(OWNREQ_PREFIX.length)) as OwnershipReqPayload;
-    if (obj && typeof obj === 'object') return obj;
-  } catch {}
+  try { const obj = JSON.parse(text.slice(OWNREQ_PREFIX.length)) as OwnershipReqPayload; if (obj && typeof obj === 'object') return obj; } catch {}
   return null;
 }
 function parseOwnAcc(text?: string | null): { ok: true } | null {
@@ -89,30 +77,235 @@ function parseOwnAcc(text?: string | null): { ok: true } | null {
   return { ok: true };
 }
 
-/* ---- Type Guards um `any` zu vermeiden ---- */
-type LegacyDataUrls = { avatarDataUrl?: string; bannerDataUrl?: string; bio?: string };
 function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null;
 }
+type LegacyDataUrls = { avatarDataUrl?: string; bannerDataUrl?: string; bio?: string };
 function isLegacyDataUrls(p: OwnershipReqPayload): p is LegacyDataUrls {
   if (!isRecord(p)) return false;
-  return (
-    typeof p['avatarDataUrl'] === 'string' ||
-    typeof p['bannerDataUrl'] === 'string' ||
-    typeof p['bio'] === 'string'
-  );
+  return typeof p['avatarDataUrl'] === 'string' || typeof p['bannerDataUrl'] === 'string' || typeof p['bio'] === 'string';
 }
 
 function fmtCurrency(cents: number, currency: string) {
   return new Intl.NumberFormat(undefined, { style: 'currency', currency }).format((cents || 0) / 100);
 }
 
+/* ---------- Media-Type Guards (MIME-first) ---------- */
+function getExt(url?: string) {
+  if (!url) return '';
+  const clean = url.split('?')[0];
+  const parts = clean.split('.');
+  return (parts.pop() || '').toLowerCase();
+}
+const VIDEO_EXT = new Set(['mp4', 'webm', 'ogg', 'ogv', 'mov', 'm4v', 'mkv']);
+const IMAGE_EXT = new Set(['png', 'jpg', 'jpeg', 'webp', 'gif']);
+const AUDIO_EXT = new Set(['mp3', 'wav', 'ogg', 'oga', 'm4a', 'webm']);
+
+const isVideo = (url?: string, mime?: string) => {
+  const m = (mime || '').toLowerCase();
+  if (m.startsWith('video/')) return true;
+  if (m.startsWith('audio/')) return false; // audio/webm nicht als Video
+  return VIDEO_EXT.has(getExt(url));
+};
+const isImage = (url?: string, mime?: string) => {
+  const m = (mime || '').toLowerCase();
+  if (m.startsWith('image/')) return true;
+  return IMAGE_EXT.has(getExt(url));
+};
+const isAudio = (url?: string, mime?: string) => {
+  const m = (mime || '').toLowerCase();
+  if (m.startsWith('audio/')) return true;
+  if (m.startsWith('video/')) return false;
+  return AUDIO_EXT.has(getExt(url));
+};
+
+/* ---------- kleine Hilfen ---------- */
+function fmtTime(secs: number) {
+  const s = Math.max(0, Math.floor(secs));
+  const m = Math.floor(s / 60);
+  const r = s % 60;
+  return `${m}:${r.toString().padStart(2, '0')}`;
+}
+
+/* ---------- Waveform (Peaks) + AudioBubble ---------- */
+function usePeaks(src: string, bars = 56) {
+  const [peaks, setPeaks] = React.useState<number[] | null>(null);
+
+  React.useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const resp = await fetch(src);
+        const buf = await resp.arrayBuffer();
+        const ctx = new (window.AudioContext || window.AudioContext)();
+        const audio = await ctx.decodeAudioData(buf.slice(0));
+        const ch = audio.getChannelData(0);
+        const block = Math.floor(ch.length / bars) || 1;
+
+        const p: number[] = [];
+        let globalMax = 0;
+        for (let i = 0; i < bars; i++) {
+          let max = 0;
+          const start = i * block;
+          const end = Math.min(ch.length, start + block);
+          for (let j = start; j < end; j++) {
+            const v = Math.abs(ch[j]);
+            if (v > max) max = v;
+          }
+          p.push(max);
+          if (max > globalMax) globalMax = max;
+        }
+        const norm = globalMax > 0 ? p.map((v) => v / globalMax) : p;
+        if (!cancelled) setPeaks(norm);
+        ctx.close().catch(() => {});
+      } catch {
+        if (!cancelled) setPeaks(null);
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [src, bars]);
+
+  return peaks;
+}
+
+function AudioBubble({
+  src,
+  mine,
+  avatarUrl,
+}: {
+  src: string;
+  mine: boolean;
+  avatarUrl?: string | null;
+}) {
+  const audioRef = React.useRef<HTMLAudioElement | null>(null);
+  const [dur, setDur] = React.useState(0);
+  const [t, setT] = React.useState(0);
+  const [playing, setPlaying] = React.useState(false);
+
+  const peaks = usePeaks(src, 56);
+
+  React.useEffect(() => {
+    const a = audioRef.current;
+    if (!a) return;
+    const onMeta = () => setDur(a.duration || 0);
+    const onTime = () => setT(a.currentTime || 0);
+    const onEnd = () => setPlaying(false);
+    a.addEventListener('loadedmetadata', onMeta);
+    a.addEventListener('timeupdate', onTime);
+    a.addEventListener('ended', onEnd);
+    return () => {
+      a.removeEventListener('loadedmetadata', onMeta);
+      a.removeEventListener('timeupdate', onTime);
+      a.removeEventListener('ended', onEnd);
+    };
+  }, []);
+
+  const toggle = () => {
+    const a = audioRef.current;
+    if (!a) return;
+    if (a.paused) { void a.play(); setPlaying(true); }
+    else { a.pause(); setPlaying(false); }
+  };
+
+  const progress = dur > 0 ? t / dur : 0;
+  const activeIdx = peaks ? Math.floor(progress * peaks.length) : 0;
+
+  const onWavePointer = (e: React.PointerEvent<HTMLDivElement>) => {
+    const a = audioRef.current;
+    if (!a || !dur) return;
+    const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+    const ratio = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+    const newT = ratio * dur;
+    a.currentTime = newT;
+    setT(newT);
+  };
+
+  const bubbleBase = mine
+    ? 'bg-[var(--purple)] text-white'
+    : 'bg-white/[.07] text-white border border-white/10';
+
+  return (
+    <div className="flex items-center gap-3 w/full max-w-full">
+      {/* Avatar links */}
+      <div className="relative shrink-0 w-10 h-10 rounded-full overflow-hidden border border-white/10">
+        <Image
+          src={avatarUrl ?? AVATAR_PH}
+          alt=""
+          fill
+          sizes="40px"
+          className="object-cover"
+          priority={false}
+        />
+      </div>
+
+      <div className={`flex items-center gap-3 rounded-2xl px-3 py-2 ${bubbleBase} w-0 flex-1 min-w-0`}>
+        <button
+          type="button"
+          onClick={toggle}
+          className="grid place-items-center rounded-full w-8 h-8 bg-black/15 hover:bg-black/25 shrink-0"
+          aria-label={playing ? 'Pause' : 'Play'}
+        >
+          {playing ? (
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden>
+              <rect x="6" y="5" width="5" height="14" rx="1.2" />
+              <rect x="13" y="5" width="5" height="14" rx="1.2" />
+            </svg>
+          ) : (
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden>
+              <path d="M8 5v14l11-7z" />
+            </svg>
+          )}
+        </button>
+
+        <div
+          role="slider"
+          aria-valuemin={0}
+          aria-valuemax={dur || 0}
+          aria-valuenow={t}
+          className="h-8 flex-1 min-w-[120px] max-w-full flex items-end gap-[1px] overflow-hidden cursor-pointer select-none"
+          onPointerDown={onWavePointer}
+        >
+          {peaks
+            ? peaks.map((p, i) => {
+                const h = 6 + Math.round(p * 18);
+                const on = i <= activeIdx;
+                return (
+                  <div
+                    key={i}
+                    className="rounded-[2px]"
+                    style={{
+                      width: 2,
+                      height: h,
+                      background: on ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.55)',
+                    }}
+                  />
+                );
+              })
+            : <div className="w-full h-[6px] rounded-full bg-white/40" />}
+        </div>
+
+        <div className="text-[12px] opacity-90 tabular-nums w-[68px] text-right shrink-0">
+          {fmtTime(t)} / {fmtTime(dur)}
+        </div>
+
+        <audio ref={audioRef} preload="metadata" src={src} />
+      </div>
+    </div>
+  );
+}
+
+
+/* ------------------------- Page ------------------------- */
 export default function ChatThreadPage() {
   const { id } = useParams<{ id: string }>();
   const locale = useLocale();
 
   const [meId, setMeId] = React.useState<string | null>(null);
   const [meRole, setMeRole] = React.useState<'domme' | 'submissive' | null>(null);
+  // 👉 eigener Avatar hier puffern
+  const [meAvatarUrl, setMeAvatarUrl] = React.useState<string | null>(null);
 
   const [other, setOther] = React.useState<{
     id: string;
@@ -131,23 +324,10 @@ export default function ChatThreadPage() {
   const [loading, setLoading] = React.useState(true);
 
   const [tipOpen, setTipOpen] = React.useState(false);
-
-  // Accept-modal state for tip requests (SUB)
-  const [accept, setAccept] = React.useState<{
-    amountCents: number;
-    currency: string;
-    toUserId: string;
-    toDisplayName: string;
-    toAvatarUrl?: string;
-  } | null>(null);
-
-  // Accept-modal state for ownership requests (SUB)
+  const [accept, setAccept] = React.useState<{ amountCents: number; currency: string; toUserId: string; toDisplayName: string; toAvatarUrl?: string; } | null>(null);
   const [ownToAccept, setOwnToAccept] = React.useState<OwnershipReqPayload | null>(null);
 
-  const mapRole = React.useCallback(
-    (r: DbRole): 'domme' | 'submissive' => (r === 'DOMME' ? 'domme' : 'submissive'),
-    []
-  );
+  const mapRole = React.useCallback((r: DbRole): 'domme' | 'submissive' => (r === 'DOMME' ? 'domme' : 'submissive'), []);
 
   const load = React.useCallback(async () => {
     try {
@@ -155,8 +335,7 @@ export default function ChatThreadPage() {
       const res = await fetch(`/api/chat/${id}`, { cache: 'no-store' });
       const ct = res.headers.get('content-type') || '';
       if (!ct.includes('application/json')) {
-        const txt = await res.text().catch(() => '');
-        throw new Error(`Unexpected response (${res.status}). ${txt ? txt.slice(0, 140) : 'Empty body'}`);
+        const txt = await res.text().catch(() => ''); throw new Error(`Unexpected response (${res.status}). ${txt ? txt.slice(0, 140) : 'Empty body'}`);
       }
 
       const json: ThreadResponse = await res.json();
@@ -164,6 +343,8 @@ export default function ChatThreadPage() {
 
       setMeId(json.me.id);
       setMeRole(mapRole(json.me.role));
+      // 👉 Avatar aus API (falls vorhanden) übernehmen
+      setMeAvatarUrl((json as ThreadOk).me.avatarUrl ?? null);
 
       setViewerHasBlocked(json.viewerHasBlocked ?? false);
       setIsBlockedByOther(json.isBlockedByOther ?? false);
@@ -171,15 +352,15 @@ export default function ChatThreadPage() {
       const disabled = (json.viewerHasBlocked ?? false) || (json.isBlockedByOther ?? false);
 
       setOther({
-        id: json.other.id,
-        username: json.other.handle,
-        displayName: json.other.displayName,
-        avatarUrl: json.other.avatarUrl ?? undefined,
-        role: mapRole(json.other.role),
+        id: (json as ThreadOk).other.id,
+        username: (json as ThreadOk).other.handle,
+        displayName: (json as ThreadOk).other.displayName,
+        avatarUrl: (json as ThreadOk).other.avatarUrl ?? undefined,
+        role: mapRole((json as ThreadOk).other.role),
         dmOpen: !disabled,
       });
 
-      const mapped: UiMessage[] = json.messages.map((m) => ({
+      const mapped: UiMessage[] = (json as ThreadOk).messages.map((m) => ({
         id: m.id,
         convoId: String(id),
         senderId: m.authorId,
@@ -199,31 +380,21 @@ export default function ChatThreadPage() {
 
   React.useEffect(() => {
     let cancelled = false;
-    (async () => {
-      if (!cancelled) await load();
-    })();
+    (async () => { if (!cancelled) await load(); })();
     const t = setInterval(load, 4000);
-    return () => {
-      cancelled = true;
-      clearInterval(t);
-    };
+    return () => { cancelled = true; clearInterval(t); };
   }, [load]);
 
   const sendMessage = React.useCallback(
     async ({ text, file }: { text: string; file?: File }) => {
       if (viewerHasBlocked || isBlockedByOther) return;
-
       if (file) {
         const fd = new FormData();
         fd.append('text', text);
         fd.append('file', file);
         await fetch(`/api/chat/${id}`, { method: 'POST', body: fd });
       } else {
-        await fetch(`/api/chat/${id}`, {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ text }),
-        });
+        await fetch(`/api/chat/${id}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text }) });
       }
       await load();
     },
@@ -231,36 +402,17 @@ export default function ChatThreadPage() {
   );
 
   const disabled = viewerHasBlocked || isBlockedByOther;
-  const disabledNotice = disabled
-    ? isBlockedByOther
-      ? 'Du kannst dieser Person keine Direktnachrichten mehr senden.'
-      : 'Du hast diese Person blockiert. Senden ist deaktiviert.'
-    : undefined;
+  const disabledNotice = disabled ? (isBlockedByOther ? 'Du kannst dieser Person keine Direktnachrichten mehr senden.' : 'Du hast diese Person blockiert. Senden ist deaktiviert.') : undefined;
 
   if (!loading && error) {
-    return (
-      <main className="mx-auto px-3 py-6" style={{ maxWidth: 760 }}>
-        {error}
-      </main>
-    );
+    return <main className="mx-auto px-3 py-6" style={{ maxWidth: 760 }}>{error}</main>;
   }
-
-  // Hilfsfunktion: Video erkennen (mediaType oder Dateiendung)
-  const isVideo = (url?: string, mime?: string) =>
-    (mime ?? '').startsWith('video/') || (url ? /\.(mp4|webm|ogg|mov)$/i.test(url) : false);
 
   return (
     <>
       {other && (
         <ChatHeader
-          other={{
-            id: other.id,
-            username: other.username,
-            displayName: other.displayName,
-            avatarUrl: other.avatarUrl,
-            role: other.role,
-            dmOpen: other.dmOpen,
-          }}
+          other={{ id: other.id, username: other.username, displayName: other.displayName, avatarUrl: other.avatarUrl, role: other.role, dmOpen: other.dmOpen }}
           viewerHasBlocked={viewerHasBlocked}
           isBlockedByOther={isBlockedByOther}
         />
@@ -269,10 +421,7 @@ export default function ChatThreadPage() {
       <main className="px-3">
         <div
           className="mx-auto w-full max-w-[760px]"
-          style={{
-            paddingTop: 'calc(var(--header-h, 56px) + var(--chat-header-h, 48px) + 8px)',
-            paddingBottom: 'calc(var(--bottomnav-h, 72px) + 72px)',
-          }}
+          style={{ paddingTop: 'calc(var(--header-h, 56px) + var(--chat-header-h, 48px) + 8px)', paddingBottom: 'calc(var(--bottomnav-h, 72px) + 72px)' }}
         >
           {loading ? (
             <div className="py-8 text-sm text-muted">Loading…</div>
@@ -281,171 +430,122 @@ export default function ChatThreadPage() {
               {messages.map((m) => {
                 const mine = meId ? m.senderId === meId : false;
 
-                // TIP REQUEST
+                // --- Special bubbles (Tip / Ownership) unverändert ---
                 const req = parseTipRequest(m.text);
                 if (req) {
+                  const isViewerSub = meRole === 'submissive';
+                  const canAct = !mine && isViewerSub && !!other;
                   return (
                     <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
                       <div className="max-w-[75%] rounded-2xl px-3 py-2 border bg-white/[.07] border-white/10">
                         <div className="text-[11px] uppercase tracking-wide text-white/70 mb-1">TIP REQUEST</div>
                         <div className="text-[15px] font-semibold">{fmtCurrency(req.amountCents, req.currency)}</div>
                         {req.note && <div className="mt-1 text-[13px] text-white/80 whitespace-pre-wrap">{req.note}</div>}
-                        {(!mine || true) && (
-                          <div className="text-[11px] mt-2 text-white/60" title={new Date(m.createdAt).toLocaleString()}>
-                            {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        {canAct && (
+                          <div className="mt-2 flex items-center gap-2">
+                            <button type="button" className="px-3 py-1.5 rounded-lg bg-[var(--purple)]/90 text-white hover:opacity-95" onClick={() => {
+                              setAccept({ amountCents: req.amountCents, currency: req.currency, toUserId: m.senderId, toDisplayName: other!.displayName, toAvatarUrl: other!.avatarUrl });
+                            }}>Accept</button>
+                            <button type="button" className="px-3 py-1.5 rounded-lg border border-white/15 hover:bg-white/10" onClick={() => void sendMessage({ text: '❌ Declined tip request' })}>Decline</button>
                           </div>
                         )}
+                        <div className="text-[11px] mt-2 text-white/60" title={new Date(m.createdAt).toLocaleString()}>
+                          {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </div>
                       </div>
                     </div>
                   );
                 }
 
-                // TIP PAID
                 const paid = parseTipPaid(m.text);
                 if (paid) {
                   return (
                     <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
                       <div className="max-w-[75%] rounded-2xl px-3 py-2 border bg-white/[.07] border-white/10">
                         <div className="flex items-center gap-2 text-[11px] uppercase tracking-wide text-white/70 mb-1">
-                          <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden fill="none" stroke="currentColor" strokeWidth="2">
-                            <circle cx="12" cy="12" r="9" />
-                            <path d="M8.5 12.5l2.5 2.5 4.5-5" />
-                          </svg>
+                          <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="9" /><path d="M8.5 12.5l2.5 2.5 4.5-5" /></svg>
                           <span>TIP PAID</span>
                           {paid.id && <span className="text-white/50 normal-case ml-1">#{paid.id.slice(0, 6)}</span>}
                         </div>
                         <div className="text-[15px] font-semibold">{fmtCurrency(paid.amountCents, paid.currency)}</div>
                         {paid.note && <div className="mt-1 text-[13px] text-white/80 whitespace-pre-wrap">{paid.note}</div>}
-                        <div className="text-[11px] mt-2 text-white/60" title={new Date(m.createdAt).toLocaleString()}>
-                          {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </div>
+                        <div className="text-[11px] mt-2 text-white/60" title={new Date(m.createdAt).toLocaleString()}>{new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
                       </div>
                     </div>
                   );
                 }
 
-                // OWNERSHIP REQUEST
                 const ownReq = parseOwnReq(m.text);
                 if (ownReq) {
                   const canAct = !mine && meRole === 'submissive';
-
                   const hasAvatar = Boolean(ownReq.avatar || (isLegacyDataUrls(ownReq) && ownReq.avatarDataUrl));
                   const hasBanner = Boolean(ownReq.banner || (isLegacyDataUrls(ownReq) && ownReq.bannerDataUrl));
-                  const hasBio =
-                    typeof ownReq.bio === 'string' ? ownReq.bio.trim().length > 0 : Boolean(ownReq.bio);
-
+                  const hasBio = typeof ownReq.bio === 'string' ? ownReq.bio.trim().length > 0 : Boolean(ownReq.bio);
                   return (
                     <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
                       <div className="max-w-[75%] rounded-2xl px-3 py-2 border bg-white/[.07] border-white/10">
                         <div className="text-[11px] uppercase tracking-wide text-white/70 mb-1">OWNERSHIP REQUEST</div>
-
                         <ul className="text-[13px] text-white/80 space-y-1 mb-2">
                           {hasAvatar && <li>• Avatar</li>}
                           {hasBanner && <li>• Banner</li>}
                           {hasBio && <li>• Bio</li>}
                         </ul>
-
                         {canAct && (
                           <div className="mt-1 flex items-center gap-2">
-                            <button
-                              type="button"
-                              className="px-3 py-1.5 rounded-lg bg-[var(--purple)]/90 text-white hover:opacity-95"
-                              onClick={() => setOwnToAccept(ownReq)}
-                            >
-                              Accept
-                            </button>
-                            <button
-                              type="button"
-                              className="px-3 py-1.5 rounded-lg border border-white/15 hover:bg-white/10"
-                              onClick={() => void sendMessage({ text: '❌ Declined ownership request' })}
-                            >
-                              Decline
-                            </button>
+                            <button type="button" className="px-3 py-1.5 rounded-lg bg-[var(--purple)]/90 text-white hover:opacity-95" onClick={() => setOwnToAccept(ownReq)}>Accept</button>
+                            <button type="button" className="px-3 py-1.5 rounded-lg border border-white/15 hover:bg-white/10" onClick={() => void sendMessage({ text: '❌ Declined ownership request' })}>Decline</button>
                           </div>
                         )}
-
-                        <div className="text-[11px] mt-2 text-white/60" title={new Date(m.createdAt).toLocaleString()}>
-                          {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </div>
+                        <div className="text-[11px] mt-2 text-white/60" title={new Date(m.createdAt).toLocaleString()}>{new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
                       </div>
                     </div>
                   );
                 }
 
-                // OWNERSHIP ACCEPTED
                 const ownAcc = parseOwnAcc(m.text);
                 if (ownAcc) {
                   return (
                     <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
                       <div className="max-w-[75%] rounded-2xl px-3 py-2 border bg-white/[.07] border-white/10">
                         <div className="flex items-center gap-2 text-[11px] uppercase tracking-wide text-white/70 mb-1">
-                          <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden fill="none" stroke="currentColor" strokeWidth="2">
-                            <circle cx="12" cy="12" r="9" />
-                            <path d="M8.5 12.5l2.5 2.5 4.5-5" />
-                          </svg>
+                          <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="9" /><path d="M8.5 12.5l2.5 2.5 4.5-5" /></svg>
                           <span>OWNERSHIP ACCEPTED</span>
                         </div>
                         <div className="text-[13px] text-white/80">Changes were applied to the sub’s profile.</div>
-                        <div className="text-[11px] mt-2 text-white/60" title={new Date(m.createdAt).toLocaleString()}>
-                          {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </div>
+                        <div className="text-[11px] mt-2 text-white/60" title={new Date(m.createdAt).toLocaleString()}>{new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
                       </div>
                     </div>
                   );
                 }
 
-                // -------- Default: normal message / media message ----------
-                const mineBubble =
-                  mine ? 'bg-[var(--purple)]/90 border-[var(--purple)]/40 text-white' : 'bg-white/[.07] border-white/10';
-
-                const showVideo = isVideo(m.mediaUrl, m.mediaType);
-                const hasMedia = Boolean(m.mediaUrl);
-
-                // Medien-Only (oder Medien + Text): KEINE Bubble um das Medium
-                if (hasMedia) {
+                // ---- Medien/Text Standard ----
+                if (m.mediaUrl && (isImage(m.mediaUrl, m.mediaType) || isVideo(m.mediaUrl, m.mediaType))) {
                   return (
                     <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
-                      <div className="max-w-[75%]">
-                        <div className="mb-1">
-                          {showVideo ? (
-                            <video
-                              src={m.mediaUrl}
-                              controls
-                              playsInline
-                              className="block max-w-full h-auto max-h-[60vh] rounded-2xl border border-white/10 object-contain"
-                            />
-                          ) : (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src={m.mediaUrl}
-                              alt=""
-                              loading="lazy"
-                              decoding="async"
-                              className="block max-w-full h-auto max-h-[60vh] rounded-2xl border border-white/10 object-contain"
-                              onError={(e) => {
-                                (e.currentTarget as HTMLImageElement).style.display = 'none';
-                              }}
-                            />
-                          )}
-                        </div>
-
-                        {/* Falls Text vorhanden: nur der Text bekommt eine Bubble */}
-                        {m.text && m.text.trim().length > 0 && (
-                          <div className={`mt-2 rounded-2xl px-3 py-2 border break-words ${mineBubble}`}>
-                            <RichText
-                              text={m.text}
-                              locale={locale}
-                              validateMentions
-                              className="break-words"
-                              variant={mine ? 'chat' : 'default'}
-                            />
+                      <div>
+                        {isVideo(m.mediaUrl, m.mediaType) ? (
+                          <video
+                            src={m.mediaUrl}
+                            controls
+                            playsInline
+                            className="block max-w-[75vw] md:max-w-[560px] h-auto max-h-[60vh] rounded-xl border border-white/10 object-contain"
+                          />
+                        ) : (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={m.mediaUrl}
+                            alt=""
+                            loading="lazy"
+                            decoding="async"
+                            className="block max-w-[75vw] md:max-w-[560px] h-auto max-h-[60vh] rounded-xl border border-white/10 object-contain"
+                          />
+                        )}
+                        {m.text && (
+                          <div className={`mt-1 text-[13px] ${mine ? 'text-white/90' : 'text-white/80'}`}>
+                            <RichText text={m.text} locale={locale} validateMentions variant={mine ? 'chat' : 'default'} />
                           </div>
                         )}
-
-                        <div
-                          className={`text-[11px] mt-1 opacity-80 ${mine ? 'text-white/80 text-right' : 'text-white/70'}`}
-                          title={new Date(m.createdAt).toLocaleString()}
-                        >
+                        <div className="text-[11px] mt-1 text-white/60 text-right">
                           {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </div>
                       </div>
@@ -453,21 +553,38 @@ export default function ChatThreadPage() {
                   );
                 }
 
-                // Nur Text: normale Bubble
+                // Audio: eigene, schlanke Bubble in lila + Avatar links
+                if (m.mediaUrl && isAudio(m.mediaUrl, m.mediaType)) {
                 return (
                   <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
-                    <div
-                      className={`max-w-[75%] rounded-2xl px-3 py-2 border break-words ${mineBubble}`}
-                      title={new Date(m.createdAt).toLocaleString()}
-                    >
+                    {/* max-width wie bei Bildern/Videos */}
+                    <div className="w-full max-w-[75vw] md:max-w-[560px]">
+                      <AudioBubble
+                        src={m.mediaUrl}
+                        mine={mine}
+                        // 👉 HIER: eigener Avatar statt Platzhalter
+                        avatarUrl={mine ? (meAvatarUrl ?? AVATAR_PH) : other?.avatarUrl}
+                      />
                       {m.text && (
-                        <RichText
-                          text={m.text}
-                          locale={locale}
-                          validateMentions
-                          className="break-words"
-                          variant={mine ? 'chat' : 'default'}
-                        />
+                        <div className={`mt-1 ${mine ? 'text-white' : 'text-white/90'}`}>
+                          <RichText text={m.text} locale={locale} validateMentions variant={mine ? 'chat' : 'default'} />
+                        </div>
+                      )}
+                      <div className="text-[11px] mt-1 text-white/60 text-right">
+                        {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+
+                // reiner Text
+                const mineBubble = mine ? 'bg-[var(--purple)]/90 border-[var(--purple)]/40 text-white' : 'bg-white/[.07] border-white/10';
+                return (
+                  <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`max-w-[75%] rounded-2xl px-3 py-2 border break-words ${mineBubble}`} title={new Date(m.createdAt).toLocaleString()}>
+                      {m.text && (
+                        <RichText text={m.text} locale={locale} validateMentions className="break-words" variant={mine ? 'chat' : 'default'} />
                       )}
                       <div className={`text-[11px] mt-1 opacity-80 ${mine ? 'text-white/80' : 'text-white/70'}`}>
                         {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -486,8 +603,8 @@ export default function ChatThreadPage() {
         viewerRole={meRole ?? 'submissive'}
         disabled={disabled}
         disabledNotice={disabledNotice}
-        selfUserId={meId ?? ''}                // ⬅️ richtige eigene User-ID
-        targetHandle={other?.username ?? ''}   // nur Anzeige im Modal
+        selfUserId={meId ?? ''}
+        targetHandle={other?.username ?? ''}
         onSend={(text) => sendMessage({ text })}
         onTip={() => setTipOpen(true)}
         onUpload={(file) => sendMessage({ text: '', file })}
@@ -498,7 +615,7 @@ export default function ChatThreadPage() {
         }}
       />
 
-      {/* Tip (voluntary) */}
+      {/* Modals */}
       {other && (
         <TipModal
           open={tipOpen}
@@ -516,7 +633,6 @@ export default function ChatThreadPage() {
         />
       )}
 
-      {/* Accept a Tip Request (SUB) */}
       {accept && other && (
         <TipRequestAcceptModal
           open={!!accept}
@@ -535,7 +651,6 @@ export default function ChatThreadPage() {
         />
       )}
 
-      {/* Accept an Ownership Request (SUB) */}
       {ownToAccept && (
         <OwnershipRequestAcceptModal
           open={!!ownToAccept}

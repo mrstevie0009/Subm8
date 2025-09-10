@@ -7,6 +7,7 @@ import { getCurrentUser } from '@/lib/currentUser';
 export const dynamic = 'force-dynamic';
 
 type Ctx = { params: Promise<{ id: string }> };
+type DbRole = 'DOMME' | 'SUBMISSIVE';
 
 /* ---------------------------- helpers ----------------------------------- */
 
@@ -14,16 +15,9 @@ function sanitizeFileName(name: string) {
   const base = name.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9._-]/g, '');
   return base.length ? base : `upload_${Date.now()}`;
 }
-function isAllowedMime(type: string) {
-  return /^image\//.test(type) || /^video\//.test(type);
-}
-function mb(n: number) { return Math.floor(n / 1024 / 1024); }
 
-/** env → Bytes (Uploadlimit für Chat) */
-function envMaxChatUploadBytes(defaultMB = 50): number {
-  const v = process.env.NEXT_CHAT_MAX_UPLOAD_MB;
-  const n = v ? parseInt(v, 10) : NaN;
-  return Number.isFinite(n) && n > 0 ? n * 1024 * 1024 : defaultMB * 1024 * 1024;
+function isAllowedMime(type: string) {
+  return /^image\//.test(type) || /^video\//.test(type) || /^audio\//.test(type);
 }
 
 /** Prüft, ob A B blockiert oder B A blockiert (beide Richtungen). */
@@ -32,7 +26,18 @@ async function getBlockFlags(aUserId: string, bUserId: string) {
     prisma.block.findFirst({ where: { blockerId: aUserId, blockedId: bUserId } }),
     prisma.block.findFirst({ where: { blockerId: bUserId, blockedId: aUserId } }),
   ]);
-  return { viewerHasBlocked: !!aBlocksB, isBlockedByOther: !!bBlocksA };
+  return {
+    viewerHasBlocked: !!aBlocksB,
+    isBlockedByOther: !!bBlocksA,
+  };
+}
+
+/** Type Guards statt `any` */
+function hasRoleField(u: unknown): u is { role?: DbRole | null } {
+  return typeof u === 'object' && u !== null && 'role' in (u as Record<string, unknown>);
+}
+function hasAvatarField(u: unknown): u is { avatarUrl?: string | null } {
+  return typeof u === 'object' && u !== null && 'avatarUrl' in (u as Record<string, unknown>);
 }
 
 /* -------------------------------- GET ----------------------------------- */
@@ -61,6 +66,19 @@ export async function GET(_req: Request, { params }: Ctx) {
     const iAmDomme = convo.dommeId === me.id;
     const other = iAmDomme ? convo.sub : convo.domme;
 
+    // Eigenes Profil (Role + Avatar) sicher holen
+    const meProfile = await prisma.user.findUnique({
+      where: { id: me.id },
+      select: { role: true, avatarUrl: true },
+    });
+
+    const meRole: DbRole | null =
+      (hasRoleField(me) ? me.role ?? null : null) ?? meProfile?.role ?? null;
+
+    const meAvatarUrl: string | null =
+      (hasAvatarField(me) ? me.avatarUrl ?? null : null) ?? meProfile?.avatarUrl ?? null;
+
+    // Block-Status in beide Richtungen
     const { viewerHasBlocked, isBlockedByOther } = await getBlockFlags(me.id, other.id);
 
     const messages = await prisma.message.findMany({
@@ -78,21 +96,22 @@ export async function GET(_req: Request, { params }: Ctx) {
       },
     });
 
-    const unreadIds = messages.filter(m => m.authorId !== me.id && m.reads.length === 0).map(m => m.id);
+    const unreadIds = messages
+      .filter((m) => m.authorId !== me.id && m.reads.length === 0)
+      .map((m) => m.id);
+
     if (unreadIds.length) {
       await prisma.messageRead.createMany({
-        data: unreadIds.map(mid => ({ messageId: mid, readerUserId: me.id })),
+        data: unreadIds.map((mid) => ({ messageId: mid, readerUserId: me.id })),
         skipDuplicates: true,
       });
     }
 
-    const meRole = me.role ?? (await prisma.user.findUnique({ where: { id: me.id }, select: { role: true } }))?.role;
-
     return Response.json({
       ok: true,
-      me: { id: me.id, role: meRole },
+      me: { id: me.id, role: meRole ?? undefined, avatarUrl: meAvatarUrl },
       other,
-      messages: messages.map(m => ({
+      messages: messages.map((m) => ({
         id: m.id,
         at: m.createdAt.toISOString(),
         authorId: m.authorId,
@@ -134,6 +153,7 @@ export async function POST(req: Request, { params }: Ctx) {
     }
 
     const ct = req.headers.get('content-type') || '';
+
     if (ct.includes('multipart/form-data')) {
       const form = await req.formData();
 
@@ -145,7 +165,10 @@ export async function POST(req: Request, { params }: Ctx) {
 
       const fileEntry = form.get('file');
       const file = fileEntry && typeof fileEntry !== 'string' ? (fileEntry as File) : null;
-      if (!text && !file) return Response.json({ ok: false, error: 'Empty message' }, { status: 400 });
+
+      if (!text && !file) {
+        return Response.json({ ok: false, error: 'Empty message' }, { status: 400 });
+      }
 
       let mediaUrl: string | null = null;
       let mediaType: string | null = null;
@@ -155,19 +178,15 @@ export async function POST(req: Request, { params }: Ctx) {
         if (!isAllowedMime(type)) {
           return Response.json({ ok: false, error: 'Unsupported file type' }, { status: 400 });
         }
-
-        const maxBytes = envMaxChatUploadBytes(); // default 50MB
+        const maxBytes = 25 * 1024 * 1024; // 25 MB
         if (file.size > maxBytes) {
-          return Response.json(
-            { ok: false, error: `File too large (max ${mb(maxBytes)}MB)` },
-            { status: 413, headers: { 'X-Max-Upload-Bytes': String(maxBytes) } },
-          );
+          return Response.json({ ok: false, error: 'File too large' }, { status: 413 });
         }
 
         const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
         await fs.mkdir(uploadsDir, { recursive: true });
 
-        const safe = sanitizeFileName(file.name || 'upload');
+        const safe = sanitizeFileName(file.name);
         const filename = `${randomUUID()}_${safe}`;
         const absPath = path.join(uploadsDir, filename);
 
@@ -186,7 +205,14 @@ export async function POST(req: Request, { params }: Ctx) {
           mediaUrl,
           mediaType,
         },
-        select: { id: true, createdAt: true, authorId: true, text: true, mediaUrl: true, mediaType: true },
+        select: {
+          id: true,
+          createdAt: true,
+          authorId: true,
+          text: true,
+          mediaUrl: true,
+          mediaType: true,
+        },
       });
 
       return Response.json({
@@ -202,7 +228,6 @@ export async function POST(req: Request, { params }: Ctx) {
       });
     }
 
-    // JSON: text only
     const body = (await req.json().catch(() => null)) as { text?: string } | null;
     const text = (body?.text ?? '').toString().trim();
     if (!text) return Response.json({ ok: false, error: 'Empty message' }, { status: 400 });
@@ -215,7 +240,12 @@ export async function POST(req: Request, { params }: Ctx) {
 
     return Response.json({
       ok: true,
-      message: { id: msg.id, at: msg.createdAt.toISOString(), authorId: msg.authorId, text: msg.text },
+      message: {
+        id: msg.id,
+        at: msg.createdAt.toISOString(),
+        authorId: msg.authorId,
+        text: msg.text,
+      },
     });
   } catch (e) {
     console.error('POST /api/chat/[id] failed:', e);
