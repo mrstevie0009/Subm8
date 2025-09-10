@@ -1,4 +1,3 @@
-// src/components/ChatComposer.tsx
 'use client';
 
 import * as React from 'react';
@@ -24,6 +23,8 @@ type Props = {
   onTip: () => void;
   onUpload?: (file: File) => void; // Bild/Video/Audio (Voice)
   onCreateTipRequest?: (payload: TipRequestPayload) => void;
+  /** 👇 neu: Ping zum Server, dass gerade getippt/aufgenommen wird */
+  onTypingPing?: (active: boolean) => void;
 };
 
 /* ---------- kleines Popover/ActionMenu via Portal ---------- */
@@ -130,6 +131,7 @@ export default function ChatComposer({
   onTip,
   onUpload,
   onCreateTipRequest,
+  onTypingPing,
 }: Props) {
   const [text, setText] = React.useState('');
   const taRef = React.useRef<HTMLTextAreaElement | null>(null);
@@ -147,17 +149,7 @@ export default function ChatComposer({
     el.style.height = Math.min(el.scrollHeight, maxHeight) + 'px';
   }, [maxHeight]);
 
-  React.useEffect(() => {
-    autosize();
-  }, [text, autosize]);
-
-  const submit = React.useCallback(() => {
-    const t = text.trim();
-    if (!t || disabled) return;
-    onSend(t);
-    setText('');
-    requestAnimationFrame(() => autosize());
-  }, [text, disabled, onSend, autosize]);
+  React.useEffect(() => { autosize(); }, [text, autosize]);
 
   const circle = 'grid place-items-center rounded-full select-none';
   const sendSize = 40;
@@ -194,6 +186,30 @@ export default function ChatComposer({
   const [audioPreviewUrl, setAudioPreviewUrl] = React.useState<string | null>(null);
   const audioBlobRef = React.useRef<Blob | null>(null);
 
+  // 🔔 Typing loop (alle 3s) solange aktiv
+  const typingActiveRef = React.useRef(false);
+  const typingTimerRef = React.useRef<number | null>(null);
+
+  const startTyping = React.useCallback(() => {
+    if (disabled || typingActiveRef.current) return;
+    typingActiveRef.current = true;
+    onTypingPing?.(true);
+    if (typingTimerRef.current) window.clearInterval(typingTimerRef.current);
+    typingTimerRef.current = window.setInterval(() => onTypingPing?.(true), 3000);
+  }, [disabled, onTypingPing]);
+
+  const stopTyping = React.useCallback(() => {
+    if (!typingActiveRef.current) return;
+    typingActiveRef.current = false;
+    if (typingTimerRef.current) {
+      window.clearInterval(typingTimerRef.current);
+      typingTimerRef.current = null;
+    }
+    onTypingPing?.(false);
+  }, [onTypingPing]);
+
+  React.useEffect(() => () => stopTyping(), [stopTyping]);
+
   function clearStream() {
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
@@ -217,7 +233,6 @@ export default function ChatComposer({
     !!navigator.mediaDevices?.getUserMedia &&
     typeof MediaRecorder !== 'undefined';
 
-  // typisierter Zugriff auf isTypeSupported
   function getIsTypeSupported():
     | ((type: string) => boolean)
     | undefined {
@@ -271,6 +286,7 @@ export default function ChatComposer({
         const url = URL.createObjectURL(blob);
         setAudioPreviewUrl(url);
         clearStream();
+        stopTyping(); // Voice zu Ende -> tippen aus
       });
 
       mr.start();
@@ -278,6 +294,8 @@ export default function ChatComposer({
       setRecordSecs(0);
       clearTimer();
       recTimerRef.current = window.setInterval(() => setRecordSecs((s) => s + 1), 1000);
+
+      startTyping(); // Voice start -> tippen an (damit Gegenüber "tippt..." sieht)
     } catch {
       setRecError('Kein Zugriff aufs Mikrofon (abgelehnt oder blockiert).');
     }
@@ -306,6 +324,15 @@ export default function ChatComposer({
     await onUpload(file);
     resetPreview();
   }
+
+  const submit = React.useCallback(() => {
+    const t = text.trim();
+    if (!t || disabled) return;
+    onSend(t);
+    setText('');
+    stopTyping();
+    requestAnimationFrame(() => autosize());
+  }, [text, disabled, onSend, autosize, stopTyping]);
 
   /* --------------- UI --------------- */
 
@@ -341,7 +368,7 @@ export default function ChatComposer({
           </button>
           <button
             type="button"
-            onClick={resetPreview}
+            onClick={() => { resetPreview(); stopTyping(); }}
             className="h-9 px-3 rounded-lg border border-white/15 hover:bg-white/10"
           >
             Verwerfen
@@ -361,7 +388,7 @@ export default function ChatComposer({
       )}
 
       <div className="rounded-3xl border border-white/10 bg-white/[.06] shadow-[0_2px_16px_rgba(0,0,0,.25)] px-3 py-2">
-        {/* ←— drei Spalten: Text | Mic | Send */}
+        {/* drei Spalten: Text | Mic | Send */}
         <div ref={suggestAnchorRef} className="grid grid-cols-[1fr_auto_auto] items-end gap-2">
           <div className="flex flex-col">
             <textarea
@@ -369,13 +396,22 @@ export default function ChatComposer({
               rows={1}
               value={text}
               disabled={disabled}
-              onChange={(e) => setText(e.target.value)}
+              onChange={(e) => {
+                const v = e.target.value;
+                setText(v);
+                autosize();
+                if (v.trim()) startTyping(); else stopTyping();
+              }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
                   submit();
+                } else {
+                  // jeder Keydown während Text vorhanden -> Typing an
+                  if (text.trim()) startTyping();
                 }
               }}
+              onBlur={() => stopTyping()}
               placeholder={disabled ? 'DMs geschlossen' : 'Message…'}
               className="w-full resize-none bg-transparent outline-none placeholder:text-muted
                          text-[14px] leading-5 px-3 pt-1 pb-1 rounded-2xl"
@@ -383,7 +419,7 @@ export default function ChatComposer({
             />
 
             <div className="mt-2 flex items-center gap-8 pl-2">
-              {/* Media picker (image/video) — Audio-Dateien bewusst nicht hier öffnen */}
+              {/* Media picker (image/video) */}
               <label
                 className={`${circle} border border-white/12 bg-transparent hover:bg-white/10 cursor-pointer`}
                 style={{ width: toolSize, height: toolSize }}
@@ -468,7 +504,7 @@ export default function ChatComposer({
             </div>
           </div>
 
-          {/* Mic – gleiche Größe wie Send, direkt links davon */}
+          {/* Mic – gleiche Größe wie Send, links daneben */}
           <button
             type="button"
             disabled={disabled}

@@ -40,6 +40,39 @@ function hasAvatarField(u: unknown): u is { avatarUrl?: string | null } {
   return typeof u === 'object' && u !== null && 'avatarUrl' in (u as Record<string, unknown>);
 }
 
+/* ---------- Typing table (idempotent) ---------- */
+async function ensureTypingTable() {
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS "ConversationTyping" (
+      "conversationId" TEXT NOT NULL,
+      "userId" TEXT NOT NULL,
+      "updatedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY ("conversationId","userId")
+    );
+  `);
+}
+
+async function pingTyping(conversationId: string, userId: string) {
+  await ensureTypingTable();
+  await prisma.$executeRawUnsafe(
+    `INSERT INTO "ConversationTyping" ("conversationId","userId","updatedAt")
+     VALUES ($1,$2,NOW())
+     ON CONFLICT ("conversationId","userId") DO UPDATE
+       SET "updatedAt" = EXCLUDED."updatedAt";`,
+    conversationId,
+    userId,
+  );
+}
+
+async function clearTyping(conversationId: string, userId: string) {
+  await ensureTypingTable();
+  await prisma.$executeRawUnsafe(
+    `DELETE FROM "ConversationTyping" WHERE "conversationId" = $1 AND "userId" = $2;`,
+    conversationId,
+    userId,
+  );
+}
+
 /* -------------------------------- GET ----------------------------------- */
 
 export async function GET(_req: Request, { params }: Ctx) {
@@ -96,6 +129,7 @@ export async function GET(_req: Request, { params }: Ctx) {
       },
     });
 
+    // Gelesen markieren
     const unreadIds = messages
       .filter((m) => m.authorId !== me.id && m.reads.length === 0)
       .map((m) => m.id);
@@ -107,10 +141,23 @@ export async function GET(_req: Request, { params }: Ctx) {
       });
     }
 
+    // otherTyping (letzte 8s)
+    await ensureTypingTable();
+    const typingRow = await prisma.$queryRawUnsafe<{ exists: boolean }[]>(
+      `SELECT EXISTS (
+         SELECT 1 FROM "ConversationTyping"
+         WHERE "conversationId" = $1 AND "userId" = $2 AND "updatedAt" > NOW() - INTERVAL '8 seconds'
+       ) AS "exists"`,
+      id,
+      other.id,
+    );
+    const otherTyping = Boolean(typingRow?.[0]?.exists);
+
     return Response.json({
       ok: true,
       me: { id: me.id, role: meRole ?? undefined, avatarUrl: meAvatarUrl },
       other,
+      otherTyping,
       messages: messages.map((m) => ({
         id: m.id,
         at: m.createdAt.toISOString(),
@@ -154,6 +201,7 @@ export async function POST(req: Request, { params }: Ctx) {
 
     const ct = req.headers.get('content-type') || '';
 
+    // Multipart: text + file
     if (ct.includes('multipart/form-data')) {
       const form = await req.formData();
 
@@ -228,7 +276,20 @@ export async function POST(req: Request, { params }: Ctx) {
       });
     }
 
-    const body = (await req.json().catch(() => null)) as { text?: string } | null;
+    // JSON: text only OR typing ping
+    const body = (await req.json().catch(() => null)) as { text?: string; typing?: boolean } | null;
+
+    // Typing ping
+    if (body && typeof body.typing === 'boolean') {
+      if (body.typing) {
+        await pingTyping(id, me.id);
+      } else {
+        await clearTyping(id, me.id);
+      }
+      return Response.json({ ok: true });
+    }
+
+    // Normaler Text
     const text = (body?.text ?? '').toString().trim();
     if (!text) return Response.json({ ok: false, error: 'Empty message' }, { status: 400 });
     if (text.length > 4000) return Response.json({ ok: false, error: 'Too long' }, { status: 400 });
@@ -237,6 +298,9 @@ export async function POST(req: Request, { params }: Ctx) {
       data: { conversationId: id, authorId: me.id, text },
       select: { id: true, createdAt: true, authorId: true, text: true },
     });
+
+    // Beim Senden: Typing-State räumen
+    await clearTyping(id, me.id).catch(() => {});
 
     return Response.json({
       ok: true,
