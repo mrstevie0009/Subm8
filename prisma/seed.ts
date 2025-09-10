@@ -1,18 +1,6 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import { PrismaClient, Prisma, Role } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
-
-/** Prüft, ob eine Spalte in public."User" existiert */
-async function userHasColumn(column: string): Promise<boolean> {
-  const rows = await prisma.$queryRaw<{ column_name: string }[]>`
-    SELECT column_name
-    FROM information_schema.columns
-    WHERE table_schema = 'public' AND table_name = 'User' AND column_name = ${column}
-    LIMIT 1
-  `;
-  return rows.length > 0;
-}
 
 /** Legt UserNotificationSettings an (falls nicht vorhanden)
  *  und stellt sicher, dass updatedAt einen DEFAULT + NOT NULL hat.
@@ -73,9 +61,7 @@ async function ensureNotificationSettingsTable() {
 async function upsertNotifDefaults(userId: string) {
   await ensureNotificationSettingsTable();
 
-  await prisma.$executeRaw/*
-    POSTGRES
-  */`
+  await prisma.$executeRaw/* POSTGRES */`
     INSERT INTO "UserNotificationSettings" (
       "userId",
       "pushEnabled",
@@ -101,81 +87,27 @@ async function upsertNotifDefaults(userId: string) {
   `;
 }
 
-async function main() {
-  // Welche Spalten gibt es wirklich?
-  const [hasIsAdmin, hasPhone, hasCountry, hasIsDeactivated, hasPasswordHash] = await Promise.all([
-    userHasColumn('isAdmin'),
-    userHasColumn('phone'),
-    userHasColumn('country'),
-    userHasColumn('isDeactivated'),
-    userHasColumn('passwordHash'),
-  ]);
-
-  // Demo-User – passe nach Bedarf an
-  const users = [
-    {
-      handle: 'admin',
-      displayName: 'Admin',
-      role: Role.DOMME as Role,
-      email: 'admin@example.com',
-      phone: '+49123456789' as string | null,
-      country: 'DE' as string | null,
-      isAdmin: true as boolean | undefined,
-      passwordHash: null as string | null, // ggf. mit bcrypt setzen
+async function removeDemoUsers() {
+  // bekannte Demo-Konten/Emails entfernen (idempotent, falls nicht vorhanden kein Effekt)
+  await prisma.user.deleteMany({
+    where: {
+      OR: [
+        { handle: { in: ['admin', 'alice'] } },
+        { email: { in: ['admin@example.com', 'alice@example.com'] } },
+      ],
     },
-    {
-      handle: 'alice',
-      displayName: 'Alice',
-      role: Role.SUBMISSIVE as Role,
-      email: 'alice@example.com',
-      phone: null as string | null,
-      country: 'DE' as string | null,
-      isAdmin: false as boolean | undefined,
-      passwordHash: null as string | null,
-    },
-  ];
-
-  for (const u of users) {
-    // --- create ---
-    const createData: Prisma.UserCreateInput = {
-      handle: u.handle,
-      displayName: u.displayName,
-      role: u.role,
-      email: u.email ?? null,
-      ...(hasPhone ? ({ phone: u.phone ?? null } as any) : {}),
-      ...(hasCountry ? ({ country: u.country ?? null } as any) : {}),
-      ...(hasIsDeactivated ? ({ isDeactivated: false } as any) : {}),
-      ...(hasPasswordHash ? ({ passwordHash: u.passwordHash ?? null } as any) : {}),
-      ...(hasIsAdmin ? ({ isAdmin: u.isAdmin ?? false } as any) : {}),
-    };
-
-    // --- update ---
-    const updateData: Prisma.UserUpdateInput = {
-      displayName: u.displayName,
-      role: u.role,
-      email: u.email ?? null,
-      ...(hasPhone ? ({ phone: u.phone ?? null } as any) : {}),
-      ...(hasCountry ? ({ country: u.country ?? null } as any) : {}),
-      ...(hasIsDeactivated ? ({ isDeactivated: false } as any) : {}),
-      ...(hasPasswordHash ? ({ passwordHash: u.passwordHash ?? null } as any) : {}),
-      ...(hasIsAdmin ? ({ isAdmin: u.isAdmin ?? false } as any) : {}),
-    };
-
-    await prisma.user.upsert({
-      where: { handle: u.handle },
-      create: createData,
-      update: updateData,
-    });
-  }
-
-  // Notification-Defaults für alle angelegten Users
-  const seeded = await prisma.user.findMany({
-    where: { handle: { in: users.map((x) => x.handle) } },
-    select: { id: true, handle: true },
   });
-  for (const u of seeded) {
-    await upsertNotifDefaults(u.id);
-  }
+}
+
+async function main() {
+  // 1) Demo-User sicher löschen (inkl. Admin)
+  await removeDemoUsers();
+
+  // 2) Notification-Defaults für alle EXISTIERENDEN echten User setzen
+  const allUsers = await prisma.user.findMany({ select: { id: true } });
+  await Promise.all(allUsers.map((u) => upsertNotifDefaults(u.id)));
+
+  console.log(`Seed done. Users in DB: ${allUsers.length}`);
 }
 
 main()

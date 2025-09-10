@@ -284,45 +284,17 @@ export default function ChatThreadPage() {
                 // TIP REQUEST
                 const req = parseTipRequest(m.text);
                 if (req) {
-                  const isViewerSub = meRole === 'submissive';
-                  const canAct = !mine && isViewerSub && !!other;
                   return (
                     <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
                       <div className="max-w-[75%] rounded-2xl px-3 py-2 border bg-white/[.07] border-white/10">
                         <div className="text-[11px] uppercase tracking-wide text-white/70 mb-1">TIP REQUEST</div>
                         <div className="text-[15px] font-semibold">{fmtCurrency(req.amountCents, req.currency)}</div>
                         {req.note && <div className="mt-1 text-[13px] text-white/80 whitespace-pre-wrap">{req.note}</div>}
-
-                        {canAct && (
-                          <div className="mt-2 flex items-center gap-2">
-                            <button
-                              type="button"
-                              className="px-3 py-1.5 rounded-lg bg-[var(--purple)]/90 text-white hover:opacity-95"
-                              onClick={() => {
-                                setAccept({
-                                  amountCents: req.amountCents,
-                                  currency: req.currency,
-                                  toUserId: m.senderId,
-                                  toDisplayName: other!.displayName,
-                                  toAvatarUrl: other!.avatarUrl,
-                                });
-                              }}
-                            >
-                              Accept
-                            </button>
-                            <button
-                              type="button"
-                              className="px-3 py-1.5 rounded-lg border border-white/15 hover:bg-white/10"
-                              onClick={() => void sendMessage({ text: '❌ Declined tip request' })}
-                            >
-                              Decline
-                            </button>
+                        {(!mine || true) && (
+                          <div className="text-[11px] mt-2 text-white/60" title={new Date(m.createdAt).toLocaleString()}>
+                            {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </div>
                         )}
-
-                        <div className="text-[11px] mt-2 text-white/60" title={new Date(m.createdAt).toLocaleString()}>
-                          {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </div>
                       </div>
                     </div>
                   );
@@ -422,26 +394,25 @@ export default function ChatThreadPage() {
                   );
                 }
 
-                // default bubble
+                // -------- Default: normal message / media message ----------
                 const mineBubble =
                   mine ? 'bg-[var(--purple)]/90 border-[var(--purple)]/40 text-white' : 'bg-white/[.07] border-white/10';
 
                 const showVideo = isVideo(m.mediaUrl, m.mediaType);
+                const hasMedia = Boolean(m.mediaUrl);
 
-                return (
-                  <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
-                    <div
-                      className={`max-w-[75%] rounded-2xl px-3 py-2 border break-words ${mineBubble}`}
-                      title={new Date(m.createdAt).toLocaleString()}
-                    >
-                      {m.mediaUrl && (
+                // Medien-Only (oder Medien + Text): KEINE Bubble um das Medium
+                if (hasMedia) {
+                  return (
+                    <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
+                      <div className="max-w-[75%]">
                         <div className="mb-1">
                           {showVideo ? (
                             <video
                               src={m.mediaUrl}
                               controls
                               playsInline
-                              className="block max-w-full h-auto max-h-[60vh] rounded-lg border border-white/10 object-contain"
+                              className="block max-w-full h-auto max-h-[60vh] rounded-2xl border border-white/10 object-contain"
                             />
                           ) : (
                             // eslint-disable-next-line @next/next/no-img-element
@@ -450,20 +421,51 @@ export default function ChatThreadPage() {
                               alt=""
                               loading="lazy"
                               decoding="async"
-                              className="block max-w-full h-auto max-h-[60vh] rounded-lg border border-white/10 object-contain"
+                              className="block max-w-full h-auto max-h-[60vh] rounded-2xl border border-white/10 object-contain"
                               onError={(e) => {
                                 (e.currentTarget as HTMLImageElement).style.display = 'none';
                               }}
                             />
                           )}
                         </div>
-                      )}
+
+                        {/* Falls Text vorhanden: nur der Text bekommt eine Bubble */}
+                        {m.text && m.text.trim().length > 0 && (
+                          <div className={`mt-2 rounded-2xl px-3 py-2 border break-words ${mineBubble}`}>
+                            <RichText
+                              text={m.text}
+                              locale={locale}
+                              validateMentions
+                              className="break-words"
+                              variant={mine ? 'chat' : 'default'}
+                            />
+                          </div>
+                        )}
+
+                        <div
+                          className={`text-[11px] mt-1 opacity-80 ${mine ? 'text-white/80 text-right' : 'text-white/70'}`}
+                          title={new Date(m.createdAt).toLocaleString()}
+                        >
+                          {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+
+                // Nur Text: normale Bubble
+                return (
+                  <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
+                    <div
+                      className={`max-w-[75%] rounded-2xl px-3 py-2 border break-words ${mineBubble}`}
+                      title={new Date(m.createdAt).toLocaleString()}
+                    >
                       {m.text && (
                         <RichText
                           text={m.text}
                           locale={locale}
                           validateMentions
-                          className="break-words "
+                          className="break-words"
                           variant={mine ? 'chat' : 'default'}
                         />
                       )}

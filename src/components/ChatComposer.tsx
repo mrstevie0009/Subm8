@@ -180,6 +180,9 @@ export default function ChatComposer({
   // Modals
   const [tipReqOpen, setTipReqOpen] = React.useState(false);
   const [ownReqOpen, setOwnReqOpen] = React.useState(false);
+// Lies clientseitiges Limit (Build-Time), fallback 50MB
+  const MAX_MB = Number(process.env.NEXT_PUBLIC_CHAT_MAX_UPLOAD_MB ?? '50');
+  const MAX_BYTES = MAX_MB * 1024 * 1024;
 
   return (
     <div
@@ -212,6 +215,7 @@ export default function ChatComposer({
             />
 
             <div className="mt-2 flex items-center gap-8 pl-2">
+              {/* Media (Bild/Video) */}
               <label
                 className={`${circle} border border-white/12 bg-transparent hover:bg-white/10 cursor-pointer`}
                 style={{ width: toolSize, height: toolSize }}
@@ -221,11 +225,17 @@ export default function ChatComposer({
                 <input
                   type="file"
                   className="hidden"
-                  accept="image/*,video/*"
+                  accept="image/*,video/mp4,video/webm,video/ogg,video/quicktime,video/x-matroska"
                   disabled={disabled}
                   onChange={(e) => {
                     const f = e.target.files?.[0];
-                    if (f && onUpload) onUpload(f);
+                    if (f) {
+                      if (f.size > MAX_BYTES) {
+                        alert(`File too large. Max ${MAX_MB}MB`);
+                      } else if (onUpload) {
+                        onUpload(f);
+                      }
+                    }
                     e.currentTarget.value = '';
                   }}
                 />

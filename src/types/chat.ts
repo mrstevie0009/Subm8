@@ -1,4 +1,3 @@
-//src/types/chat.ts
 export type UserRole = 'domme' | 'submissive';
 
 export type ChatUser = {
@@ -20,13 +19,13 @@ export type ChatMessage = {
   mediaUrl?: string | null;
   createdAt: string; // ISO
   seen: boolean;
-  mediaType?: string | null;
+  mediaType?: string | null;   // ⬅︎ wichtig für „Video/Photo“ und Renderer
 };
 
 export type Conversation = {
   id: string;
   other: ChatUser;             // Chatpartner:in
   lastMessageAt: string;       // ISO
-  lastSnippet: string;
+  lastSnippet: string;         // z.B. „Video“, „Photo“ oder Text
   unread?: number;
 };

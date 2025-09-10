@@ -1,4 +1,3 @@
-// src/app/api/chat/route.ts
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/currentUser';
 
@@ -20,7 +19,7 @@ export async function GET() {
       messages: {
         orderBy: { createdAt: 'desc' },
         take: 1,
-        select: { id: true, text: true, createdAt: true, authorId: true },
+        select: { id: true, text: true, createdAt: true, authorId: true, mediaType: true, mediaUrl: true },
       },
     },
   });
@@ -44,7 +43,15 @@ export async function GET() {
     const iAmDomme = c.domme.id === me.id;
     const other = iAmDomme ? c.sub : c.domme;
     const last = c.messages[0];
-    const lastSnippet = last?.text?.trim() || 'Media';
+
+    let lastSnippet = 'Media';
+    if (last?.text?.trim()) {
+      lastSnippet = last.text.trim();
+    } else if (last?.mediaType) {
+      if (last.mediaType.startsWith('video/')) lastSnippet = 'Video';
+      else if (last.mediaType.startsWith('image/')) lastSnippet = 'Photo';
+    }
+
     return {
       id: c.id,
       other: {

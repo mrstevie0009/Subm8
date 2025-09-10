@@ -1,4 +1,3 @@
-// src/app/[locale]/chat/new/page.tsx
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/currentUser';
