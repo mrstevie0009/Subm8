@@ -7,6 +7,125 @@ import { addCommentAction } from '@/app/actions/comments';
 
 const AVATAR_PH = '/images/avatar-placeholder.png';
 
+/* ---------------- GIF Picker (Tenor) ---------------- */
+const TENOR_KEY = process.env.NEXT_PUBLIC_TENOR_API_KEY ?? 'LIVDSRZULELA'; // Demo-Key
+const TENOR_BASE = 'https://g.tenor.com/v1';
+
+type TenorMedia = {
+  gif?: { url?: string };
+  mediumgif?: { url?: string };
+  tinygif?: { url?: string };
+  nanogif?: { url?: string };
+};
+type TenorItem = { id?: string; media?: TenorMedia[] };
+type TenorResp = { results?: TenorItem[] };
+
+function GifPickerModal({
+  open,
+  onClose,
+  onPick,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onPick: (gifUrl: string) => void;
+}) {
+  const [q, setQ] = React.useState('');
+  const [loading, setLoading] = React.useState(false);
+  const [err, setErr] = React.useState<string | null>(null);
+  const [items, setItems] = React.useState<{ id: string; url: string }[]>([]);
+
+  const pickUrlFromItem = (it: TenorItem): string | null => {
+    const m = it.media?.[0];
+    return m?.gif?.url || m?.mediumgif?.url || m?.tinygif?.url || m?.nanogif?.url || null;
+  };
+
+  const run = React.useCallback(async (query?: string) => {
+    setErr(null);
+    setLoading(true);
+    try {
+      const endpoint =
+        query && query.trim()
+          ? `${TENOR_BASE}/search?q=${encodeURIComponent(query)}&key=${TENOR_KEY}&limit=24&media_filter=minimal`
+          : `${TENOR_BASE}/trending?key=${TENOR_KEY}&limit=24&media_filter=minimal`;
+      const r = await fetch(endpoint);
+      const j = (await r.json()) as TenorResp;
+      const list =
+        (j.results ?? [])
+          .map((it) => {
+            const url = pickUrlFromItem(it);
+            return url ? { id: it.id ?? crypto.randomUUID(), url } : null;
+          })
+          .filter(Boolean) as { id: string; url: string }[];
+      setItems(list);
+    } catch {
+      setErr('Could not load GIFs.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    if (open) run();
+  }, [open, run]);
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-[2147483602]">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute left-1/2 top-1/2 w-[min(920px,95vw)] max-h-[85vh] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-white/12 bg-[#111] p-3 shadow-2xl">
+        <div className="flex items-center gap-2">
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && run(q)}
+            placeholder="Search GIFs…"
+            className="flex-1 h-10 rounded-xl bg-white/[.06] border border-white/10 px-3 outline-none"
+          />
+          <button
+            type="button"
+            onClick={() => run(q)}
+            className="h-10 px-4 rounded-xl bg-[var(--purple)] text-white hover:opacity-95"
+          >
+            Search
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="h-10 px-3 rounded-xl border border-white/15 hover:bg-white/10"
+          >
+            Close
+          </button>
+        </div>
+
+        <div className="mt-3">
+          {err && <div className="text-red-300 text-sm mb-2">{err}</div>}
+          {loading ? (
+            <div className="text-sm text-white/80 py-8 text-center">Loading…</div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 overflow-y-auto max-h-[65vh] pr-1">
+              {items.map((it) => (
+                <button
+                  key={it.id}
+                  type="button"
+                  className="relative group rounded-lg overflow-hidden border border-white/10 hover:border-white/25"
+                  onClick={() => onPick(it.url)}
+                  title="Pick"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={it.url} alt="" loading="lazy" decoding="async" className="block w-full h-44 object-cover" />
+                  <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- Types ---------------- */
 type TreeComment = {
   id: string;
   text: string;
@@ -73,9 +192,7 @@ export default function CommentsThread({ postId }: { postId: string }) {
     <div className="mt-2">
       <Composer postId={postId} parentId={null} onDone={() => load(true)} />
 
-      {tree.length === 0 && !loading && (
-        <div className="text-sm text-muted mt-2">No comments yet.</div>
-      )}
+      {tree.length === 0 && !loading && <div className="text-sm text-muted mt-2">No comments yet.</div>}
 
       <ul className="mt-3 space-y-3">
         {tree.map((n) => (
@@ -148,14 +265,18 @@ function CommentNode({
 
             {/* Bild/GIF im Kommentar – begrenzte Größe */}
             {node.mediaUrl && (
-              <figure className="mt-2 overflow-hidden rounded-xl border border-white/10 bg-black/20">
+              <figure className="mt-2 overflow-hidden rounded-xl border border-white/10 bg-black/20 flex justify-center">
                 <Image
                   src={node.mediaUrl}
                   alt={node.mediaAlt ?? ''}
-                  width={1200}
-                  height={900}
+                  width={800}
+                  height={600}
                   sizes="(max-width: 768px) 100vw, 720px"
-                  className="block mx-auto h-auto w-auto max-w-full max-h-[50vh] sm:max-h-[60vh] object-contain"
+                  className="
+                    block h-auto w-auto object-contain
+                    max-w-[min(100%,560px)] sm:max-w-[min(100%,680px)]
+                    max-h-[36vh] sm:max-h-[42vh]
+                  "
                 />
               </figure>
             )}
@@ -234,9 +355,12 @@ function Composer({
   const [text, setText] = React.useState('');
   const [busy, setBusy] = React.useState(false);
 
-  // Bildauswahl + Vorschau
+  // Bild/GIF Auswahl + Vorschau
   const [file, setFile] = React.useState<File | null>(null);
   const [preview, setPreview] = React.useState<string | null>(null);
+
+  // GIF Modal
+  const [gifOpen, setGifOpen] = React.useState(false);
 
   React.useEffect(() => {
     return () => {
@@ -252,6 +376,19 @@ function Composer({
     setFile(img);
     setPreview(url);
   }
+
+  async function onPickGifByUrl(url: string) {
+    try {
+      const r = await fetch(url, { mode: 'cors' });
+      const blob = await r.blob();
+      const file = new File([blob], `gif_${Date.now()}.gif`, { type: blob.type || 'image/gif' });
+      onPick(file);
+      setGifOpen(false);
+    } catch {
+      // ignore (option: toast)
+    }
+  }
+
   function clearFile() {
     if (preview?.startsWith('blob:')) URL.revokeObjectURL(preview);
     setFile(null);
@@ -279,17 +416,21 @@ function Composer({
 
   return (
     <form onSubmit={submit} className="rounded-xl border border-white/10 bg-white/5 p-2 shadow-sm">
-      {/* Bild-Vorschau (begrenzt) */}
+      {/* Bild/GIF-Vorschau (begrenzt) */}
       {preview && (
-        <figure className="relative mb-2 overflow-hidden rounded-xl border border-white/10 bg-black/20">
+        <figure className="relative mb-2 overflow-hidden rounded-xl border border-white/10 bg-black/20 flex justify-center">
           <Image
             src={preview}
             alt=""
-            width={1200}
-            height={900}
+            width={900}
+            height={600}
             unoptimized
             sizes="100vw"
-            className="block mx-auto w-auto h-auto max-w-full max-h-[55vh] sm:max-h-[60vh] object-contain"
+            className="
+              block h-auto w-auto object-contain
+              max-w-[min(100%,520px)] sm:max-w-[min(100%,620px)]
+              max-h-[32vh] sm:max-h-[38vh]
+            "
           />
           <button
             type="button"
@@ -302,7 +443,7 @@ function Composer({
         </figure>
       )}
 
-      <div className="flex items-end gap-2">
+      <div className="flex gap-2 items-stretch">
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
@@ -311,8 +452,19 @@ function Composer({
                      placeholder:text-white/40 focus:ring-2 focus:ring-subm8-purple/40 border border-white/10"
         />
 
-        {/* Toolbar rechts: Bild-Icon + Send-Icon auf gleicher Höhe */}
-        <div className="flex items-center gap-2 pb-[2px]">
+        {/* Toolbar rechts: GIF über Image, Send mittig */}
+        <div className="flex flex-col items-center justify-center gap-2 pr-[2px]">
+          {/* GIF Button */}
+          <button
+            type="button"
+            onClick={() => setGifOpen(true)}
+            className="inline-grid place-items-center size-9 rounded-md border border-white/15 hover:bg-white/5"
+            title="Add GIF"
+          >
+            <GifIcon />
+          </button>
+
+          {/* Image Button (leicht darunter) */}
           <label
             className="inline-grid place-items-center size-9 rounded-md border border-white/15 hover:bg-white/5 cursor-pointer"
             title="Attach image"
@@ -330,6 +482,7 @@ function Composer({
             </svg>
           </label>
 
+          {/* Send Button – vertikal mittig zur Textarea */}
           <button
             type="submit"
             disabled={busy || (!text.trim() && !file)}
@@ -337,7 +490,6 @@ function Composer({
                        hover:brightness-110 active:translate-y-px disabled:opacity-50"
             title="Send"
           >
-            {/* Send (Paper plane) */}
             <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden>
               <path d="M22 2 11 13" />
               <path d="M22 2 15 22l-4-9-9-4 20-7Z" />
@@ -345,6 +497,9 @@ function Composer({
           </button>
         </div>
       </div>
+
+      {/* GIF Modal */}
+      <GifPickerModal open={gifOpen} onClose={() => setGifOpen(false)} onPick={(url) => void onPickGifByUrl(url)} />
     </form>
   );
 }
@@ -383,4 +538,16 @@ function timeAgoShort(iso: string) {
   if (h < 24) return `${h}h`;
   const d = Math.floor(h / 24);
   return `${d}d`;
+}
+
+/* --------- Icon --------- */
+function GifIcon({ size = 18 }: { size?: number }) {
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden>
+      <rect x="3" y="3" width="18" height="18" rx="4" fill="none" stroke="currentColor" strokeWidth="2" />
+      <text x="12" y="16" textAnchor="middle" fontFamily="ui-sans-serif,system-ui" fontSize="9" fill="currentColor">
+        GIF
+      </text>
+    </svg>
+  );
 }

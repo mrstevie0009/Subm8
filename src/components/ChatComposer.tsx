@@ -1,3 +1,4 @@
+// src/components/ChatComposer.tsx
 'use client';
 
 import * as React from 'react';
@@ -21,9 +22,10 @@ type Props = {
   targetHandle: string;
   onSend: (text: string) => void;
   onTip: () => void;
-  onUpload?: (file: File) => void; // Bild/Video/Audio (Voice)
+  /** erweitert: optional Caption beim Upload */
+  onUpload?: (file: File, caption?: string) => void; // Bild/Video/Audio/GIF
   onCreateTipRequest?: (payload: TipRequestPayload) => void;
-  /** 👇 neu: Ping zum Server, dass gerade getippt/aufgenommen wird */
+  /** Ping zum Server, dass gerade getippt/aufgenommen wird */
   onTypingPing?: (active: boolean) => void;
 };
 
@@ -75,9 +77,7 @@ function ActionMenu({
     setPos({ top, left, width, openUp });
   }, [anchorRect]);
 
-  React.useLayoutEffect(() => {
-    recompute();
-  }, [recompute]);
+  React.useLayoutEffect(() => { recompute(); }, [recompute]);
 
   React.useEffect(() => {
     const onOutside = (e: PointerEvent) => {
@@ -118,6 +118,133 @@ function ActionMenu({
   );
 
   return createPortal(panel, document.body);
+}
+
+/* ---------------- GIF Picker (Tenor) ---------------- */
+const TENOR_KEY = process.env.NEXT_PUBLIC_TENOR_API_KEY ?? 'LIVDSRZULELA'; // Demo-Key; produktiv per ENV ersetzen
+const TENOR_BASE = 'https://g.tenor.com/v1';
+
+type TenorMedia = {
+  gif?: { url?: string };
+  mediumgif?: { url?: string };
+  tinygif?: { url?: string };
+  nanogif?: { url?: string };
+};
+type TenorItem = { id?: string; media?: TenorMedia[]; title?: string };
+type TenorResp = { results?: TenorItem[] };
+
+function GifPickerModal({
+  open,
+  onClose,
+  onPick,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onPick: (gifUrl: string) => void;
+}) {
+  const [q, setQ] = React.useState('');
+  const [loading, setLoading] = React.useState(false);
+  const [err, setErr] = React.useState<string | null>(null);
+  const [items, setItems] = React.useState<{ id: string; url: string }[]>([]);
+
+  const pickUrlFromItem = (it: TenorItem): string | null => {
+    const m = it.media?.[0];
+    const url = m?.gif?.url || m?.mediumgif?.url || m?.tinygif?.url || m?.nanogif?.url || null;
+    return url ?? null;
+  };
+
+  const run = React.useCallback(async (query?: string) => {
+    setErr(null);
+    setLoading(true);
+    try {
+      const endpoint = query && query.trim()
+        ? `${TENOR_BASE}/search?q=${encodeURIComponent(query)}&key=${TENOR_KEY}&limit=24&media_filter=minimal`
+        : `${TENOR_BASE}/trending?key=${TENOR_KEY}&limit=24&media_filter=minimal`;
+
+      const r = await fetch(endpoint);
+      const j = (await r.json()) as TenorResp;
+      const list =
+        (j.results ?? [])
+          .map((it) => {
+            const url = pickUrlFromItem(it);
+            return url ? { id: it.id ?? crypto.randomUUID(), url } : null;
+          })
+          .filter(Boolean) as { id: string; url: string }[];
+
+      setItems(list);
+    } catch {
+      setErr('Konnte GIFs nicht laden.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    if (open) run();
+  }, [open, run]);
+
+  if (!open) return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[2147483602]">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute left-1/2 top-1/2 w-[min(960px,95vw)] max-h-[85vh] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-white/12 bg-[#111] p-3 shadow-2xl">
+        <div className="flex items-center gap-2">
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') run(q); }}
+            placeholder="Nach GIFs suchen…"
+            className="flex-1 h-10 rounded-xl bg-white/[.06] border border-white/10 px-3 outline-none"
+          />
+          <button
+            type="button"
+            onClick={() => run(q)}
+            className="h-10 px-4 rounded-xl bg-[var(--purple)] text-white hover:opacity-95"
+          >
+            Suchen
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="h-10 px-3 rounded-xl border border-white/15 hover:bg-white/10"
+          >
+            Schließen
+          </button>
+        </div>
+
+        <div className="mt-3">
+          {err && <div className="text-red-300 text-sm mb-2">{err}</div>}
+          {loading ? (
+            <div className="text-sm text-white/80 py-8 text-center">Lade GIFs…</div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 overflow-y-auto max-h-[65vh] pr-1">
+              {items.map((it) => (
+                <button
+                  key={it.id}
+                  type="button"
+                  className="relative group rounded-lg overflow-hidden border border-white/10 hover:border-white/25"
+                  onClick={() => onPick(it.url)}
+                  title="Auswählen"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={it.url}
+                    alt=""
+                    loading="lazy"
+                    decoding="async"
+                    className="block w-full h-44 object-cover"
+                  />
+                  <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
 }
 
 /* ------------------ Composer ------------------ */
@@ -295,7 +422,7 @@ export default function ChatComposer({
       clearTimer();
       recTimerRef.current = window.setInterval(() => setRecordSecs((s) => s + 1), 1000);
 
-      startTyping(); // Voice start -> tippen an (damit Gegenüber "tippt..." sieht)
+      startTyping(); // Voice start -> "tippt…" anzeigen
     } catch {
       setRecError('Kein Zugriff aufs Mikrofon (abgelehnt oder blockiert).');
     }
@@ -303,11 +430,7 @@ export default function ChatComposer({
 
   function stopRecording() {
     if (!recording) return;
-    try {
-      mrRef.current?.stop();
-    } catch {
-      // ignore
-    }
+    try { mrRef.current?.stop(); } catch {}
   }
 
   async function sendVoice() {
@@ -325,14 +448,60 @@ export default function ChatComposer({
     resetPreview();
   }
 
-  const submit = React.useCallback(() => {
+  /* --------- GIF: Modal + Preview (im Composer) + Versand über Send --------- */
+  const [gifOpen, setGifOpen] = React.useState(false);
+  const [gifPreviewUrl, setGifPreviewUrl] = React.useState<string | null>(null);
+  const gifFileRef = React.useRef<File | null>(null);
+  const [gifErr, setGifErr] = React.useState<string | null>(null);
+
+  const resetGifPreview = React.useCallback(() => {
+    if (gifPreviewUrl?.startsWith('blob:')) URL.revokeObjectURL(gifPreviewUrl);
+    setGifPreviewUrl(null);
+    gifFileRef.current = null;
+    setGifErr(null);
+  }, [gifPreviewUrl]);
+
+  async function pickGifByUrl(url: string) {
+    try {
+      setGifErr(null);
+      // ggf. laufende Voice-Vorschau schließen, damit die UI clean bleibt
+      resetPreview();
+
+      const r = await fetch(url, { mode: 'cors' });
+      const blob = await r.blob();
+      const type = blob.type || 'image/gif';
+      const file = new File([blob], `gif_${Date.now()}.gif`, { type });
+      gifFileRef.current = file;
+      const local = URL.createObjectURL(blob);
+      setGifPreviewUrl(local);
+      setGifOpen(false);
+      startTyping();
+    } catch {
+      setGifErr('GIF konnte nicht geladen werden.');
+    }
+  }
+
+  const submit = React.useCallback(async () => {
+    if (disabled) return;
     const t = text.trim();
-    if (!t || disabled) return;
+
+    // Falls ein GIF ausgewählt ist → gemeinsam (GIF + optional Caption) versenden
+    if (gifFileRef.current && onUpload) {
+      await onUpload(gifFileRef.current, t || undefined);
+      resetGifPreview();
+      setText('');
+      stopTyping();
+      requestAnimationFrame(() => autosize());
+      return;
+    }
+
+    // sonst reiner Text
+    if (!t) return;
     onSend(t);
     setText('');
     stopTyping();
     requestAnimationFrame(() => autosize());
-  }, [text, disabled, onSend, autosize, stopTyping]);
+  }, [disabled, text, onUpload, onSend, autosize, stopTyping, resetGifPreview]);
 
   /* --------------- UI --------------- */
 
@@ -354,27 +523,7 @@ export default function ChatComposer({
           {recError}
         </div>
       )}
-
-      {/* Voice preview bar */}
-      {audioPreviewUrl && (
-        <div className="mx-auto mb-2 max-w-[760px] rounded-2xl border border-white/12 bg-white/[.06] p-2 flex items-center gap-3">
-          <audio src={audioPreviewUrl} controls className="flex-1" />
-          <button
-            type="button"
-            onClick={sendVoice}
-            className="h-9 px-4 rounded-lg bg-[var(--purple)] text-white hover:opacity-95"
-          >
-            Senden
-          </button>
-          <button
-            type="button"
-            onClick={() => { resetPreview(); stopTyping(); }}
-            className="h-9 px-3 rounded-lg border border-white/15 hover:bg-white/10"
-          >
-            Verwerfen
-          </button>
-        </div>
-      )}
+      {gifErr && <div className="mx-auto mb-2 max-w-[760px] text-[12px] text-red-300">{gifErr}</div>}
 
       {/* Recording mini pill */}
       {recording && (
@@ -388,6 +537,21 @@ export default function ChatComposer({
       )}
 
       <div className="rounded-3xl border border-white/10 bg-white/[.06] shadow-[0_2px_16px_rgba(0,0,0,.25)] px-3 py-2">
+        {/* GIF-Preview IM Composer (oberhalb des Textfelds) */}
+        {gifPreviewUrl && (
+          <div className="mb-2 flex items-center gap-3 pl-2">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={gifPreviewUrl} alt="" className="h-16 w-16 rounded-lg object-cover border border-white/10" />
+            <button
+              type="button"
+              onClick={() => { resetGifPreview(); if (!text.trim()) stopTyping(); }}
+              className="ml-auto h-8 px-3 rounded-lg border border-white/15 hover:bg-white/10"
+            >
+              Entfernen
+            </button>
+          </div>
+        )}
+
         {/* drei Spalten: Text | Mic | Send */}
         <div ref={suggestAnchorRef} className="grid grid-cols-[1fr_auto_auto] items-end gap-2">
           <div className="flex flex-col">
@@ -400,15 +564,14 @@ export default function ChatComposer({
                 const v = e.target.value;
                 setText(v);
                 autosize();
-                if (v.trim()) startTyping(); else stopTyping();
+                if (v.trim() || gifFileRef.current) startTyping(); else stopTyping();
               }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
-                  submit();
+                  void submit();
                 } else {
-                  // jeder Keydown während Text vorhanden -> Typing an
-                  if (text.trim()) startTyping();
+                  if (text.trim() || gifFileRef.current) startTyping();
                 }
               }}
               onBlur={() => stopTyping()}
@@ -439,6 +602,19 @@ export default function ChatComposer({
                 />
                 <PhotoIcon />
               </label>
+
+              {/* GIF Button – ohne Kreis, quadratische Fläche */}
+              <button
+                type="button"
+                onClick={() => setGifOpen(true)}
+                disabled={disabled}
+                className="grid place-items-center rounded-md hover:bg-white/10 disabled:opacity-50"
+                style={{ width: toolSize, height: toolSize }}
+                aria-label="GIF suchen"
+                title="GIF suchen"
+              >
+                <GifIcon />
+              </button>
 
               {/* Sub: Tip Button / Domme: Plus-Menü */}
               {isSub ? (
@@ -527,11 +703,11 @@ export default function ChatComposer({
             <MicIcon />
           </button>
 
-          {/* Send */}
+          {/* Send – aktiv wenn Text ODER GIF vorhanden */}
           <button
             type="button"
-            onClick={submit}
-            disabled={!text.trim() || disabled}
+            onClick={() => void submit()}
+            disabled={(!text.trim() && !gifFileRef.current) || disabled}
             className={`${circle} bg-[var(--purple)] text-white hover:opacity-95 disabled:opacity-50`}
             style={{ width: sendSize, height: sendSize }}
             aria-label="Send message"
@@ -541,6 +717,27 @@ export default function ChatComposer({
           </button>
         </div>
       </div>
+
+      {/* Voice preview bar (bleibt separat) */}
+      {audioPreviewUrl && (
+        <div className="mx-auto mt-2 max-w-[760px] rounded-2xl border border-white/12 bg-white/[.06] p-2 flex items-center gap-3">
+          <audio src={audioPreviewUrl} controls className="flex-1" />
+          <button
+            type="button"
+            onClick={sendVoice}
+            className="h-9 px-4 rounded-lg bg-[var(--purple)] text-white hover:opacity-95"
+          >
+            Senden
+          </button>
+          <button
+            type="button"
+            onClick={() => { resetPreview(); stopTyping(); }}
+            className="h-9 px-3 rounded-lg border border-white/15 hover:bg-white/10"
+          >
+            Verwerfen
+          </button>
+        </div>
+      )}
 
       <MentionSuggestChat
         anchorRef={suggestAnchorRef as React.RefObject<HTMLElement>}
@@ -576,6 +773,13 @@ export default function ChatComposer({
           setOwnReqOpen(false);
           onSend(`OWNREQ::${JSON.stringify(payload)}`);
         }}
+      />
+
+      {/* GIF Picker Modal */}
+      <GifPickerModal
+        open={gifOpen}
+        onClose={() => setGifOpen(false)}
+        onPick={(url) => void pickGifByUrl(url)}
       />
     </div>
   );
@@ -640,6 +844,35 @@ function MicWavesIcon() {
   return (
     <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M4 12v3M8 9v6M12 6v12M16 9v6M20 12v3" strokeLinecap="round" />
+    </svg>
+  );
+}
+/** Quadratisches GIF-Icon (ohne runden Button) */
+function GifIcon({ size = 28 }: { size?: number }) {
+  // größerer „GIF“-Badge, damit er die 40×40 Tool-Fläche gut ausfüllt
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden>
+      <rect
+        x="1.5"
+        y="1.5"
+        width="21"
+        height="21"
+        rx="5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1"
+      />
+      <text
+        x="12"
+        y="15.6"
+        textAnchor="middle"
+        fontFamily="ui-sans-serif,system-ui"
+        fontWeight="700"
+        fontSize="9"
+        fill="currentColor"
+      >
+        GIF
+      </text>
     </svg>
   );
 }
