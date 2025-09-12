@@ -40,7 +40,7 @@ function GifPickerModal({
   const pickUrlFromItem = (it: TenorItem): string | null => {
     const m = it.media?.[0];
     return m?.gif?.url || m?.mediumgif?.url || m?.tinygif?.url || m?.nanogif?.url || null;
-  };
+    };
 
   const run = React.useCallback(async (query?: string) => {
     setErr(null);
@@ -321,9 +321,9 @@ export default function ComposePostModal({ open, onClose }: Props) {
             )}
 
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                {/* Media-Picker (Bild ODER Video) */}
-                <label className="inline-flex items-center gap-2 px-2 py-1 rounded hover:bg-white/5 cursor-pointer">
+              <div className="flex items-center gap-2.5">
+                {/* Media-Picker (Bild ODER Video) — Optik vereinheitlicht */}
+                <label className="inline-flex items-center gap-2.5 px-3 py-1.5 rounded-lg border border-white/12 hover:bg-white/[.06] cursor-pointer">
                   <input
                     type="file"
                     accept="image/*,video/*"
@@ -332,11 +332,11 @@ export default function ComposePostModal({ open, onClose }: Props) {
                   />
                   <span
                     className="inline-grid place-items-center"
-                    style={{ width: 24, height: 24, color: 'var(--purple)' }}
+                    style={{ width: 28, height: 28, color: 'var(--purple)' }}
                     aria-hidden
                   >
-                    {/* Bild-Icon wiederverwendet */}
-                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
+                    {/* Bild/Video-Icon etwas größer */}
+                    <svg viewBox="0 0 24 24" width={22} height={22} fill="none" stroke="currentColor" strokeWidth="2">
                       <rect x="3.5" y="5.5" width="17" height="13" rx="2.2" />
                       <path d="M7.5 14.5 10.5 11l3 3 2.5-2.5 3 3" />
                       <circle cx="9" cy="9" r="1.5" />
@@ -345,16 +345,23 @@ export default function ComposePostModal({ open, onClose }: Props) {
                   <span className="text-sm text-white/80">Media</span>
                 </label>
 
-                {/* GIF Button (rechts von Media) */}
+                {/* GIF Button – gleiche Größe/Look, lila Icon */}
                 <button
                   type="button"
                   onClick={() => setGifOpen(true)}
-                  className="inline-grid place-items-center rounded-md hover:bg-white/5"
-                  style={{ width: 32, height: 32 }}
+                  className="inline-flex items-center gap-2.5 px-3 py-1.5 rounded-lg border border-white/12 hover:bg-white/[.06]"
                   title="GIF suchen"
                   aria-label="GIF suchen"
                 >
-                  <GifIcon />
+                  <span
+                    className="inline-grid place-items-center"
+                    style={{ width: 28, height: 28, color: 'var(--purple)' }}
+                    aria-hidden
+                  >
+                    <GifIcon size={22} />
+                  </span>
+                  {/* optionaler Label-Text (klein), wirkt konsistent mit „Media“ */}
+                  <span className="text-sm text-white/80">GIF</span>
                 </button>
               </div>
 
@@ -382,10 +389,10 @@ export default function ComposePostModal({ open, onClose }: Props) {
 
 /* --------- Icon --------- */
 function GifIcon({ size = 28 }: { size?: number }) {
-  // größerer „GIF“-Badge (quadratisch), passend zur 32px Button-Fläche
+  // quadratischer Badge mit „GIF“ – skaliert sauber, Farbe via currentColor (== var(--purple) im Wrapper)
   return (
     <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden>
-      <rect x="1.5" y="1.5" width="21" height="21" rx="5" fill="none" stroke="currentColor" strokeWidth="2" />
+      <rect x="1.75" y="1.75" width="20.5" height="20.5" rx="5" fill="none" stroke="currentColor" strokeWidth="2" />
       <text
         x="12"
         y="15.6"
