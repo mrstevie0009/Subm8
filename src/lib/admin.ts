@@ -1,4 +1,4 @@
-// src/lib/admin.ts
+//src/lib/admin.ts
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/currentUser';
 

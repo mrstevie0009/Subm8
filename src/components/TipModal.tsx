@@ -1,3 +1,4 @@
+// src/components/TipModal.tsx
 'use client';
 
 import * as React from 'react';
@@ -16,7 +17,7 @@ type Props = {
   onSuccess?: (a: {
     paymentId: string;
     amountCents: number;  // Basisbetrag (Domme)
-    totalCents: number;   // You pay (inkl. VAT)
+    totalCents: number;   // You pay (inkl. Platform fee on top)
     currency: string;
     note?: string;
   }) => void;
@@ -25,15 +26,8 @@ type Props = {
 const MIN_CENTS = 100;
 const MAX_CENTS = 1_000_000;
 const CURRENCY = 'EUR';
-
-const EU_VAT_BPS: Record<string, number> = {
-  AT: 2000, BE: 2100, BG: 2000, CY: 1900, CZ: 2100, DE: 1900, DK: 2500, EE: 2200,
-  ES: 2100, FI: 2400, FR: 2000, GR: 2400, HR: 2500, HU: 2700, IE: 2300, IT: 2200,
-  LT: 2100, LU: 1600, LV: 2100, MT: 1800, NL: 2100, PL: 2300, PT: 2300, RO: 1900,
-  SE: 2500, SI: 2200, SK: 2000,
-};
-
-const EU_COUNTRIES = Object.keys(EU_VAT_BPS);
+const PLATFORM_FEE_BPS_TOPUP = 1000; // 10% on top
+const GIFT_ACK_KEY = 'subm8_gift_ack_v1';
 
 function parseCents(input: string): number | null {
   const norm = input.replace(',', '.').replace(/[^\d.]/g, '');
@@ -83,43 +77,28 @@ export default function TipModal({
     currency: string;
   }>(null);
 
-  // VAT-Ermittlung
-  const [autoCountry, setAutoCountry] = React.useState<string | null>(null);
-  const [selectedCountry, setSelectedCountry] = React.useState<string | null>(null);
-  const effectiveCountry = (selectedCountry ?? autoCountry) ?? 'NON-EU';
-
-  const amountCents = parseCents(amount) ?? 0;
-  const rateBps = EU_VAT_BPS[effectiveCountry] ?? 0;
-  const vatCents = Math.round(amountCents * (rateBps / 10_000));
-  const totalCents = amountCents + vatCents;
-
-  const amountValid = amountCents >= MIN_CENTS && amountCents <= MAX_CENTS;
-  const vatResolved = !!autoCountry || !!selectedCountry; // wenn weder IP/Profil noch Auswahl -> blocken
-  const canSend = amountValid && vatResolved && !sending;
-
-  // Reset bei Öffnen
+  // Einmal-Disclaimer: lokal merken (optional später via API persistieren)
+  const [giftAck, setGiftAck] = React.useState<boolean>(true);
   React.useEffect(() => {
     if (!open) return;
     setSuccess(null);
     setError(null);
+    try {
+      const v = typeof window !== 'undefined' ? window.localStorage.getItem(GIFT_ACK_KEY) : '1';
+      setGiftAck(v === '1'); // true = bereits bestätigt
+    } catch {
+      setGiftAck(true);
+    }
   }, [open]);
 
-  // Auto-VAT (Server bestimmt über IP/Profil – lokal kann NON-EU zurückkommen)
-  React.useEffect(() => {
-    if (!open || !amountValid) return;
-    const ctrl = new AbortController();
-    (async () => {
-      try {
-        const res = await fetch(`/api/payments/tax/estimate?amountCents=${amountCents}`, { signal: ctrl.signal, cache: 'no-store' });
-        const j = await res.json().catch(() => null) as { ok: boolean; country?: string | null };
-        if (res.ok && j?.ok) setAutoCountry(j.country ?? null);
-        else setAutoCountry(null);
-      } catch {
-        setAutoCountry(null);
-      }
-    })();
-    return () => ctrl.abort();
-  }, [open, amountValid, amountCents]);
+  const amountCents = parseCents(amount) ?? 0;
+
+  // 10% on top, paid by sub
+  const topupFeeCents = Math.round(amountCents * (PLATFORM_FEE_BPS_TOPUP / 10_000));
+  const totalCents = amountCents + topupFeeCents;
+
+  const amountValid = amountCents >= MIN_CENTS && amountCents <= MAX_CENTS;
+  const canSend = amountValid && !sending && giftAck;
 
   async function handleSend() {
     try {
@@ -131,7 +110,6 @@ export default function TipModal({
         amountCents,
         note: note.trim() || undefined,
         conversationId,
-        buyerCountry: effectiveCountry !== 'NON-EU' ? effectiveCountry : undefined, // optionaler Override
       };
 
       const res1 = await fetch('/api/payments/tips/create', {
@@ -153,16 +131,26 @@ export default function TipModal({
       const j2 = await res2.json().catch(() => null);
       if (!res2.ok || !j2?.ok) throw new Error(j2?.error || 'Confirm failed');
 
-      // Server ist maßgeblich – falls er total/base zurückgibt, diese verwenden
       const totalFromServer: number = Number(j2.totalCents ?? totalCents);
       const baseFromServer: number = Number(j2.baseAmountCents ?? amountCents);
 
       setSuccess({ paymentId, totalCents: totalFromServer, currency });
 
+      // Einmalig merken
+      try {
+        localStorage.setItem(GIFT_ACK_KEY, '1');
+        // Optional: in DB persistieren, falls Route vorhanden
+        fetch('/api/me/disclaimers', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ giftAccepted: true }),
+        }).catch(() => {});
+      } catch {}
+
       onSuccess?.({
         paymentId,
-        amountCents: baseFromServer, // CHAT zeigt Basisbetrag (hier 50,00 €)
-        totalCents: totalFromServer, // für Success-Screen
+        amountCents: baseFromServer, // Chat zeigt Basisbetrag
+        totalCents: totalFromServer, // „You pay“
         currency,
         note: note.trim() || undefined,
       });
@@ -204,10 +192,10 @@ export default function TipModal({
               )}
             </div>
             <div className="min-w-0">
-              <div className="font-semibold text-[16px] leading-tight truncate">Tip {toDisplayName}</div>
+              <div className="font-semibold text-[16px] leading-tight truncate">Send a gift to {toDisplayName}</div>
               <div className="flex items-center gap-2 text-[12px] text-white/70">
                 <RolePill role={toRole} />
-                <span>Make her day 💜</span>
+                <span>Gifts are voluntary &amp; final.</span>
               </div>
             </div>
 
@@ -226,9 +214,14 @@ export default function TipModal({
         {/* Body */}
         {!success ? (
           <div className="px-5 pb-5">
+            {/* Hinweis oben */}
+            <div className="mb-3 text-[12px] text-white/75">
+              Gifts are voluntary, not payments for services. Subm8 only facilitates the transfer.
+            </div>
+
             {/* Betrag */}
             <div className="rounded-xl border border-white/10 bg-white/[.03] p-3">
-              <label className="block text-[12px] text-white/70 mb-1">Amount for the Domme</label>
+              <label className="block text-[12px] text-white/70 mb-1">Amount for the creator</label>
               <div className="flex items-center gap-2">
                 <div className="shrink-0 px-2 py-2 rounded-lg bg-white/5 border border-white/10 text-white/80">€</div>
                 <input
@@ -254,31 +247,6 @@ export default function TipModal({
               </div>
             </div>
 
-            {/* Country-Fallback, falls Auto-Ermittlung fehlte */}
-            {!autoCountry && (
-              <div className="mt-3">
-                <label className="block text-[12px] text-white/70 mb-1">
-                  Your country (for VAT) – required
-                </label>
-                <select
-                  value={selectedCountry ?? ''}
-                  onChange={(e) => setSelectedCountry(e.target.value || null)}
-                  className="w-full rounded-xl bg-white/[.03] border border-white/10 px-3 py-2 outline-none text-white"
-                >
-                  <option value="" className="bg-[#0b0b0d] text-white/60">Select…</option>
-                  {EU_COUNTRIES.map((cc) => (
-                    <option key={cc} value={cc} className="bg-[#0b0b0d] text-white">
-                      {cc}
-                    </option>
-                  ))}
-                  <option value="NON-EU" className="bg-[#0b0b0d] text-white">Outside EU (no VAT)</option>
-                </select>
-                <p className="mt-1 text-[12px] text-white/60">
-                  We couldn’t detect your country automatically (local/dev). Please select it to calculate VAT.
-                </p>
-              </div>
-            )}
-
             {/* Note */}
             <div className="mt-3">
               <label className="block text-[12px] text-white/70 mb-1">Note (optional)</label>
@@ -296,18 +264,34 @@ export default function TipModal({
             {/* Breakdown */}
             <div className="mt-4 rounded-xl border border-white/10 bg-gradient-to-b from-white/[.04] to-transparent p-3">
               <div className="flex items-center justify-between text-[14px] mb-1">
-                <span>Amount</span>
+                <span>Amount (goes to creator)</span>
                 <strong className="text-white">{fmtCurrency(amountCents)}</strong>
               </div>
               <div className="flex items-center justify-between text-[13px] text-white/70">
-                <span>VAT ({effectiveCountry}{rateBps ? ` ${rateBps / 100}%` : ''})</span>
-                <span>{fmtCurrency(vatCents)}</span>
+                <span>Platform fee (10% on top)</span>
+                <span>{fmtCurrency(topupFeeCents)}</span>
               </div>
               <div className="mt-2 border-t border-white/10 pt-2 flex items-center justify-between">
                 <span className="text-[14px]">You pay</span>
                 <span className="text-[16px] font-semibold">{fmtCurrency(totalCents)}</span>
               </div>
+              <div className="mt-2 text-[12px] text-white/70">
+                By confirming, you are sending a voluntary gift. This is not a payment for services. Gifts are final (no refunds unless required by law).
+              </div>
             </div>
+
+            {/* Einmal-Bestätigung (nur wenn noch nicht bestätigt) */}
+            {(!giftAck) && (
+              <label className="mt-3 flex items-start gap-2 text-[13px]">
+                <input
+                  type="checkbox"
+                  className="accent-[var(--purple)] mt-[2px]"
+                  checked={giftAck}
+                  onChange={(e) => setGiftAck(e.target.checked)}
+                />
+                <span>I understand that gifts are voluntary and final.</span>
+              </label>
+            )}
 
             {error && (
               <div className="mt-3 text-[13px] text-red-300 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">
@@ -333,7 +317,7 @@ export default function TipModal({
               >
                 <span className="inline-flex items-center gap-2">
                   <SparkleIcon />
-                  {sending ? 'Sending…' : 'Send tip'}
+                  {sending ? 'Sending…' : 'Send Gift'}
                 </span>
               </button>
             </div>
@@ -345,7 +329,7 @@ export default function TipModal({
               <div className="inline-grid place-items-center w-16 h-16 rounded-full bg-[var(--purple)]/20 border border-[var(--purple)]/30">
                 <HeartIcon big />
               </div>
-              <h3 className="mt-3 text-[18px] font-semibold">Tip sent!</h3>
+              <h3 className="mt-3 text-[18px] font-semibold">Gift sent!</h3>
               <p className="mt-1 text-white/80">You paid <strong>{fmtCurrency(success.totalCents)}</strong></p>
               <div className="mt-5">
                 <button
@@ -372,67 +356,7 @@ export default function TipModal({
   );
 }
 
-/* ---------- Icons / Hearts ---------- */
-function SparkleIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden>
-      <path
-        d="M12 2l1.8 4.2L18 8l-4.2 1.8L12 14l-1.8-4.2L6 8l4.2-1.8L12 2Zm6 8 1.2 2.8L22 14l-2.8 1.2L18 18l-1.2-2.8L14 14l2.8-1.2L18 10Z"
-        fill="currentColor"
-        opacity=".9"
-      />
-    </svg>
-  );
-}
-function HeartIcon({ big = false }: { big?: boolean }) {
-  return (
-    <svg viewBox="0 0 24 24" width={big ? 22 : 14} height={big ? 22 : 14} aria-hidden>
-      <path
-        d="M20.8 8.8a5.5 5.5 0 0 0-9.4-3.9l-.9.9-.9-.9a5.5 5.5 0 0 0-7.8 7.8l.9.9L10.5 21l8.7-7.4.9-.9a5.5 5.5 0 0 0 0-3.9Z"
-        fill="currentColor"
-      />
-    </svg>
-  );
-}
-function ConfettiHearts() {
-  const items = React.useMemo(
-    () =>
-      Array.from({ length: 16 }).map((_, i) => ({
-        id: i,
-        left: Math.random() * 100,
-        delay: Math.random() * 0.8,
-        dur: 1.6 + Math.random() * 0.9,
-        size: 10 + Math.round(Math.random() * 8),
-      })),
-    []
-  );
-  return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden">
-      {items.map((h) => (
-        <span
-          key={h.id}
-          style={{
-            position: 'absolute',
-            bottom: 12,
-            left: `${h.left}%`,
-            animation: `floatUp ${h.dur}s ${h.delay}s ease-in forwards`,
-            filter: 'drop-shadow(0 2px 4px rgba(139,92,246,.4))',
-          }}
-        >
-          <span
-            className="inline-grid place-items-center rounded-full"
-            style={{
-              width: h.size,
-              height: h.size,
-              color: 'var(--purple)',
-              background: 'rgba(139,92,246,.18)',
-              border: '1px solid rgba(139,92,246,.28)',
-            }}
-          >
-            <HeartIcon />
-          </span>
-        </span>
-      ))}
-    </div>
-  );
-}
+/* Icons wie gehabt … */
+function SparkleIcon(){return(<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden><path d="M12 2l1.8 4.2L18 8l-4.2 1.8L12 14l-1.8-4.2L6 8l4.2-1.8L12 2Zm6 8 1.2 2.8L22 14l-2.8 1.2L18 18l-1.2-2.8L14 14l2.8-1.2L18 10Z" fill="currentColor" opacity=".9"/></svg>)}
+function HeartIcon({big=false}:{big?:boolean}){return(<svg viewBox="0 0 24 24" width={big?22:14} height={big?22:14} aria-hidden><path d="M20.8 8.8a5.5 5.5 0 0 0-9.4-3.9l-.9.9-.9-.9a5.5 5.5 0 0 0-7.8 7.8l.9.9L10.5 21l8.7-7.4.9-.9a5.5 5.5 0 0 0 0-3.9Z" fill="currentColor"/></svg>)}
+function ConfettiHearts(){return null;}

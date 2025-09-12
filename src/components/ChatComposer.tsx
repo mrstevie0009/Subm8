@@ -1,4 +1,4 @@
-// src/components/ChatComposer.tsx
+//src/components/ChatComposer.tsx
 'use client';
 
 import * as React from 'react';

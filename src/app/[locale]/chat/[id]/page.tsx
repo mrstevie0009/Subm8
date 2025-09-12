@@ -1,4 +1,4 @@
-// src/app/[locale]/chat/[id]/page.tsx
+ // src/app/[locale]/chat/[id]/page.tsx
 'use client';
 
 import * as React from 'react';

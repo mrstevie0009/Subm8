@@ -1,3 +1,4 @@
+//src/lib/segpay.ts
 // Minimaler Stub. Später echte Segpay-Integration (Signature/Webhooks).
 export async function segpayCharge(input: {
   amountCents: number;

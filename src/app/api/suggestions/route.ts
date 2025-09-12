@@ -1,6 +1,7 @@
 // src/app/api/suggestions/route.ts
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/currentUser';
+import { excludeAdminFromUsers } from '@/lib/adminFilter';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,13 +25,13 @@ export async function GET(req: Request) {
     // mich + excludeIds in eine Liste packen
     const notInIds = [...excludeIds, me?.id ?? ''].filter(Boolean);
 
-    // Kandidaten holen (Puffer, dann randomisieren)
+    // Kandidaten holen (mit Admin-Ausschluss), Puffer dann randomisieren
     const candidates = await prisma.user.findMany({
-      where: {
+      where: excludeAdminFromUsers({
         role: targetRole,
         isDeactivated: false,
         id: notInIds.length ? { notIn: notInIds } : undefined,
-      },
+      }),
       select: {
         id: true,
         handle: true,

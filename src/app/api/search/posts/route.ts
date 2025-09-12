@@ -1,4 +1,6 @@
+// src/app/api/search/posts/route.ts
 import { prisma } from '@/lib/prisma';
+import { excludeAdminAuthor } from '@/lib/adminFilter';
 
 export async function GET(req: Request) {
   const sp = new URL(req.url).searchParams;
@@ -10,7 +12,10 @@ export async function GET(req: Request) {
 
   const posts = await prisma.post.findMany({
     where: {
-      text: { contains: q, mode: 'insensitive' },
+      AND: [
+        { text: { contains: q, mode: 'insensitive' } },
+        { author: excludeAdminAuthor() }, // Autor darf nicht Admin sein
+      ],
     },
     select: {
       id: true,
@@ -25,8 +30,7 @@ export async function GET(req: Request) {
       sort === 'latest'
         ? [{ createdAt: 'desc' }]
         : [
-            // „Top“ = nach Like-Anzahl, dann nach Neuheit
-            { Like: { _count: 'desc' } },
+            { Like: { _count: 'desc' } }, // „Top“ = nach Like-Anzahl
             { createdAt: 'desc' },
           ],
     take: limit,

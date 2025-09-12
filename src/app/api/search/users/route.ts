@@ -1,4 +1,6 @@
+// src/app/api/search/users/route.ts
 import { prisma } from '@/lib/prisma';
+import { excludeAdminFromUsers } from '@/lib/adminFilter';
 
 export async function GET(req: Request) {
   const sp = new URL(req.url).searchParams;
@@ -8,13 +10,17 @@ export async function GET(req: Request) {
 
   if (!q) return Response.json({ ok: true, users: [] });
 
+  const where = excludeAdminFromUsers({
+    isDeactivated: false,
+    OR: [
+      { handle: { contains: q, mode: 'insensitive' } },
+      { displayName: { contains: q, mode: 'insensitive' } },
+      { bio: { contains: q, mode: 'insensitive' } },
+    ],
+  });
+
   const users = await prisma.user.findMany({
-    where: {
-      OR: [
-        { handle: { contains: q, mode: 'insensitive' } },
-        { displayName: { contains: q, mode: 'insensitive' } },
-      ],
-    },
+    where,
     select: {
       handle: true,
       displayName: true,
@@ -24,8 +30,7 @@ export async function GET(req: Request) {
     orderBy:
       sort === 'followers'
         ? [
-            // Meiste Follower zuerst
-            { followers: { _count: 'desc' } },
+            { followers: { _count: 'desc' } }, // Meiste Follower zuerst
             { handle: 'asc' },
           ]
         : [{ handle: 'asc' }],

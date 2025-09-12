@@ -19,10 +19,13 @@ export default function SignupAccountPage() {
   const roleParam = sp.get('role');
   const role = roleParam === 'DOMME' || roleParam === 'SUBMISSIVE' ? roleParam : null;
 
+  const isDomme = role === 'DOMME';
+
   const [email, setEmail] = React.useState('');
   const [pw, setPw] = React.useState('');
   const [pw2, setPw2] = React.useState('');
   const [agree, setAgree] = React.useState(false);
+  const [dommeGiftAgree, setDommeGiftAgree] = React.useState(false); // ⬅️ NEU
   const [loading, setLoading] = React.useState(false);
   const [err, setErr] = React.useState<string | null>(null);
 
@@ -32,7 +35,8 @@ export default function SignupAccountPage() {
     isValidEmail(email) &&
     pw.length >= 8 &&
     pw === pw2 &&
-    agree;
+    agree &&
+    (!isDomme || dommeGiftAgree); // ⬅️ Domme-Disclaimer Pflicht
 
   const submit: React.FormEventHandler<HTMLFormElement> = async (ev) => {
     ev.preventDefault();
@@ -42,11 +46,17 @@ export default function SignupAccountPage() {
       setLoading(true);
       setErr(null);
 
-      // 1) Account anlegen
+      // 1) Account anlegen (Flag mitgeben – Backend kann es speichern, falls Feld existiert)
       const res = await fetch('/api/signup/complete', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ handle, role, email, password: pw }),
+        body: JSON.stringify({
+          handle,
+          role,
+          email,
+          password: pw,
+          dommeGiftDisclaimerAccepted: isDomme ? true : undefined, // ⬅️ NEU
+        }),
       });
       const json = await res.json().catch(() => null);
       if (!res.ok || !json?.ok) {
@@ -54,16 +64,13 @@ export default function SignupAccountPage() {
         return;
       }
 
-      // 2) Direkt einloggen (Credentials) — harter Redirect durch NextAuth
-      // Wir übergeben EIN Feld "identifier": E-Mail, sonst Handle
+      // 2) Login
       await signIn('credentials', {
         redirect: true,
         callbackUrl: `/${locale}`,
         identifier: isValidEmail(email) ? email : handle,
         password: pw,
       });
-
-      // Kein weiterer Code hier nötig; NextAuth führt den Redirect aus.
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Failed to sign up');
     } finally {
@@ -75,17 +82,36 @@ export default function SignupAccountPage() {
 
   return (
     <main className="min-h-[calc(100vh-0px)] grid place-items-center px-4">
-      <section
-        className="w-full max-w-[500px] rounded-3xl border border-white/10
-                   bg-white/[.04] backdrop-blur shadow-app p-6 md:p-8"
-      >
+      <section className="w-full max-w-[500px] rounded-3xl border border-white/10 bg-white/[.04] backdrop-blur shadow-app p-6 md:p-8">
         <div className="text-center">
           <div className="text-sm text-muted">Create your account</div>
           <div className="text-3xl md:text-4xl font-extrabold tracking-tight">Almost there</div>
           <p className="mt-2 text-sm text-muted">
-            @{handle} · {role === 'DOMME' ? 'Domme' : 'Sub'}
+            @{handle} · {isDomme ? 'Domme' : 'Sub'}
           </p>
         </div>
+
+        {/* Domme-Disclaimer */}
+        {isDomme && (
+          <div className="mt-5 rounded-xl border border-yellow-500/30 bg-yellow-500/10 p-4">
+            <div className="font-semibold">⚠️ Important: How Tips Work on Subm8</div>
+            <ul className="mt-2 text-sm text-white/85 list-disc pl-5 space-y-1">
+              <li>Tips on Subm8 are voluntary gifts, not payments for services.</li>
+              <li>You must not advertise or guarantee services in exchange for tips.</li>
+              <li>If you offer services elsewhere, you are solely responsible for legal/tax compliance.</li>
+              <li>Misuse may result in account suspension.</li>
+            </ul>
+            <label className="mt-3 flex items-start gap-2 text-sm">
+              <input
+                type="checkbox"
+                className="accent-[var(--purple)] mt-[3px]"
+                checked={dommeGiftAgree}
+                onChange={(e) => setDommeGiftAgree(e.target.checked)}
+              />
+              <span>I understand that tips on Subm8 are voluntary gifts and not tied to services.</span>
+            </label>
+          </div>
+        )}
 
         <form className="mt-6 space-y-4" onSubmit={submit}>
           <div>
@@ -110,9 +136,7 @@ export default function SignupAccountPage() {
               className="w-full rounded-xl bg-white/[.06] border border-white/10 px-3 py-2 outline-none"
               autoComplete="new-password"
             />
-            <div className="mt-1 text-[12px] text-muted">
-              Use at least 8 characters.
-            </div>
+            <div className="mt-1 text-[12px] text-muted">Use at least 8 characters.</div>
           </div>
 
           <div>
@@ -141,20 +165,15 @@ export default function SignupAccountPage() {
           <button
             type="submit"
             disabled={disabled}
-            className="w-full rounded-full py-3 font-semibold
-                       bg-[var(--purple)]/70 hover:bg-[var(--purple)]
-                       disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full rounded-full py-3 font-semibold bg-[var(--purple)]/70 hover:bg-[var(--purple)] disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? 'Creating…' : 'Create account'}
           </button>
 
-          {/* Optional: OAuth */}
           <div className="text-center">
             <Link
               prefetch={false}
-              href={`/api/auth/signin?provider=google&handle=${encodeURIComponent(
-                handle
-              )}&role=${role}`}
+              href={`/api/auth/signin?provider=google&handle=${encodeURIComponent(handle)}&role=${role}`}
               className="inline-block mt-2 text-sm text-[var(--purple)] hover:underline"
             >
               Continue with Google

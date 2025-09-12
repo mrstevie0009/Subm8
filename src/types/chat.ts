@@ -1,3 +1,4 @@
+//src/types/chat.ts
 export type UserRole = 'domme' | 'submissive';
 
 export type ChatUser = {
