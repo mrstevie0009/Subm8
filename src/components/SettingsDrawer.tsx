@@ -23,7 +23,6 @@ type Suggestion = {
   isFollowing: boolean;
 };
 
-// 🔹 Frisches Profil aus der DB (wie im Profil-Header)
 type MeBasic = {
   displayName: string;
   handle: string;
@@ -44,7 +43,6 @@ export default function SettingsDrawer({ open, onClose }: Props) {
     return qs ? `${pathname}?${qs}` : pathname;
   }, [pathname, search]);
 
-  // 🔹 Frische Me-Daten (DB), als Quelle #1
   const [meBasic, setMeBasic] = React.useState<MeBasic | null>(null);
 
   React.useEffect(() => {
@@ -53,20 +51,17 @@ export default function SettingsDrawer({ open, onClose }: Props) {
     (async () => {
       try {
         const res = await fetch('/api/me/basic', { cache: 'no-store' });
-        if (!res.ok) return; // 401/404 etc. ignorieren – wir haben noch Session-Fallback
+        if (!res.ok) return;
         const json = (await res.json()) as { ok?: boolean; me?: MeBasic };
         if (!json?.ok || !json?.me) return;
         if (!cancelled) setMeBasic(json.me);
-      } catch {
-        // stiller Fallback auf Session
-      }
+      } catch {}
     })();
     return () => {
       cancelled = true;
     };
   }, [open, isAuth]);
 
-  // 🔹 Session-Fallback (Quelle #2)
   const u =
     (session?.user as
       | { name?: string; handle?: string; image?: string | null; role?: string | null }
@@ -78,7 +73,6 @@ export default function SettingsDrawer({ open, onClose }: Props) {
   const roleRaw = (meBasic?.role ?? (u.role ?? '')).toString().toUpperCase();
   const roleLabel = roleRaw === 'DOMME' ? 'Domina' : roleRaw ? 'Sub' : '—';
 
-  // Stats
   const [followers, setFollowers] = React.useState<number>(0);
   const [following, setFollowing] = React.useState<number>(0);
   const [statsError, setStatsError] = React.useState<string | null>(null);
@@ -108,7 +102,6 @@ export default function SettingsDrawer({ open, onClose }: Props) {
     };
   }, [open, isAuth]);
 
-  // Vorschläge laden
   const [headline, setHeadline] = React.useState<string>('Loading…');
   const [sugs, setSugs] = React.useState<Suggestion[]>([]);
   const [suggErr, setSuggErr] = React.useState<string | null>(null);
@@ -134,7 +127,6 @@ export default function SettingsDrawer({ open, onClose }: Props) {
     void loadSuggestions();
   }, [open, loadSuggestions]);
 
-  // Replacement: neuen Vorschlag nachladen
   const replaceSuggestion = React.useCallback(
     async (goneId: string) => {
       const exclude = sugs.map((x) => x.id);
@@ -161,7 +153,6 @@ export default function SettingsDrawer({ open, onClose }: Props) {
     [sugs]
   );
 
-  // Drawer mount/animations
   const [mounted, setMounted] = React.useState(false);
   const [show, setShow] = React.useState(false);
   React.useEffect(() => setMounted(true), []);
@@ -185,7 +176,6 @@ export default function SettingsDrawer({ open, onClose }: Props) {
     };
   }, [open]);
 
-  // Links
   const hrefs = React.useMemo(
     () => ({
       profile:
@@ -240,7 +230,6 @@ export default function SettingsDrawer({ open, onClose }: Props) {
         {/* Header */}
         <div style={{ paddingBottom: 12, borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
           <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-            {/* Avatar + Role-Badge */}
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: 72 }}>
               <div
                 style={{
@@ -252,7 +241,6 @@ export default function SettingsDrawer({ open, onClose }: Props) {
                   background: 'rgba(255,255,255,0.08)',
                 }}
               >
-                {/* key sorgt dafür, dass Next/Image bei URL-Wechsel neu rendert */}
                 <Image key={image} src={image} alt="Profile avatar" fill className="object-cover" sizes="64px" priority />
               </div>
               <span
@@ -272,7 +260,6 @@ export default function SettingsDrawer({ open, onClose }: Props) {
               </span>
             </div>
 
-            {/* Name + Handle */}
             <div style={{ lineHeight: 1.1, marginTop: 10, display: 'flex', flexDirection: 'column', gap: 2 }}>
               <div style={{ fontWeight: 600 }}>{displayName}</div>
               <div style={{ opacity: 0.7, fontSize: 14 }}>{handle ? `@${handle}` : '—'}</div>
@@ -304,7 +291,6 @@ export default function SettingsDrawer({ open, onClose }: Props) {
 
         <div style={{ height: 1, background: 'rgba(255,255,255,0.1)', margin: '10px 0' }} />
 
-        {/* Vorschläge */}
         <SuggestionsSection
           headline={headline}
           suggErr={suggErr}
@@ -375,7 +361,6 @@ function SuggestionsSection({
   );
 }
 
-/* Hilfs-Komponenten & Icons bleiben gleich */
 function MenuItem({
   icon: Icon,
   label,

@@ -16,28 +16,23 @@ export default function PageChrome({
   locale: string;
 }) {
   const pathnameRaw = usePathname();
-  // trailing slash entfernen, damit "/en/chat/" === "/en/chat"
   const pathname = React.useMemo(
     () => (pathnameRaw === '/' ? '/' : pathnameRaw.replace(/\/+$/, '')),
     [pathnameRaw]
   );
 
-  // Bookmarks ohne Header
   const inBookmarks = pathname.startsWith(`/${locale}/settings/bookmarks`);
 
-  // Chat-Übersicht vs. Chat-Thread
   const chatBase = `/${locale}/chat`;
-  const inChatThread   = pathname.startsWith(`${chatBase}/`);
+  const inChatThread = pathname.startsWith(`${chatBase}/`);
 
-  // Header/Navi in Threads ausblenden – in der Übersicht Header anzeigen
-  const hideHeader    = inBookmarks || inChatThread;
+  // Header in Threads aus, in Chat-Übersicht an
+  const hideHeader = inBookmarks || inChatThread;
   const hideBottomNav = inChatThread;
 
-  // Höhen/Padding
-  const contentTopPad    = hideHeader ? '12px' : 'calc(clamp(24px, 2.8vw, 50px) + 20px)';
+  const contentTopPad = hideHeader ? '12px' : 'calc(clamp(24px, 2.8vw, 50px) + 20px)';
   const contentBottomPad = hideBottomNav ? '12px' : 'calc(var(--bottomnav-h, 72px) + 12px)';
 
-  // gleiche Formel wie in BottomNav
   const bottomNavHeight = hideBottomNav
     ? '0px'
     : 'calc(clamp(24px, 2.8vw, 50px) + 20px + env(safe-area-inset-bottom))';

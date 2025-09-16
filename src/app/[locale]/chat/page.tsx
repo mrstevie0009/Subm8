@@ -6,16 +6,14 @@ import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useLocale } from 'next-intl';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 
 import { reportUserAction } from '@/app/actions/reports';
 import { blockUserAction } from '@/app/actions/blocks';
 
-
 const AVATAR_PH = '/images/avatar-placeholder.png';
 const PINS_STORAGE_KEY = 'chat:pinned:v1';
 
-/* ---------- Spezielle System-Message Prefixe (wie im Thread) ---------- */
 const TIPREQ_PREFIX  = 'TIPREQ::';
 const TIPPAID_PREFIX = 'TIPPAID::';
 const OWNREQ_PREFIX  = 'OWNREQ::';
@@ -35,55 +33,117 @@ type OwnershipReqSnippet = {
   bannerDataUrl?: string;
 };
 
+function withQuery(
+  pathname: string | null,
+  search: ReturnType<typeof useSearchParams>,
+  patch: Record<string, string | undefined>
+) {
+  const p = pathname ?? '/';
+  const next = new URLSearchParams(search.toString());
+  for (const [k, v] of Object.entries(patch)) {
+    if (v == null || v === '') next.delete(k);
+    else next.set(k, v);
+  }
+  const qs = next.toString();
+  return qs ? `${p}?${qs}` : p;
+}
+
+/* ---------- Erkennung von geteilten App-Links (Post/Profil) ---------- */
+type LinkKind =
+  | { kind: 'post' }
+  | { kind: 'profile'; handle: string }
+  | { kind: 'link' };
+
+function classifyAppLink(raw: string): LinkKind | null {
+  const s = raw.trim();
+  if (!s) return null;
+
+  let u: URL;
+  try {
+    // erlaubt absolute und relative Links
+    const base = typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
+    u = new URL(s, base);
+  } catch {
+    return null;
+  }
+
+  const seg = u.pathname.split('/').filter(Boolean); // z.B. ['en','p','abc'] oder ['p','abc']
+
+  // Pfad kann '/p/:id' oder '/:locale/p/:id' (bzw. /u/:handle) sein
+  const typeIdx =
+    seg[0] === 'p' || seg[0] === 'u' ? 0
+    : seg.length >= 2 && (seg[1] === 'p' || seg[1] === 'u') ? 1
+    : -1;
+
+  if (typeIdx === -1) return { kind: 'link' };
+
+  const type = seg[typeIdx];
+  const next = seg[typeIdx + 1];
+  if (type === 'p' && next) return { kind: 'post' };
+  if (type === 'u' && next) return { kind: 'profile', handle: next };
+
+  return { kind: 'link' };
+}
+
+function truncateMid(s: string, max = 80) {
+  const t = s.trim().replace(/\s+/g, ' ');
+  if (t.length <= max) return t;
+  return t.slice(0, max - 1) + '…';
+}
+
+/* ---------- Snippet-Logik (inkl. Link-Abkürzungen) ---------- */
 function prettySnippet(raw: string): string {
   if (!raw) return '';
 
-  // Ownership accepted
-  if (raw.startsWith(OWNACC_PREFIX)) {
-    return 'Ownership accepted';
-  }
+  // System-Messages zuerst
+  if (raw.startsWith(OWNACC_PREFIX)) return 'Ownership accepted';
 
-  // Ownership request
   if (raw.startsWith(OWNREQ_PREFIX)) {
     try {
       const p = JSON.parse(raw.slice(OWNREQ_PREFIX.length)) as OwnershipReqSnippet;
-
-      const hasAvatar = Boolean(p.avatar || p.avatarUrl || p.avatarDataUrl);
-      const hasBanner = Boolean(p.banner || p.bannerUrl || p.bannerDataUrl);
-      const hasBio    = typeof p.bio === 'string' && p.bio.trim().length > 0;
-
       const parts: string[] = [];
-      if (hasAvatar) parts.push('Avatar');
-      if (hasBanner) parts.push('Banner');
-      if (hasBio) parts.push('Bio');
-
+      if (p.avatar || p.avatarUrl || p.avatarDataUrl) parts.push('Avatar');
+      if (p.banner || p.bannerUrl || p.bannerDataUrl) parts.push('Banner');
+      if (p.bio && p.bio.trim()) parts.push('Bio');
       return parts.length ? `Ownership request: ${parts.join(', ')}` : 'Ownership request';
     } catch {
       return 'Ownership request';
     }
   }
 
-  // Tip Request
   if (raw.startsWith(TIPREQ_PREFIX)) {
     try {
       const body = JSON.parse(raw.slice(TIPREQ_PREFIX.length)) as { amountCents?: number; currency?: string };
-      if (typeof body?.amountCents === 'number') {
+      if (typeof body?.amountCents === 'number')
         return `Tip request: ${fmtCurrency(body.amountCents, body?.currency || 'EUR')}`;
-      }
     } catch {}
   }
 
-  // Tip Paid / Accepted
   if (raw.startsWith(TIPPAID_PREFIX)) {
     try {
       const body = JSON.parse(raw.slice(TIPPAID_PREFIX.length)) as { amountCents?: number; currency?: string };
-      if (typeof body?.amountCents === 'number') {
+      if (typeof body?.amountCents === 'number')
         return `Tip paid: ${fmtCurrency(body.amountCents, body?.currency || 'EUR')}`;
-      }
     } catch {}
   }
 
-  // Fallback: normale Nachricht grob säubern
+  // --- Wenn die Nachricht (erste Zeile) ein Link ist, schöner labeln
+  const lines = raw.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  const first = lines[0] ?? '';
+  const note  = lines.slice(1).join(' ').trim();
+
+  const link = classifyAppLink(first);
+  if (link) {
+    const label =
+      link.kind === 'post'
+        ? 'Shared a post'
+        : link.kind === 'profile'
+        ? `Shared profile @${link.handle}`
+        : 'Shared a link';
+    return note ? `${label} — ${truncateMid(note, 80)}` : label;
+  }
+
+  // Fallback: normalen Text säubern
   return raw.replace(/\s+/g, ' ').trim();
 }
 
@@ -118,12 +178,7 @@ type MenuProps = {
 
 function ActionMenu({ anchorRect, onClose, children }: MenuProps) {
   const panelRef = React.useRef<HTMLDivElement>(null);
-  const [pos, setPos] = React.useState<{
-    top: number;
-    left: number;
-    width: number;
-    openUpwards: boolean;
-  } | null>(null);
+  const [pos, setPos] = React.useState<{ top: number; left: number; width: number; openUpwards: boolean } | null>(null);
 
   const gap = 8;
   const margin = 8;
@@ -142,9 +197,7 @@ function ActionMenu({ anchorRect, onClose, children }: MenuProps) {
 
     let openUpwards = spaceAbove > spaceBelow;
 
-    let top = openUpwards
-      ? Math.round(anchorRect.top - gap)
-      : Math.round(anchorRect.bottom + gap);
+    let top = openUpwards ? Math.round(anchorRect.top - gap) : Math.round(anchorRect.bottom + gap);
 
     const h = panelRef.current?.offsetHeight ?? 0;
 
@@ -176,7 +229,6 @@ function ActionMenu({ anchorRect, onClose, children }: MenuProps) {
     compute();
   }, [compute]);
 
-  // Close on outside pointerdown
   React.useEffect(() => {
     const onOutside = (e: PointerEvent) => {
       const target = e.target as Node | null;
@@ -190,7 +242,6 @@ function ActionMenu({ anchorRect, onClose, children }: MenuProps) {
     };
   }, [onClose]);
 
-  // Reposition on scroll/resize
   React.useEffect(() => {
     const reflow = () => compute();
     window.addEventListener('resize', reflow);
@@ -214,10 +265,7 @@ function ActionMenu({ anchorRect, onClose, children }: MenuProps) {
 
   const panel = (
     <div style={containerStyle}>
-      <div
-        ref={panelRef}
-        className="rounded-xl border border-white/12 bg-black/90 backdrop-blur p-1 shadow-2xl"
-      >
+      <div ref={panelRef} className="rounded-xl border border-white/12 bg-black/90 backdrop-blur p-1 shadow-2xl">
         {children}
       </div>
     </div>
@@ -319,10 +367,7 @@ function ChatRow({
     setMenuOpen(false);
   }
 
-  // Profil-URL
   const profileHref = `/${locale}/u/${c.other.username}`;
-
-  // Snippet hübsch machen
   const snippet = React.useMemo(() => prettySnippet(c.lastSnippet), [c.lastSnippet]);
 
   return (
@@ -339,7 +384,6 @@ function ChatRow({
       onContextMenu={handleContextMenu}
       onClickCapture={handleClickCapture}
     >
-      {/* Avatar (→ Profil) */}
       <div className="shrink-0 w-[3.2em] flex flex-col items-center">
         <Link
           href={profileHref}
@@ -347,20 +391,12 @@ function ChatRow({
           className="size-[3.2em] rounded-full overflow-hidden grid place-items-center bg-white/10 relative"
           onClick={(e) => e.stopPropagation()}
         >
-          <Image
-            src={c.other.avatarUrl || AVATAR_PH}
-            alt=""
-            fill
-            className="object-cover"
-            sizes="3.2em"
-          />
+          <Image src={c.other.avatarUrl || AVATAR_PH} alt="" fill className="object-cover" sizes="3.2em" />
         </Link>
       </div>
 
-      {/* Infos */}
       <div className="min-w-0">
         <div className="flex items-baseline gap-2">
-          {/* Displayname (→ Profil) */}
           <Link
             href={profileHref}
             prefetch={false}
@@ -369,7 +405,6 @@ function ChatRow({
           >
             {c.other.displayName}
           </Link>
-          {/* Handle (→ Profil) */}
           <Link
             href={profileHref}
             prefetch={false}
@@ -379,11 +414,7 @@ function ChatRow({
             @{c.other.username}
           </Link>
 
-          {c.muted && (
-            <span className="ml-1 text-[10px] px-1.5 py-[1px] rounded-full bg-white/10 text-white/70">
-              muted
-            </span>
-          )}
+          {c.muted && <span className="ml-1 text-[10px] px-1.5 py-[1px] rounded-full bg-white/10 text-white/70">muted</span>}
           {isPinned && (
             <span className="ml-1 text-[10px] px-1.5 py-[1px] rounded-full bg-[var(--purple)]/15 text-[var(--purple)]">
               pinned
@@ -393,61 +424,39 @@ function ChatRow({
         <div className="text-sm text-muted truncate">{snippet}</div>
       </div>
 
-      {/* Meta rechts */}
       <div className="flex flex-col items-end gap-1">
-        <span className="text-[11px] text-muted whitespace-nowrap">
-          {timeAgoShort(c.lastMessageAt)}
-        </span>
+        <span className="text-[11px] text-muted whitespace-nowrap">{timeAgoShort(c.lastMessageAt)}</span>
         {c.unread ? (
-          <span className="px-2 py-[2px] rounded-full text-[11px] bg-[var(--purple)]/20 text-[var(--purple)]">
-            {c.unread}
-          </span>
+          <span className="px-2 py-[2px] rounded-full text-[11px] bg-[var(--purple)]/20 text-[var(--purple)]">{c.unread}</span>
         ) : null}
       </div>
 
       {menuOpen && anchor && (
         <ActionMenu anchorRect={anchor} onClose={() => setMenuOpen(false)}>
-          {/* Pin / Unpin */}
-          <button
-            type="button"
-            className="w-full text-left px-3 py-2 rounded-lg hover:bg-white/10"
-            onClick={togglePin}
-          >
+          <button type="button" className="w-full text-left px-3 py-2 rounded-lg hover:bg-white/10" onClick={togglePin}>
             {isPinned ? 'Unpin chat' : 'Pin chat'}
           </button>
 
           <div className="h-px my-1 bg-white/10" />
 
-          <button
-            type="button"
-            className="w-full text-left px-3 py-2 rounded-lg hover:bg-white/10"
-            onClick={toggleMute}
-          >
+          <button type="button" className="w-full text-left px-3 py-2 rounded-lg hover:bg-white/10" onClick={toggleMute}>
             {c.muted ? 'Unmute chat' : 'Mute chat'}
           </button>
 
           <form action={reportUserAction} onSubmit={() => setMenuOpen(false)} className="contents">
             <input type="hidden" name="handle" value={c.other.username} />
             <input type="hidden" name="reason" value="OTHER" />
-            <button className="w-full text-left px-3 py-2 rounded-lg hover:bg-white/10 text-red-300">
-              Report user
-            </button>
+            <button className="w-full text-left px-3 py-2 rounded-lg hover:bg-white/10 text-red-300">Report user</button>
           </form>
 
           <form action={blockUserAction} onSubmit={() => setMenuOpen(false)} className="contents">
             <input type="hidden" name="blockedHandle" value={c.other.username} />
-            <button className="w-full text-left px-3 py-2 rounded-lg hover:bg-white/10 text-red-300">
-              Block user
-            </button>
+            <button className="w-full text-left px-3 py-2 rounded-lg hover:bg-white/10 text-red-300">Block user</button>
           </form>
 
           <div className="h-px my-1 bg-white/10" />
 
-          <button
-            type="button"
-            className="w-full text-left px-3 py-2 rounded-lg hover:bg-white/10 text-red-400"
-            onClick={deleteChat}
-          >
+          <button type="button" className="w-full text-left px-3 py-2 rounded-lg hover:bg-white/10 text-red-400" onClick={deleteChat}>
             Delete chat
           </button>
         </ActionMenu>
@@ -459,15 +468,21 @@ function ChatRow({
 /* ------------ Seite ------------ */
 export default function ChatListPage() {
   const locale = useLocale();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
   const [items, setItems] = React.useState<Item[]>([]);
   const [q, setQ] = React.useState('');
   const [error, setError] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(true);
 
-  // Pinned-IDs – persistiert in localStorage
   const [pinned, setPinned] = React.useState<Set<string>>(new Set());
 
-  // Load pins from storage
+  // UI-Verbesserung: kleiner Filter (All/Unread/Pinned)
+  type Filter = 'all' | 'unread' | 'pinned';
+  const [filter, setFilter] = React.useState<Filter>('all');
+
   React.useEffect(() => {
     try {
       const raw = localStorage.getItem(PINS_STORAGE_KEY);
@@ -475,7 +490,6 @@ export default function ChatListPage() {
     } catch {}
   }, []);
 
-  // Persist pins to storage
   const persistPins = React.useCallback((next: Set<string>) => {
     setPinned(new Set(next));
     try {
@@ -506,11 +520,10 @@ export default function ChatListPage() {
     };
   }, []);
 
-  // Clean up pins that point to chats we no longer have
   React.useEffect(() => {
     if (items.length === 0) return;
-    const ids = new Set(items.map(i => i.id));
-    const next = new Set(Array.from(pinned).filter(id => ids.has(id)));
+    const ids = new Set(items.map((i) => i.id));
+    const next = new Set(Array.from(pinned).filter((id) => ids.has(id)));
     if (next.size !== pinned.size) persistPins(next);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items]);
@@ -534,9 +547,18 @@ export default function ChatListPage() {
     persistPins(next);
   };
 
+  // Zahlen für Header
+  const totalConversations = items.length;
+  const unreadConversations = React.useMemo(
+    () => items.filter((i) => i.unread > 0).length,
+    [items]
+  );
+
+  // Suche + Filter + Sortierung
   const filtered = React.useMemo(() => {
     const qq = q.trim().toLowerCase();
-    const base = !qq
+
+    let base = !qq
       ? items
       : items.filter(
           (i) =>
@@ -545,60 +567,102 @@ export default function ChatListPage() {
             i.lastSnippet.toLowerCase().includes(qq)
         );
 
-    // Sort: Pinned zuerst; innerhalb jeder Gruppe nach lastMessageAt desc
+    if (filter === 'unread') {
+      base = base.filter((i) => i.unread > 0);
+    } else if (filter === 'pinned') {
+      base = base.filter((i) => pinned.has(i.id));
+    }
+
     const byTimeDesc = (a: Item, b: Item) =>
       new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime();
 
-    const pinnedItems = base.filter((i) => pinned.has(i.id)).sort(byTimeDesc);
-    const normalItems = base.filter((i) => !pinned.has(i.id)).sort(byTimeDesc);
+    // In "All": Pinned oben, sonst normale Sortierung
+    if (filter === 'all') {
+      const pinnedItems = base.filter((i) => pinned.has(i.id)).sort(byTimeDesc);
+      const normalItems = base.filter((i) => !pinned.has(i.id)).sort(byTimeDesc);
+      return [...pinnedItems, ...normalItems];
+    } else {
+      return base.sort(byTimeDesc);
+    }
+  }, [items, q, filter, pinned]);
 
-    return [...pinnedItems, ...normalItems];
-  }, [items, q, pinned]);
+  // Settings-Overlay über der Chatliste öffnen (auf derselben Seite bleiben)
+  const openSettings = () => {
+    const href = withQuery(pathname, searchParams, { settings: '1' });
+    router.push(href, { scroll: false });
+  };
 
   return (
     <main className="mx-auto px-3" style={{ maxWidth: 760 }}>
-      <h1 className="text-6xl md:text-5xl font-extrabold leading-tight tracking-tight mb-3">
-        Messages
-      </h1>
+      {/* Kompakter Seitenkopf */}
+      <div className="pt-1 pb-3">
+        <div className="flex items-end justify-between gap-3">
+          <div>
+            <h1 className="text-[clamp(20px,4.2vw,28px)] font-extrabold tracking-tight">
+              Messages
+            </h1>
+            <div className="mt-0.5 text-[12px] text-white/60">
+              {totalConversations} conversations • {unreadConversations} unread
+            </div>
+          </div>
+        </div>
+      </div>
 
+      {/* Sticky Toolbar: Suche + Filter + Settings */}
       <div
-        className="sticky z-10 bg-black/50 backdrop-blur border-y border-white/10"
+        className="sticky z-10 bg-black/55 backdrop-blur border-y border-white/10"
         style={{ top: 'calc(var(--chat-header-h, var(--header-h, 56px)) + 1px)' }}
       >
-        <div className="grid grid-cols-[auto_1fr] items-center gap-2 px-1 py-2">
-          <Link
-            href={`/${locale}?settings=1`}
-            prefetch={false}
-            className="justify-self-start p-2 rounded hover:bg-white/5 shrink-0 relative inline-grid place-items-center cursor-pointer"
+        <div className="grid grid-cols-[1fr_auto] items-center gap-2 px-1 py-2">
+          {/* Suche mit Icon */}
+          <div className="relative">
+            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 opacity-70">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8">
+                <circle cx="11" cy="11" r="7" />
+                <path d="M20 20l-3.5-3.5" />
+              </svg>
+            </span>
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search messages…"
+              className="w-full rounded-xl bg-white/[.06] border border-white/10 pl-9 pr-3 py-2 outline-none focus:ring-2 focus:ring-[var(--purple)]/30"
+            />
+          </div>
+
+          {/* Settings-Button */}
+          <button
+            type="button"
+            onClick={openSettings}
+            className="p-2 rounded-lg hover:bg-white/5 inline-grid place-items-center"
             aria-label="Settings"
-            style={{ width: 'clamp(28px, 3.6vw, 34px)', height: 'clamp(28px, 3.6vw, 34px)' }}
+            style={{ width: 'clamp(28px, 3.6vw, 36px)', height: 'clamp(28px, 3.6vw, 36px)' }}
           >
-            <svg
-              viewBox="0 0 24 24"
-              fill="currentColor"
-              aria-hidden="true"
-              className="pointer-events-none"
-              style={{
-                color: 'rgba(255,255,255,.95)',
-                position: 'absolute',
-                inset: 0,
-                width: '70%',
-                height: '70%',
-                margin: 'auto',
-              }}
-            >
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className="pointer-events-none"
+                 style={{ color: 'rgba(255,255,255,.95)', width: '70%', height: '70%' }}>
               <rect x="3" y="6" width="18" height="2" rx="1" />
               <rect x="3" y="11" width="18" height="2" rx="1" />
               <rect x="3" y="16" width="18" height="2" rx="1" />
             </svg>
-          </Link>
+          </button>
+        </div>
 
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Search through messages"
-            className="w-full rounded-xl bg-white/[.06] border border-white/10 px-3 py-2 outline-none"
-          />
+        {/* Filter-Pills */}
+        <div className="px-1 pb-2">
+          <div className="inline-flex gap-1 rounded-xl bg-white/[.06] border border-white/10 p-1">
+            {(['all','unread','pinned'] as const).map((key) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setFilter(key)}
+                className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
+                  filter === key ? 'bg-[var(--purple)]/20 text-[var(--purple)]' : 'text-white/85 hover:bg-white/10'
+                }`}
+              >
+                {key === 'all' ? 'All' : key === 'unread' ? 'Unread' : 'Pinned'}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
