@@ -2,10 +2,12 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
-type Params = { params: Promise<{ handle: string }> };
+type Params = { handle: string };
 
-export async function GET(_: Request, { params }: Params) {
-  const { handle } = await params;
+// Hinweis: In Next 15 ist params asynchron → Promise abwarten.
+export async function GET(_req: Request, ctx: { params: Promise<Params> }) {
+  const { handle } = await ctx.params;
+
   const safeHandle = (() => {
     try {
       return decodeURIComponent(handle);
@@ -15,8 +17,14 @@ export async function GET(_: Request, { params }: Params) {
   })();
 
   const user = await prisma.user.findUnique({
-    where: { handle: safeHandle },
-    select: { handle: true, displayName: true, avatarUrl: true, bannerUrl: true },
+    where: { handle: safeHandle.toLowerCase() },
+    select: {
+      handle: true,
+      displayName: true,
+      avatarUrl: true,
+      bannerUrl: true,
+      websiteUrl: true, // ⇐ NEU
+    },
   });
 
   if (!user) {
@@ -30,6 +38,7 @@ export async function GET(_: Request, { params }: Params) {
       displayName: user.displayName,
       avatarUrl: user.avatarUrl ?? null,
       bannerUrl: user.bannerUrl ?? null,
+      websiteUrl: user.websiteUrl ?? null, // ⇐ NEU
     },
   });
 }

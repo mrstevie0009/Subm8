@@ -14,12 +14,14 @@ function normalizeMediaUrl(url: string | null | undefined): string | undefined {
   return url;
 }
 
-export async function GET(_req: Request, { params }: { params: Params }) {
+// Hinweis: In Next 15 ist params asynchron → Promise abwarten.
+export async function GET(_req: Request, ctx: { params: Promise<Params> }) {
   try {
-    const handle = params.handle.toLowerCase();
+    const { handle } = await ctx.params; // ⇐ await!
+    const normalized = handle.toLowerCase();
 
     const user = await prisma.user.findFirst({
-      where: { handle: { equals: handle, mode: 'insensitive' } },
+      where: { handle: { equals: normalized, mode: 'insensitive' } },
       select: { id: true },
     });
 
@@ -92,7 +94,7 @@ export async function GET(_req: Request, { params }: { params: Params }) {
 
     // Härtung + Normalisierung
     const items = posts
-      .filter((p) => !!p.author) // zur Sicherheit, sollte bei validen Daten immer true sein
+      .filter((p) => !!p.author) // zur Sicherheit
       .map((p) => ({
         id: p.id,
         createdAt: p.createdAt.toISOString(),

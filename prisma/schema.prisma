@@ -19,6 +19,7 @@ model User {
   role          Role
   avatarUrl     String?
   bannerUrl     String?
+  websiteUrl    String?   @db.VarChar(255)
   bio           String?   @db.VarChar(300)
   location      String?
   nsfwDefault   Boolean   @default(false)

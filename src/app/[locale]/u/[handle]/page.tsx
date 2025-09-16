@@ -28,6 +28,7 @@ export default async function ProfilePage({ params }: { params: Params }) {
       bio: true,
       location: true,
       createdAt: true,
+      websiteUrl: true, // ⇐ NEU: Website-Link mitladen
       _count: { select: { followers: true, following: true, Post: true } },
     },
   });
@@ -36,10 +37,14 @@ export default async function ProfilePage({ params }: { params: Params }) {
 
   const [viewerHasBlocked, isBlockedByProfile, isFollowing] = await Promise.all([
     me
-      ? prisma.block.findFirst({ where: { blockerId: me.id, blockedId: user.id }, select: { blockerId: true } }).then(Boolean)
+      ? prisma.block
+          .findFirst({ where: { blockerId: me.id, blockedId: user.id }, select: { blockerId: true } })
+          .then(Boolean)
       : Promise.resolve(false),
     me
-      ? prisma.block.findFirst({ where: { blockerId: user.id, blockedId: me.id }, select: { blockerId: true } }).then(Boolean)
+      ? prisma.block
+          .findFirst({ where: { blockerId: user.id, blockedId: me.id }, select: { blockerId: true } })
+          .then(Boolean)
       : Promise.resolve(false),
     me
       ? prisma.follow
@@ -62,6 +67,7 @@ export default async function ProfilePage({ params }: { params: Params }) {
     bio: user.bio ?? undefined,
     location: user.location ?? undefined,
     createdAt: user.createdAt,
+    websiteUrl: user.websiteUrl ?? null, // ⇐ NEU: an Client weiterreichen
     stats: {
       followers: user._count.followers ?? 0,
       following: user._count.following ?? 0,
@@ -73,7 +79,7 @@ export default async function ProfilePage({ params }: { params: Params }) {
       id: user.id,
       handle: user.handle,
       displayName: user.displayName,
-      role: user.role,                // 'DOMME' | 'SUBMISSIVE'
+      role: user.role, // 'DOMME' | 'SUBMISSIVE'
       avatarUrl: user.avatarUrl ?? null,
     },
   };

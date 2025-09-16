@@ -1,42 +1,36 @@
 // src/components/EditProfileForm.tsx
-"use client";
+'use client';
 
-import * as React from "react";
-import Image from "next/image";
-import AvatarCropper from "@/components/AvatarCropper";
-import BannerCropper from "@/components/BannerCropper";
-import OfferBgCropper from "@/components/OfferBgCropper";
-import { blobToDataUrl } from "@/utils/blobToDataUrl";
+import * as React from 'react';
+import Image from 'next/image';
+import AvatarCropper from '@/components/AvatarCropper';
+import BannerCropper from '@/components/BannerCropper';
+import OfferBgCropper from '@/components/OfferBgCropper';
+import { blobToDataUrl } from '@/utils/blobToDataUrl';
 
-const AVATAR_PH = "/images/avatar-placeholder.png";
-const BANNER_PH = "/images/banner-placeholder.png";
+const AVATAR_PH = '/images/avatar-placeholder.png';
+const BANNER_PH = '/images/banner-placeholder.png';
 
-// === Bio-Limit
 const MAX_BIO_CHARS = 77 as const;
 
-// === Font-Optionen (Frontend-only, per localStorage gespeichert)
 const FONT_OPTIONS = [
-  {
-    key: "system",
-    label: "System Sans",
-    stack:
-      'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji", sans-serif',
-  },
-  { key: "serif", label: "Serif", stack: 'ui-serif, Georgia, Cambria, "Times New Roman", Times, serif' },
-  { key: "mono", label: "Monospace", stack: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace' },
-  { key: "rounded", label: "Rounded", stack: 'system-ui, "SF Pro Rounded", "Nunito", "Quicksand", Arial, sans-serif' },
+  { key: 'system',  label: 'System Sans', stack: 'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji", sans-serif' },
+  { key: 'serif',   label: 'Serif',       stack: 'ui-serif, Georgia, Cambria, "Times New Roman", Times, serif' },
+  { key: 'mono',    label: 'Monospace',   stack: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace' },
+  { key: 'rounded', label: 'Rounded',     stack: 'system-ui, "SF Pro Rounded", "Nunito", "Quicksand", Arial, sans-serif' },
 ] as const;
-type FontKey = (typeof FONT_OPTIONS)[number]["key"];
+type FontKey = (typeof FONT_OPTIONS)[number]['key'];
 
 export type EditInitial = {
   displayName: string;
   username: string;
   bio: string;
   location: string;
-  role: "domme" | "submissive";
+  role: 'domme' | 'submissive';
   nsfwDefault: boolean;
   avatarUrl?: string;
   bannerUrl?: string;
+  websiteUrl?: string; // ⇐ neu
 };
 
 export default function EditProfileForm({
@@ -51,24 +45,20 @@ export default function EditProfileForm({
   const [avatarPreview, setAvatarPreview] = React.useState<string>(initial.avatarUrl || AVATAR_PH);
   const [bannerPreview, setBannerPreview] = React.useState<string>(initial.bannerUrl || BANNER_PH);
 
-  // ---- Offer Modal State
   const [offerOpen, setOfferOpen] = React.useState(false);
 
-  // ---- Avatar Cropper (rund)
   const [cropOpen, setCropOpen] = React.useState(false);
   const [cropSrc, setCropSrc] = React.useState<string | null>(null);
-  const [avatarCroppedDataUrl, setAvatarCroppedDataUrl] = React.useState<string>("");
+  const [avatarCroppedDataUrl, setAvatarCroppedDataUrl] = React.useState<string>('');
 
-  // ---- Banner Cropper (3:1, rechteckig)
   const [bannerCropOpen, setBannerCropOpen] = React.useState(false);
   const [bannerCropSrc, setBannerCropSrc] = React.useState<string | null>(null);
-  const [bannerCroppedDataUrl, setBannerCroppedDataUrl] = React.useState<string>("");
+  const [bannerCroppedDataUrl, setBannerCroppedDataUrl] = React.useState<string>('');
 
   const revoke = (url?: string | null) => {
-    if (url && url.startsWith("blob:")) URL.revokeObjectURL(url);
+    if (url && url.startsWith('blob:')) URL.revokeObjectURL(url);
   };
 
-  // Banner-Datei wählen -> Crop öffnen
   const onBannerChange = (file?: File | null) => {
     if (!file) return;
     const url = URL.createObjectURL(file);
@@ -76,7 +66,6 @@ export default function EditProfileForm({
     setBannerCropOpen(true);
   };
 
-  // Avatar-Datei wählen -> Crop öffnen
   const onAvatarChange = (file?: File | null) => {
     if (!file) return;
     const url = URL.createObjectURL(file);
@@ -94,7 +83,7 @@ export default function EditProfileForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const bannerH = "clamp(160px, 26vw, 260px)";
+  const bannerH = 'clamp(160px, 26vw, 260px)';
   const avatarSize = 96;
   const avatarOverlap = 0.0;
 
@@ -115,7 +104,6 @@ export default function EditProfileForm({
 
       {/* Banner + Avatar */}
       <div className="relative">
-        {/* Banner */}
         <div className="relative overflow-hidden" style={{ height: bannerH }}>
           <Image
             src={bannerPreview || BANNER_PH}
@@ -126,50 +114,17 @@ export default function EditProfileForm({
             priority
             unoptimized
           />
-          <label
-            title="Change banner"
-            style={{ position: "absolute", inset: 0, display: "block", cursor: "pointer" }}
-          >
-            <span
-              aria-hidden
-              style={{
-                position: "absolute",
-                inset: 0,
-                background: "rgba(0,0,0,.35)",
-                border: "1px dashed rgba(255,255,255,.25)",
-              }}
-            />
-            <span
-              aria-hidden
-              style={{
-                position: "absolute",
-                top: "50%",
-                left: "50%",
-                transform: "translate(-50%, -50%)",
-                borderRadius: 9999,
-                border: "1px solid rgba(255,255,255,.35)",
-                background: "rgba(0,0,0,.55)",
-                padding: 14,
-              }}
-            >
+          <label title="Change banner" style={{ position: 'absolute', inset: 0, display: 'block', cursor: 'pointer' }}>
+            <span aria-hidden style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.35)', border: '1px dashed rgba(255,255,255,.25)' }} />
+            <span aria-hidden style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', borderRadius: 9999, border: '1px solid rgba(255,255,255,.35)', background: 'rgba(0,0,0,.55)', padding: 14 }}>
               <CameraIcon size={44} />
             </span>
-            <input
-              type="file"
-              accept="image/*"
-              name="banner"
-              className="sr-only"
-              onChange={(e) => onBannerChange(e.currentTarget.files?.[0])}
-            />
+            <input type="file" accept="image/*" name="banner" className="sr-only" onChange={(e) => onBannerChange(e.currentTarget.files?.[0])} />
           </label>
         </div>
 
-        {/* Avatar */}
         <div className="absolute left-4 z-10" style={{ bottom: -(avatarSize * avatarOverlap) }}>
-          <div
-            className="relative rounded-full overflow-hidden ring-2 ring-black/40 border border-black/60 bg-white/10"
-            style={{ width: avatarSize, height: avatarSize }}
-          >
+          <div className="relative rounded-full overflow-hidden ring-2 ring-black/40 border border-black/60 bg-white/10" style={{ width: avatarSize, height: avatarSize }}>
             <Image
               src={avatarPreview || AVATAR_PH}
               alt="Avatar"
@@ -179,59 +134,25 @@ export default function EditProfileForm({
               priority
               unoptimized
             />
-            <label
-              title="Change avatar"
-              style={{ position: "absolute", inset: 0, display: "block", cursor: "pointer", borderRadius: 9999 }}
-            >
-              <span
-                aria-hidden
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  background: "rgba(0,0,0,.45)",
-                  borderRadius: "50%",
-                  border: "1px dashed rgba(255,255,255,.25)",
-                }}
-              />
-              <span
-                aria-hidden
-                style={{
-                  position: "absolute",
-                  top: "50%",
-                  left: "50%",
-                  transform: "translate(-50%, -50%)",
-                  borderRadius: 9999,
-                  border: "1px solid rgba(255,255,255,.35)",
-                  background: "rgba(0,0,0,.65)",
-                  padding: 10,
-                }}
-              >
+            <label title="Change avatar" style={{ position: 'absolute', inset: 0, display: 'block', cursor: 'pointer', borderRadius: 9999 }}>
+              <span aria-hidden style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.45)', borderRadius: '50%', border: '1px dashed rgba(255,255,255,.25)' }} />
+              <span aria-hidden style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', borderRadius: 9999, border: '1px solid rgba(255,255,255,.35)', background: 'rgba(0,0,0,.65)', padding: 10 }}>
                 <CameraIcon size={36} />
               </span>
-              <input
-                type="file"
-                accept="image/*"
-                className="sr-only"
-                onChange={(e) => {
-                  const file = e.currentTarget.files?.[0];
-                  onAvatarChange(file);
-                  e.currentTarget.value = "";
-                }}
-              />
+              <input type="file" accept="image/*" className="sr-only" onChange={(e) => { const file = e.currentTarget.files?.[0]; onAvatarChange(file); e.currentTarget.value = ''; }} />
             </label>
           </div>
         </div>
       </div>
 
-      {/* Abstand */}
       <div style={{ height: avatarSize * avatarOverlap }} />
 
-      {/* Hidden Fields (Crops als Data-URL an Server) */}
+      {/* Hidden */}
       <input type="hidden" name="locale" value={locale} />
       <input type="hidden" name="avatarCropped" value={avatarCroppedDataUrl} />
       <input type="hidden" name="bannerCropped" value={bannerCroppedDataUrl} />
 
-      {/* Form Fields */}
+      {/* Fields */}
       <div className="p-4 grid gap-3">
         <Field label="Name">
           <input
@@ -256,7 +177,6 @@ export default function EditProfileForm({
             />
           </div>
 
-          {/* Offer Button */}
           <div className="mt-2">
             <button
               type="button"
@@ -288,6 +208,18 @@ export default function EditProfileForm({
             />
           </Field>
 
+          <Field label="Website / Link">
+            <input
+              name="websiteUrl"
+              defaultValue={initial.websiteUrl ?? ''}
+              placeholder="z. B. https://example.com"
+              maxLength={255}
+              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 h-10 outline-none focus:ring-2 focus:ring-[var(--purple)]/40"
+            />
+          </Field>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Field label="Role">
             <select
               name="role"
@@ -296,29 +228,20 @@ export default function EditProfileForm({
               className="w-full bg-white/5 border border-white/10 rounded-lg px-3 h-10 outline-none
                         focus:ring-2 focus:ring-[var(--purple)]/40
                         disabled:cursor-not-allowed appearance-none pr-3"
-              style={{
-                opacity: 1,                 // nicht ausgegraut
-                color: "inherit",
-                WebkitAppearance: "none",   // Safari/iOS
-                MozAppearance: "none",      // Firefox
-                appearance: "none",         // Standard
-                backgroundImage: "none",    // falls ein UA-Icon per BG gesetzt wird
-              }}
+              style={{ opacity: 1, color: 'inherit', WebkitAppearance: 'none', MozAppearance: 'none', appearance: 'none', backgroundImage: 'none' }}
               aria-readonly="true"
               title="Role is fixed"
             >
               <option value={initial.role}>
-                {initial.role === "domme" ? "Domme" : "Submissive"}
+                {initial.role === 'domme' ? 'Domme' : 'Submissive'}
               </option>
             </select>
-
-            {/* disabled Felder werden nicht gesendet -> hidden mitschicken */}
             <input type="hidden" name="role" value={initial.role} />
           </Field>
         </div>
       </div>
 
-      {/* Avatar Cropper (rund) */}
+      {/* Avatar Cropper */}
       <AvatarCropper
         open={cropOpen}
         imageSrc={cropSrc}
@@ -341,7 +264,7 @@ export default function EditProfileForm({
         }}
       />
 
-      {/* Banner Cropper (3:1 rechteckig) */}
+      {/* Banner Cropper */}
       <BannerCropper
         open={bannerCropOpen}
         imageSrc={bannerCropSrc}
@@ -394,7 +317,7 @@ function CameraIcon({ size = 20 }: { size?: number }) {
   );
 }
 
-/* ---------- OfferEditorModal ---------- */
+/* ---------- OfferEditorModal (unverändert außer Imports) ---------- */
 function OfferEditorModal({
   open,
   onClose,
@@ -411,46 +334,42 @@ function OfferEditorModal({
   const [loading, setLoading] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
 
-  const [title, setTitle] = React.useState("");
-  const [body, setBody] = React.useState("");
+  const [title, setTitle] = React.useState('');
+  const [body, setBody] = React.useState('');
   const [bgPreview, setBgPreview] = React.useState<string | null>(null);
   const [bgFile, setBgFile] = React.useState<File | null>(null);
   const [bgOpacity, setBgOpacity] = React.useState(0.35);
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
 
-  // Font + Color Auswahl (persistiert per localStorage)
   const LS_FONT_KEY = React.useMemo(() => `offer_font_${handle}`, [handle]);
   const LS_COLOR_KEY = React.useMemo(() => `offer_color_${handle}`, [handle]);
 
-  const [fontKey, setFontKey] = React.useState<FontKey>("system");
+  const [fontKey, setFontKey] = React.useState<FontKey>('system');
   const fontStack = React.useMemo(
     () => FONT_OPTIONS.find((f) => f.key === fontKey)?.stack || FONT_OPTIONS[0].stack,
     [fontKey]
   );
 
-  const [fontColor, setFontColor] = React.useState<string>("#ffffff");
+  const [fontColor, setFontColor] = React.useState<string>('#ffffff');
 
-  // --- Offer BG Cropper (16:9)
   const [bgCropOpen, setBgCropOpen] = React.useState(false);
   const [bgCropSrc, setBgCropSrc] = React.useState<string | null>(null);
 
-  // Daten laden
   React.useEffect(() => {
     if (!open) return;
     let cancelled = false;
     (async () => {
       try {
         setLoading(true);
-        const res = await fetch(`/api/offers/${handle}`, { cache: "no-store" });
+        const res = await fetch(`/api/offers/${handle}`, { cache: 'no-store' });
         const j = await res.json().catch(() => ({}));
         if (!cancelled && res.ok && j?.ok) {
-          setTitle(j.offer?.title ?? "");
-          setBody(j.offer?.text ?? "");
+          setTitle(j.offer?.title ?? '');
+          setBody(j.offer?.text ?? '');
           setBgOpacity(Number(j.offer?.bgDim ?? 0.35));
           setBgPreview(j.offer?.bgUrl || null);
           setBgFile(null);
         }
-        // Font + Color aus localStorage laden
         const storedFont = window.localStorage.getItem(LS_FONT_KEY) as FontKey | null;
         if (storedFont) setFontKey(storedFont);
         const storedColor = window.localStorage.getItem(LS_COLOR_KEY);
@@ -464,7 +383,6 @@ function OfferEditorModal({
     };
   }, [open, handle, LS_FONT_KEY, LS_COLOR_KEY]);
 
-  // Datei wählen -> Crop öffnen
   const onPickFile = (file?: File | null) => {
     if (!file) return;
     const url = URL.createObjectURL(file);
@@ -473,7 +391,7 @@ function OfferEditorModal({
   };
 
   const removeBg = () => {
-    if (bgPreview && bgPreview.startsWith("blob:")) URL.revokeObjectURL(bgPreview);
+    if (bgPreview && bgPreview.startsWith('blob:')) URL.revokeObjectURL(bgPreview);
     setBgPreview(null);
     setBgFile(null);
   };
@@ -482,13 +400,13 @@ function OfferEditorModal({
     try {
       setSaving(true);
       const fd = new FormData();
-      fd.append("title", title);
-      fd.append("text", body);
-      fd.append("dim", String(bgOpacity));
-      if (bgFile) fd.append("bg", bgFile);
-      if (!bgFile && !bgPreview) fd.append("removeBg", "1");
+      fd.append('title', title);
+      fd.append('text', body);
+      fd.append('dim', String(bgOpacity));
+      if (bgFile) fd.append('bg', bgFile);
+      if (!bgFile && !bgPreview) fd.append('removeBg', '1');
 
-      const res = await fetch(`/api/offers/${handle}`, { method: "POST", body: fd });
+      const res = await fetch(`/api/offers/${handle}`, { method: 'POST', body: fd });
       const j = await res.json().catch(() => ({}));
       if (!res.ok || !j?.ok) throw new Error(j?.error || `HTTP ${res.status}`);
 
@@ -542,7 +460,6 @@ function OfferEditorModal({
           )}
 
           <div className="relative z-20 space-y-3">
-            {/* Font & Color-Auswahl */}
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
                 <label className="text-xs opacity-75">Font</label>
@@ -550,7 +467,7 @@ function OfferEditorModal({
                   value={fontKey}
                   onChange={(e) => setFontKey(e.target.value as FontKey)}
                   className="appearance-none bg-[#2a2a2e] text-white border border-white/20 rounded-md px-2 py-1 text-sm outline-none"
-                  style={{ colorScheme: "dark" }}
+                  style={{ colorScheme: 'dark' }}
                 >
                   {FONT_OPTIONS.map((f) => (
                     <option key={f.key} value={f.key}>{f.label}</option>
@@ -600,7 +517,7 @@ function OfferEditorModal({
                   onClick={() => fileInputRef.current?.click()}
                   className="px-3 py-1.5 rounded-full border border-white/15 hover:bg-white/5"
                 >
-                  {bgPreview ? "Change background" : "Add background"}
+                  {bgPreview ? 'Change background' : 'Add background'}
                 </button>
                 {bgPreview && (
                   <button
@@ -611,7 +528,6 @@ function OfferEditorModal({
                     Remove
                   </button>
                 )}
-                {/* Hidden File Input */}
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -635,12 +551,12 @@ function OfferEditorModal({
             Cancel
           </button>
           <button type="button" disabled={saving || loading} onClick={save} className="px-3 py-1.5 rounded-full bg-[var(--purple)] text-white disabled:opacity-50">
-            {saving ? "Saving…" : "Save"}
+            {saving ? 'Saving…' : 'Save'}
           </button>
         </div>
       </div>
 
-      {/* Offer BG Cropper (16:9) */}
+      {/* Offer BG Cropper */}
       <OfferBgCropper
         open={bgCropOpen}
         imageSrc={bgCropSrc}
@@ -654,15 +570,13 @@ function OfferEditorModal({
           if (bgCropSrc) URL.revokeObjectURL(bgCropSrc);
           setBgCropSrc(null);
 
-          // Vorschau
           const url = URL.createObjectURL(blob);
           setBgPreview((prev) => {
-            if (prev && prev.startsWith("blob:")) URL.revokeObjectURL(prev);
+            if (prev && prev.startsWith('blob:')) URL.revokeObjectURL(prev);
             return url;
           });
 
-          // Blob -> File für Upload
-          const croppedFile = new File([blob], `offer_bg_${Date.now()}.png`, { type: "image/png" });
+          const croppedFile = new File([blob], `offer_bg_${Date.now()}.png`, { type: 'image/png' });
           setBgFile(croppedFile);
         }}
       />

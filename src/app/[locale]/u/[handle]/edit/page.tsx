@@ -38,11 +38,15 @@ export default async function Page({
       avatarUrl: true,
       bannerUrl: true,
       role: true,
+      // 👉 neues Feld für Website-Link
+      websiteUrl: true,
     },
   });
   if (!u) notFound();
 
-  const initial: EditInitial = {
+  // Falls dein EditInitial den Website-Link bereits kennt:
+  // (wenn nicht, bitte EditProfileForm/EditInitial + updateProfileAction & Prisma-Schema entsprechend erweitern)
+  const initial: EditInitial & { websiteUrl?: string } = {
     displayName: u.displayName ?? '',
     username: u.handle,
     bio: u.bio ?? '',
@@ -51,6 +55,7 @@ export default async function Page({
     nsfwDefault: !!u.nsfwDefault,
     avatarUrl: u.avatarUrl ?? undefined,
     bannerUrl: u.bannerUrl ?? undefined,
+    websiteUrl: u.websiteUrl ?? '',
   };
 
   const isDomme = u.role === 'DOMME';

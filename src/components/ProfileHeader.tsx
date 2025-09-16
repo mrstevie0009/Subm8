@@ -52,6 +52,23 @@ function joinedMonthYear(iso?: string | Date) {
   ).format(d);
 }
 
+// ——— Helpers fürs Website-Feld ———
+function ensureHttp(raw: string) {
+  const s = raw.trim();
+  if (!s) return '';
+  if (/^https?:\/\//i.test(s)) return s;
+  return `https://${s}`;
+}
+function displayHost(raw: string) {
+  try {
+    const u = new URL(ensureHttp(raw));
+    const path = u.pathname === '/' ? '' : u.pathname;
+    return `${u.host}${path}`.replace(/\/$/, '');
+  } catch {
+    return raw.replace(/^https?:\/\//i, '');
+  }
+}
+
 type Props = {
   profile: Profile;
   isOwner: boolean;
@@ -155,6 +172,14 @@ export default function ProfileHeader({
       </svg>
     );
   }
+  function LinkIcon(props: React.SVGProps<SVGSVGElement>) {
+    return (
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth={2} {...props}>
+        <path d="M10 13a5 5 0 0 0 7.07 0l2.83-2.83a5 5 0 0 0-7.07-7.07L11 4" strokeLinecap="round" />
+        <path d="M14 11a5 5 0 0 0-7.07 0L4.1 13.83a5 5 0 1 0 7.07 7.07L13 20" strokeLinecap="round" />
+      </svg>
+    );
+  }
 
   async function copyProfileLink() {
     try {
@@ -163,11 +188,8 @@ export default function ProfileHeader({
     } catch {}
   }
 
-  // ---------- DM-Overlay wie beim Post (Chatliste + Notiz) ----------
-  function DMShareOverlay({
-    open,
-    onClose,
-  }: { open: boolean; onClose: () => void }) {
+  // ---------- DM-Overlay ----------
+  function DMShareOverlay({ open, onClose }: { open: boolean; onClose: () => void }) {
     const [mounted, setMounted] = React.useState(false);
     React.useEffect(() => setMounted(true), []);
 
@@ -236,7 +258,6 @@ export default function ProfileHeader({
         const ids = Array.from(selected);
         const msg = [profileUrl, note.trim()].filter(Boolean).join('\n\n');
 
-        // direkt als normale Nachricht in jede Konversation posten
         await Promise.all(
           ids.map((conversationId) =>
             fetch(`/api/chat/${encodeURIComponent(conversationId)}`, {
@@ -270,13 +291,11 @@ export default function ProfileHeader({
         onMouseDown={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.stopPropagation()}
       >
-        {/* Backdrop */}
         <div
           className="absolute inset-0 bg-black/60 backdrop-blur-sm"
           onClick={(e) => { e.stopPropagation(); onClose(); }}
           onMouseDown={(e) => e.stopPropagation()}
         />
-        {/* Panel */}
         <div
           className="absolute left-1/2 top-1/2 w-[min(720px,94vw)] max-h-[86vh] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-white/12 bg-[#0b0b0d] p-3 shadow-2xl"
           onClick={(e) => e.stopPropagation()}
@@ -297,7 +316,6 @@ export default function ProfileHeader({
           <div className="mt-2 overflow-y-auto" style={{ maxHeight: '50vh' }}>
             {loading && <div className="px-3 py-6 text-sm text-white/70">Lade Chats…</div>}
             {!loading && error && <div className="px-3 py-3 text-sm text-red-400">{error}</div>}
-
             {!loading && !error && filtered.length === 0 && (
               <div className="px-3 py-6 text-sm text-white/70">Keine Konversationen gefunden.</div>
             )}
@@ -436,7 +454,7 @@ export default function ProfileHeader({
           </div>
         )}
 
-        {/* Neues DM-Overlay */}
+        {/* DM-Overlay */}
         <DMShareOverlay open={shareOpen} onClose={() => setShareOpen(false)} />
       </div>
     );
@@ -444,6 +462,8 @@ export default function ProfileHeader({
 
   const roleFull  = profile.role === 'domme' ? 'Domme' : 'Sub';
   const roleShort = profile.role === 'domme' ? 'Dom'   : 'Sub';
+
+  const website = (profile.websiteUrl ?? '').trim();
 
   return (
     <section className="rounded-app border border-sub overflow-hidden shadow-app relative" style={rootVars}>
@@ -478,7 +498,6 @@ export default function ProfileHeader({
                 <MessageIcon className="w-[16px] h-[16px]" />
               </Link>
             )}
-            {/* In der Compact-Version bleibt das MoreMenu hier */}
             <MoreMenu />
           </div>
 
@@ -498,8 +517,6 @@ export default function ProfileHeader({
       <div className="relative" style={{ height: 'var(--bannerH)' }}>
         <Image src={bannerSrc} alt="" fill className="object-cover" sizes="100vw" onError={() => setBannerSrc(BANNER_PH)} />
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/30 via-black/0 to-black/35" />
-
-        {/* Drei-Punkte-Icon als Overlay oben rechts über dem Banner */}
         <div className="absolute top-2 right-2 z-10">
           <MoreMenu />
         </div>
@@ -510,11 +527,8 @@ export default function ProfileHeader({
 
       {/* Content */}
       <div className="px-4 pb-0">
-        {/* Top-Zeile: Role links, Actions rechts */}
-        <div
-          className="flex items-center justify-between gap-2 pt-2 sm:pt-3"
-          style={{ paddingLeft: 'calc(var(--avatar) + 16px)' }}
-        >
+        {/* Top-Zeile */}
+        <div className="flex items-center justify-between gap-2 pt-2 sm:pt-3" style={{ paddingLeft: 'calc(var(--avatar) + 16px)' }}>
           <Chip tone="purple" size="lg">
             <span className="sm:hidden">{roleShort}</span>
             <span className="hidden sm:inline">{roleFull}</span>
@@ -580,7 +594,6 @@ export default function ProfileHeader({
                   </span>
                 )}
 
-                {/* Offer */}
                 <button
                   type="button"
                   onClick={handleOfferClick}
@@ -621,12 +634,6 @@ export default function ProfileHeader({
             </div>
           </div>
 
-          <div className="col-start-1 mt-1 min-w-0">
-            <h1 className="text-[clamp(18px,5.5vw,28px)] font-extrabold leading-tight tracking-tight truncate">
-              {profile.displayName}
-            </h1>
-            <div className="text-white/60 text-[13px] truncate">@{profile.username}</div>
-          </div>
         </div>
 
         {/* Bio & Meta */}
@@ -655,12 +662,28 @@ export default function ProfileHeader({
               Joined {joinedMonthYear(profile.createdAt)}
             </span>
           )}
+
+          {/* Website-Link (lila) */}
+          {website && (
+            <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+              <LinkIcon className="w-3.5 h-3.5 relative top-[0.5px]" />
+              <a
+                href={ensureHttp(website)}
+                target="_blank"
+                rel="noopener noreferrer nofollow"
+                className="text-[var(--purple)] hover:underline truncate max-w-[50ch]"
+                title={ensureHttp(website)}
+              >
+                {displayHost(website)}
+              </a>
+            </span>
+          )}
         </div>
 
         <div className="mt-4" />
       </div>
 
-      {/* Tabs nur im großen Header wenn nicht compact */}
+      {/* Tabs */}
       {showTabs && (
         <nav className={`border-t border-white/10 ${compact ? 'hidden' : 'block'}`}>
           <ul className="grid grid-cols-3 text-center text-[14px] font-medium">
