@@ -11,7 +11,7 @@ import TipModal from '@/components/TipModal';
 import TipRequestAcceptModal from '@/components/TipRequestAcceptModal';
 import OwnershipRequestAcceptModal from '@/components/OwnershipRequestAcceptModal';
 import type {
-  OwnershipReqPayload as AcceptOwnReqPayload, // ← das ist der exakte Modal-Typ
+  OwnershipReqPayload as AcceptOwnReqPayload,
 } from '@/components/OwnershipRequestAcceptModal';
 import type { ChatMessage } from '@/types/chat';
 import RichText from '@/components/RichText';
@@ -645,7 +645,7 @@ export default function ChatThreadPage() {
     [id, load, viewerHasBlocked, isBlockedByOther]
   );
 
-  // --------- Einmaliges Senden von ?text= beim ersten Laden (z.B. nach /chat/new?to&text) ---------
+  // --------- Einmaliges Senden von ?text= beim ersten Laden ---------
   const didInjectRef = React.useRef(false);
   React.useEffect(() => {
     if (didInjectRef.current) return;
@@ -904,7 +904,7 @@ export default function ChatThreadPage() {
                   );
                 }
 
-                // Post-Link Preview  —> jetzt MIT Zeitstempel darunter
+                // Post-Link Preview
                 const link = parsePostLink(m.text);
                 if (link && (!m.text || m.text.trim() === link.url.trim())) {
                   return (
@@ -922,7 +922,7 @@ export default function ChatThreadPage() {
                   );
                 }
 
-                // Profile-Link Preview  —> jetzt MIT Zeitstempel darunter
+                // Profile-Link Preview
                 const pLink = parseProfileLink(m.text);
                 if (pLink && (!m.text || m.text.trim() === pLink.url.trim())) {
                   return (
@@ -970,21 +970,23 @@ export default function ChatThreadPage() {
       </main>
 
       {/* Composer */}
-      <ChatComposer
-        viewerRole={meRole ?? 'submissive'}
-        disabled={disabled}
-        disabledNotice={disabledNotice}
-        selfUserId={meId ?? ''}
-        targetHandle={other?.username ?? ''}
-        onSend={(text) => sendMessage({ text })}
-        onTip={() => setTipOpen(true)}
-        onUpload={(file) => sendMessage({ text: '', file })}
-        onCreateTipRequest={(p: { amountCents: number; currency?: string; note?: string }) => {
-          const { amountCents, currency = 'EUR', note } = p;
-          const payload = { amountCents, currency, note: note?.trim() || undefined };
-          void sendMessage({ text: `TIPREQ::${JSON.stringify(payload)}` });
-        }}
-      />
+      {other && (
+        <ChatComposer
+          viewerRole={meRole ?? 'submissive'}
+          disabled={disabled}
+          disabledNotice={disabledNotice}
+          selfUserId={meId ?? ''}
+          targetHandle={other.username}
+          onSend={(text) => sendMessage({ text })}
+          onTip={() => setTipOpen(true)}
+          onUpload={(file, caption) => sendMessage({ text: caption || '', file })}  // <- Caption mit Datei senden
+          onCreateTipRequest={(p: { amountCents: number; currency?: string; note?: string }) => {
+            const { amountCents, currency = 'EUR', note } = p;
+            const payload = { amountCents, currency, note: note?.trim() || undefined };
+            void sendMessage({ text: `TIPREQ::${JSON.stringify(payload)}` });
+          }}
+        />
+      )}
 
       {/* Modals */}
       {other && (
@@ -1026,7 +1028,7 @@ export default function ChatThreadPage() {
         <OwnershipRequestAcceptModal
           open={!!ownToAccept}
           onClose={() => setOwnToAccept(null)}
-          payload={ownToAccept} // ← exakt der Modal-Typ
+          payload={ownToAccept}
           selfUserId={meId ?? undefined}
           onSuccess={async () => {
             await sendMessage({ text: `${OWNACC_PREFIX}{}` });

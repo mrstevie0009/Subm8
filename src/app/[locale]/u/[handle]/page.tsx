@@ -6,12 +6,13 @@ import { notFound } from 'next/navigation';
 import type { Role } from '@prisma/client';
 
 type Params = { locale: string; handle: string };
+
 function toUiRole(role: Role): 'domme' | 'sub' {
   return role === 'DOMME' ? 'domme' : 'sub';
 }
 
-export default async function ProfilePage({ params }: { params: Params }) {
-  const { handle } = params;
+export default async function ProfilePage({ params }: { params: Promise<Params> }) {
+  const { handle } = await params; // ← wichtig
   const me = await getCurrentUser().catch(() => null);
 
   const user = await prisma.user.findUnique({
@@ -27,12 +28,40 @@ export default async function ProfilePage({ params }: { params: Params }) {
       location: true,
       createdAt: true,
       websiteUrl: true,
-      pinnedPostId: true,                 // ⇐ NEU
+      pinnedPostId: true,
+      // Achtung: In deinem Schema heißt die Relation offenbar "Post" (großes P)
       _count: { select: { followers: true, following: true, Post: true } },
     },
   });
 
   if (!user) return notFound();
+
+  const [viewerHasBlocked, isBlockedByProfile, isFollowing] = await Promise.all([
+    me
+      ? prisma.block
+          .findFirst({
+            where: { blockerId: me.id, blockedId: user.id },
+            select: { blockerId: true },
+          })
+          .then(Boolean)
+      : Promise.resolve(false),
+    me
+      ? prisma.block
+          .findFirst({
+            where: { blockerId: user.id, blockedId: me.id },
+            select: { blockerId: true },
+          })
+          .then(Boolean)
+      : Promise.resolve(false),
+    me
+      ? prisma.follow
+          .findUnique({
+            where: { followerId_followeeId: { followerId: me.id, followeeId: user.id } },
+            select: { followerId: true },
+          })
+          .then(Boolean)
+      : Promise.resolve(false),
+  ]);
 
   const profile = {
     id: user.id,
@@ -45,10 +74,11 @@ export default async function ProfilePage({ params }: { params: Params }) {
     location: user.location ?? undefined,
     createdAt: user.createdAt,
     websiteUrl: user.websiteUrl ?? null,
-    pinnedPostId: user.pinnedPostId ?? null,  // ⇐ NEU
+    pinnedPostId: user.pinnedPostId ?? null,
     stats: {
       followers: user._count.followers ?? 0,
       following: user._count.following ?? 0,
+      // entspricht dem Select weiter oben ("Post" mit großem P)
       posts: user._count.Post ?? 0,
     },
     author: {
@@ -64,16 +94,9 @@ export default async function ProfilePage({ params }: { params: Params }) {
     <ClientProfile
       profile={profile}
       isOwner={!!me && me.id === user.id}
-      initialIsFollowing={!!(await (async () => {
-        if (!me) return false;
-        const f = await prisma.follow.findUnique({
-          where: { followerId_followeeId: { followerId: me.id, followeeId: user.id } },
-          select: { followerId: true },
-        });
-        return !!f;
-      })())}
-      viewerHasBlocked={!!(me && (await prisma.block.findFirst({ where: { blockerId: me.id, blockedId: user.id } })))}
-      isBlockedByProfile={!!(me && (await prisma.block.findFirst({ where: { blockerId: user.id, blockedId: me.id } })))}
+      initialIsFollowing={isFollowing}
+      viewerHasBlocked={viewerHasBlocked}
+      isBlockedByProfile={isBlockedByProfile}
     />
   );
 }

@@ -413,7 +413,10 @@ function DMShareOverlay({
 }
 
 /* ---------------------- PostCard ---------------------- */
-export default function PostCard({ post }: { post: FeedPost }) {
+export default function PostCard({
+  post,
+  pinnedPostId,
+}: { post: FeedPost; pinnedPostId?: string | null }) {
   const router = useRouter();
   const params = useParams() as { locale: string; handle?: string };
   const { locale, handle } = params;
@@ -473,7 +476,7 @@ export default function PostCard({ post }: { post: FeedPost }) {
       const ce = ev as CustomEvent<{ postId: string; pinned: boolean }>;
       if (!ce.detail) return;
       const { postId, pinned } = ce.detail;
-      if (postId === post.id) {
+      if (postId === c.id) {
         setIsPinned(!!pinned);
       } else if (pinned) {
         // Ein anderer Post wurde gepinnt ⇒ diese Karte ist sicher nicht gepinnt
@@ -482,7 +485,15 @@ export default function PostCard({ post }: { post: FeedPost }) {
     }
     window.addEventListener('profile:pinnedChange', onPinnedChange);
     return () => window.removeEventListener('profile:pinnedChange', onPinnedChange);
-  }, [post.id]);
+  }, [c.id]);
+
+  React.useEffect(() => {
+  if (typeof pinnedPostId === 'string') {
+    setIsPinned(pinnedPostId === c.id);
+  } else if (pinnedPostId === null) {
+    setIsPinned(false);
+  }
+}, [pinnedPostId, c.id]);
 
   // heuristisch: sind wir auf einer Profilseite dieser Autorin / dieses Autors?
   const onProfileOfAuthor = typeof handle === 'string' && handle.toLowerCase() === c.author.handle.toLowerCase();
@@ -703,7 +714,7 @@ export default function PostCard({ post }: { post: FeedPost }) {
 
     const optimisticBroadcast = (pinned: boolean) => {
       try {
-        window.dispatchEvent(new CustomEvent('profile:pinnedChange', { detail: { postId: post.id, pinned } }));
+        window.dispatchEvent(new CustomEvent('profile:pinnedChange', { detail: { postId: c.id, pinned } }));
       } catch {}
     };
 
@@ -721,6 +732,7 @@ export default function PostCard({ post }: { post: FeedPost }) {
               <>
                 {!isPinned ? (
                   <form
+                    
                     action={pinPostFormAction}
                     onSubmit={() => {
                       setIsPinned(true);
@@ -728,7 +740,9 @@ export default function PostCard({ post }: { post: FeedPost }) {
                       setMoreOpen(false);
                     }}
                   >
-                    <input type="hidden" name="postId" value={post.id} />
+                    <input type="hidden" name="handle" value={c.author.handle} />
+                    <input type="hidden" name="locale" value={locale} />
+                    <input type="hidden" name="postId" value={c.id} />
                     <button type="submit" className="w-full text-left px-3 py-2 rounded hover:bg-white/10">
                       Auf Profil anpinnen
                     </button>
@@ -742,8 +756,10 @@ export default function PostCard({ post }: { post: FeedPost }) {
                       setMoreOpen(false);
                     }}
                   >
+                    <input type="hidden" name="handle" value={c.author.handle} />
+                    <input type="hidden" name="locale" value={locale} />
                     {/* keine postId nötig fürs Unpin, aber schadet nicht */}
-                    <input type="hidden" name="postId" value={post.id} />
+                    <input type="hidden" name="postId" value={c.id} />
                     <button type="submit" className="w-full text-left px-3 py-2 rounded hover:bg-white/10">
                       Pinned entfernen
                     </button>
@@ -774,7 +790,7 @@ export default function PostCard({ post }: { post: FeedPost }) {
             )}
 
             <form action={reportPostAction} onSubmit={() => setMoreOpen(false)}>
-              <input type="hidden" name="postId" value={post.id} />
+              <input type="hidden" name="postId" value={c.id} />
               <input type="hidden" name="reason" value="OTHER" />
               <button className="w-full text-left px-3 py-2 rounded hover:bg-white/10 text-red-300">Post melden</button>
             </form>

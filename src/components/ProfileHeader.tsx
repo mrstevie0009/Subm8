@@ -460,10 +460,10 @@ export default function ProfileHeader({
     );
   }
 
+  // — Variablen werden genutzt
   const roleFull  = profile.role === 'domme' ? 'Domme' : 'Sub';
   const roleShort = profile.role === 'domme' ? 'Dom'   : 'Sub';
-
-  const website = (profile.websiteUrl ?? '').trim();
+  const website   = (profile.websiteUrl ?? '').trim();
 
   return (
     <section className="rounded-app border border-sub overflow-hidden shadow-app relative" style={rootVars}>
@@ -515,7 +515,14 @@ export default function ProfileHeader({
 
       {/* Banner */}
       <div className="relative" style={{ height: 'var(--bannerH)' }}>
-        <Image src={bannerSrc} alt="" fill className="object-cover" sizes="100vw" onError={() => setBannerSrc(BANNER_PH)} />
+        <Image
+          src={bannerSrc}
+          alt=""
+          fill
+          className="object-cover"
+          sizes="100vw"
+          onError={() => setBannerSrc(BANNER_PH)}
+        />
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/30 via-black/0 to-black/35" />
         <div className="absolute top-2 right-2 z-10">
           <MoreMenu />
@@ -527,14 +534,45 @@ export default function ProfileHeader({
 
       {/* Content */}
       <div className="px-4 pb-0">
-        {/* Top-Zeile */}
-        <div className="flex items-center justify-between gap-2 pt-2 sm:pt-3" style={{ paddingLeft: 'calc(var(--avatar) + 16px)' }}>
-          <Chip tone="purple" size="lg">
-            <span className="sm:hidden">{roleShort}</span>
-            <span className="hidden sm:inline">{roleFull}</span>
-          </Chip>
+        {/* Header-Zeile: Avatar + Name links, Buttons rechts */}
+        <div className="flex items-start gap-3 pt-2 sm:pt-3">
+          {/* Avatar (halb im Banner) */}
+          <div className="shrink-0">
+            <div
+              className="inline-block w-fit rounded-full p-[2px] bg-gradient-to-br from-[var(--purple)]/70 via-fuchsia-500/50 to-sky-400/50"
+              style={{ marginTop: 'calc(var(--avatar) * -0.6)' }} // stärker ins Banner
+            >
+              <div
+                className="relative rounded-full overflow-hidden bg-white/10 ring-1 ring-white/20 shadow-[0_6px_30px_-10px_rgba(0,0,0,.8)]"
+                style={avatarStyle}
+              >
+                <Image
+                  src={avatarSrc}
+                  alt={`${profile.displayName} avatar (${roleFull})`}
+                  fill
+                  className="object-cover"
+                  sizes="(min-width:1024px) 136px, (min-width:640px) 104px, 88px"
+                  onError={() => setAvatarSrc(AVATAR_PH)}
+                />
+              </div>
+            </div>
 
-          <div className="flex items-center gap-2 flex-wrap justify-end">
+            {/* Rolle unter dem Avatar, zentriert */}
+            <div className="mt-2 text-center">
+              <Chip tone="purple" size="sm">{roleShort}</Chip>
+            </div>
+          </div>
+
+          {/* Name + Handle direkt unter dem Banner */}
+          <div className="min-w-0 self-start">
+            <h1 className="text-[clamp(18px,2.4vw,22px)] font-semibold leading-tight truncate">
+              {profile.displayName}
+            </h1>
+            <div className="text-white/70 text-sm truncate">@{profile.username}</div>
+          </div>
+
+          {/* Buttons rechts */}
+          <div className="ml-auto flex items-center gap-2 flex-wrap justify-end">
             {isOwner ? (
               <Link
                 href={`/${locale}/u/${profile.username}/edit`}
@@ -598,7 +636,7 @@ export default function ProfileHeader({
                   type="button"
                   onClick={handleOfferClick}
                   className="h-9 inline-flex items-center rounded-full bg-[var(--purple)]/95 text-white text-[12px] sm:text-[13px] font-semibold shadow-[0_8px_30px_-12px_rgba(139,92,246,.9)]
-                             hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--purple)]/60 px-2 sm:px-4"
+                            hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--purple)]/60 px-2 sm:px-4"
                   aria-label="Offer Menu"
                   title="Offer Menu"
                 >
@@ -608,32 +646,6 @@ export default function ProfileHeader({
               </>
             )}
           </div>
-        </div>
-
-        {/* Avatar + Name/Handle */}
-        <div className="grid grid-cols-[auto_1fr] gap-x-3 items-start">
-          <div className="col-start-1">
-            <div
-              className="inline-block w-fit rounded-full p-[2px] bg-gradient-to-br from-[var(--purple)]/70 via-fuchsia-500/50 to-sky-400/50"
-              style={{ marginTop: 'calc(var(--avatar) * -0.5)' }}
-            >
-              <div
-                className="relative rounded-full overflow-hidden bg-white/10 ring-1 ring-white/20 shadow-[0_6px_30px_-10px_rgba(0,0,0,.8)]"
-                style={avatarStyle}
-                aria-hidden="true"
-              >
-                <Image
-                  src={avatarSrc}
-                  alt={`${profile.displayName} avatar`}
-                  fill
-                  className="object-cover"
-                  sizes="(min-width:1024px) 136px, (min-width:640px) 104px, 88px"
-                  onError={() => setAvatarSrc(AVATAR_PH)}
-                />
-              </div>
-            </div>
-          </div>
-
         </div>
 
         {/* Bio & Meta */}
@@ -663,7 +675,7 @@ export default function ProfileHeader({
             </span>
           )}
 
-          {/* Website-Link (lila) */}
+          {/* Website-Link (nutzt `website`) */}
           {website && (
             <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
               <LinkIcon className="w-3.5 h-3.5 relative top-[0.5px]" />
@@ -683,7 +695,8 @@ export default function ProfileHeader({
         <div className="mt-4" />
       </div>
 
-      {/* Tabs */}
+
+      {/* Tabs (nur wenn nicht compact) */}
       {showTabs && (
         <nav className={`border-t border-white/10 ${compact ? 'hidden' : 'block'}`}>
           <ul className="grid grid-cols-3 text-center text-[14px] font-medium">

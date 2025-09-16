@@ -34,7 +34,10 @@ function Tab({ href, label, active, render, badge }: TabProps) {
           style={{ width: 10, height: 10, background: 'var(--purple)', boxShadow: '0 0 0 2px rgba(0,0,0,.4)' }}
         />
       )}
-      <div className="pointer-events-none" style={{ position: 'absolute', inset: 0, width: '70%', height: '70%', margin: 'auto' }}>
+      <div
+        className="pointer-events-none"
+        style={{ position: 'absolute', inset: 0, width: '70%', height: '70%', margin: 'auto' }}
+      >
         {render(color)}
       </div>
     </Link>
@@ -49,11 +52,10 @@ function NavContent() {
 
   const show = useScrollShowOnDown({ threshold: 6, topAlwaysShow: 12 });
 
-  // --- Badge-Status ---
+  // --- Notifications badge ---
   const [hasNewNoti, setHasNewNoti] = React.useState(false);
-  const notificationsActive = isActive('/notifications'); // <- auslagern, damit wir es sauber in deps nutzen
+  const notificationsActive = isActive('/notifications');
 
-  // neuesten Noti-Stand abfragen und mit localStorage vergleichen
   const checkNoti = React.useCallback(async () => {
     try {
       const res = await fetch('/api/notifications?limit=1', { cache: 'no-store' });
@@ -75,7 +77,6 @@ function NavContent() {
     }
   }, [notificationsActive]);
 
-  // Beim Mount & wenn Tab/Sichtbarkeit zurückkehrt
   React.useEffect(() => {
     checkNoti();
     const onVis = () => {
@@ -85,7 +86,6 @@ function NavContent() {
     return () => document.removeEventListener('visibilitychange', onVis);
   }, [checkNoti]);
 
-  // Beim Route-Wechsel: Wenn wir auf Notifications sind → als gesehen markieren
   React.useEffect(() => {
     if (notificationsActive) {
       localStorage.setItem('notiLastSeen', String(Date.now()));
@@ -93,10 +93,47 @@ function NavContent() {
     }
   }, [notificationsActive]);
 
-  // Bei jedem Routenwechsel (auch zwischen anderen Tabs) neu prüfen, falls wir NICHT auf Notifications sind
   React.useEffect(() => {
     if (!notificationsActive) checkNoti();
   }, [pathname, locale, notificationsActive, checkNoti]);
+
+  // --- Chat badge (ungelesene Nachrichten) ---
+  const [hasUnreadChat, setHasUnreadChat] = React.useState(false);
+  const chatActive = isActive('/chat');
+
+  const checkChat = React.useCallback(async () => {
+    try {
+      const res = await fetch('/api/chat', { cache: 'no-store' });
+      if (!res.ok) {
+        setHasUnreadChat(false);
+        return;
+      }
+      const j: { ok: boolean; items?: Array<{ unread?: number }> } = await res.json();
+      const anyUnread = Boolean(j?.ok && j.items?.some((it) => (it.unread ?? 0) > 0));
+      // Badge nur zeigen, wenn wir NICHT auf /chat sind – analog zu Notifications
+      setHasUnreadChat(anyUnread && !chatActive);
+    } catch {
+      setHasUnreadChat(false);
+    }
+  }, [chatActive]);
+
+  React.useEffect(() => {
+    checkChat();
+    const onVis = () => {
+      if (document.visibilityState === 'visible') checkChat();
+    };
+    document.addEventListener('visibilitychange', onVis);
+    return () => document.removeEventListener('visibilitychange', onVis);
+  }, [checkChat]);
+
+  React.useEffect(() => {
+    if (chatActive) {
+      // Im Chat-Bereich Badge ausblenden
+      setHasUnreadChat(false);
+    } else {
+      checkChat();
+    }
+  }, [pathname, locale, chatActive, checkChat]);
 
   const navHeight = 'calc(clamp(24px, 2.8vw, 50px) + 20px + env(safe-area-inset-bottom))';
 
@@ -121,7 +158,10 @@ function NavContent() {
         willChange: 'transform',
       }}
     >
-      <div className="mx-auto h-full grid justify-items-center items-center" style={{ maxWidth: 760, gridTemplateColumns: 'repeat(5, 1fr)' }}>
+      <div
+        className="mx-auto h-full grid justify-items-center items-center"
+        style={{ maxWidth: 760, gridTemplateColumns: 'repeat(5, 1fr)' }}
+      >
         {/* Home */}
         <Tab
           href={`/${locale}`}
@@ -187,6 +227,7 @@ function NavContent() {
           href={`/${locale}/chat`}
           label="Chat"
           active={isActive('/chat')}
+          badge={hasUnreadChat}
           render={(color) => (
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style={{ color, width: '100%', height: '100%' }} aria-hidden="true">
               <path d="M4 6.5C4 4.3 5.8 2.5 8 2.5h8c2.2 0 4 1.8 4 4v5c0 2.2-1.8 4-4 4h-3.2L8 20.5v-4H8c-2.2 0-4-1.8-4-4v-6Z" />

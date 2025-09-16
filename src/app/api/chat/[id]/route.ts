@@ -1,4 +1,4 @@
-//src/app/api/chat/[id]/route.ts
+// src/app/api/chat/[id]/route.ts
 import path from 'node:path';
 import { promises as fs } from 'node:fs';
 import { randomUUID } from 'node:crypto';
@@ -11,6 +11,9 @@ type Ctx = { params: Promise<{ id: string }> };
 type DbRole = 'DOMME' | 'SUBMISSIVE';
 
 /* ---------------------------- helpers ----------------------------------- */
+
+// Maximalgröße für Uploads (MB) – per ENV konfigurierbar, Default 100 MB.
+const MAX_UPLOAD_MB = Number(process.env.CHAT_UPLOAD_MAX_MB || '100');
 
 function sanitizeFileName(name: string) {
   const base = name.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9._-]/g, '');
@@ -227,9 +230,12 @@ export async function POST(req: Request, { params }: Ctx) {
         if (!isAllowedMime(type)) {
           return Response.json({ ok: false, error: 'Unsupported file type' }, { status: 400 });
         }
-        const maxBytes = 25 * 1024 * 1024; // 25 MB
+        const maxBytes = MAX_UPLOAD_MB * 1024 * 1024;
         if (file.size > maxBytes) {
-          return Response.json({ ok: false, error: 'File too large' }, { status: 413 });
+          return Response.json(
+            { ok: false, error: `File too large (max ${MAX_UPLOAD_MB} MB)` },
+            { status: 413 }
+          );
         }
 
         const uploadsDir = path.join(process.cwd(), 'public', 'uploads');

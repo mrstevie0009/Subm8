@@ -1,4 +1,4 @@
-//src/components/ChatComposer.tsx
+// src/components/ChatComposer.tsx
 'use client';
 
 import * as React from 'react';
@@ -454,6 +454,16 @@ export default function ChatComposer({
   const gifFileRef = React.useRef<File | null>(null);
   const [gifErr, setGifErr] = React.useState<string | null>(null);
 
+  // Medien-Vorschau (Bild/Video) vor dem Senden
+  const [mediaPreview, setMediaPreview] = React.useState<{ url: string; file: File } | null>(null);
+
+  const resetMediaPreview = React.useCallback(() => {
+    if (mediaPreview?.url && mediaPreview.url.startsWith('blob:')) {
+      URL.revokeObjectURL(mediaPreview.url);
+    }
+    setMediaPreview(null);
+  }, [mediaPreview]);
+
   const resetGifPreview = React.useCallback(() => {
     if (gifPreviewUrl?.startsWith('blob:')) URL.revokeObjectURL(gifPreviewUrl);
     setGifPreviewUrl(null);
@@ -464,7 +474,9 @@ export default function ChatComposer({
   async function pickGifByUrl(url: string) {
     try {
       setGifErr(null);
-      // ggf. laufende Voice-Vorschau schließen, damit die UI clean bleibt
+      // falls schon ein Bild/Video ausgewählt war -> zurücksetzen (nur eins gleichzeitig)
+      resetMediaPreview();
+      // ggf. laufende Voice-Vorschau schließen
       resetPreview();
 
       const r = await fetch(url, { mode: 'cors' });
@@ -485,7 +497,17 @@ export default function ChatComposer({
     if (disabled) return;
     const t = text.trim();
 
-    // Falls ein GIF ausgewählt ist → gemeinsam (GIF + optional Caption) versenden
+    // 1) Bild/Video im Composer vorhanden → senden (mit optionaler Caption)
+    if (mediaPreview && onUpload) {
+      await onUpload(mediaPreview.file, t || undefined);
+      resetMediaPreview();
+      setText('');
+      stopTyping();
+      requestAnimationFrame(() => autosize());
+      return;
+    }
+
+    // 2) GIF ausgewählt → senden (mit optionaler Caption)
     if (gifFileRef.current && onUpload) {
       await onUpload(gifFileRef.current, t || undefined);
       resetGifPreview();
@@ -495,13 +517,13 @@ export default function ChatComposer({
       return;
     }
 
-    // sonst reiner Text
+    // 3) sonst reiner Text
     if (!t) return;
     onSend(t);
     setText('');
     stopTyping();
     requestAnimationFrame(() => autosize());
-  }, [disabled, text, onUpload, onSend, autosize, stopTyping, resetGifPreview]);
+  }, [disabled, text, onUpload, onSend, autosize, stopTyping, mediaPreview, resetMediaPreview, resetGifPreview]);
 
   /* --------------- UI --------------- */
 
@@ -552,6 +574,36 @@ export default function ChatComposer({
           </div>
         )}
 
+        {/* Medien-Vorschau (Bild/Video) */}
+        {mediaPreview && (
+          <div className="mb-2 flex items-center gap-3 pl-2">
+            {mediaPreview.file.type.startsWith('video/') ? (
+              <video
+                src={mediaPreview.url}
+                className="h-24 w-24 rounded-lg border border-white/10 object-cover bg-black"
+                controls
+                playsInline
+                preload="metadata"
+              />
+            ) : (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={mediaPreview.url}
+                alt=""
+                className="h-24 w-24 rounded-lg border border-white/10 object-cover"
+              />
+            )}
+
+            <button
+              type="button"
+              onClick={() => { resetMediaPreview(); if (!text.trim()) stopTyping(); }}
+              className="ml-auto h-8 px-3 rounded-lg border border-white/15 hover:bg-white/10"
+            >
+              Entfernen
+            </button>
+          </div>
+        )}
+
         {/* drei Spalten: Text | Mic | Send */}
         <div ref={suggestAnchorRef} className="grid grid-cols-[1fr_auto_auto] items-end gap-2">
           <div className="flex flex-col">
@@ -564,17 +616,20 @@ export default function ChatComposer({
                 const v = e.target.value;
                 setText(v);
                 autosize();
-                if (v.trim() || gifFileRef.current) startTyping(); else stopTyping();
+                if (v.trim() || gifFileRef.current || mediaPreview) startTyping(); else stopTyping();
               }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
                   void submit();
                 } else {
-                  if (text.trim() || gifFileRef.current) startTyping();
+                  if (text.trim() || gifFileRef.current || mediaPreview) startTyping();
                 }
               }}
-              onBlur={() => stopTyping()}
+              onBlur={() => {
+                // nur stoppen, wenn gar nichts zum Senden bereitsteht
+                if (!gifFileRef.current && !mediaPreview && !text.trim()) stopTyping();
+              }}
               placeholder={disabled ? 'DMs geschlossen' : 'Message…'}
               className="w-full resize-none bg-transparent outline-none placeholder:text-muted
                          text-[14px] leading-5 px-3 pt-1 pb-1 rounded-2xl"
@@ -596,14 +651,22 @@ export default function ChatComposer({
                   disabled={disabled}
                   onChange={(e) => {
                     const f = e.target.files?.[0];
-                    if (f && onUpload) onUpload(f);
-                    e.currentTarget.value = '';
+                    if (f) {
+                      // Nur eine Quelle aktiv halten: wenn GIF gewählt war -> löschen
+                      if (gifFileRef.current) resetGifPreview();
+                      // evtl. alte Vorschau freigeben
+                      if (mediaPreview?.url?.startsWith('blob:')) URL.revokeObjectURL(mediaPreview.url);
+                      const local = URL.createObjectURL(f);
+                      setMediaPreview({ url: local, file: f });
+                      startTyping();
+                    }
+                    e.currentTarget.value = ''; // gleiche Datei erneut wählbar
                   }}
                 />
                 <PhotoIcon />
               </label>
 
-              {/* GIF Button – ohne Kreis, quadratische Fläche */}
+              {/* GIF Button */}
               <button
                 type="button"
                 onClick={() => setGifOpen(true)}
@@ -703,11 +766,11 @@ export default function ChatComposer({
             <MicIcon />
           </button>
 
-          {/* Send – aktiv wenn Text ODER GIF vorhanden */}
+          {/* Send – aktiv wenn Text ODER GIF ODER Medien-Vorschau vorhanden */}
           <button
             type="button"
             onClick={() => void submit()}
-            disabled={(!text.trim() && !gifFileRef.current) || disabled}
+            disabled={(!text.trim() && !gifFileRef.current && !mediaPreview) || disabled}
             className={`${circle} bg-[var(--purple)] text-white hover:opacity-95 disabled:opacity-50`}
             style={{ width: sendSize, height: sendSize }}
             aria-label="Send message"

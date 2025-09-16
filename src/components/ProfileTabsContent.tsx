@@ -17,6 +17,8 @@ type Props = {
   activeTab?: Tab;
   /** Tabs oben anzeigen? (default: true) */
   showTabs?: boolean;
+  /** Vom Profil durchgereicht: aktuell gepinnte Post-ID */
+  pinnedPostId?: string | null;
 };
 
 type ApiUserLite = {
@@ -104,12 +106,26 @@ function mapToFeedPost(p: ApiPost): FeedPost {
         avatarUrl: contentAuthor.avatarUrl ?? undefined,
         role: contentAuthor.role ?? null,
       },
+      quote: isQuote
+        ? {
+            id: p.quoteOf!.id,
+            text: p.quoteOf!.text ?? '',
+            mediaUrl: p.quoteOf!.mediaUrl ?? undefined,
+            mediaAlt: p.quoteOf!.mediaAlt ?? undefined,
+            createdAt: p.quoteOf!.createdAt,
+            author: {
+              id: p.quoteOf!.author.id,
+              handle: p.quoteOf!.author.handle,
+              displayName: p.quoteOf!.author.displayName,
+              role: p.quoteOf!.author.role ?? null,
+              avatarUrl: p.quoteOf!.author.avatarUrl ?? undefined,
+            },
+          }
+        : undefined,
     },
-    // Repost-Badge oberhalb der Card (Quote bekommt hier kein Badge – das zeigst du inhaltlich über content)
     reposter: isRepost
       ? { id: safeAuthor.id, handle: safeAuthor.handle, displayName: safeAuthor.displayName }
       : null,
-    // Zähler/Viewer kommen hier nicht aus dem Profil-API → weglassen/undefined
     stats: undefined,
     viewer: undefined,
     initiallyBookmarked: false,
@@ -121,6 +137,7 @@ export default function ProfileTabsContent({
   initialTab = 'posts',
   activeTab,
   showTabs = true,
+  pinnedPostId,
 }: Props) {
   // interner State nur, wenn nicht controlled
   const [internalTab, setInternalTab] = React.useState<Tab>(initialTab);
@@ -208,9 +225,11 @@ export default function ProfileTabsContent({
             {!loadingPosts && !errPosts && posts.length === 0 && (
               <div className="text-sm text-muted">No posts yet.</div>
             )}
-            {!loadingPosts && !errPosts && posts.map((p) => (
-              <PostCard key={p.id} post={mapToFeedPost(p)} />
-            ))}
+            {!loadingPosts &&
+              !errPosts &&
+              posts.map((p) => (
+                <PostCard key={p.id} post={mapToFeedPost(p)} pinnedPostId={pinnedPostId} />
+              ))}
           </>
         )}
 
@@ -221,9 +240,11 @@ export default function ProfileTabsContent({
             {!loadingPosts && !errPosts && gallery.length === 0 && (
               <div className="text-sm text-muted">No media posts yet.</div>
             )}
-            {!loadingPosts && !errPosts && gallery.map((p) => (
-              <PostCard key={p.id} post={mapToFeedPost(p)} />
-            ))}
+            {!loadingPosts &&
+              !errPosts &&
+              gallery.map((p) => (
+                <PostCard key={p.id} post={mapToFeedPost(p)} pinnedPostId={pinnedPostId} />
+              ))}
           </>
         )}
 
@@ -246,7 +267,9 @@ export default function ProfileTabsContent({
                           </div>
                           <div className="mt-1 font-semibold truncate">{t?.user.displayName ?? '—'}</div>
                           <div className="text-[12px] text-muted truncate">{t ? `@${t.user.handle}` : '@—'}</div>
-                          <div className="mt-1 text-sm">${((t?.totalCents ?? 0) / 100).toFixed(2)} · {t?.count ?? 0} tips</div>
+                          <div className="mt-1 text-sm">
+                            ${((t?.totalCents ?? 0) / 100).toFixed(2)} · {t?.count ?? 0} tips
+                          </div>
                         </div>
                       ))}
                     </div>
