@@ -1,3 +1,4 @@
+// src/components/MentionSuggestChat.tsx
 'use client';
 
 import * as React from 'react';
@@ -51,15 +52,12 @@ export default function MentionSuggestChat({
   const [loading, setLoading] = React.useState(false);
   const [err, setErr] = React.useState<string | null>(null);
 
-  // Position (mit sofortiger Fallback-Position damit es sichtbar ist)
+  // Position (SSR-sicher: KEIN window-Zugriff im Initializer!)
   const panelRef = React.useRef<HTMLDivElement | null>(null);
-  const [pos, setPos] = React.useState<{ top: number; left: number; width: number }>(() => {
-    // Fallback: unten mittig, wird gleich korrigiert
-    return {
-      top: Math.max(MIN_MARGIN, window.innerHeight - 220),
-      left: Math.max(MIN_MARGIN, Math.round((window.innerWidth - 360) / 2)),
-      width: 360,
-    };
+  const [pos, setPos] = React.useState<{ top: number; left: number; width: number }>({
+    top: 180,
+    left: 16,
+    width: 360,
   });
 
   // Trigger erkennen

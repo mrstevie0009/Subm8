@@ -1,3 +1,4 @@
+//src/app/api/chat/route.ts
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/currentUser';
 

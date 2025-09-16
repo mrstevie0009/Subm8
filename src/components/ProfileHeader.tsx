@@ -2,6 +2,7 @@
 'use client';
 
 import * as React from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useLocale } from 'next-intl';
@@ -114,7 +115,8 @@ export default function ProfileHeader({
     height: 'var(--avatar)',
     transition: 'width .2s ease, height .2s ease',
   };
-  
+
+  // ---------- Icons ----------
   function DotIcon(props: React.SVGProps<SVGSVGElement>) {
     return (
       <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth={2} {...props}>
@@ -143,6 +145,16 @@ export default function ProfileHeader({
       </svg>
     );
   }
+  function ShareIcon(props: React.SVGProps<SVGSVGElement>) {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} {...props}>
+        <circle cx="18" cy="5" r="3" />
+        <circle cx="6" cy="12" r="3" />
+        <circle cx="18" cy="19" r="3" />
+        <path d="M8.6 11l6.8-4M8.6 13l6.8 4" />
+      </svg>
+    );
+  }
 
   async function copyProfileLink() {
     try {
@@ -151,8 +163,226 @@ export default function ProfileHeader({
     } catch {}
   }
 
+  // ---------- DM-Overlay wie beim Post (Chatliste + Notiz) ----------
+  function DMShareOverlay({
+    open,
+    onClose,
+  }: { open: boolean; onClose: () => void }) {
+    const [mounted, setMounted] = React.useState(false);
+    React.useEffect(() => setMounted(true), []);
+
+    const [loading, setLoading] = React.useState(true);
+    const [error, setError] = React.useState<string | null>(null);
+    const [items, setItems] = React.useState<Array<{
+      id: string;
+      other: { username: string; displayName: string; avatarUrl: string | null };
+      lastMessageAt: string;
+    }>>([]);
+
+    const [q, setQ] = React.useState('');
+    const [selected, setSelected] = React.useState<Set<string>>(new Set());
+    const [note, setNote] = React.useState('');
+    const [sending, setSending] = React.useState(false);
+
+    React.useEffect(() => {
+      if (!open) return;
+      let cancelled = false;
+      (async () => {
+        try {
+          setLoading(true);
+          setError(null);
+          const res = await fetch('/api/chat', { cache: 'no-store' });
+          const j = await res.json();
+          if (!res.ok || !j?.ok) throw new Error(j?.error || `HTTP ${res.status}`);
+          if (!cancelled) setItems(j.items || []);
+        } catch (e) {
+          if (!cancelled) setError(e instanceof Error ? e.message : 'Failed to load chats');
+        } finally {
+          if (!cancelled) setLoading(false);
+        }
+      })();
+      return () => { cancelled = true; };
+    }, [open]);
+
+    const toggle = (id: string) => {
+      setSelected(prev => {
+        const next = new Set(prev);
+        if (next.has(id)) next.delete(id); else next.add(id);
+        return next;
+      });
+    };
+
+    const filtered = React.useMemo(() => {
+      const qq = q.trim().toLowerCase();
+      const base = !qq
+        ? items
+        : items.filter(i =>
+            i.other.displayName.toLowerCase().includes(qq) ||
+            i.other.username.toLowerCase().includes(qq)
+          );
+      return base.sort((a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime());
+    }, [items, q]);
+
+    const profileUrl =
+      typeof window !== 'undefined'
+        ? `${window.location.origin}/${locale}/u/${profile.username}`
+        : `/${locale}/u/${profile.username}`;
+
+    async function send() {
+      if (selected.size === 0) return;
+      try {
+        setSending(true);
+        setError(null);
+        const ids = Array.from(selected);
+        const msg = [profileUrl, note.trim()].filter(Boolean).join('\n\n');
+
+        // direkt als normale Nachricht in jede Konversation posten
+        await Promise.all(
+          ids.map((conversationId) =>
+            fetch(`/api/chat/${encodeURIComponent(conversationId)}`, {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({ text: msg }),
+            }).then(async (r) => {
+              if (!r.ok) {
+                const j = await r.json().catch(() => null);
+                throw new Error(j?.error || `HTTP ${r.status}`);
+              }
+            })
+          )
+        );
+        onClose();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Failed to send');
+      } finally {
+        setSending(false);
+      }
+    }
+
+    if (!open || !mounted) return null;
+
+    return createPortal(
+      <div
+        className="fixed inset-0 z-[2147483602]"
+        role="dialog"
+        aria-modal="true"
+        onClick={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+        onKeyDown={(e) => e.stopPropagation()}
+      >
+        {/* Backdrop */}
+        <div
+          className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+          onClick={(e) => { e.stopPropagation(); onClose(); }}
+          onMouseDown={(e) => e.stopPropagation()}
+        />
+        {/* Panel */}
+        <div
+          className="absolute left-1/2 top-1/2 w-[min(720px,94vw)] max-h-[86vh] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-white/12 bg-[#0b0b0d] p-3 shadow-2xl"
+          onClick={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          <div className="px-2 py-2 border-b border-white/10">
+            <div className="text-[18px] font-semibold">Per Direktnachricht senden</div>
+            <div className="mt-2">
+              <input
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="Nach Personen/Chats suchen"
+                className="w-full rounded-xl bg-white/[.06] border border-white/10 px-3 py-2 outline-none"
+              />
+            </div>
+          </div>
+
+          <div className="mt-2 overflow-y-auto" style={{ maxHeight: '50vh' }}>
+            {loading && <div className="px-3 py-6 text-sm text-white/70">Lade Chats…</div>}
+            {!loading && error && <div className="px-3 py-3 text-sm text-red-400">{error}</div>}
+
+            {!loading && !error && filtered.length === 0 && (
+              <div className="px-3 py-6 text-sm text-white/70">Keine Konversationen gefunden.</div>
+            )}
+
+            <ul className="divide-y divide-white/10">
+              {filtered.map((c) => {
+                const checked = selected.has(c.id);
+                return (
+                  <li key={c.id}>
+                    <button
+                      type="button"
+                      className="w-full flex items-center gap-3 px-3 py-2 hover:bg-white/5"
+                      onClick={() => toggle(c.id)}
+                    >
+                      <div className="relative size-10 overflow-hidden rounded-full bg-white/10 shrink-0">
+                        <Image
+                          src={c.other.avatarUrl || AVATAR_PH}
+                          alt=""
+                          fill
+                          className="object-cover"
+                          sizes="40px"
+                        />
+                      </div>
+                      <div className="min-w-0 flex-1 text-left">
+                        <div className="font-medium truncate">{c.other.displayName}</div>
+                        <div className="text-sm text-white/70 truncate">@{c.other.username}</div>
+                      </div>
+                      <span
+                        className={`grid place-items-center rounded-full border ${
+                          checked ? 'bg-[var(--purple)] border-[var(--purple)]' : 'border-white/25'
+                        }`}
+                        style={{ width: 22, height: 22 }}
+                        aria-hidden
+                      >
+                        {checked ? (
+                          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="white" strokeWidth="3">
+                            <path d="M5 12.5 10 17l9-10" />
+                          </svg>
+                        ) : null}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+
+          <div className="px-3 pt-3">
+            <textarea
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              rows={2}
+              maxLength={200}
+              placeholder="Kommentar hinzufügen (optional)…"
+              className="w-full rounded-xl bg-white/[.06] border border-white/10 px-3 py-2 outline-none"
+            />
+          </div>
+
+          <div className="px-3 pb-2 pt-3 flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onClose(); }}
+              className="px-3 py-2 rounded-lg border border-white/15 hover:bg-white/10"
+              disabled={sending}
+            >
+              Abbrechen
+            </button>
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); void send(); }}
+              disabled={sending || selected.size === 0}
+              className="px-4 py-2 rounded-lg bg-[var(--purple)] text-white hover:opacity-95 disabled:opacity-50"
+            >
+              {sending ? 'Senden…' : 'Senden'}
+            </button>
+          </div>
+        </div>
+      </div>,
+      document.body
+    );
+  }
+
   function MoreMenu() {
     const [open, setOpen] = React.useState(false);
+    const [shareOpen, setShareOpen] = React.useState(false);
     return (
       <div className="relative">
         <button
@@ -165,7 +395,19 @@ export default function ProfileHeader({
         </button>
 
         {open && (
-          <div className="absolute right-0 z-50 mt-2 w-60 rounded-xl border border-white/10 bg-black/85 backdrop-blur shadow-lg p-1" role="menu">
+          <div
+            className="absolute right-0 z-50 mt-2 w-60 rounded-xl border border-white/10 bg-black/85 backdrop-blur shadow-lg p-1"
+            role="menu"
+          >
+            <button
+              type="button"
+              className="w-full text-left px-3 py-2 rounded hover:bg-white/10 flex items-center gap-2"
+              onClick={() => { setShareOpen(true); setOpen(false); }}
+            >
+              <ShareIcon className="w-[16px] h-[16px]" />
+              Share profile via DM
+            </button>
+
             <button
               type="button"
               className="w-full text-left px-3 py-2 rounded hover:bg-white/10"
@@ -175,12 +417,12 @@ export default function ProfileHeader({
             </button>
 
             {!hasBlocked ? (
-              <form action={blockUserAction} onSubmit={() => { setHasBlocked(true); setOpen(false); }}>
+              <form action={blockUserAction} onSubmit={() => { setHasBlocked(true); setOpen(false); }} >
                 <input type="hidden" name="blockedHandle" value={profile.username} />
                 <button className="w-full text-left px-3 py-2 rounded hover:bg-white/10 text-red-300">Block User</button>
               </form>
             ) : (
-              <form action={unblockUserAction} onSubmit={() => { setHasBlocked(false); setOpen(false); }}>
+              <form action={unblockUserAction} onSubmit={() => { setHasBlocked(false); setOpen(false); }} >
                 <input type="hidden" name="blockedHandle" value={profile.username} />
                 <button className="w-full text-left px-3 py-2 rounded hover:bg-white/10 text-red-300">Unblock User</button>
               </form>
@@ -193,6 +435,9 @@ export default function ProfileHeader({
             </form>
           </div>
         )}
+
+        {/* Neues DM-Overlay */}
+        <DMShareOverlay open={shareOpen} onClose={() => setShareOpen(false)} />
       </div>
     );
   }
@@ -265,7 +510,7 @@ export default function ProfileHeader({
 
       {/* Content */}
       <div className="px-4 pb-0">
-        {/* Top-Zeile: Role links (mit Padding, damit sie rechts neben dem Avatar startet), Actions rechts */}
+        {/* Top-Zeile: Role links, Actions rechts */}
         <div
           className="flex items-center justify-between gap-2 pt-2 sm:pt-3"
           style={{ paddingLeft: 'calc(var(--avatar) + 16px)' }}
@@ -335,7 +580,7 @@ export default function ProfileHeader({
                   </span>
                 )}
 
-                {/* Offer: XS Icon, ab sm Text */}
+                {/* Offer */}
                 <button
                   type="button"
                   onClick={handleOfferClick}
@@ -352,7 +597,7 @@ export default function ProfileHeader({
           </div>
         </div>
 
-        {/* Avatar + Name/Handle direkt darunter */}
+        {/* Avatar + Name/Handle */}
         <div className="grid grid-cols-[auto_1fr] gap-x-3 items-start">
           <div className="col-start-1">
             <div

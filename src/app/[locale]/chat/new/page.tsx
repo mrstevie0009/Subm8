@@ -1,19 +1,29 @@
+// src/app/[locale]/chat/new/page.tsx
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/currentUser';
 
 type PageProps = {
-  params: { locale: string };
-  searchParams?: Record<string, string | string[] | undefined>;
+  // asynchrone params/searchParams (Next.js neuere Versionen)
+  params: Promise<{ locale: string }>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 };
 
-export default async function ChatNewPage({ params: { locale }, searchParams }: PageProps) {
-  const me = await getCurrentUser();
-  const raw = searchParams?.to;
-  const toHandle = Array.isArray(raw) ? raw[0] : raw;
+export default async function ChatNewPage(props: PageProps) {
+  const { params, searchParams } = props;
+  const { locale } = await params;
+  const sp = searchParams ? await searchParams : undefined;
+
+  const rawTo = sp?.to;
+  const toHandle = Array.isArray(rawTo) ? rawTo[0] : rawTo;
+
+  const rawText = sp?.text;
+  const initialText = Array.isArray(rawText) ? rawText[0] : rawText;
 
   // Kein Ziel -> zurück zur Chatliste
   if (!toHandle) redirect(`/${locale}/chat`);
+
+  const me = await getCurrentUser();
 
   // Nicht eingeloggt -> zur Sign-in (zurück aufs Profil)
   if (!me) {
@@ -30,8 +40,7 @@ export default async function ChatNewPage({ params: { locale }, searchParams }: 
   // Ungültig oder Self-DM -> zurück zur Chatliste
   if (!other || other.id === me.id) redirect(`/${locale}/chat`);
 
-  // Rollen-Mapping in dommeId/subId
-  // Normalfall: Domme↔Sub. Falls beide gleiche Rolle haben, deterministisch aufteilen.
+  // Rollen-Mapping
   let dommeId: string;
   let subId: string;
   let openedByDomme = me.role === 'DOMME';
@@ -43,7 +52,6 @@ export default async function ChatNewPage({ params: { locale }, searchParams }: 
     dommeId = other.id;
     subId = me.id;
   } else {
-    // gleiche Rollen: deterministische Reihenfolge nach ID
     if (me.id < other.id) {
       dommeId = me.id;
       subId = other.id;
@@ -54,7 +62,7 @@ export default async function ChatNewPage({ params: { locale }, searchParams }: 
     }
   }
 
-  // Existierende Conversation suchen
+  // Existierende Conversation suchen/erstellen
   const existing = await prisma.conversation.findFirst({
     where: { dommeId, subId },
     select: { id: true },
@@ -69,6 +77,9 @@ export default async function ChatNewPage({ params: { locale }, searchParams }: 
       })
     ).id;
 
-  // Ab in den Thread
-  redirect(`/${locale}/chat/${convoId}`);
+  // Wenn initialer Text vorhanden ist, reiche ihn via Query-Param in den Thread weiter.
+  // Der Thread sendet ihn beim ersten Laden automatisch (und entfernt den Param).
+  const next = `/${locale}/chat/${convoId}${initialText ? `?text=${encodeURIComponent(initialText)}` : ''}`;
+
+  redirect(next);
 }

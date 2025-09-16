@@ -2,6 +2,7 @@
 'use client';
 
 import * as React from 'react';
+import { createPortal } from 'react-dom';
 import Image from 'next/image';
 import { useParams, useRouter } from 'next/navigation';
 import ProfileLink from '@/components/ProfileLink';
@@ -18,15 +19,14 @@ const AVATAR_PH = '/images/avatar-placeholder.png';
 
 /** —— Gemeinsames Feed-Shape (inkl. optionaler Quote) —— */
 export type FeedPost = {
-  id: string;                 // ID des Feed-Items (bei Repost = ID des Reposts)
+  id: string;
   createdAtISO: string;
-
   content: {
-    id: string;               // ID des Inhalts (bei normalem Post == id)
+    id: string;
     text: string;
     mediaUrl?: string | null;
     mediaAlt?: string | null;
-    createdAt: string;        // ISO
+    createdAt: string;
     author: {
       id: string;
       handle: string;
@@ -34,7 +34,6 @@ export type FeedPost = {
       role?: 'DOMME' | 'SUBMISSIVE' | null;
       avatarUrl?: string | null;
     };
-    /** Wenn dies ein "Quote Post" ist → eingebetteter Original-Post */
     quote?: {
       id: string;
       text: string;
@@ -50,10 +49,7 @@ export type FeedPost = {
       };
     } | null;
   };
-
-  /** Wenn Repost → wer hat reposted, sonst null */
   reposter: { id: string; handle: string; displayName: string } | null;
-
   stats?: { comments?: number; reposts?: number; likes?: number };
   viewer?: {
     liked?: boolean;
@@ -108,6 +104,16 @@ function RepostBadgeIcon() {
     </svg>
   );
 }
+/** Schönes Share-Icon (Pfeil aus Kasten) */
+function ShareIcon({ size = 22 }: { size?: number }) {
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M12 3v10" strokeLinecap="round" />
+      <path d="M8.5 6.5 12 3l3.5 3.5" strokeLinecap="round" strokeLinejoin="round" />
+      <rect x="4" y="11" width="16" height="9" rx="2.5" />
+    </svg>
+  );
+}
 
 /* ------------------------ Blockstatus-Badges ------------------------ */
 function BlockBadges({ hasBlockedAuthor, blockedByAuthor }: { hasBlockedAuthor: boolean; blockedByAuthor: boolean }) {
@@ -135,10 +141,7 @@ function isVideoUrl(url?: string | null): boolean {
   return /\.(mp4|webm|ogg|ogv|mov|m4v|mkv)$/i.test(clean);
 }
 
-/** Media-Renderer:
- *  - Für VIDEOS: mit data-no-nav + gestopptem Event-Bubbling, damit Play/Seek etc. nie navigiert.
- *  - Für BILDER: weiterhin klickbar (öffnet den Post).
- */
+/** Media-Renderer */
 function MediaView({
   url,
   alt,
@@ -147,10 +150,7 @@ function MediaView({
   if (!url) return null;
 
   if (isVideoUrl(url)) {
-    const stop = (e: React.SyntheticEvent) => {
-      // jegliches Bubbling zum Artikel unterbinden
-      e.stopPropagation();
-    };
+    const stop = (e: React.SyntheticEvent) => { e.stopPropagation(); };
     return (
       <figure
         className="mt-3 overflow-hidden rounded-xl border border-white/10 bg-black/20"
@@ -159,25 +159,19 @@ function MediaView({
         onDoubleClick={stop}
         onPointerDownCapture={stop}
         onKeyDownCapture={(e) => {
-          // Space/Enter in Video sollen nicht den Artikel "aktivieren"
           if ((e as React.KeyboardEvent).key === ' ' || (e as React.KeyboardEvent).key === 'Enter') {
             e.stopPropagation();
           }
         }}
       >
-        <VideoPlayer
-          src={url}
-          className="w-full h-auto max-h-[65vh] sm:max-h-[70vh]"
-        />
+        <VideoPlayer src={url} className="w-full h-auto max-h-[65vh] sm:max-h-[70vh]" />
       </figure>
     );
   }
 
-  // Bild – Navigationsklicks weiterhin erlaubt
   return (
     <figure className="mt-3 overflow-hidden rounded-xl border border-white/10 bg-black/20">
       <div className="relative w-full">
-        {/* Feste Abmessungen für CLS ↓ (Seitenverhältnis 4:3 als Default) */}
         <Image
           src={url}
           alt={alt ?? ''}
@@ -192,6 +186,226 @@ function MediaView({
   );
 }
 
+/* ------------------- DM Share Overlay (mit StopPropagation) ------------------- */
+function DMShareOverlay({
+  open,
+  onClose,
+  postId,
+  locale,
+}: {
+  open: boolean;
+  onClose: () => void;
+  postId: string;
+  locale: string;
+}) {
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
+  const [items, setItems] = React.useState<Array<{
+    id: string;
+    other: { username: string; displayName: string; avatarUrl: string | null };
+    lastMessageAt: string;
+  }>>([]);
+
+  const [q, setQ] = React.useState('');
+  const [selected, setSelected] = React.useState<Set<string>>(new Set());
+  const [note, setNote] = React.useState('');
+  const [sending, setSending] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const res = await fetch('/api/chat', { cache: 'no-store' });
+        const j = await res.json();
+        if (!res.ok || !j?.ok) throw new Error(j?.error || `HTTP ${res.status}`);
+        if (!cancelled) setItems(j.items || []);
+      } catch (e) {
+        if (!cancelled) setError(e instanceof Error ? e.message : 'Failed to load chats');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [open]);
+
+  const toggle = (id: string) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const filtered = React.useMemo(() => {
+    const qq = q.trim().toLowerCase();
+    const base = !qq
+      ? items
+      : items.filter(i =>
+          i.other.displayName.toLowerCase().includes(qq) ||
+          i.other.username.toLowerCase().includes(qq)
+        );
+    return base.sort((a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime());
+  }, [items, q]);
+
+  const postUrl =
+    typeof window !== 'undefined'
+      ? `${window.location.origin}/${locale}/p/${postId}`
+      : `/${locale}/p/${postId}`;
+
+  async function send() {
+    if (selected.size === 0) return;
+    try {
+      setSending(true);
+      setError(null);
+      const ids = Array.from(selected);
+      await Promise.all(
+        ids.map((conversationId) =>
+          fetch('/api/chat/share-link', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ conversationId, postId, url: postUrl, note: note.trim() || undefined }),
+          }).then(async (r) => {
+            if (!r.ok) {
+              const j = await r.json().catch(() => null);
+              throw new Error(j?.error || `HTTP ${r.status}`);
+            }
+          })
+        )
+      );
+      onClose();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to send');
+    } finally {
+      setSending(false);
+    }
+  }
+
+  if (!open) return null;
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[2147483602]"
+      data-no-nav
+      role="dialog"
+      aria-modal="true"
+      onClick={(e) => e.stopPropagation()}
+      onMouseDown={(e) => e.stopPropagation()}
+      onKeyDown={(e) => e.stopPropagation()}
+    >
+      {/* Backdrop */}
+      <div
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        onClick={(e) => { e.stopPropagation(); onClose(); }}
+        onMouseDown={(e) => e.stopPropagation()}
+      />
+      {/* Panel */}
+      <div
+        className="absolute left-1/2 top-1/2 w-[min(720px,94vw)] max-h-[86vh] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-white/12 bg-[#0b0b0d] p-3 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+        <div className="px-2 py-2 border-b border-white/10">
+          <div className="text-[18px] font-semibold">Per Direktnachricht senden</div>
+          <div className="mt-2">
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Nach Personen/Chats suchen"
+              className="w-full rounded-xl bg-white/[.06] border border-white/10 px-3 py-2 outline-none"
+            />
+          </div>
+        </div>
+
+        <div className="mt-2 overflow-y-auto" style={{ maxHeight: '50vh' }}>
+          {loading && <div className="px-3 py-6 text-sm text-white/70">Lade Chats…</div>}
+          {!loading && error && <div className="px-3 py-3 text-sm text-red-400">{error}</div>}
+
+          {!loading && !error && filtered.length === 0 && (
+            <div className="px-3 py-6 text-sm text-white/70">Keine Konversationen gefunden.</div>
+          )}
+
+          <ul className="divide-y divide-white/10">
+            {filtered.map((c) => {
+              const checked = selected.has(c.id);
+              return (
+                <li key={c.id}>
+                  <button
+                    type="button"
+                    className="w-full flex items-center gap-3 px-3 py-2 hover:bg-white/5"
+                    onClick={() => toggle(c.id)}
+                  >
+                    <div className="relative size-10 overflow-hidden rounded-full bg-white/10 shrink-0">
+                      <Image
+                        src={c.other.avatarUrl || AVATAR_PH}
+                        alt=""
+                        fill
+                        className="object-cover"
+                        sizes="40px"
+                      />
+                    </div>
+                    <div className="min-w-0 flex-1 text-left">
+                      <div className="font-medium truncate">{c.other.displayName}</div>
+                      <div className="text-sm text-white/70 truncate">@{c.other.username}</div>
+                    </div>
+                    <span
+                      className={`grid place-items-center rounded-full border ${
+                        checked ? 'bg-[var(--purple)] border-[var(--purple)]' : 'border-white/25'
+                      }`}
+                      style={{ width: 22, height: 22 }}
+                      aria-hidden
+                    >
+                      {checked ? (
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="white" strokeWidth="3">
+                          <path d="M5 12.5 10 17l9-10" />
+                        </svg>
+                      ) : null}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+
+        <div className="px-3 pt-3">
+          <textarea
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            rows={2}
+            maxLength={200}
+            placeholder="Kommentar hinzufügen (optional)…"
+            className="w-full rounded-xl bg-white/[.06] border border-white/10 px-3 py-2 outline-none"
+          />
+        </div>
+
+        <div className="px-3 pb-2 pt-3 flex items-center justify-end gap-2">
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onClose(); }}
+            className="px-3 py-2 rounded-lg border border-white/15 hover:bg-white/10"
+            disabled={sending}
+          >
+            Abbrechen
+          </button>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); void send(); }}
+            disabled={sending || selected.size === 0}
+            className="px-4 py-2 rounded-lg bg-[var(--purple)] text-white hover:opacity-95 disabled:opacity-50"
+          >
+            {sending ? 'Senden…' : 'Senden'}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+/* ---------------------- PostCard (unverändert außer Share-Open) ---------------------- */
 export default function PostCard({ post }: { post: FeedPost }) {
   const router = useRouter();
   const { locale } = useParams() as { locale: string };
@@ -209,17 +423,22 @@ export default function PostCard({ post }: { post: FeedPost }) {
   const [quoteOpen, setQuoteOpen] = React.useState(false);
   const [moreOpen, setMoreOpen] = React.useState(false);
 
-  // Block-Status (für Interaktionen)
+  // Share
+  const [shareMenuOpen, setShareMenuOpen] = React.useState(false);
+  const [dmShareOpen, setDmShareOpen] = React.useState(false);
+  const [copied, setCopied] = React.useState(false);
+
+  // Block-Status
   const initialHasBlocked = !!post.viewer?.hasBlockedAuthor;
   const initialBlockedByAuthor = !!post.viewer?.blockedByAuthor;
   const [hasBlockedAuthor, setHasBlockedAuthor] = React.useState<boolean>(initialHasBlocked);
   const blockedByEither = initialBlockedByAuthor || hasBlockedAuthor;
 
-  // Avatar (vom ORIGINAL)
+  // Avatar
   const [avatarSrc, setAvatarSrc] = React.useState<string>(c.author.avatarUrl || AVATAR_PH);
   const [pendingLike, startLikeTransition] = React.useTransition();
 
-  // Navigation zum Feed-Item
+  // Navigation
   const goDetail = React.useCallback(
     (e: React.MouseEvent) => {
       const target = e.target as HTMLElement | null;
@@ -237,7 +456,8 @@ export default function PostCard({ post }: { post: FeedPost }) {
     }
   };
 
-  /* ----------------------------- LIKE ----------------------------- */
+  /* Like, Comment, Repost, More – bleiben wie zuvor ... (aus Platzgründen nicht erneut kommentiert) */
+
   function LikeForm() {
     const action = liked ? unlikePostAction : likePostAction;
     const disabled = blockedByEither || pendingLike;
@@ -254,7 +474,6 @@ export default function PostCard({ post }: { post: FeedPost }) {
           });
         }}
       >
-        {/* Wichtig: auf das Original zeigen */}
         <input type="hidden" name="postId" value={c.id} />
         <button
           type="submit"
@@ -276,7 +495,6 @@ export default function PostCard({ post }: { post: FeedPost }) {
     );
   }
 
-  /* --------------------------- COMMENT BTN --------------------------- */
   function CommentButton() {
     const disabled = blockedByEither;
     return (
@@ -304,7 +522,6 @@ export default function PostCard({ post }: { post: FeedPost }) {
     );
   }
 
-  /* ---------------------------- REPOST/QUOTE MENU ---------------------------- */
   function RepostButton() {
     const disabled = blockedByEither;
     return (
@@ -346,7 +563,7 @@ export default function PostCard({ post }: { post: FeedPost }) {
               className="w-full text-left px-3 py-2 rounded hover:bg-white/10"
               onClick={() => {
                 setRepostMenuOpen(false);
-                setQuoteOpen(true);   // Overlay öffnen
+                setQuoteOpen(true);
               }}
             >
               Quote post
@@ -361,7 +578,94 @@ export default function PostCard({ post }: { post: FeedPost }) {
     try { await navigator.clipboard.writeText(c.text ?? ''); } catch {}
   }
 
-  /* ----------------------------- MORE MENU ----------------------------- */
+  function ShareButton() {
+    const url =
+      typeof window !== 'undefined'
+        ? `${window.location.origin}/${locale}/p/${post.id}`
+        : `/${locale}/p/${post.id}`;
+
+    const systemShare = async () => {
+      try {
+        if (navigator.share) {
+          await navigator.share({
+            title: `${c.author.displayName} on Subm8`,
+            text: c.text?.slice(0, 120) ?? 'Check this post on Subm8',
+            url,
+          });
+          setShareMenuOpen(false);
+          return;
+        }
+      } catch {}
+    };
+
+    const copyLink = async () => {
+      try {
+        await navigator.clipboard.writeText(url);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1400);
+      } catch {}
+    };
+
+    return (
+      <div className="relative" data-no-nav onClick={(e) => e.stopPropagation()}>
+        <button
+          type="button"
+          className="group flex items-center gap-2 rounded px-2 py-1 hover:bg-white/5"
+          onClick={() => setShareMenuOpen((v) => !v)}
+          aria-expanded={shareMenuOpen || undefined}
+          title="Teilen"
+        >
+          <span
+            className="inline-grid place-items-center"
+            style={{ width: 'clamp(18px,1.8vw,26px)', height: 'clamp(18px,1.8vw,26px)', color: 'rgba(255,255,255,.95)' }}
+            aria-hidden
+          >
+            <ShareIcon />
+          </span>
+          <span className="sr-only">Share</span>
+        </button>
+
+        {shareMenuOpen && (
+          <div
+            className="absolute right-0 z-30 mt-2 w-60 rounded-xl border border-white/10 bg-black/85 backdrop-blur shadow-lg p-1"
+            role="menu"
+          >
+            <button
+              type="button"
+              className="w-full text-left px-3 py-2 rounded hover:bg-white/10 flex items-center justify-between"
+              onClick={() => {
+                setShareMenuOpen(false);
+                setDmShareOpen(true);
+              }}
+              title="In Direktnachricht teilen"
+            >
+              Per Direktnachricht senden
+              <span className="opacity-70 text-xs">→</span>
+            </button>
+
+            <button
+              type="button"
+              className="w-full text-left px-3 py-2 rounded hover:bg-white/10"
+              onClick={copyLink}
+              title="Link kopieren"
+            >
+              {copied ? 'Kopiert!' : 'Link kopieren'}
+            </button>
+
+            <button
+              type="button"
+              className="w-full text-left px-3 py-2 rounded hover:bg-white/10"
+              onClick={systemShare}
+              title="System-Share"
+            >
+              Auf Gerät teilen…
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   function MoreMenu() {
     return (
       <div className="relative" data-no-nav onClick={(e) => e.stopPropagation()}>
@@ -413,20 +717,17 @@ export default function PostCard({ post }: { post: FeedPost }) {
     );
   };
 
-  /** Kleine Quote-Box im Post (falls vorhanden) */
   function QuoteBox() {
     if (!c.quote) return null;
     const q = c.quote;
 
     const goQuote = (e: React.MouseEvent | React.KeyboardEvent) => {
       e.stopPropagation();
-      // Tastatur-Support
       if ('key' in e) {
         if (e.key !== 'Enter' && e.key !== ' ') return;
         e.preventDefault();
       }
       const target = e.target as HTMLElement | null;
-      // Klicks auf Links/Buttons innerhalb der Box nicht abfangen
       if (target && target.closest('[data-no-nav]')) return;
       router.push(`/${locale}/p/${q.id}`);
     };
@@ -458,11 +759,7 @@ export default function PostCard({ post }: { post: FeedPost }) {
               <span className="opacity-50">· {timeAgoShort(q.createdAt)}</span>
             </div>
             <div className="mt-1 text-[0.95rem] whitespace-pre-wrap break-words">{q.text}</div>
-
-            {/* Quote-Media (Video oder Bild) */}
-            {q.mediaUrl && (
-              <MediaView url={q.mediaUrl} alt={q.mediaAlt ?? ''} />
-            )}
+            {q.mediaUrl && <MediaView url={q.mediaUrl} alt={q.mediaAlt ?? ''} />}
           </div>
         </div>
       </div>
@@ -478,7 +775,6 @@ export default function PostCard({ post }: { post: FeedPost }) {
       tabIndex={0}
       aria-label="Open post"
     >
-      {/* Repost-Badge */}
       {post.reposter && (
         <div className="mb-1 -mt-1 flex items-center gap-2 text-[12px] text-white/70">
           <span className="inline-grid place-items-center w-4 h-4"><RepostBadgeIcon /></span>
@@ -491,7 +787,7 @@ export default function PostCard({ post }: { post: FeedPost }) {
       </div>
 
       <header className="flex items-start gap-3">
-        {/* Avatar + Rolle (ORIGINAL) */}
+        {/* Avatar + Rolle */}
         <div className="shrink-0 flex flex-col items-center w-[3.2em]">
           <div data-no-nav onClick={(e) => e.stopPropagation()}>
             <ProfileLink handle={c.author.handle} className="block focus:outline-none focus:ring-2 focus:ring-[var(--purple)]/50 rounded-full">
@@ -530,26 +826,22 @@ export default function PostCard({ post }: { post: FeedPost }) {
             <RichText text={c.text} locale={locale} validateMentions />
           </div>
 
-          {/* Haupt-Media (Video oder Bild) */}
-          {c.mediaUrl && (
-            <MediaView url={c.mediaUrl} alt={c.mediaAlt ?? ''} priority />
-          )}
+          {c.mediaUrl && <MediaView url={c.mediaUrl} alt={c.mediaAlt ?? ''} priority />}
 
-          {/* Eingebettete Quote (falls vorhanden) */}
           <QuoteBox />
 
-          {/* Actions */}
           <div className="mt-3 flex items-center gap-4 sm:gap-6" data-no-nav onClick={(e) => e.stopPropagation()}>
             <CommentButton />
             <RepostButton />
             <LikeForm />
             <div data-no-nav onClick={(e) => e.stopPropagation()}>
-              {/* Wichtig: auf das Original zeigen */}
               <BookmarkButton postId={c.id} initiallyBookmarked={post.initiallyBookmarked === true} />
+            </div>
+            <div className="ml-auto">
+              <ShareButton />
             </div>
           </div>
 
-          {/* Composer unter dem Post */}
           {composerOpen && !blockedByEither && (
             <div data-no-nav onClick={(e) => e.stopPropagation()}>
               <CommentComposer
@@ -557,7 +849,6 @@ export default function PostCard({ post }: { post: FeedPost }) {
                 onSuccess={() => {
                   setComments((n) => (n ?? 0) + 1);
                   setComposerOpen(false);
-                  // 🔔 Kommentar-Thread informieren
                   if (typeof window !== 'undefined') {
                     window.dispatchEvent(new CustomEvent('comment:created', { detail: { postId: post.id } }));
                   }
@@ -572,7 +863,6 @@ export default function PostCard({ post }: { post: FeedPost }) {
         </div>
       </header>
 
-      {/* Quote-Overlay */}
       {quoteOpen && (
         <QuoteOverlay
           open={quoteOpen}
@@ -585,6 +875,15 @@ export default function PostCard({ post }: { post: FeedPost }) {
             mediaUrl: c.mediaUrl ?? undefined,
             mediaAlt: c.mediaAlt ?? undefined,
           }}
+        />
+      )}
+
+      {dmShareOpen && (
+        <DMShareOverlay
+          open={dmShareOpen}
+          onClose={() => setDmShareOpen(false)}
+          postId={post.id}
+          locale={locale}
         />
       )}
     </article>
