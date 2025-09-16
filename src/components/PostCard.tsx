@@ -11,6 +11,7 @@ import { likePostAction, unlikePostAction } from '@/app/actions/likes';
 import CommentComposer from '@/components/comments/CommentComposer';
 import { reportPostAction } from '@/app/actions/reports';
 import { blockUserAction, unblockUserAction } from '@/app/actions/blocks';
+import { pinPostAction, unpinPostAction } from '@/app/actions/pin-post';
 import RichText from '@/components/RichText';
 import QuoteOverlay from '@/components/quotes/QuoteOverlay';
 import VideoPlayer from '@/components/VideoPlayer';
@@ -59,6 +60,12 @@ export type FeedPost = {
   };
   initiallyBookmarked?: boolean;
 };
+
+/** --- Fix: Form-Action-Signatur für Server Actions an React angleichen --- */
+type VoidFormAction = (formData: FormData) => void | Promise<void>;
+const pinPostFormAction = pinPostAction as unknown as VoidFormAction;
+// unpin hat ggf. keine Parameter – Cast auf (FormData) => Promise<void> ist zur Compile-Zeit ausreichend
+const unpinPostFormAction = unpinPostAction as unknown as VoidFormAction;
 
 function Counter({ value = 0, active }: { value?: number; active?: boolean }) {
   return (
@@ -405,10 +412,11 @@ function DMShareOverlay({
   );
 }
 
-/* ---------------------- PostCard (unverändert außer Share-Open) ---------------------- */
+/* ---------------------- PostCard ---------------------- */
 export default function PostCard({ post }: { post: FeedPost }) {
   const router = useRouter();
-  const { locale } = useParams() as { locale: string };
+  const params = useParams() as { locale: string; handle?: string };
+  const { locale, handle } = params;
 
   const c = post.content;
   const uiRole = c.author.role === 'DOMME' ? 'domme' : c.author.role === 'SUBMISSIVE' ? 'submissive' : undefined;
@@ -422,6 +430,9 @@ export default function PostCard({ post }: { post: FeedPost }) {
   const [repostMenuOpen, setRepostMenuOpen] = React.useState<boolean>(false);
   const [quoteOpen, setQuoteOpen] = React.useState(false);
   const [moreOpen, setMoreOpen] = React.useState(false);
+
+  // Pin (nur sinnvoll im Profil-Kontext, aber nutzbar überall)
+  const [isPinned, setIsPinned] = React.useState<boolean>(false);
 
   // Share
   const [shareMenuOpen, setShareMenuOpen] = React.useState(false);
@@ -456,7 +467,27 @@ export default function PostCard({ post }: { post: FeedPost }) {
     }
   };
 
-  /* Like, Comment, Repost, More – bleiben wie zuvor ... (aus Platzgründen nicht erneut kommentiert) */
+  // Auf globale Pin-Änderungen reagieren (andere Karten des gleichen Profils)
+  React.useEffect(() => {
+    function onPinnedChange(ev: Event) {
+      const ce = ev as CustomEvent<{ postId: string; pinned: boolean }>;
+      if (!ce.detail) return;
+      const { postId, pinned } = ce.detail;
+      if (postId === post.id) {
+        setIsPinned(!!pinned);
+      } else if (pinned) {
+        // Ein anderer Post wurde gepinnt ⇒ diese Karte ist sicher nicht gepinnt
+        setIsPinned(false);
+      }
+    }
+    window.addEventListener('profile:pinnedChange', onPinnedChange);
+    return () => window.removeEventListener('profile:pinnedChange', onPinnedChange);
+  }, [post.id]);
+
+  // heuristisch: sind wir auf einer Profilseite dieser Autorin / dieses Autors?
+  const onProfileOfAuthor = typeof handle === 'string' && handle.toLowerCase() === c.author.handle.toLowerCase();
+
+  /* ---------- Actions ---------- */
 
   function LikeForm() {
     const action = liked ? unlikePostAction : likePostAction;
@@ -667,6 +698,15 @@ export default function PostCard({ post }: { post: FeedPost }) {
   }
 
   function MoreMenu() {
+    // Zeige Pin/Unpin im MoreMenu, wenn wir auf der Profilseite der Autor*in sind.
+    const showPinControls = onProfileOfAuthor;
+
+    const optimisticBroadcast = (pinned: boolean) => {
+      try {
+        window.dispatchEvent(new CustomEvent('profile:pinnedChange', { detail: { postId: post.id, pinned } }));
+      } catch {}
+    };
+
     return (
       <div className="relative" data-no-nav onClick={(e) => e.stopPropagation()}>
         <button type="button" aria-label="Mehr" className="rounded p-1.5 hover:bg-white/5" onClick={() => setMoreOpen((v) => !v)}>
@@ -677,6 +717,42 @@ export default function PostCard({ post }: { post: FeedPost }) {
 
         {moreOpen && (
           <div className="absolute right-0 z-30 mt-2 w-64 rounded-xl border border-white/10 bg-black/85 backdrop-blur shadow-lg p-1" role="menu">
+            {showPinControls && (
+              <>
+                {!isPinned ? (
+                  <form
+                    action={pinPostFormAction}
+                    onSubmit={() => {
+                      setIsPinned(true);
+                      optimisticBroadcast(true);
+                      setMoreOpen(false);
+                    }}
+                  >
+                    <input type="hidden" name="postId" value={post.id} />
+                    <button type="submit" className="w-full text-left px-3 py-2 rounded hover:bg-white/10">
+                      Auf Profil anpinnen
+                    </button>
+                  </form>
+                ) : (
+                  <form
+                    action={unpinPostFormAction}
+                    onSubmit={() => {
+                      setIsPinned(false);
+                      optimisticBroadcast(false);
+                      setMoreOpen(false);
+                    }}
+                  >
+                    {/* keine postId nötig fürs Unpin, aber schadet nicht */}
+                    <input type="hidden" name="postId" value={post.id} />
+                    <button type="submit" className="w-full text-left px-3 py-2 rounded hover:bg-white/10">
+                      Pinned entfernen
+                    </button>
+                  </form>
+                )}
+                <div className="h-px my-1 bg-white/10" />
+              </>
+            )}
+
             <button
               type="button"
               className="flex w-full items-center justify-between px-3 py-2 rounded hover:bg-white/10"
@@ -814,6 +890,13 @@ export default function PostCard({ post }: { post: FeedPost }) {
                 @{c.author.handle}
               </ProfileLink>
             </div>
+
+            {/* "Pinned"-Badge falls diese Karte aktuell gepinnt ist (z.B. im Profil) */}
+            {isPinned && (
+              <span className="ml-2 text-[10px] px-2 py-0.5 rounded-full bg-[var(--purple)]/20 text-[var(--purple)] border border-[var(--purple)]/30">
+                Pinned
+              </span>
+            )}
 
             <BlockBadges hasBlockedAuthor={!!hasBlockedAuthor} blockedByAuthor={!!initialBlockedByAuthor} />
             <span className="text-muted mx-2 text-xs md:text-[13px]" aria-hidden>·</span>

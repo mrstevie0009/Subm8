@@ -71,6 +71,10 @@ model User {
   offerText  String? @db.Text
   offerBgUrl String?
   offerBgDim Float?  @default(0)
+
+  // ⇩ NEU: genau ein angepinnter Post pro User (optional)
+  pinnedPostId String? @unique
+  pinnedPost   Post?   @relation("UserPinnedPost", fields: [pinnedPostId], references: [id], onDelete: SetNull)
 }
 
 model Follow {
@@ -214,6 +218,9 @@ model Post {
   quotes      Post[]     @relation("QuoteOf")
   repostOf    Post?      @relation("RepostOf", fields: [repostOfId], references: [id])
   reposts     Post[]     @relation("RepostOf")
+
+  // ⇩ NEU: Gegenfeld zur "UserPinnedPost"-Relation
+  pinnedBy    User?      @relation("UserPinnedPost")
 
   @@index([authorId, createdAt])
   @@index([communityId, createdAt])
