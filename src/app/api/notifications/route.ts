@@ -1,3 +1,4 @@
+// src/app/api/notifications/route.ts
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/currentUser';
@@ -21,7 +22,7 @@ export async function GET(req: Request) {
     if (!me) return NextResponse.json({ ok: false, error: 'UNAUTHENTICATED' }, { status: 401 });
 
     const url = new URL(req.url);
-    const tab = (url.searchParams.get('tab') || 'all') as 'all' | 'mentions';
+    const tab = (url.searchParams.get('tab') || 'all') as 'all' | 'mentions' | 'comments';
     const limit = Math.min(Math.max(Number(url.searchParams.get('limit') || 50), 1), 100);
 
     // ---- Follows (you are the followee) ----
@@ -174,7 +175,11 @@ export async function GET(req: Request) {
     const seen = new Set<string>();
     const sorted = notis
       .sort((a, b) => +new Date(b.time) - +new Date(a.time))
-      .filter((n) => (tab === 'mentions' ? n.kind === 'mention' : true))
+      .filter((n) => {
+        if (tab === 'mentions') return n.kind === 'mention';
+        if (tab === 'comments') return n.kind === 'comment' || n.kind === 'reply' || n.kind === 'comment_like';
+        return true; // 'all'
+      })
       .filter((n) => (seen.has(n.id) ? false : (seen.add(n.id), true)))
       .slice(0, limit);
 

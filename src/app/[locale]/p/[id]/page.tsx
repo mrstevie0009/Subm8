@@ -1,3 +1,4 @@
+// src/app/[locale]/p/[id]/page.tsx
 import { prisma } from '@/lib/prisma';
 import { notFound } from 'next/navigation';
 import PostCard, { type FeedPost } from '@/components/PostCard';

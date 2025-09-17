@@ -1,3 +1,4 @@
+// src/app/[locale]/notifications/page.tsx
 'use client';
 
 import * as React from 'react';
@@ -88,7 +89,7 @@ function FollowForm({
 
 // ---------- Page ----------
 export default function NotificationsPage() {
-  const [tab, setTab] = React.useState<'all' | 'mentions'>('all');
+  const [tab, setTab] = React.useState<'all' | 'mentions' | 'comments'>('all');
   const [items, setItems] = React.useState<Noti[]>([]);
   const [loadingNoti, setLoadingNoti] = React.useState(false);
 
@@ -146,7 +147,7 @@ export default function NotificationsPage() {
         {/* Segmented Tabs */}
         <div className="px-4 pb-3">
           <div className="inline-flex rounded-full border border-white/10 bg-white/[.04] p-1">
-            {(['all', 'mentions'] as const).map((k) => {
+            {(['all', 'mentions', 'comments'] as const).map((k) => {
               const active = tab === k;
               return (
                 <button
@@ -157,7 +158,7 @@ export default function NotificationsPage() {
                     active ? 'bg-[var(--purple)] text-white' : 'text-white/80 hover:bg-white/10'
                   )}
                 >
-                  {k === 'all' ? 'All' : 'Mentions'}
+                  {k === 'all' ? 'All' : k === 'mentions' ? 'Mentions' : 'Comments'}
                 </button>
               );
             })}

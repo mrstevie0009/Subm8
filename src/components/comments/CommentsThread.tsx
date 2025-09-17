@@ -233,12 +233,36 @@ function CommentNode({
     setLikeCount(node.counts.likes);
   }, [node.viewer?.liked, node.counts.likes]);
 
+  // ---- small helper: fire-and-forget hook for notifications
+  function fireNotiHook(url: string, payload: unknown) {
+    try {
+      const body = JSON.stringify(payload);
+      if (typeof navigator !== 'undefined' && 'sendBeacon' in navigator) {
+        const blob = new Blob([body], { type: 'application/json' });
+        (navigator as Navigator & { sendBeacon?: (u: string, d?: Blob | FormData) => boolean }).sendBeacon?.(url, blob);
+      } else {
+        // #eslint-disable-next-line @typescript-eslint/no-floating-promises
+        fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body }).catch(() => {});
+      }
+    } catch {
+      // swallow
+    }
+  }
+
   async function toggleLike() {
     const res = await fetch(`/api/comments/${node.id}/like`, { method: 'POST' });
     const json = await res.json();
     if (json.ok) {
       setLiked(json.liked);
       setLikeCount((c) => (json.liked ? c + 1 : Math.max(0, c - 1)));
+
+      // ⬇️ optionaler Hook: notify comment author when someone liked their comment
+      if (json.liked === true) {
+        fireNotiHook('/api/notifications/hooks/comment-like', {
+          commentId: node.id,
+          postId,
+        });
+      }
     }
   }
 
@@ -395,6 +419,22 @@ function Composer({
     setPreview(null);
   }
 
+  // ---- small helper: fire-and-forget hook for notifications
+  function fireNotiHook(url: string, payload: unknown) {
+    try {
+      const body = JSON.stringify(payload);
+      if (typeof navigator !== 'undefined' && 'sendBeacon' in navigator) {
+        const blob = new Blob([body], { type: 'application/json' });
+        (navigator as Navigator & { sendBeacon?: (u: string, d?: Blob | FormData) => boolean }).sendBeacon?.(url, blob);
+      } else {
+        // #eslint-disable-next-line @typescript-eslint/no-floating-promises
+        fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body }).catch(() => {});
+      }
+    } catch {
+      // swallow
+    }
+  }
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     const t = text.trim();
@@ -408,6 +448,13 @@ function Composer({
     const res = await addCommentAction(fd);
     setBusy(false);
     if (res.ok) {
+      // ⬇️ optional: backend-hook für Benachrichtigung (Post-Kommentar ODER Reply)
+      fireNotiHook('/api/notifications/hooks/comment', {
+        postId,
+        parentId: parentId ?? null,
+        text: t || null,
+      });
+
       setText('');
       clearFile();
       onDone();
