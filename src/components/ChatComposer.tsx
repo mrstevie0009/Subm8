@@ -8,9 +8,13 @@ import TipRequestCreateModal from '@/components/TipRequestCreateModal';
 import OwnershipRequestCreateModal, {
   type OwnershipReqPayload as OwnReqPayload,
 } from '@/components/OwnershipRequestCreateModal';
+import AutoDrainRequestCreateModal, {
+  type AutoDrainReqPayload as ADReqPayload,
+} from '@/components/AutoDrainRequestCreateModal';
 
 type RoleLike = 'domme' | 'submissive' | 'DOMME' | 'SUBMISSIVE';
 type TipRequestPayload = { amountCents: number; note?: string; currency?: string };
+type AutoDrainRequestPayload = ADReqPayload;
 
 type Props = {
   disabled?: boolean;
@@ -25,6 +29,8 @@ type Props = {
   /** erweitert: optional Caption beim Upload */
   onUpload?: (file: File, caption?: string) => void; // Bild/Video/Audio/GIF
   onCreateTipRequest?: (payload: TipRequestPayload) => void;
+  /** Neu: Autodrain Request direkt im Parent verarbeiten (optional) */
+  onCreateAutoDrainRequest?: (payload: AutoDrainRequestPayload) => void;
   /** Ping zum Server, dass gerade getippt/aufgenommen wird */
   onTypingPing?: (active: boolean) => void;
 };
@@ -258,6 +264,7 @@ export default function ChatComposer({
   onTip,
   onUpload,
   onCreateTipRequest,
+  onCreateAutoDrainRequest,
   onTypingPing,
 }: Props) {
   const [text, setText] = React.useState('');
@@ -299,6 +306,7 @@ export default function ChatComposer({
   // Modals
   const [tipReqOpen, setTipReqOpen] = React.useState(false);
   const [ownReqOpen, setOwnReqOpen] = React.useState(false);
+  const [adReqOpen, setAdReqOpen] = React.useState(false);
 
   /* -------- Voice recording (press & hold) -------- */
   const [recording, setRecording] = React.useState(false);
@@ -722,7 +730,10 @@ export default function ChatComposer({
                       <button
                         type="button"
                         className="w-full text-left px-3 py-2 rounded-lg hover:bg-white/10"
-                        onClick={() => setMenuOpen(false)}
+                        onClick={() => {
+                          setMenuOpen(false);
+                          setAdReqOpen(true);
+                        }}
                       >
                         Autodrain request
                       </button>
@@ -835,6 +846,22 @@ export default function ChatComposer({
         onCreate={(payload: OwnReqPayload) => {
           setOwnReqOpen(false);
           onSend(`OWNREQ::${JSON.stringify(payload)}`);
+        }}
+      />
+
+      {/* NEW: Autodrain Request Create Modal */}
+      <AutoDrainRequestCreateModal
+        open={adReqOpen}
+        onClose={() => setAdReqOpen(false)}
+        onCreate={(payload: ADReqPayload) => {
+          setAdReqOpen(false);
+          if (onCreateAutoDrainRequest) {
+            onCreateAutoDrainRequest(payload);
+            return;
+          }
+          const currency = payload.currency ?? 'EUR';
+          const data = { ...payload, currency };
+          onSend(`ADREQ::${JSON.stringify(data)}`);
         }}
       />
 

@@ -10,6 +10,7 @@ import ChatComposer from '@/components/ChatComposer';
 import TipModal from '@/components/TipModal';
 import TipRequestAcceptModal from '@/components/TipRequestAcceptModal';
 import OwnershipRequestAcceptModal from '@/components/OwnershipRequestAcceptModal';
+import AutoDrainRequestAcceptModal from '@/components/AutoDrainRequestAcceptModal';
 import type {
   OwnershipReqPayload as AcceptOwnReqPayload,
 } from '@/components/OwnershipRequestAcceptModal';
@@ -71,6 +72,52 @@ function parseTipPaid(text?: string | null): TipPaidPayload | null {
   } catch {}
   return null;
 }
+
+/* ----- Autodrain envelopes ----- */
+const ADREQ_PREFIX = 'ADREQ::';
+type AutoDrainReqPayload = {
+  amountCents: number;
+  currency: string;
+  cadence: 'DAILY' | 'WEEKLY' | 'MONTHLY';
+};
+function parseAutoDrainReq(text?: string | null): AutoDrainReqPayload | null {
+  if (!text || !text.startsWith(ADREQ_PREFIX)) return null;
+  try {
+    const obj = JSON.parse(text.slice(ADREQ_PREFIX.length));
+    if (
+      typeof obj?.amountCents === 'number' &&
+      typeof obj?.currency === 'string' &&
+      (obj?.cadence === 'DAILY' || obj?.cadence === 'WEEKLY' || obj?.cadence === 'MONTHLY')
+    ) {
+      return obj as AutoDrainReqPayload;
+    }
+  } catch {}
+  return null;
+}
+const ADACC_PREFIX = 'ADACC::';
+type AutoDrainAccPayload = {
+  id?: string;
+  amountCents: number;
+  currency: string;
+  cadence: 'DAILY' | 'WEEKLY' | 'MONTHLY';
+};
+function parseAutoDrainAcc(text?: string | null): AutoDrainAccPayload | null {
+  if (!text || !text.startsWith(ADACC_PREFIX)) return null;
+  try {
+    const obj = JSON.parse(text.slice(ADACC_PREFIX.length));
+    if (
+      typeof obj?.amountCents === 'number' &&
+      typeof obj?.currency === 'string' &&
+      (obj?.cadence === 'DAILY' || obj?.cadence === 'WEEKLY' || obj?.cadence === 'MONTHLY')
+    ) {
+      return obj as AutoDrainAccPayload;
+    }
+  } catch {}
+  return null;
+}
+const cadenceLabel = (c: AutoDrainReqPayload['cadence']) =>
+  c === 'DAILY' ? 'Daily' : c === 'WEEKLY' ? 'Weekly' : 'Monthly';
+
 const OWNREQ_PREFIX = 'OWNREQ::';
 const OWNACC_PREFIX = 'OWNACC::';
 
@@ -560,6 +607,16 @@ export default function ChatThreadPage() {
     toDisplayName: string;
     toAvatarUrl?: string;
   } | null>(null);
+
+  const [adAccept, setAdAccept] = React.useState<{
+    amountCents: number;
+    currency: string;
+    cadence: 'DAILY' | 'WEEKLY' | 'MONTHLY';
+    toUserId: string;
+    toDisplayName: string;
+    toAvatarUrl?: string;
+  } | null>(null);
+
   const [ownToAccept, setOwnToAccept] = React.useState<OwnershipReqPayload | null>(null);
 
   const mapRole = React.useCallback((r: DbRole): 'domme' | 'submissive' => (r === 'DOMME' ? 'domme' : 'submissive'), []);
@@ -710,7 +767,7 @@ export default function ChatThreadPage() {
               {messages.map((m) => {
                 const mine = meId ? m.senderId === meId : false;
 
-                // --- Special bubbles ---
+                // --- TIP REQUEST ---
                 const req = parseTipRequest(m.text);
                 if (req) {
                   const isViewerSub = meRole === 'submissive';
@@ -755,6 +812,76 @@ export default function ChatThreadPage() {
                   );
                 }
 
+                // --- AUTODRAIN REQUEST ---
+                const ad = parseAutoDrainReq(m.text);
+                if (ad) {
+                  const canAct = !mine && meRole === 'submissive' && !!other;
+                  return (
+                    <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
+                      <div className="max-w-[75%] rounded-2xl px-3 py-2 border bg-white/[.07] border-white/10">
+                        <div className="text-[11px] uppercase tracking-wide text-white/70 mb-1">AUTODRAIN REQUEST</div>
+                        <div className="text-[15px] font-semibold">{fmtCurrency(ad.amountCents, ad.currency)}</div>
+                        <div className="text-[13px] text-white/80 mt-0.5">Recurrence: {cadenceLabel(ad.cadence)}</div>
+                        {canAct && (
+                          <div className="mt-2 flex items-center gap-2">
+                            <button
+                              type="button"
+                              className="px-3 py-1.5 rounded-lg bg-[var(--purple)]/90 text-white hover:opacity-95"
+                              onClick={() =>
+                                setAdAccept({
+                                  amountCents: ad.amountCents,
+                                  currency: ad.currency,
+                                  cadence: ad.cadence,
+                                  toUserId: m.senderId,
+                                  toDisplayName: other!.displayName,
+                                  toAvatarUrl: other!.avatarUrl,
+                                })
+                              }
+                            >
+                              Accept
+                            </button>
+                            <button
+                              type="button"
+                              className="px-3 py-1.5 rounded-lg border border-white/15 hover:bg-white/10"
+                              onClick={() => void sendMessage({ text: '❌ Declined autodrain request' })}
+                            >
+                              Decline
+                            </button>
+                          </div>
+                        )}
+                        <div className="text-[11px] mt-2 text-white/60" title={new Date(m.createdAt).toLocaleString()}>
+                          {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+
+                // --- AUTODRAIN ACCEPTED (styled like TIP PAID) ---
+                const adAcc = parseAutoDrainAcc(m.text);
+                if (adAcc) {
+                  return (
+                    <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
+                      <div className="max-w-[75%] rounded-2xl px-3 py-2 border bg-white/[.07] border-white/10">
+                        <div className="flex items-center gap-2 text-[11px] uppercase tracking-wide text-white/70 mb-1">
+                          <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden fill="none" stroke="currentColor" strokeWidth="2">
+                            <circle cx="12" cy="12" r="9" />
+                            <path d="M8.5 12.5l2.5 2.5 4.5-5" />
+                          </svg>
+                          <span>AUTODRAIN ENABLED</span>
+                          {adAcc.id && <span className="text-white/50 normal-case ml-1">#{String(adAcc.id).slice(0, 6)}</span>}
+                        </div>
+                        <div className="text-[15px] font-semibold">{fmtCurrency(adAcc.amountCents, adAcc.currency)}</div>
+                        <div className="mt-1 text-[13px] text-white/80">Recurrence: {cadenceLabel(adAcc.cadence)}</div>
+                        <div className="text-[11px] mt-2 text-white/60" title={new Date(m.createdAt).toLocaleString()}>
+                          {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+
+                // --- TIP PAID ---
                 const paid = parseTipPaid(m.text);
                 if (paid) {
                   return (
@@ -778,6 +905,7 @@ export default function ChatThreadPage() {
                   );
                 }
 
+                // --- OWNERSHIP REQUEST ---
                 const ownReq = parseOwnReq(m.text);
                 if (ownReq) {
                   const canAct = !mine && meRole === 'submissive';
@@ -889,7 +1017,7 @@ export default function ChatThreadPage() {
                 if (m.mediaUrl && isAudio(m.mediaUrl, m.mediaType)) {
                   return (
                     <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
-                    <div className="w-full max-w-[75vw] md:max-w-[560px]">
+                      <div className="w-full max-w-[75vw] md:max-w-[560px]">
                         <AudioBubble src={m.mediaUrl} mine={mine} avatarUrl={mine ? meAvatarUrl : other?.avatarUrl} />
                         {m.text && (
                           <div className={`mt-1 ${mine ? 'text-white' : 'text-white/90'}`}>
@@ -983,7 +1111,13 @@ export default function ChatThreadPage() {
           onCreateTipRequest={(p: { amountCents: number; currency?: string; note?: string }) => {
             const { amountCents, currency = 'EUR', note } = p;
             const payload = { amountCents, currency, note: note?.trim() || undefined };
-            void sendMessage({ text: `TIPREQ::${JSON.stringify(payload)}` });
+            void sendMessage({ text: `${TIPREQ_PREFIX}${JSON.stringify(payload)}` });
+          }}
+          // ⬇️ Neu: Autodrain-Request aus dem Composer
+          onCreateAutoDrainRequest={(p: { amountCents: number; currency?: string; cadence: 'DAILY' | 'WEEKLY' | 'MONTHLY' }) => {
+            const { amountCents, currency = 'EUR', cadence } = p;
+            const payload = { amountCents, currency, cadence };
+            void sendMessage({ text: `${ADREQ_PREFIX}${JSON.stringify(payload)}` });
           }}
         />
       )}
@@ -1021,6 +1155,26 @@ export default function ChatThreadPage() {
             void sendMessage({ text: `${TIPPAID_PREFIX}${JSON.stringify(payload)}` });
             setAccept(null);
           }}
+        />
+      )}
+
+      {adAccept && other && (
+        <AutoDrainRequestAcceptModal
+          open={!!adAccept}
+          onClose={() => setAdAccept(null)}
+          amountCents={adAccept.amountCents}
+          currency={adAccept.currency}
+          cadence={adAccept.cadence}
+          toUserId={adAccept.toUserId}
+          toDisplayName={adAccept.toDisplayName}
+          toAvatarUrl={adAccept.toAvatarUrl}
+          conversationId={String(id)}
+          onSuccess={({ autoDrainId, amountCents, currency, cadence }) => {
+            const payload: AutoDrainAccPayload = { id: autoDrainId, amountCents, currency, cadence };
+            void sendMessage({ text: `${ADACC_PREFIX}${JSON.stringify(payload)}` });
+            setAdAccept(null);
+          }}
+          onDeclined={() => setAdAccept(null)}
         />
       )}
 

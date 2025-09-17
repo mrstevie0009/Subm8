@@ -45,21 +45,28 @@ function hasAvatarField(u: unknown): u is { avatarUrl?: string | null } {
 }
 
 /* ---------- Typing table (idempotent) ---------- */
+/** Neuer Tabellenname, um Konflikte mit vorhandenem TYPE "ConversationTyping" zu vermeiden */
+const TYPING_TABLE = `"ConversationTypingState"`;
+
 async function ensureTypingTable() {
   await prisma.$executeRawUnsafe(`
-    CREATE TABLE IF NOT EXISTS "ConversationTyping" (
+    CREATE TABLE IF NOT EXISTS ${TYPING_TABLE} (
       "conversationId" TEXT NOT NULL,
       "userId" TEXT NOT NULL,
       "updatedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
       PRIMARY KEY ("conversationId","userId")
     );
   `);
+  await prisma.$executeRawUnsafe(`
+    CREATE INDEX IF NOT EXISTS "ConversationTypingState_updated_idx"
+    ON ${TYPING_TABLE} ("updatedAt");
+  `);
 }
 
 async function pingTyping(conversationId: string, userId: string) {
   await ensureTypingTable();
   await prisma.$executeRawUnsafe(
-    `INSERT INTO "ConversationTyping" ("conversationId","userId","updatedAt")
+    `INSERT INTO ${TYPING_TABLE} ("conversationId","userId","updatedAt")
      VALUES ($1,$2,NOW())
      ON CONFLICT ("conversationId","userId") DO UPDATE
        SET "updatedAt" = EXCLUDED."updatedAt";`,
@@ -71,7 +78,7 @@ async function pingTyping(conversationId: string, userId: string) {
 async function clearTyping(conversationId: string, userId: string) {
   await ensureTypingTable();
   await prisma.$executeRawUnsafe(
-    `DELETE FROM "ConversationTyping" WHERE "conversationId" = $1 AND "userId" = $2;`,
+    `DELETE FROM ${TYPING_TABLE} WHERE "conversationId" = $1 AND "userId" = $2;`,
     conversationId,
     userId,
   );
@@ -149,7 +156,7 @@ export async function GET(_req: Request, { params }: Ctx) {
     await ensureTypingTable();
     const typingRow = await prisma.$queryRawUnsafe<{ exists: boolean }[]>(
       `SELECT EXISTS (
-         SELECT 1 FROM "ConversationTyping"
+         SELECT 1 FROM ${TYPING_TABLE}
          WHERE "conversationId" = $1 AND "userId" = $2 AND "updatedAt" > NOW() - INTERVAL '8 seconds'
        ) AS "exists"`,
       id,
@@ -162,14 +169,16 @@ export async function GET(_req: Request, { params }: Ctx) {
       me: { id: me.id, role: meRole ?? undefined, avatarUrl: meAvatarUrl },
       other,
       otherTyping,
-      messages: messages.map((m) => ({
-        id: m.id,
-        at: m.createdAt.toISOString(),
-        authorId: m.authorId,
-        text: m.text,
-        mediaUrl: m.mediaUrl,
-        mediaType: m.mediaType,
-        read: m.reads.length > 0 || m.authorId === me.id,
+      messages: messages.map((m) => ([
+        m.id,
+        m.createdAt.toISOString(),
+        m.authorId,
+        m.text,
+        m.mediaUrl,
+        m.mediaType,
+        m.reads.length > 0 || m.authorId === me.id,
+      ])).map(([id, at, authorId, text, mediaUrl, mediaType, read]) => ({
+        id, at, authorId, text, mediaUrl, mediaType, read,
       })),
       viewerHasBlocked,
       isBlockedByOther,
