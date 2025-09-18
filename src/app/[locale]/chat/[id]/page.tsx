@@ -573,6 +573,110 @@ function ProfileLinkPreview({ handle, locale }: { handle: string; locale: string
   );
 }
 
+/* ---------- Community-Link Preview helpers (NEW) ---------- */
+function parseCommunityLink(text?: string | null): { slug: string; url: string } | null {
+  if (!text) return null;
+  const s = text.trim();
+  if (!s) return null;
+
+  const m = s.match(/(https?:\/\/[^\s]+|\/[^\s]+)/);
+  if (!m) return null;
+  const raw = m[1];
+
+  try {
+    const base = typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
+    const u = raw.startsWith('http') ? new URL(raw) : new URL(raw, base);
+    const parts = u.pathname.split('/').filter(Boolean);
+
+    // try /c/:slug OR /communities/:slug
+    const cIdx = parts.indexOf('c');
+    const commIdx = parts.indexOf('communities');
+
+    let slug = '';
+    if (cIdx >= 0 && parts[cIdx + 1]) slug = parts[cIdx + 1];
+    else if (commIdx >= 0 && parts[commIdx + 1]) slug = parts[commIdx + 1];
+
+    if (slug) return { slug, url: u.toString() };
+  } catch {}
+  return null;
+}
+
+type CommunityPreviewDto = {
+  slug: string;
+  name: string;
+  memberCount?: number;
+  avatarUrl?: string | null;
+  bannerUrl?: string | null;
+  description?: string | null;
+};
+
+function CommunityLinkPreview({ slug, locale }: { slug: string; locale: string }) {
+  const [data, setData] = React.useState<CommunityPreviewDto | null>(null);
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        setLoading(true);
+        // Prefer plural like /api/communities/preview/:slug to mirror posts; adjust if your API differs.
+        const r = await fetch(`/api/communities/preview/${encodeURIComponent(slug)}`, { cache: 'no-store' });
+        const j: { ok: boolean; community?: CommunityPreviewDto } = await r.json();
+        if (!cancelled && j?.ok && j.community) setData(j.community);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [slug]);
+
+  const go = () => {
+    // Navigate to community; adjust path if your detail route differs.
+    // Works with either /c/:slug or /communities/:slug; prefer /c for brevity.
+    window.location.href = `/${locale}/c/${slug}`;
+  };
+
+  const containerCls =
+    'max-w-[75vw] md:max-w-[560px] rounded-2xl overflow-hidden border bg-white/[.06] border-white/12 hover:bg-white/[.1] cursor-pointer';
+
+  if (loading || !data) {
+    return (
+      <div className={containerCls}>
+        <div className="h-28 bg-white/5" />
+        <div className="p-3 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-white/10 animate-pulse" />
+          <div className="flex-1">
+            <div className="h-3 w-48 bg-white/10 rounded animate-pulse" />
+            <div className="mt-2 h-3 w-28 bg-white/10 rounded animate-pulse" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={containerCls} onClick={go} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') go(); }}>
+      <div className="relative h-[160px] bg-white/[.03]">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={data.bannerUrl || '/images/banner-placeholder.png'} alt="" className="w-full h-full object-cover" />
+        <div className="absolute left-3 bottom-3 flex items-center gap-3">
+          <div className="relative w-12 h-12 rounded-full overflow-hidden border border-white/25">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={data.avatarUrl || '/images/avatar-placeholder.png'} alt="" className="w-full h-full object-cover" />
+          </div>
+          <div>
+            <div className="text-[15px] font-semibold leading-tight">{data.name}</div>
+            <div className="text-[12px] text-white/70">@{data.slug}{typeof data.memberCount === 'number' ? ` · ${data.memberCount} members` : ''}</div>
+          </div>
+        </div>
+      </div>
+      {data.description && (
+        <div className="px-3 py-2 text-[13px] text-white/80 line-clamp-3">{data.description}</div>
+      )}
+    </div>
+  );
+}
+
 /* ------------------------- Page ------------------------- */
 export default function ChatThreadPage() {
   const { id } = useParams<{ id: string }>();
@@ -1057,6 +1161,24 @@ export default function ChatThreadPage() {
                     <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
                       <div>
                         <ProfileLinkPreview handle={pLink.handle} locale={locale} />
+                        <div
+                          className="text-[11px] mt-1 text-white/60 text-right"
+                          title={new Date(m.createdAt).toLocaleString()}
+                        >
+                          {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+
+                // Community-Link Preview (NEW)
+                const cLink = parseCommunityLink(m.text);
+                if (cLink && (!m.text || m.text.trim() === cLink.url.trim())) {
+                  return (
+                    <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
+                      <div>
+                        <CommunityLinkPreview slug={cLink.slug} locale={locale} />
                         <div
                           className="text-[11px] mt-1 text-white/60 text-right"
                           title={new Date(m.createdAt).toLocaleString()}

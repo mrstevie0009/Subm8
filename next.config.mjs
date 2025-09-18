@@ -5,11 +5,17 @@ const withNextIntl = createNextIntlPlugin('./i18n.ts');
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-    turbopack: {}, // Turbopack ist jetzt stable
-    experimental: {
-    serverActions: {
-      bodySizeLimit: '200mb', // z.B. 10mb, 16mb, 25mb …
-    },
+  images: {
+    remotePatterns: [
+      { protocol: 'https', hostname: 'media.tenor.com' },
+      { protocol: 'https', hostname: 'tenor.com' },
+      { protocol: 'https', hostname: 'i.giphy.com' },
+      { protocol: 'https', hostname: 'media.giphy.com' },
+    ],
+  },
+  turbopack: {},
+  experimental: {
+    serverActions: { bodySizeLimit: '200mb' },
   },
 };
 

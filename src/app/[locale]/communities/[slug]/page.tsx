@@ -1,4 +1,3 @@
-// src/app/[locale]/communities/[slug]/page.tsx
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/currentUser';
 import { notFound } from 'next/navigation';
@@ -7,6 +6,7 @@ import CommunityComposer from '@/components/CommunityComposer';
 import BackButton from '@/components/BackButton';
 import CommunityCompactHeader from '@/components/CommunityCompactHeader';
 import CommunityFeedClient from '@/components/CommunityFeedClient';
+import CommunityShareButton from '@/components/CommunityShareButton';
 import type { FeedPost as PostCardFeedPost } from '@/components/PostCard';
 
 type Params = { locale: string; slug: string };
@@ -222,16 +222,24 @@ export default async function CommunityPage({ params }: { params: Promise<Params
             <div className="text-sm opacity-70 truncate">@{community.slug}</div>
             {community.description && <p className="mt-1 text-sm opacity-90">{community.description}</p>}
             <div className="mt-2 text-sm opacity-80">
-              {community._count.CommunityMember.toLocaleString()} members · Policy:{' '}
+              {community._count.CommunityMember.toLocaleString()} members · Policy{' '}
               <span className="uppercase">{community.joinPolicy}</span>
             </div>
           </div>
 
-          <CommunityJoinButton
-            slug={community.slug}
-            initialJoined={joined}
-            initialMembers={community._count.CommunityMember}
-          />
+          {/* Join/Leave + Share (Share rechts neben Leave) */}
+          <div className="flex items-center gap-2">
+            <CommunityJoinButton
+              slug={community.slug}
+              initialJoined={joined}
+              initialMembers={community._count.CommunityMember}
+            />
+            <CommunityShareButton
+              locale={locale}
+              name={community.name}
+              slug={community.slug}
+            />
+          </div>
         </div>
       </header>
 

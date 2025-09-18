@@ -3,9 +3,132 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
+import { createPortal } from 'react-dom';
 
 type Props = { slug: string };
 
+/* ---------------- GIF Picker (Tenor) – wie im ComposePostModal ---------------- */
+const TENOR_KEY = process.env.NEXT_PUBLIC_TENOR_API_KEY ?? 'LIVDSRZULELA'; // Demo-Key; produktiv via ENV ersetzen
+const TENOR_BASE = 'https://g.tenor.com/v1';
+
+type TenorMedia = {
+  gif?: { url?: string };
+  mediumgif?: { url?: string };
+  tinygif?: { url?: string };
+  nanogif?: { url?: string };
+};
+type TenorItem = { id?: string; media?: TenorMedia[] };
+type TenorResp = { results?: TenorItem[] };
+
+function GifPickerModal({
+  open,
+  onClose,
+  onPick,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onPick: (gifUrl: string) => void;
+}) {
+  const [q, setQ] = React.useState('');
+  const [loading, setLoading] = React.useState(false);
+  const [err, setErr] = React.useState<string | null>(null);
+  const [items, setItems] = React.useState<{ id: string; url: string }[]>([]);
+
+  const pickUrlFromItem = (it: TenorItem): string | null => {
+    const m = it.media?.[0];
+    return m?.gif?.url || m?.mediumgif?.url || m?.tinygif?.url || m?.nanogif?.url || null;
+  };
+
+  const run = React.useCallback(async (query?: string) => {
+    setErr(null);
+    setLoading(true);
+    try {
+      const endpoint =
+        query && query.trim()
+          ? `${TENOR_BASE}/search?q=${encodeURIComponent(query)}&key=${TENOR_KEY}&limit=24&media_filter=minimal`
+          : `${TENOR_BASE}/trending?key=${TENOR_KEY}&limit=24&media_filter=minimal`;
+
+      const r = await fetch(endpoint);
+      const j = (await r.json()) as TenorResp;
+      const list =
+        (j.results ?? [])
+          .map((it) => {
+            const url = pickUrlFromItem(it);
+            return url ? { id: it.id ?? crypto.randomUUID(), url } : null;
+          })
+          .filter(Boolean) as { id: string; url: string }[];
+
+      setItems(list);
+    } catch {
+      setErr('Konnte GIFs nicht laden.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    if (open) run();
+  }, [open, run]);
+
+  if (!open) return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[2147483602]">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute left-1/2 top-1/2 w-[min(960px,95vw)] max-h-[85vh] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-white/12 bg-[#111] p-3 shadow-2xl">
+        <div className="flex items-center gap-2">
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') run(q); }}
+            placeholder="Nach GIFs suchen…"
+            className="flex-1 h-10 rounded-xl bg-white/[.06] border border-white/10 px-3 outline-none"
+          />
+          <button
+            type="button"
+            onClick={() => run(q)}
+            className="h-10 px-4 rounded-xl bg-[var(--purple)] text-white hover:opacity-95"
+          >
+            Suchen
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="h-10 px-3 rounded-xl border border-white/15 hover:bg-white/10"
+          >
+            Schließen
+          </button>
+        </div>
+
+        <div className="mt-3">
+          {err && <div className="text-red-300 text-sm mb-2">{err}</div>}
+          {loading ? (
+            <div className="text-sm text-white/80 py-8 text-center">Lade GIFs…</div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 overflow-y-auto max-h-[65vh] pr-1">
+              {items.map((it) => (
+                <button
+                  key={it.id}
+                  type="button"
+                  className="relative group rounded-lg overflow-hidden border border-white/10 hover:border-white/25"
+                  onClick={() => onPick(it.url)}
+                  title="Auswählen"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={it.url} alt="" loading="lazy" decoding="async" className="block w-full h-44 object-cover" />
+                  <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+/* ---------------------- Community Composer ---------------------- */
 export default function CommunityComposer({ slug }: Props) {
   const router = useRouter();
 
@@ -15,7 +138,7 @@ export default function CommunityComposer({ slug }: Props) {
   const [file, setFile] = React.useState<File | null>(null);
   const [filePreview, setFilePreview] = React.useState<string | null>(null);
   const [gifUrl, setGifUrl] = React.useState<string>('');
-  const [showGifBox, setShowGifBox] = React.useState(false);
+  const [gifOpen, setGifOpen] = React.useState(false);
 
   const [loading, setLoading] = React.useState(false);
   const [err, setErr] = React.useState<string | null>(null);
@@ -59,12 +182,6 @@ export default function CommunityComposer({ slug }: Props) {
       if (filePreview) URL.revokeObjectURL(filePreview);
     };
   }, [filePreview]);
-
-  function isValidGifLink(u: string) {
-    const s = u.trim();
-    if (!/^https?:\/\//i.test(s)) return false;
-    return /\.(gif)(\?.*)?$/i.test(s);
-  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -125,7 +242,7 @@ export default function CommunityComposer({ slug }: Props) {
         value={text}
         onChange={(e) => setText(e.target.value)}
         rows={3}
-        placeholder="Was gibt’s Neues in der Community?"
+        placeholder="Whats new?"
         className="w-full rounded-xl bg-white/[.06] border border-white/10 px-3 py-2 outline-none"
         maxLength={4000}
       />
@@ -171,7 +288,7 @@ export default function CommunityComposer({ slug }: Props) {
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-2 justify-between">
         <div className="flex items-center gap-2.5">
-          {/* Media (Bild ODER Video) – gleicher Look wie im ComposePostModal) */}
+          {/* Media (Bild ODER Video) */}
           <label className="inline-flex items-center gap-2.5 px-3 py-1.5 rounded-lg border border-white/12 hover:bg-white/[.06] cursor-pointer">
             <input
               type="file"
@@ -189,13 +306,13 @@ export default function CommunityComposer({ slug }: Props) {
             <span className="text-sm text-white/80">Media</span>
           </label>
 
-          {/* GIF – gleicher Look wie im ComposePostModal */}
+          {/* GIF – öffnet Tenor Picker wie im ComposePostModal */}
           <button
             type="button"
-            onClick={() => setShowGifBox((v) => !v)}
+            onClick={() => setGifOpen(true)}
             className="inline-flex items-center gap-2.5 px-3 py-1.5 rounded-lg border border-white/12 hover:bg-white/[.06]"
-            title="GIF per Link einfügen"
-            aria-expanded={showGifBox || undefined}
+            title="GIF suchen"
+            aria-expanded={gifOpen || undefined}
           >
             <span
               className="inline-grid place-items-center"
@@ -206,43 +323,6 @@ export default function CommunityComposer({ slug }: Props) {
             </span>
             <span className="text-sm text-white/80">GIF</span>
           </button>
-
-          {showGifBox && (
-            <div className="relative">
-              <div className="absolute z-20 mt-2 w-80 rounded-xl border border-white/10 bg-black/85 backdrop-blur p-3 shadow-lg">
-                <label className="block text-xs opacity-80 mb-1">
-                  GIF-Link (direkte <code>.gif</code>-URL)
-                </label>
-                <input
-                  type="url"
-                  value={gifUrl}
-                  onChange={(e) => {
-                    setGifUrl(e.target.value);
-                    if (e.target.value) {
-                      if (filePreview) URL.revokeObjectURL(filePreview);
-                      setFile(null);
-                      setFilePreview(null);
-                    }
-                  }}
-                  placeholder="https://media.giphy.com/media/.../giphy.gif"
-                  className="w-full rounded-lg bg-white/[.06] border border-white/10 px-2 py-1 outline-none text-sm"
-                />
-                <div className="mt-2 flex items-center justify-between">
-                  <span className="text-xs opacity-70">
-                    {gifUrl && !isValidGifLink(gifUrl) ? 'Kein direkter GIF-Link' : '\u00A0'}
-                  </span>
-                  <button
-                    type="button"
-                    className="px-3 py-1.5 rounded-lg bg-[var(--purple)] text-white text-sm disabled:opacity-50"
-                    onClick={() => setShowGifBox(false)}
-                    disabled={!!gifUrl && !isValidGifLink(gifUrl)}
-                  >
-                    Übernehmen
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
 
         <div className="flex items-center gap-3">
@@ -256,6 +336,20 @@ export default function CommunityComposer({ slug }: Props) {
           </button>
         </div>
       </div>
+
+      {/* GIF Picker Modal (Portal) */}
+      <GifPickerModal
+        open={gifOpen}
+        onClose={() => setGifOpen(false)}
+        onPick={(url) => {
+          // GIF auswählen: Datei-Vorschau zurücksetzen, URL setzen
+          if (filePreview) URL.revokeObjectURL(filePreview);
+          setFile(null);
+          setFilePreview(null);
+          setGifUrl(url);
+          setGifOpen(false);
+        }}
+      />
     </form>
   );
 }

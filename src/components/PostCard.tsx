@@ -147,6 +147,11 @@ function isVideoUrl(url?: string | null): boolean {
   const clean = url.split('?')[0].toLowerCase();
   return /\.(mp4|webm|ogg|ogv|mov|m4v|mkv)$/i.test(clean);
 }
+function isGifUrl(url?: string | null): boolean {
+  if (!url) return false;
+  const clean = url.split('?')[0].toLowerCase();
+  return /\.gif$/i.test(clean);
+}
 
 /** Media-Renderer */
 function MediaView({
@@ -156,6 +161,7 @@ function MediaView({
 }: { url?: string | null; alt?: string | null; priority?: boolean }) {
   if (!url) return null;
 
+  // Videos
   if (isVideoUrl(url)) {
     const stop = (e: React.SyntheticEvent) => { e.stopPropagation(); };
     return (
@@ -176,6 +182,23 @@ function MediaView({
     );
   }
 
+  // GIFs immer als <img> (Animation + keine next/image-Domain-Pflicht)
+  if (isGifUrl(url)) {
+    return (
+      <figure className="mt-3 overflow-hidden rounded-xl border border-white/10 bg-black/20">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={url}
+          alt={alt ?? ''}
+          loading={priority ? 'eager' : 'lazy'}
+          decoding="async"
+          className="block mx-auto h-auto w-auto max-w-full max-h-[65vh] sm:max-h-[70vh] object-contain"
+        />
+      </figure>
+    );
+  }
+
+  // Sonstige Bilder: next/image
   return (
     <figure className="mt-3 overflow-hidden rounded-xl border border-white/10 bg-black/20">
       <div className="relative w-full">

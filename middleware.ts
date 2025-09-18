@@ -1,31 +1,9 @@
+// middleware.ts (im Projekt-Root)
 import createMiddleware from 'next-intl/middleware';
-import {locales, defaultLocale} from './i18n';
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
+import nextIntlConfig from './next-intl.config';
 
-
-export default createMiddleware({
-locales,
-defaultLocale,
-localePrefix: 'always'
-});
-
-export function middleware(req: NextRequest) {
-  const { pathname } = req.nextUrl;
-
-  // API, _next, statische Dateien bypassen
-  if (
-    pathname.startsWith('/api') ||
-    pathname.startsWith('/_next') ||
-    pathname.match(/\.[a-zA-Z0-9]+$/)
-  ) {
-    return NextResponse.next();
-  }
-
-  // ... dein bestehendes Locale-Handling ...
-  return NextResponse.next();
-}
+export default createMiddleware(nextIntlConfig);
 
 export const config = {
-matcher: ['/((?!api|_next|uploads|.*\\..*).*)'],
+  matcher: ['/((?!api|_next|uploads|.*\\..*).*)'],
 };
