@@ -1,14 +1,12 @@
+//src/lib/feed.ts
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/currentUser';
 import { relativeTime } from '@/lib/relativeTime';
 import type { Role } from '@prisma/client';
-import type { Post as PostCardPost } from '@/components/PostCard';
 
 function toUiRole(role: Role): 'domme' | 'submissive' {
   return role === 'DOMME' ? 'domme' : 'submissive';
 }
-
-export type FeedPost = PostCardPost & { initiallyBookmarked?: boolean };
 
 async function ensureBlockTables() {
   await prisma.$executeRawUnsafe(`
@@ -31,7 +29,7 @@ async function ensureBlockTables() {
   `);
 }
 
-export async function loadHomeFeed(locale: string, take = 30): Promise<FeedPost[]> {
+export async function loadHomeFeed(locale: string, take = 30){
   const me = await getCurrentUser().catch(() => null);
 
   const posts = await prisma.post.findMany({

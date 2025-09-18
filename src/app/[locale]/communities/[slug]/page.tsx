@@ -1,23 +1,17 @@
+// src/app/[locale]/communities/[slug]/page.tsx
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/currentUser';
-import type { Role } from '@prisma/client';
-import { relativeTime } from '@/lib/relativeTime';
-import type { Post as PostCardPost } from '@/components/PostCard';
+import { notFound } from 'next/navigation';
 import CommunityJoinButton from '@/components/CommunityJoinButton';
 import CommunityComposer from '@/components/CommunityComposer';
 import BackButton from '@/components/BackButton';
-import { notFound } from 'next/navigation';
 import CommunityCompactHeader from '@/components/CommunityCompactHeader';
 import CommunityFeedClient from '@/components/CommunityFeedClient';
+import type { FeedPost as PostCardFeedPost } from '@/components/PostCard';
 
 type Params = { locale: string; slug: string };
 
-function toUiRole(role: Role): 'domme' | 'submissive' {
-  return role === 'DOMME' ? 'domme' : 'submissive';
-}
-
-type FeedPost = PostCardPost & { createdAtISO: string };
-
+// gleiche Selektion wie im Home-Feed, damit die PostCard alles hat
 export default async function CommunityPage({ params }: { params: Promise<Params> }) {
   const { locale, slug } = await params;
   const me = await getCurrentUser().catch(() => null);
@@ -34,7 +28,6 @@ export default async function CommunityPage({ params }: { params: Promise<Params
       _count: { select: { CommunityMember: true } },
     },
   });
-
   if (!community) notFound();
 
   const joined = me
@@ -44,42 +37,168 @@ export default async function CommunityPage({ params }: { params: Promise<Params
       }))
     : false;
 
-  const posts = await prisma.post.findMany({
-    where: { communityId: community.id },
-    orderBy: { createdAt: 'desc' },
-    include: {
-      author: {
-        select: {
-          displayName: true,
-          handle: true,
-          role: true,
-          avatarUrl: true,
+  const [posts, likedByMe, bookmarkedByMe] = await Promise.all([
+    prisma.post.findMany({
+      where: { communityId: community.id },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        author: {
+          select: {
+            id: true,
+            handle: true,
+            displayName: true,
+            role: true,
+            avatarUrl: true,
+          },
         },
+        repostOf: {
+          select: {
+            id: true,
+            text: true,
+            mediaUrl: true,
+            mediaAlt: true,
+            createdAt: true,
+            author: {
+              select: {
+                id: true,
+                handle: true,
+                displayName: true,
+                role: true,
+                avatarUrl: true,
+              },
+            },
+            _count: { select: { Like: true, Comment: true, reposts: true } },
+          },
+        },
+        quoteOf: {
+          select: {
+            id: true,
+            text: true,
+            mediaUrl: true,
+            mediaAlt: true,
+            createdAt: true,
+            author: {
+              select: {
+                id: true,
+                handle: true,
+                displayName: true,
+                role: true,
+                avatarUrl: true,
+              },
+            },
+          },
+        },
+        _count: { select: { Like: true, Comment: true, reposts: true } },
       },
-      _count: { select: { Like: true, Comment: true } },
-    },
-    take: 30,
-  });
+      take: 30,
+    }),
+    me
+      ? prisma.like.findMany({ where: { userId: me.id }, select: { postId: true } })
+      : Promise.resolve([] as { postId: string }[]),
+    me
+      ? prisma.bookmark.findMany({ where: { userId: me.id }, select: { postId: true } })
+      : Promise.resolve([] as { postId: string }[]),
+  ]);
 
-  const items: FeedPost[] = posts.map((p) => ({
-    id: p.id,
-    author: {
-      name: p.author.displayName,
-      role: toUiRole(p.author.role),
-      handle: p.author.handle,
-      avatarUrl: p.author.avatarUrl ?? undefined,
-    },
-    createdAt: relativeTime(p.createdAt, locale),
-    createdAtISO: p.createdAt.toISOString(),
-    text: p.text,
-    mediaUrl: p.mediaUrl ?? undefined,
-    mediaAlt: p.mediaAlt ?? undefined,
-    stats: {
-      comments: p._count.Comment ?? 0,
-      reposts: 0,
-      likes: p._count.Like ?? 0,
-    },
-  }));
+  const likedSet = new Set(likedByMe.map((l) => l.postId));
+  const bookmarkedSet = new Set(bookmarkedByMe.map((b) => b.postId));
+
+  // Block-Flags gegen den Feed-Item-Autor (bei Repost = Reposter)
+  let hasBlockedSet = new Set<string>();
+  let blockedBySet = new Set<string>();
+  if (me) {
+    const feedAuthorIds = Array.from(new Set(posts.map((p) => p.author.id)));
+    if (feedAuthorIds.length > 0) {
+      const [myBlocks, blocksMe] = await Promise.all([
+        prisma.block.findMany({
+          where: { blockerId: me.id, blockedId: { in: feedAuthorIds } },
+          select: { blockedId: true },
+        }),
+        prisma.block.findMany({
+          where: { blockerId: { in: feedAuthorIds }, blockedId: me.id },
+          select: { blockerId: true },
+        }),
+      ]);
+      hasBlockedSet = new Set(myBlocks.map((b) => b.blockedId));
+      blockedBySet = new Set(blocksMe.map((b) => b.blockerId));
+    }
+  }
+
+  const items: PostCardFeedPost[] = posts.map((p) => {
+    const isRepost = !!p.repostOf;
+    const isQuote = !!p.quoteOf;
+
+    const content = isRepost
+      ? {
+          id: p.repostOf!.id,
+          text: p.repostOf!.text ?? '',
+          mediaUrl: p.repostOf!.mediaUrl,
+          mediaAlt: p.repostOf!.mediaAlt,
+          createdAt: p.repostOf!.createdAt.toISOString(),
+          author: {
+            id: p.repostOf!.author.id,
+            handle: p.repostOf!.author.handle,
+            displayName: p.repostOf!.author.displayName,
+            role: p.repostOf!.author.role,
+            avatarUrl: p.repostOf!.author.avatarUrl,
+          },
+          quote: null,
+        }
+      : {
+          id: p.id,
+          text: p.text ?? '',
+          mediaUrl: p.mediaUrl,
+          mediaAlt: p.mediaAlt,
+          createdAt: p.createdAt.toISOString(),
+          author: {
+            id: p.author.id,
+            handle: p.author.handle,
+            displayName: p.author.displayName,
+            role: p.author.role,
+            avatarUrl: p.author.avatarUrl,
+          },
+          quote: isQuote
+            ? {
+                id: p.quoteOf!.id,
+                text: p.quoteOf!.text ?? '',
+                mediaUrl: p.quoteOf!.mediaUrl,
+                mediaAlt: p.quoteOf!.mediaAlt,
+                createdAt: p.quoteOf!.createdAt.toISOString(),
+                author: {
+                  id: p.quoteOf!.author.id,
+                  handle: p.quoteOf!.author.handle,
+                  displayName: p.quoteOf!.author.displayName,
+                  role: p.quoteOf!.author.role,
+                  avatarUrl: p.quoteOf!.author.avatarUrl,
+                },
+              }
+            : null,
+        };
+
+    const statSource = isRepost ? p.repostOf! : p;
+    const viewerTargetId = isRepost ? p.repostOf!.id : p.id;
+
+    return {
+      id: p.id,
+      createdAtISO: p.createdAt.toISOString(),
+      content,
+      reposter: isRepost
+        ? { id: p.author.id, handle: p.author.handle, displayName: p.author.displayName }
+        : null,
+      stats: {
+        comments: statSource._count.Comment ?? 0,
+        reposts: statSource._count.reposts ?? 0,
+        likes: statSource._count.Like ?? 0,
+      },
+      viewer: {
+        liked: likedSet.has(viewerTargetId),
+        bookmarked: bookmarkedSet.has(viewerTargetId),
+        hasBlockedAuthor: me ? hasBlockedSet.has(p.author.id) : false,
+        blockedByAuthor: me ? blockedBySet.has(p.author.id) : false,
+      },
+      initiallyBookmarked: bookmarkedSet.has(viewerTargetId),
+    } satisfies PostCardFeedPost;
+  });
 
   return (
     <section className="grid gap-4 max-w-2xl mx-auto">
@@ -94,7 +213,6 @@ export default async function CommunityPage({ params }: { params: Promise<Params
         )}
 
         <div className="flex items-start justify-between gap-3">
-          {/* Links: Back + Texte */}
           <div className="min-w-0 relative pl-10">
             <div className="absolute left-0 top-0.5">
               <BackButton fallbackHref={`/${locale}/communities`} />
@@ -102,9 +220,7 @@ export default async function CommunityPage({ params }: { params: Promise<Params
 
             <div className="text-xl font-bold truncate">{community.name}</div>
             <div className="text-sm opacity-70 truncate">@{community.slug}</div>
-            {community.description && (
-              <p className="mt-1 text-sm opacity-90">{community.description}</p>
-            )}
+            {community.description && <p className="mt-1 text-sm opacity-90">{community.description}</p>}
             <div className="mt-2 text-sm opacity-80">
               {community._count.CommunityMember.toLocaleString()} members · Policy:{' '}
               <span className="uppercase">{community.joinPolicy}</span>
@@ -119,7 +235,6 @@ export default async function CommunityPage({ params }: { params: Promise<Params
         </div>
       </header>
 
-      {/* Compact Header (fixed, blendet ein beim Scrollen) */}
       <CommunityCompactHeader
         locale={locale}
         name={community.name}
@@ -128,15 +243,13 @@ export default async function CommunityPage({ params }: { params: Promise<Params
         initialMembers={community._count.CommunityMember}
       />
 
-      {/* Composer – nur wenn Mitglied */}
       {joined && (
         <div className="rounded-app border border-sub shadow-app p-4">
           <CommunityComposer slug={community.slug} />
         </div>
       )}
 
-      {/* FEED + New-Posts-Button (Client) */}
-      <CommunityFeedClient initialItems={items} locale={locale} slug={community.slug} />
+      <CommunityFeedClient initialItems={items} slug={community.slug} />
     </section>
   );
 }

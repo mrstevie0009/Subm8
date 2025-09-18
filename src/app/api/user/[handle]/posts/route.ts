@@ -143,7 +143,8 @@ export async function GET(_req: Request, ctx: { params: Promise<Params> }) {
           : null,
       }));
 
-    return NextResponse.json({ ok: true, items });
+    // Kein Shorthand, um Parser-/ESLint-Issue zu vermeiden
+    return NextResponse.json({ ok: true, items: items });
   } catch {
     return NextResponse.json({ ok: false, error: 'Failed to load posts' }, { status: 500 });
   }

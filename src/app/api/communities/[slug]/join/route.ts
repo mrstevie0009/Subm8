@@ -6,7 +6,9 @@ import type { Role } from '@prisma/client';
 
 export const runtime = 'nodejs';
 
-export async function POST(_req: Request, { params }: { params: { slug: string } }) {
+type Params = { slug: string };
+
+export async function POST(_req: Request, ctx: { params: Promise<Params> }) {
   try {
     const session = await getAuth();
     const userId = session?.user?.id;
@@ -16,9 +18,9 @@ export async function POST(_req: Request, { params }: { params: { slug: string }
       return NextResponse.json({ ok: false, error: 'UNAUTHORIZED' }, { status: 401 });
     }
 
-    const slug = params.slug.toLowerCase();
+    const { slug } = await ctx.params; // << wichtig
     const community = await prisma.community.findUnique({
-      where: { slug },
+      where: { slug: slug.toLowerCase() },
       select: { id: true, createdById: true, joinPolicy: true },
     });
     if (!community) {
@@ -41,7 +43,6 @@ export async function POST(_req: Request, { params }: { params: { slug: string }
         break;
       case 'OPEN':
       default:
-        // ok
         break;
     }
 
@@ -59,7 +60,7 @@ export async function POST(_req: Request, { params }: { params: { slug: string }
   }
 }
 
-export async function DELETE(_req: Request, { params }: { params: { slug: string } }) {
+export async function DELETE(_req: Request, ctx: { params: Promise<Params> }) {
   try {
     const session = await getAuth();
     const userId = session?.user?.id;
@@ -67,9 +68,9 @@ export async function DELETE(_req: Request, { params }: { params: { slug: string
       return NextResponse.json({ ok: false, error: 'UNAUTHORIZED' }, { status: 401 });
     }
 
-    const slug = params.slug.toLowerCase();
+    const { slug } = await ctx.params; // << wichtig
     const community = await prisma.community.findUnique({
-      where: { slug },
+      where: { slug: slug.toLowerCase() },
       select: { id: true, createdById: true },
     });
     if (!community) {

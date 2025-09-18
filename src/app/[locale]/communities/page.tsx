@@ -1,3 +1,4 @@
+//src/app/[locale]/communities/page.tsx
 'use client';
 
 import * as React from 'react';

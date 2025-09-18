@@ -434,6 +434,9 @@ export default function PostCard({
   const [quoteOpen, setQuoteOpen] = React.useState(false);
   const [moreOpen, setMoreOpen] = React.useState(false);
 
+  // NEU: Repost-Pending (für Disabled/Optimismus)
+  const [reposting, setReposting] = React.useState(false);
+
   // Pin (nur sinnvoll im Profil-Kontext, aber nutzbar überall)
   const [isPinned, setIsPinned] = React.useState<boolean>(false);
 
@@ -565,7 +568,7 @@ export default function PostCard({
   }
 
   function RepostButton() {
-    const disabled = blockedByEither;
+    const disabled = blockedByEither || reposting;
     return (
       <div className="relative" data-no-nav onClick={(e) => e.stopPropagation()}>
         <button
@@ -592,10 +595,28 @@ export default function PostCard({
           >
             <button
               type="button"
-              className="w-full text-left px-3 py-2 rounded hover:bg-white/10"
-              onClick={() => {
-                setReposts((n) => n + 1);
+              className="w-full text-left px-3 py-2 rounded hover:bg-white/10 disabled:opacity-50"
+              disabled={reposting}
+              onClick={async () => {
+                // Optimistisch + Server speichern
                 setRepostMenuOpen(false);
+                setReposting(true);
+                setReposts((n) => n + 1);
+                try {
+                  const resp = await fetch(`/api/posts/${c.id}/repost`, { method: 'POST' });
+                  const j = await resp.json().catch(() => null);
+                  if (!resp.ok || !j?.ok) throw new Error(j?.error || `HTTP ${resp.status}`);
+
+                  // Optional: globales Event, falls jemand darauf hören möchte
+                  try {
+                    window.dispatchEvent(new CustomEvent('post:reposted', { detail: { originalId: c.id, newId: j.id } }));
+                  } catch {}
+                } catch {
+                  // Rollback bei Fehler
+                  setReposts((n) => Math.max(0, n - 1));
+                } finally {
+                  setReposting(false);
+                }
               }}
             >
               Repost
