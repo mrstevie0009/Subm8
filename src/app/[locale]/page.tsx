@@ -1,4 +1,3 @@
-//src/app/[locale]/page.tsx
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/currentUser';
 import HomeFeedClient from '@/components/HomeFeedClient';
@@ -24,7 +23,7 @@ export default async function HomePage({ params }: { params: Promise<Params> }) 
   const me = await getCurrentUser().catch(() => null);
 
   // Rolle ggf. nachladen
-  let viewerRole: Role = null;
+  let viewerRole: Role = (me as unknown as { role?: Role } | null)?.role ?? null;
   if (me && viewerRole == null) {
     const row = await prisma.user.findUnique({ where: { id: me.id }, select: { role: true } });
     viewerRole = (row?.role as Role) ?? null;
@@ -50,6 +49,7 @@ export default async function HomePage({ params }: { params: Promise<Params> }) 
             mediaUrl: true,
             mediaAlt: true,
             createdAt: true,
+            communityId: true, // ← wichtig für Community-Badge bei Reposts
             author: {
               select: {
                 id: true,
@@ -116,15 +116,21 @@ export default async function HomePage({ params }: { params: Promise<Params> }) 
     }
   }
 
+  // Effektive Community je Post: eigener Community-Bezug oder der des Originals bei Reposts
+  const effectiveCommunityId = (p: typeof posts[number]) =>
+    p.communityId ?? p.repostOf?.communityId ?? null;
+
   // Communities + Visibility filtern
-  const communityIds = Array.from(new Set(posts.map(p => p.communityId).filter(Boolean))) as string[];
+  const communityIds = Array.from(
+    new Set(posts.map(effectiveCommunityId).filter(Boolean) as string[])
+  );
   const communities = communityIds.length
     ? await prisma.community.findMany({
         where: { id: { in: communityIds } },
         select: { id: true, name: true, slug: true, joinPolicy: true },
       })
     : [];
-  const commById = new Map(communities.map(c => [c.id, c]));
+  const commById = new Map(communities.map((c) => [c.id, c]));
 
   const memberSet =
     me && communityIds.length
@@ -134,13 +140,14 @@ export default async function HomePage({ params }: { params: Promise<Params> }) 
               where: { userId: me.id, communityId: { in: communityIds } },
               select: { communityId: true },
             })
-          ).map(m => m.communityId)
+          ).map((m) => m.communityId)
         )
       : new Set<string>();
 
-  const visible = posts.filter(p => {
-    if (!p.communityId) return true;
-    const c = commById.get(p.communityId);
+  const visible = posts.filter((p) => {
+    const cid = effectiveCommunityId(p);
+    if (!cid) return true;
+    const c = commById.get(cid);
     if (!c) return false;
     return canSeeCommunity(c.joinPolicy as JoinPolicy, viewerRole, memberSet.has(c.id));
   });
@@ -198,7 +205,8 @@ export default async function HomePage({ params }: { params: Promise<Params> }) 
 
     const statSource = isRepost ? p.repostOf! : p;
     const viewerTargetId = isRepost ? p.repostOf!.id : p.id;
-    const community = p.communityId ? commById.get(p.communityId) ?? null : null;
+    const cid = effectiveCommunityId(p);
+    const community = cid ? commById.get(cid) ?? null : null;
 
     return {
       id: p.id,

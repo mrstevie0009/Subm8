@@ -106,11 +106,31 @@ function ShieldOffIcon({ size = 12 }: { size?: number }) {
     </svg>
   );
 }
-function RepostBadgeIcon() {
+function RepostBadgeIcon({
+  size = 22,
+  strokeWidth = 1.9,
+}: { size?: number; strokeWidth?: number }) {
   return (
-    <svg viewBox="0 0 24 24" width={14} height={14} fill="currentColor" aria-hidden>
-      <path d="M7 9H4l4-4 4 4H9v6a3 3 0 0 0 3 3h2v-2h-2a1 1 0 0 1-1-1V9z" />
-      <path d="M17 15h3l-4 4-4-4h3V9a3 3 0 0 0-3-3h-2V4h2a5 5 0 0 1 5 5v6z" />
+    <svg
+      viewBox="0 0 24 24"
+      width={size}
+      height={size}
+      aria-hidden
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={strokeWidth}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      {/* obere Pfeilschleife (nach rechts) */}
+      <path d="M7 7h9" />
+      <path d="M16 7l-2-2" />
+      <path d="M16 7l-2 2" />
+
+      {/* untere Pfeilschleife (nach links) */}
+      <path d="M17 17H8" />
+      <path d="M8 17l2-2" />
+      <path d="M8 17l2 2" />
     </svg>
   );
 }
@@ -865,8 +885,9 @@ export default function PostCard({
         if (e.key !== 'Enter' && e.key !== ' ') return;
         e.preventDefault();
       }
-      const target = e.target as HTMLElement | null;
-      if (target && target.closest('[data-no-nav]')) return;
+      const root = e.currentTarget as HTMLElement;                 // der Quote-Container
+      const barrier = (e.target as HTMLElement | null)?.closest('[data-no-nav]');
+      if (barrier && barrier !== root) return;                     // nur abbrechen, wenn es ein KIND mit data-no-nav ist
       router.push(`/${locale}/p/${q.id}`);
     };
 

@@ -1,3 +1,4 @@
+// src/app/api/feed/route.ts
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/currentUser';
@@ -7,16 +8,17 @@ export const dynamic = 'force-dynamic';
 type JoinPolicy = 'OPEN' | 'INVITE_ONLY' | 'DOMME_ONLY' | 'SUB_ONLY';
 type Role = 'DOMME' | 'SUBMISSIVE' | null;
 
-function canSeeCommunity(
-  policy: JoinPolicy,
-  viewerRole: Role,
-  isMember: boolean
-) {
+function canSeeCommunity(policy: JoinPolicy, viewerRole: Role, isMember: boolean) {
   if (policy === 'OPEN') return true;
   if (policy === 'INVITE_ONLY') return isMember;
   if (policy === 'DOMME_ONLY') return isMember || viewerRole === 'DOMME';
   if (policy === 'SUB_ONLY') return isMember || viewerRole === 'SUBMISSIVE';
   return false;
+}
+
+// Hilfsfunktion: effektive Community bestimmen (bei Reposts vom Original übernehmen)
+function effectiveCommunityId(p: { communityId: string | null; repostOf?: { communityId: string | null } | null }) {
+  return p.communityId ?? p.repostOf?.communityId ?? null;
 }
 
 export async function GET(req: Request) {
@@ -42,11 +44,13 @@ export async function GET(req: Request) {
   }
 
   // Communities & Memberships laden und Posts nach Policy filtern
-  async function filterAndCollect<T extends { id: string; communityId: string | null }>(posts: T[]) {
+  async function filterAndCollect<T extends { id: string; communityId: string | null; repostOf?: { communityId: string | null } | null }>(
+    posts: T[]
+  ) {
     const communityIds = Array.from(
       new Set(
         posts
-          .map((p) => p.communityId)
+          .map((p) => effectiveCommunityId(p))
           .filter((id): id is string => typeof id === 'string')
       )
     );
@@ -73,8 +77,9 @@ export async function GET(req: Request) {
         : new Set<string>();
 
     const allowed = posts.filter((p) => {
-      if (!p.communityId) return true;
-      const c = byId.get(p.communityId);
+      const cid = effectiveCommunityId(p);
+      if (!cid) return true;
+      const c = byId.get(cid);
       if (!c) return false;
       return canSeeCommunity(c.joinPolicy as JoinPolicy, viewerRole, memberSet.has(c.id));
     });
@@ -86,7 +91,12 @@ export async function GET(req: Request) {
     // Für das Polling reicht eine gefilterte Zählung über die letzten X Einträge
     const recent = await prisma.post.findMany({
       where: { createdAt: { gt: sinceDate } },
-      select: { id: true, communityId: true, createdAt: true },
+      select: {
+        id: true,
+        communityId: true,
+        createdAt: true,
+        repostOf: { select: { communityId: true } }, // wichtig für Repost-Community
+      },
       orderBy: { createdAt: 'desc' },
       take: 200,
     });
@@ -109,6 +119,7 @@ export async function GET(req: Request) {
           mediaUrl: true,
           mediaAlt: true,
           createdAt: true,
+          communityId: true, // ← damit Badge bei Reposts erhalten bleibt
           author: {
             select: {
               id: true,
@@ -191,7 +202,9 @@ export async function GET(req: Request) {
       const statSource = isRepost ? p.repostOf! : p;
       const likeRefId = isRepost ? p.repostOf!.id : p.id;
 
-      const community = p.communityId ? communitiesById.get(p.communityId) ?? null : null;
+      // Effektive Community für Badge (bei Reposts vom Original)
+      const effectiveCid = effectiveCommunityId(p);
+      const community = effectiveCid ? communitiesById.get(effectiveCid) ?? null : null;
 
       return {
         id: p.id,
