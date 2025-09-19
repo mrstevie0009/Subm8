@@ -197,6 +197,9 @@ export default async function CommunityPage({ params }: { params: Promise<Params
         blockedByAuthor: me ? blockedBySet.has(p.author.id) : false,
       },
       initiallyBookmarked: bookmarkedSet.has(viewerTargetId),
+
+      // ← NEU: Community-Label für die Karte
+      community: { name: community.name, slug: community.slug },
     } satisfies PostCardFeedPost;
   });
 
@@ -227,7 +230,7 @@ export default async function CommunityPage({ params }: { params: Promise<Params
             </div>
           </div>
 
-          {/* Join/Leave + Share (Share rechts neben Leave) */}
+          {/* Join/Leave + Share */}
           <div className="flex items-center gap-2">
             <CommunityJoinButton
               slug={community.slug}

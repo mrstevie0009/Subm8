@@ -1,3 +1,4 @@
+//src/app/api/communities/[slug]/posts/route.ts
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuth } from '@/lib/auth';

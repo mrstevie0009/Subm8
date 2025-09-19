@@ -1,9 +1,23 @@
-// src/app/api/feed/route.ts
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/currentUser';
 
 export const dynamic = 'force-dynamic';
+
+type JoinPolicy = 'OPEN' | 'INVITE_ONLY' | 'DOMME_ONLY' | 'SUB_ONLY';
+type Role = 'DOMME' | 'SUBMISSIVE' | null;
+
+function canSeeCommunity(
+  policy: JoinPolicy,
+  viewerRole: Role,
+  isMember: boolean
+) {
+  if (policy === 'OPEN') return true;
+  if (policy === 'INVITE_ONLY') return isMember;
+  if (policy === 'DOMME_ONLY') return isMember || viewerRole === 'DOMME';
+  if (policy === 'SUB_ONLY') return isMember || viewerRole === 'SUBMISSIVE';
+  return false;
+}
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -17,9 +31,68 @@ export async function GET(req: Request) {
 
   const me = await getCurrentUser().catch(() => null);
 
+  // Rolle sicher laden (ohne any)
+  let viewerRole: Role = null;
+  if (me) {
+    const row = await prisma.user.findUnique({
+      where: { id: me.id },
+      select: { role: true },
+    });
+    viewerRole = (row?.role ?? null) as Role;
+  }
+
+  // Communities & Memberships laden und Posts nach Policy filtern
+  async function filterAndCollect<T extends { id: string; communityId: string | null }>(posts: T[]) {
+    const communityIds = Array.from(
+      new Set(
+        posts
+          .map((p) => p.communityId)
+          .filter((id): id is string => typeof id === 'string')
+      )
+    );
+
+    const communities = communityIds.length
+      ? await prisma.community.findMany({
+          where: { id: { in: communityIds } },
+          select: { id: true, name: true, slug: true, joinPolicy: true },
+        })
+      : [];
+
+    const byId = new Map(communities.map((c) => [c.id, c]));
+
+    const memberSet =
+      me && communityIds.length
+        ? new Set(
+            (
+              await prisma.communityMember.findMany({
+                where: { userId: me.id, communityId: { in: communityIds } },
+                select: { communityId: true },
+              })
+            ).map((m) => m.communityId)
+          )
+        : new Set<string>();
+
+    const allowed = posts.filter((p) => {
+      if (!p.communityId) return true;
+      const c = byId.get(p.communityId);
+      if (!c) return false;
+      return canSeeCommunity(c.joinPolicy as JoinPolicy, viewerRole, memberSet.has(c.id));
+    });
+
+    return { allowed, communitiesById: byId };
+  }
+
   if (onlyCount) {
-    const count = await prisma.post.count({ where: { createdAt: { gt: sinceDate } } });
-    return NextResponse.json({ count });
+    // Für das Polling reicht eine gefilterte Zählung über die letzten X Einträge
+    const recent = await prisma.post.findMany({
+      where: { createdAt: { gt: sinceDate } },
+      select: { id: true, communityId: true, createdAt: true },
+      orderBy: { createdAt: 'desc' },
+      take: 200,
+    });
+
+    const { allowed } = await filterAndCollect(recent);
+    return NextResponse.json({ count: allowed.length });
   }
 
   const posts = await prisma.post.findMany({
@@ -71,10 +144,10 @@ export async function GET(req: Request) {
     take: 50,
   });
 
-  // Für Likes/Bookmarks/Block-Status:
-  const likeTargetIds = posts.map((p) => (p.repostOf ? p.repostOf.id : p.id)); // Likes auf's Original bei Repost
-  const bookmarkIds = posts.map((p) => p.id); // Bookmarks aufs Feed-Item
-  const authorIds = Array.from(new Set(posts.map((p) => p.authorId)));
+  // Likes/Bookmarks/Blocks wie gehabt
+  const likeTargetIds = posts.map((p) => (p.repostOf ? p.repostOf.id : p.id));
+  const bookmarkIds = posts.map((p) => p.id);
+  const authorIds = Array.from(new Set(posts.map((p) => p.author.id)));
 
   const [likes, bms, myBlocks, blocksMe] = await Promise.all([
     me
@@ -108,13 +181,17 @@ export async function GET(req: Request) {
   const hasBlockedSet = new Set(myBlocks.map((b) => b.blockedId));
   const blockedBySet = new Set(blocksMe.map((b) => b.blockerId));
 
+  const { allowed, communitiesById } = await filterAndCollect(posts);
+
   return NextResponse.json({
-    posts: posts.map((p) => {
+    posts: allowed.map((p) => {
       const isRepost = !!p.repostOf;
       const isQuote = !!p.quoteOf;
 
-      const statSource = isRepost ? p.repostOf! : p; // Repost: Zähler vom Original
-      const likeRefId = isRepost ? p.repostOf!.id : p.id; // Likes aufs Original bei Repost
+      const statSource = isRepost ? p.repostOf! : p;
+      const likeRefId = isRepost ? p.repostOf!.id : p.id;
+
+      const community = p.communityId ? communitiesById.get(p.communityId) ?? null : null;
 
       return {
         id: p.id,
@@ -174,9 +251,12 @@ export async function GET(req: Request) {
         viewer: {
           liked: likedSet.has(likeRefId),
           bookmarked: bookmarkedSet.has(p.id),
-          hasBlockedAuthor: me ? hasBlockedSet.has(p.authorId) : false,
-          blockedByAuthor: me ? blockedBySet.has(p.authorId) : false,
+          hasBlockedAuthor: me ? hasBlockedSet.has(p.author.id) : false,
+          blockedByAuthor: me ? blockedBySet.has(p.author.id) : false,
         },
+
+        // Community-Infos fürs Badge
+        community: community ? { name: community.name, slug: community.slug } : null,
       };
     }),
   });

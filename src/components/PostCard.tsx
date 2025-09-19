@@ -4,6 +4,7 @@
 import * as React from 'react';
 import { createPortal } from 'react-dom';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import ProfileLink from '@/components/ProfileLink';
 import BookmarkButton from '@/components/BookmarkButton';
@@ -59,6 +60,8 @@ export type FeedPost = {
     blockedByAuthor?: boolean;
   };
   initiallyBookmarked?: boolean;
+  // ← NEU: Community-Label für die Karte
+  community?: { name: string; slug: string } | null;
 };
 
 /** --- Fix: Form-Action-Signatur für Server Actions an React angleichen --- */
@@ -514,12 +517,12 @@ export default function PostCard({
   }, [c.id]);
 
   React.useEffect(() => {
-  if (typeof pinnedPostId === 'string') {
-    setIsPinned(pinnedPostId === c.id);
-  } else if (pinnedPostId === null) {
-    setIsPinned(false);
-  }
-}, [pinnedPostId, c.id]);
+    if (typeof pinnedPostId === 'string') {
+      setIsPinned(pinnedPostId === c.id);
+    } else if (pinnedPostId === null) {
+      setIsPinned(false);
+    }
+  }, [pinnedPostId, c.id]);
 
   // heuristisch: sind wir auf einer Profilseite dieser Autorin / dieses Autors?
   const onProfileOfAuthor = typeof handle === 'string' && handle.toLowerCase() === c.author.handle.toLowerCase();
@@ -776,7 +779,6 @@ export default function PostCard({
               <>
                 {!isPinned ? (
                   <form
-                    
                     action={pinPostFormAction}
                     onSubmit={() => {
                       setIsPinned(true);
@@ -911,6 +913,21 @@ export default function PostCard({
       tabIndex={0}
       aria-label="Open post"
     >
+      {/* ← NEU: Community-Badge */}
+      {post.community && (
+        <div className="mb-3 -mt-1 text-[12px] text-white/80">
+          <Link
+            href={`/${locale}/communities/${post.community.slug}`}
+            className="inline-flex items-center gap-2 px-2 py-0.5 rounded-full border border-white/12 bg-white/[.04] hover:bg-white/[.08]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <span className="opacity-90 font-medium">Community Post</span>
+            <span className="opacity-70">·</span>
+            <span className="opacity-90">{post.community.name}</span>
+          </Link>
+        </div>
+      )}
+
       {post.reposter && (
         <div className="mb-1 -mt-1 flex items-center gap-2 text-[12px] text-white/70">
           <span className="inline-grid place-items-center w-4 h-4"><RepostBadgeIcon /></span>

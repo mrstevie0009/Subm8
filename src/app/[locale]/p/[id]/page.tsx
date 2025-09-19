@@ -13,6 +13,10 @@ export default async function PostDetailPage({ params }: { params: Promise<Param
   const p = await prisma.post.findUnique({
     where: { id },
     include: {
+      // WICHTIG: Relation heißt hier "Community" (großes C)
+      Community: {
+        select: { name: true, slug: true },
+      },
       author: {
         select: { id: true, handle: true, displayName: true, role: true, avatarUrl: true },
       },
@@ -117,6 +121,8 @@ export default async function PostDetailPage({ params }: { params: Promise<Param
       blockedByAuthor: false,
     },
     initiallyBookmarked: false,
+    // Community-Badge Daten an PostCard weitergeben
+    community: p.Community ? { name: p.Community.name, slug: p.Community.slug } : null,
   };
 
   return (

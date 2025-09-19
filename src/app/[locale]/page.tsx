@@ -1,4 +1,4 @@
-// src/app/[locale]/page.tsx
+//src/app/[locale]/page.tsx
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/currentUser';
 import HomeFeedClient from '@/components/HomeFeedClient';
@@ -7,11 +7,28 @@ import type { FeedPost } from '@/components/PostCard';
 export const dynamic = 'force-dynamic';
 
 type Params = { locale: string };
+type JoinPolicy = 'OPEN' | 'INVITE_ONLY' | 'DOMME_ONLY' | 'SUB_ONLY';
+type Role = 'DOMME' | 'SUBMISSIVE' | null;
+
+function canSeeCommunity(policy: JoinPolicy, viewerRole: Role, isMember: boolean) {
+  if (policy === 'OPEN') return true;
+  if (policy === 'INVITE_ONLY') return isMember;
+  if (policy === 'DOMME_ONLY') return isMember || viewerRole === 'DOMME';
+  if (policy === 'SUB_ONLY') return isMember || viewerRole === 'SUBMISSIVE';
+  return false;
+}
 
 export default async function HomePage({ params }: { params: Promise<Params> }) {
   await params; // locale wird hier nicht benötigt
 
   const me = await getCurrentUser().catch(() => null);
+
+  // Rolle ggf. nachladen
+  let viewerRole: Role = null;
+  if (me && viewerRole == null) {
+    const row = await prisma.user.findUnique({ where: { id: me.id }, select: { role: true } });
+    viewerRole = (row?.role as Role) ?? null;
+  }
 
   const [posts, likedByMe, bookmarkedByMe] = await Promise.all([
     prisma.post.findMany({
@@ -26,7 +43,6 @@ export default async function HomePage({ params }: { params: Promise<Params> }) 
             avatarUrl: true,
           },
         },
-        // Repost: Zähler & Daten vom Original
         repostOf: {
           select: {
             id: true,
@@ -46,7 +62,6 @@ export default async function HomePage({ params }: { params: Promise<Params> }) 
             _count: { select: { Like: true, Comment: true, reposts: true } },
           },
         },
-        // Quote: eingebetteter Original-Post
         quoteOf: {
           select: {
             id: true,
@@ -80,7 +95,7 @@ export default async function HomePage({ params }: { params: Promise<Params> }) 
   const likedSet = new Set(likedByMe.map((l) => l.postId));
   const bookmarkedSet = new Set(bookmarkedByMe.map((b) => b.postId));
 
-  // Block-Flags bezogen auf den Feed-Item-Autor (bei Repost = Reposter)
+  // Block-Flags
   let hasBlockedSet = new Set<string>();
   let blockedBySet = new Set<string>();
   if (me) {
@@ -101,11 +116,39 @@ export default async function HomePage({ params }: { params: Promise<Params> }) 
     }
   }
 
-  const items: FeedPost[] = posts.map((p) => {
+  // Communities + Visibility filtern
+  const communityIds = Array.from(new Set(posts.map(p => p.communityId).filter(Boolean))) as string[];
+  const communities = communityIds.length
+    ? await prisma.community.findMany({
+        where: { id: { in: communityIds } },
+        select: { id: true, name: true, slug: true, joinPolicy: true },
+      })
+    : [];
+  const commById = new Map(communities.map(c => [c.id, c]));
+
+  const memberSet =
+    me && communityIds.length
+      ? new Set(
+          (
+            await prisma.communityMember.findMany({
+              where: { userId: me.id, communityId: { in: communityIds } },
+              select: { communityId: true },
+            })
+          ).map(m => m.communityId)
+        )
+      : new Set<string>();
+
+  const visible = posts.filter(p => {
+    if (!p.communityId) return true;
+    const c = commById.get(p.communityId);
+    if (!c) return false;
+    return canSeeCommunity(c.joinPolicy as JoinPolicy, viewerRole, memberSet.has(c.id));
+  });
+
+  const items: FeedPost[] = visible.map((p) => {
     const isRepost = !!p.repostOf;
     const isQuote = !!p.quoteOf;
 
-    // Inhalt (bei Repost: Original; sonst eigener Inhalt + optionale Quote-Box)
     const content = isRepost
       ? {
           id: p.repostOf!.id,
@@ -153,23 +196,15 @@ export default async function HomePage({ params }: { params: Promise<Params> }) 
             : null,
         };
 
-    // Repost → Stats vom Original; Quote/Normal → eigene Stats
     const statSource = isRepost ? p.repostOf! : p;
-
-    // Viewer-Flags: Like/Bookmark-Ziel bestimmen
     const viewerTargetId = isRepost ? p.repostOf!.id : p.id;
+    const community = p.communityId ? commById.get(p.communityId) ?? null : null;
 
     return {
       id: p.id,
       createdAtISO: p.createdAt.toISOString(),
       content,
-      reposter: isRepost
-        ? {
-            id: p.author.id,
-            handle: p.author.handle,
-            displayName: p.author.displayName,
-          }
-        : null,
+      reposter: isRepost ? { id: p.author.id, handle: p.author.handle, displayName: p.author.displayName } : null,
       stats: {
         comments: statSource._count.Comment ?? 0,
         reposts: statSource._count.reposts ?? 0,
@@ -182,6 +217,7 @@ export default async function HomePage({ params }: { params: Promise<Params> }) 
         blockedByAuthor: me ? blockedBySet.has(p.author.id) : false,
       },
       initiallyBookmarked: bookmarkedSet.has(viewerTargetId),
+      community: community ? { name: community.name, slug: community.slug } : null,
     } satisfies FeedPost;
   });
 

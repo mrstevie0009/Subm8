@@ -45,6 +45,8 @@ type ApiPost = {
     hasBlockedAuthor: boolean;
     blockedByAuthor: boolean;
   };
+  // ← NEU
+  community?: { name: string; slug: string } | null;
 };
 
 function mapApiPost(p: ApiPost): FeedPost {
@@ -111,6 +113,8 @@ function mapApiPost(p: ApiPost): FeedPost {
     },
     viewer: p.viewer,
     initiallyBookmarked: p.viewer.bookmarked,
+    // ← NEU
+    community: p.community ?? null,
   };
 }
 
