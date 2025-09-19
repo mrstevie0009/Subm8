@@ -6,14 +6,22 @@ import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useLocale } from 'next-intl';
+import { useRouter } from 'next/navigation';
 import type { Profile } from '@/types/profile';
 import { followAction, unfollowAction } from '@/app/actions/follow';
 import { blockUserAction, unblockUserAction } from '@/app/actions/blocks';
 import { reportUserAction } from '@/app/actions/reports';
 import OfferViewerModal from '@/components/OfferViewerModal';
+import TipModal from '@/components/TipModal';
+import AutoDrainEnableModal from '@/components/AutoDrainEnableModal';
+
+
 
 const AVATAR_PH = '/images/avatar-placeholder.png';
 const BANNER_PH = '/images/banner-placeholder.png';
+const TIPPAID_PREFIX = 'TIPPAID::';
+const ADACC_PREFIX   = 'ADACC::';
+
 
 function Chip({
   children,
@@ -93,6 +101,7 @@ export default function ProfileHeader({
   onInlineButtonClick,
 }: Props) {
   const locale = useLocale();
+  const router = useRouter();
 
   const AVATAR_BIG   = 'clamp(88px, 18vw, 136px)';
   const AVATAR_SMALL = '40px';
@@ -109,6 +118,13 @@ export default function ProfileHeader({
 
   const [offerOpen, setOfferOpen] = React.useState(false);
   const handleOfferClick = onInlineButtonClick ?? (() => setOfferOpen(true));
+
+  const [tipOpen, setTipOpen] = React.useState(false);
+  const [autoDrainOpen, setAutoDrainOpen] = React.useState(false);
+
+  // RoleUI -> TipModal-Role
+  const tipModalRole: 'domme' | 'submissive' =
+  profile.role === 'domme' ? 'domme' : 'submissive';
 
   // ---- Compact Header Logik
   const [compact, setCompact] = React.useState(false);
@@ -180,12 +196,116 @@ export default function ProfileHeader({
       </svg>
     );
   }
+  // Dollar icon (identisch zum ChatComposer)
+  function DollarIcon() {
+    return (
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.8">
+        <path d="M12 2.5v19" strokeLinecap="round" />
+        <path
+          d="M16.5 7.5c0-2-2-3.5-4.5-3.5S7.5 5.5 7.5 7.5 9.6 10 12 10s4.5 1 4.5 3.5S14 17 12 17s-4.5-1-4.5-3.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    );
+  }
 
   async function copyProfileLink() {
     try {
       const href = `${window.location.origin}/${locale}/u/${profile.username}`;
       await navigator.clipboard.writeText(href);
     } catch {}
+  }
+
+  // ---------- kleines ActionMenu via Portal (für Tip-Button) ----------
+  function ActionMenu({
+    anchorRect,
+    onClose,
+    children,
+  }: {
+    anchorRect: DOMRect;
+    onClose: () => void;
+    children: React.ReactNode;
+  }) {
+    const panelRef = React.useRef<HTMLDivElement>(null);
+    const [pos, setPos] = React.useState<{ top: number; left: number; width: number; openUp: boolean } | null>(null);
+
+    const recompute = React.useCallback(() => {
+      const gap = 8;
+      const margin = 8;
+      const winW = window.innerWidth;
+      const winH = window.innerHeight;
+      const width = Math.max(220, Math.min(300, anchorRect.width + 60));
+
+      let left = Math.round(anchorRect.left);
+      left = Math.min(Math.max(margin, left), winW - width - margin);
+
+      const spaceAbove = Math.max(0, anchorRect.top - margin);
+      const spaceBelow = Math.max(0, winH - anchorRect.bottom - margin);
+      let openUp = spaceAbove > spaceBelow;
+
+      let top = openUp ? Math.round(anchorRect.top - gap) : Math.round(anchorRect.bottom + gap);
+
+      const h = panelRef.current?.offsetHeight ?? 0;
+      if (h > 0) {
+        if (openUp && top - h < margin) {
+          openUp = false;
+          top = Math.round(anchorRect.bottom + gap);
+        }
+        if (!openUp && top + h > winH - margin) {
+          if (spaceAbove >= h + gap) {
+            openUp = true;
+            top = Math.round(anchorRect.top - gap);
+          } else {
+            top = Math.max(margin, winH - margin - h);
+          }
+        }
+      }
+
+      setPos({ top, left, width, openUp });
+    }, [anchorRect]);
+
+    React.useLayoutEffect(() => { recompute(); }, [recompute]);
+
+    React.useEffect(() => {
+      const onOutside = (e: PointerEvent) => {
+        const t = e.target as Node | null;
+        if (panelRef.current && t && panelRef.current.contains(t)) return;
+        onClose();
+      };
+      const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+      window.addEventListener('pointerdown', onOutside, { passive: true });
+      window.addEventListener('keydown', onKey);
+      window.addEventListener('resize', recompute);
+      window.addEventListener('scroll', recompute, { passive: true });
+      return () => {
+        window.removeEventListener('pointerdown', onOutside);
+        window.removeEventListener('keydown', onKey);
+        window.removeEventListener('resize', recompute);
+        window.removeEventListener('scroll', recompute);
+      };
+    }, [onClose, recompute]);
+
+    if (!pos) return null;
+
+    const style: React.CSSProperties = {
+      position: 'fixed',
+      left: pos.left,
+      top: pos.top,
+      width: pos.width,
+      transform: pos.openUp ? 'translateY(-100%)' : undefined,
+      zIndex: 2147483601,
+    };
+
+    const panel = (
+      <div style={style}>
+        <div ref={panelRef} className="rounded-xl border border-white/12 bg-black/90 backdrop-blur p-1 shadow-2xl">
+          {children}
+        </div>
+      </div>
+    );
+
+    return createPortal(panel, document.body);
   }
 
   // ---------- DM-Overlay ----------
@@ -465,6 +585,17 @@ export default function ProfileHeader({
   const roleShort = profile.role === 'domme' ? 'Dom'   : 'Sub';
   const website   = (profile.websiteUrl ?? '').trim();
 
+  // Tip-Button State (nur Domme-Profile)
+  const [tipMenuOpen, setTipMenuOpen] = React.useState(false);
+  const [tipAnchorRect, setTipAnchorRect] = React.useState<DOMRect | null>(null);
+  const tipBtnRef = React.useRef<HTMLButtonElement | null>(null);
+  const openTipMenu = React.useCallback(() => {
+    const r = tipBtnRef.current?.getBoundingClientRect();
+    if (!r) return;
+    setTipAnchorRect(r);
+    setTipMenuOpen(true);
+  }, []);
+
   return (
     <section className="rounded-app border border-sub overflow-hidden shadow-app relative" style={rootVars}>
       {/* FIXED MINI HEADER */}
@@ -540,7 +671,7 @@ export default function ProfileHeader({
           <div className="shrink-0">
             <div
               className="inline-block w-fit rounded-full p-[2px] bg-gradient-to-br from-[var(--purple)]/70 via-fuchsia-500/50 to-sky-400/50"
-              style={{ marginTop: 'calc(var(--avatar) * -0.6)' }} // stärker ins Banner
+              style={{ marginTop: 'calc(var(--avatar) * -0.6)' }}
             >
               <div
                 className="relative rounded-full overflow-hidden bg-white/10 ring-1 ring-white/20 shadow-[0_6px_30px_-10px_rgba(0,0,0,.8)]"
@@ -582,6 +713,48 @@ export default function ProfileHeader({
               </Link>
             ) : (
               <>
+                {/* NEU: Tip-Button (nur wenn Profil Domme ist & nicht geblockt) – links neben Follow */}
+                {profile.role === 'domme' && !blockedEither && (
+                  <>
+                    <button
+                      ref={tipBtnRef}
+                      type="button"
+                      onClick={() => openTipMenu()}
+                      className="inline-grid place-items-center rounded-full border border-white/20 hover:bg-white/5 h-9 w-9"
+                      aria-label="Tip actions"
+                      title="Tip actions"
+                    >
+                      <DollarIcon />
+                    </button>
+
+                    {tipMenuOpen && tipAnchorRect && (
+                      <ActionMenu anchorRect={tipAnchorRect} onClose={() => setTipMenuOpen(false)}>
+                        <button
+                          type="button"
+                          className="w-full text-left px-3 py-2 rounded-lg hover:bg-white/10"
+                          onClick={() => {
+                            setTipMenuOpen(false);
+                            setTipOpen(true);   // << Modal öffnen
+                          }}
+                        >
+                          Sent Tip
+                        </button>
+
+                        <button
+                          type="button"
+                          className="w-full text-left px-3 py-2 rounded-lg hover:bg-white/10"
+                          onClick={() => {
+                            setTipMenuOpen(false);
+                            setAutoDrainOpen(true);
+                          }}
+                        >
+                          Autodrain
+                        </button>
+                      </ActionMenu>
+                    )}
+                  </>
+                )}
+
                 {!blockedEither ? (
                   <form
                     action={isFollowing ? unfollowAction : followAction}
@@ -708,6 +881,48 @@ export default function ProfileHeader({
       )}
 
       <OfferViewerModal open={offerOpen} onClose={() => setOfferOpen(false)} handle={profile.username} />
+
+      <TipModal
+        open={tipOpen}
+        onClose={() => setTipOpen(false)}
+        toUserId={profile.id}
+        toDisplayName={profile.displayName}
+        toRole={tipModalRole}            // dein gemapptes Role-Value
+        toAvatarUrl={profile.avatarUrl || undefined}
+        onSuccess={({ paymentId, amountCents, currency, note }) => {
+          // exakt wie im Chat: TIPPAID::<json>
+          const payload = {
+            id: paymentId,
+            amountCents,
+            currency,
+            note: note?.trim() || undefined,
+          };
+          const envelope = `${TIPPAID_PREFIX}${JSON.stringify(payload)}`;
+
+          setTipOpen(false);
+
+          // -> Chat öffnen & Nachricht automatisch senden (ChatThreadPage liest ?text=)
+          router.push(`/${locale}/chat/new?to=${profile.username}&text=${encodeURIComponent(envelope)}`);
+        }}
+      />
+
+      {/* ⬇️ neu: Autodrain-Enable Modal */}
+      <AutoDrainEnableModal
+        open={autoDrainOpen}
+        onClose={() => setAutoDrainOpen(false)}
+        toUserId={profile.id}
+        toDisplayName={profile.displayName}
+        toAvatarUrl={profile.avatarUrl || undefined}
+        defaultCurrency="EUR"
+        onSuccess={({ autoDrainId, amountCents, currency, cadence }) => {
+          // exakt dieselbe "AUTODRAIN ENABLED" Nachricht wie im Chat:
+          const payload = { id: autoDrainId, amountCents, currency, cadence };
+          const envelope = `${ADACC_PREFIX}${JSON.stringify(payload)}`;
+          setAutoDrainOpen(false);
+          // -> Chat öffnen & Nachricht automatisch senden (ChatThreadPage liest ?text=)
+          router.push(`/${locale}/chat/new?to=${profile.username}&text=${encodeURIComponent(envelope)}`);
+        }}
+      />
     </section>
   );
 }

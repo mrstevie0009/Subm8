@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/currentUser";
+import { cancelAutodrainAction } from "@/app/actions/autodrain"; // ← keeps cancel per-sub working
 
 type Params = { locale: string };
 
@@ -22,8 +23,11 @@ function parseMeta(input: unknown): PaymentMeta {
   return { note: typeof note === "string" ? note : note === null ? null : undefined };
 }
 
+type AutoDrainCadence = "DAILY" | "WEEKLY" | "MONTHLY";
+const cadenceLabel = (c: AutoDrainCadence) => (c === "DAILY" ? "Daily" : c === "WEEKLY" ? "Weekly" : "Monthly");
+
 export default async function PaymentsPage({ params }: { params: Promise<Params> }) {
-  // ⬇️ hier war der Crash – params ist bei dir ein Promise
+  // params is a promise in your setup
   const { locale } = await params;
 
   const me = await getCurrentUser().catch(() => null);
@@ -54,7 +58,7 @@ export default async function PaymentsPage({ params }: { params: Promise<Params>
     );
   }
 
-  // Zahlungen lesen (nicht Tips), damit netto/brutto korrekt sind
+  // Read payments (not tips), so net/gross are correct
   const payments = await prisma.payment.findMany({
     where: { OR: [{ payeeId: me.id }, { payerId: me.id }] },
     include: {
@@ -64,7 +68,7 @@ export default async function PaymentsPage({ params }: { params: Promise<Params>
     orderBy: { createdAt: "desc" },
   });
 
-  // Domme-Balance = Summe der NETTO-Beträge aus eingehenden Payments (SUCCEEDED)
+  // Domme balance = NET of incoming SUCCEEDED payments
   const balanceCents = payments
     .filter((p) => p.payeeId === me.id && p.status === "SUCCEEDED")
     .reduce((acc, p) => acc + (p.amountNetToDommeCents || 0), 0);
@@ -75,8 +79,7 @@ export default async function PaymentsPage({ params }: { params: Promise<Params>
     const incoming = p.payeeId === me.id;
     const counterparty = incoming ? p.User_Payment_payerIdToUser : p.User_Payment_payeeIdToUser;
     const meta = parseMeta(p.metadataJson);
-
-    // incoming = NETTO (Domme), outgoing = BRUTTO (Sub)
+    // incoming = NET (Domme), outgoing = GROSS (Sub)
     const amountCents = incoming ? p.amountNetToDommeCents : p.amountGrossCents;
 
     return {
@@ -95,8 +98,34 @@ export default async function PaymentsPage({ params }: { params: Promise<Params>
     };
   });
 
-  const csvUrl = `/api/payments/export?locale=${encodeURIComponent(locale)}`;
+  // Split into two views for clearer structure
+  const receivedRows = rows.filter((r) => r.direction === "in");
+  const sentRows = rows.filter((r) => r.direction === "out");
 
+  // Active Autodrain subs
+  const outgoingSubs = await prisma.autoDrainSubscription.findMany({
+    where: { subId: me.id, active: true },
+    select: { id: true, dommeId: true, amountCents: true, currency: true, cadence: true, nextChargeAt: true },
+    orderBy: { nextChargeAt: "asc" },
+  });
+
+  const incomingSubs = await prisma.autoDrainSubscription.findMany({
+    where: { dommeId: me.id, active: true },
+    select: { id: true, subId: true, amountCents: true, currency: true, cadence: true, nextChargeAt: true },
+    orderBy: { nextChargeAt: "asc" },
+  });
+
+  const counterpartIds = Array.from(new Set([...outgoingSubs.map((s) => s.dommeId), ...incomingSubs.map((s) => s.subId)]));
+  const counterparts =
+    counterpartIds.length > 0
+      ? await prisma.user.findMany({
+          where: { id: { in: counterpartIds } },
+          select: { id: true, handle: true, displayName: true, avatarUrl: true },
+        })
+      : [];
+  const byId = new Map(counterparts.map((u) => [u.id, u]));
+
+  const csvUrl = `/api/payments/export?locale=${encodeURIComponent(locale)}`;
   const dtf = new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" });
 
   return (
@@ -145,66 +174,235 @@ export default async function PaymentsPage({ params }: { params: Promise<Params>
         </div>
       </section>
 
-      {/* Verlauf */}
-      {rows.length === 0 ? (
-        <div className="grid place-items-center text-center" style={{ minHeight: "50vh" }}>
-          <div className="font-bold text-[18px] text-white/85">No Payments History</div>
-        </div>
-      ) : (
-        <div className="overflow-auto" style={{ maxHeight: "70vh" }}>
-          <table className="w-full text-left" style={{ minWidth: 760 }}>
-            <thead className="sticky top-0 z-10 bg-black/70 backdrop-blur border-b border-white/10">
-              <tr className="[&>th]:py-3 [&>th]:px-4 text-white/80">
-                <th style={{ width: 110, minWidth: 110 }}>Avatar</th>
-                <th style={{ width: 200, minWidth: 200 }}>Date</th>
-                <th style={{ width: 220, minWidth: 220 }}>Username</th>
-                <th style={{ width: 180, minWidth: 180 }}>Amount</th>
-                <th style={{ width: 200, minWidth: 200 }}>What</th>
-                <th style={{ width: 160, minWidth: 160 }}>Status</th>
-              </tr>
-            </thead>
-            <tbody className="[&>tr]:border-b [&>tr]:border-white/10">
-              {rows.map((r) => {
-                const who = r.counterparty.displayName ?? r.counterparty.handle;
-                const amountLabel =
-                  r.direction === "in"
-                    ? `Received: ${fmtMoney(r.amountCents, r.currency, locale)}`
-                    : `Sent: ${fmtMoney(r.amountCents, r.currency, locale)}`;
+      {/* Active Autodrain */}
+      <section className="px-4 py-6 border-b border-white/10">
+        <h2 className="text-[18px] font-semibold mb-3">Active Autodrain</h2>
 
-                const statusTone =
-                  r.status === "SUCCEEDED"
-                    ? "text-emerald-400"
-                    : r.status === "CREATED" || r.status === "PROCESSING"
-                    ? "text-yellow-300"
-                    : r.status === "FAILED"
-                    ? "text-red-400"
-                    : "text-white/70";
-
-                return (
-                  <tr key={r.id} className="[&>td]:py-3 [&>td]:px-4 align-middle">
-                    <td>
-                      <div className="w-10 h-10 rounded-full overflow-hidden bg-white/10 border border-white/10">
-                        <Image
-                          src={r.counterparty.avatarUrl ?? "/images/avatar-placeholder.png"}
-                          alt={`${who} avatar`}
-                          width={40}
-                          height={40}
-                          className="object-cover w-10 h-10"
-                        />
-                      </div>
-                    </td>
-                    <td className="whitespace-nowrap">{dtf.format(r.createdAt)}</td>
-                    <td className="whitespace-nowrap">{who}</td>
-                    <td className="whitespace-nowrap">{amountLabel}</td>
-                    <td className="whitespace-nowrap">{r.what}</td>
-                    <td className={`whitespace-nowrap font-medium ${statusTone}`}>{r.status}</td>
+        {/* Enabled by you (you are Sub) */}
+        <div className="mb-6">
+          <div className="text-[13px] text-white/70 mb-2">Enabled by you</div>
+          {outgoingSubs.length === 0 ? (
+            <div className="text-white/60 text-sm">No active subscriptions.</div>
+          ) : (
+            <div className="overflow-auto" style={{ maxHeight: 360 }}>
+              <table className="w-full text-left" style={{ minWidth: 720 }}>
+                <thead className="sticky top-0 z-10 bg-black/70 backdrop-blur border-b border-white/10">
+                  <tr className="[&>th]:py-2.5 [&>th]:px-3 text-white/80">
+                    <th style={{ width: 98 }}>Avatar</th>
+                    <th style={{ width: 220 }}>Domme</th>
+                    <th style={{ width: 180 }}>Amount</th>
+                    <th style={{ width: 180 }}>Cadence</th>
+                    <th style={{ width: 220 }}>Next charge</th>
+                    <th style={{ width: 160 }}></th>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                </thead>
+                <tbody className="[&>tr]:border-b [&>tr]:border-white/10">
+                  {outgoingSubs.map((s) => {
+                    const u = byId.get(s.dommeId);
+                    const who = u?.displayName ?? u?.handle ?? "—";
+                    return (
+                      <tr key={s.id} className="[&>td]:py-2.5 [&>td]:px-3 align-middle">
+                        <td>
+                          <div className="w-9 h-9 rounded-full overflow-hidden bg-white/10 border border-white/10">
+                            <Image
+                              src={u?.avatarUrl ?? "/images/avatar-placeholder.png"}
+                              alt={`${who} avatar`}
+                              width={36}
+                              height={36}
+                              className="object-cover w-9 h-9"
+                            />
+                          </div>
+                        </td>
+                        <td className="whitespace-nowrap">{who}</td>
+                        <td className="whitespace-nowrap">{fmtMoney(s.amountCents, s.currency, locale)}</td>
+                        <td className="whitespace-nowrap">{cadenceLabel(s.cadence as AutoDrainCadence)}</td>
+                        <td className="whitespace-nowrap">{s.nextChargeAt ? dtf.format(s.nextChargeAt) : "—"}</td>
+                        <td className="whitespace-nowrap">
+                          <form action={cancelAutodrainAction}>
+                            <input type="hidden" name="id" value={s.id} />
+                            <input type="hidden" name="locale" value={locale} />
+                            <button
+                              type="submit"
+                              className="px-3 py-1.5 rounded-lg border border-white/20 hover:bg-white/10 text-[13px]"
+                            >
+                              Cancel
+                            </button>
+                          </form>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
-      )}
+
+        {/* Paying you*/}
+        <div>
+          <h2 className="text-[18px] font-semibold mb-3">Receiving Autodrain</h2>
+          {incomingSubs.length === 0 ? (
+            <div className="text-white/60 text-sm">No active subscriptions.</div>
+          ) : (
+            <div className="overflow-auto" style={{ maxHeight: 360 }}>
+              <table className="w-full text-left" style={{ minWidth: 720 }}>
+                <thead className="sticky top-0 z-10 bg-black/70 backdrop-blur border-b border-white/10">
+                  <tr className="[&>th]:py-2.5 [&>th]:px-3 text-white/80">
+                    <th style={{ width: 98 }}>Avatar</th>
+                    <th style={{ width: 220 }}>Sub</th>
+                    <th style={{ width: 180 }}>Amount</th>
+                    <th style={{ width: 180 }}>Cadence</th>
+                    <th style={{ width: 220 }}>Next charge</th>
+                    <th style={{ width: 160 }}></th>
+                  </tr>
+                </thead>
+                <tbody className="[&>tr]:border-b [&>tr]:border-white/10">
+                  {incomingSubs.map((s) => {
+                    const u = byId.get(s.subId);
+                    const who = u?.displayName ?? u?.handle ?? "—";
+                    return (
+                      <tr key={s.id} className="[&>td]:py-2.5 [&>td]:px-3 align-middle">
+                        <td>
+                          <div className="w-9 h-9 rounded-full overflow-hidden bg-white/10 border border-white/10">
+                            <Image
+                              src={u?.avatarUrl ?? "/images/avatar-placeholder.png"}
+                              alt={`${who} avatar`}
+                              width={36}
+                              height={36}
+                              className="object-cover w-9 h-9"
+                            />
+                          </div>
+                        </td>
+                        <td className="whitespace-nowrap">{who}</td>
+                        <td className="whitespace-nowrap">{fmtMoney(s.amountCents, s.currency, locale)}</td>
+                        <td className="whitespace-nowrap">{cadenceLabel(s.cadence as AutoDrainCadence)}</td>
+                        <td className="whitespace-nowrap">{s.nextChargeAt ? dtf.format(s.nextChargeAt) : "—"}</td>
+                        <td /> {/* Domme doesn't cancel here */}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* Sends (incoming payments) */}
+      <section className="px-4 py-6 border-b border-white/10">
+        <h2 className="text-[18px] font-semibold mb-3">Sends</h2>
+        {receivedRows.length === 0 ? (
+          <div className="text-white/60 text-sm">No received payments.</div>
+        ) : (
+          <div className="overflow-auto" style={{ maxHeight: "60vh" }}>
+            <table className="w-full text-left" style={{ minWidth: 760 }}>
+              <thead className="sticky top-0 z-10 bg-black/70 backdrop-blur border-b border-white/10">
+                <tr className="[&>th]:py-3 [&>th]:px-4 text-white/80">
+                  <th style={{ width: 110, minWidth: 110 }}>Avatar</th>
+                  <th style={{ width: 200, minWidth: 200 }}>Date</th>
+                  <th style={{ width: 220, minWidth: 220 }}>Username</th>
+                  <th style={{ width: 180, minWidth: 180 }}>Amount</th>
+                  <th style={{ width: 200, minWidth: 200 }}>What</th>
+                  <th style={{ width: 160, minWidth: 160 }}>Status</th>
+                </tr>
+              </thead>
+              <tbody className="[&>tr]:border-b [&>tr]:border-white/10">
+                {receivedRows.map((r) => {
+                  const who = r.counterparty.displayName ?? r.counterparty.handle;
+                  const amountLabel = `Received: ${fmtMoney(r.amountCents, r.currency, locale)}`;
+                  const statusTone =
+                    r.status === "SUCCEEDED"
+                      ? "text-emerald-400"
+                      : r.status === "CREATED" || r.status === "PROCESSING"
+                      ? "text-yellow-300"
+                      : r.status === "FAILED"
+                      ? "text-red-400"
+                      : "text-white/70";
+
+                  return (
+                    <tr key={r.id} className="[&>td]:py-3 [&>td]:px-4 align-middle">
+                      <td>
+                        <div className="w-10 h-10 rounded-full overflow-hidden bg-white/10 border border-white/10">
+                          <Image
+                            src={r.counterparty.avatarUrl ?? "/images/avatar-placeholder.png"}
+                            alt={`${who} avatar`}
+                            width={40}
+                            height={40}
+                            className="object-cover w-10 h-10"
+                          />
+                        </div>
+                      </td>
+                      <td className="whitespace-nowrap">{dtf.format(r.createdAt)}</td>
+                      <td className="whitespace-nowrap">{who}</td>
+                      <td className="whitespace-nowrap">{amountLabel}</td>
+                      <td className="whitespace-nowrap">{r.what}</td>
+                      <td className={`whitespace-nowrap font-medium ${statusTone}`}>{r.status}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      {/* You Sent (outgoing payments) */}
+      <section className="px-4 py-6">
+        <h2 className="text-[18px] font-semibold mb-3">You Sent</h2>
+        {sentRows.length === 0 ? (
+          <div className="text-white/60 text-sm">No outgoing payments.</div>
+        ) : (
+          <div className="overflow-auto" style={{ maxHeight: "60vh" }}>
+            <table className="w-full text-left" style={{ minWidth: 760 }}>
+              <thead className="sticky top-0 z-10 bg-black/70 backdrop-blur border-b border-white/10">
+                <tr className="[&>th]:py-3 [&>th]:px-4 text-white/80">
+                  <th style={{ width: 110, minWidth: 110 }}>Avatar</th>
+                  <th style={{ width: 200, minWidth: 200 }}>Date</th>
+                  <th style={{ width: 220, minWidth: 220 }}>Username</th>
+                  <th style={{ width: 180, minWidth: 180 }}>Amount</th>
+                  <th style={{ width: 200, minWidth: 200 }}>What</th>
+                  <th style={{ width: 160, minWidth: 160 }}>Status</th>
+                </tr>
+              </thead>
+              <tbody className="[&>tr]:border-b [&>tr]:border-white/10">
+                {sentRows.map((r) => {
+                  const who = r.counterparty.displayName ?? r.counterparty.handle;
+                  const amountLabel = `Sent: ${fmtMoney(r.amountCents, r.currency, locale)}`;
+                  const statusTone =
+                    r.status === "SUCCEEDED"
+                      ? "text-emerald-400"
+                      : r.status === "CREATED" || r.status === "PROCESSING"
+                      ? "text-yellow-300"
+                      : r.status === "FAILED"
+                      ? "text-red-400"
+                      : "text-white/70";
+
+                  return (
+                    <tr key={r.id} className="[&>td]:py-3 [&>td]:px-4 align-middle">
+                      <td>
+                        <div className="w-10 h-10 rounded-full overflow-hidden bg-white/10 border border-white/10">
+                          <Image
+                            src={r.counterparty.avatarUrl ?? "/images/avatar-placeholder.png"}
+                            alt={`${who} avatar`}
+                            width={40}
+                            height={40}
+                            className="object-cover w-10 h-10"
+                          />
+                        </div>
+                      </td>
+                      <td className="whitespace-nowrap">{dtf.format(r.createdAt)}</td>
+                      <td className="whitespace-nowrap">{who}</td>
+                      <td className="whitespace-nowrap">{amountLabel}</td>
+                      <td className="whitespace-nowrap">{r.what}</td>
+                      <td className={`whitespace-nowrap font-medium ${statusTone}`}>{r.status}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
     </section>
   );
 }

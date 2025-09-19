@@ -1,4 +1,4 @@
-// src/app/api/autodrain/accept/route.ts
+//src/app/api/autodrain/accept/route.ts
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/currentUser';
 import { addCadence } from '@/lib/autodrain';
@@ -10,7 +10,7 @@ type Body = {
   amountCents: number;
   currency: string;
   cadence: 'DAILY' | 'WEEKLY' | 'MONTHLY';
-  conversationId: string;
+  conversationId?: string; // <-- optional gemacht
 };
 
 export async function POST(req: Request) {
@@ -23,36 +23,71 @@ export async function POST(req: Request) {
 
     const { toUserId, amountCents, currency, cadence, conversationId } = body;
 
-    // Sicherheitschecks
-    if (!toUserId || !amountCents || !currency || !cadence || !conversationId) {
+    // Basis-Checks (ohne conversationId)
+    if (!toUserId || !amountCents || !currency || !cadence) {
       return Response.json({ ok: false, error: 'Missing fields' }, { status: 400 });
     }
+    if (toUserId === me.id) {
+      return Response.json({ ok: false, error: 'Cannot enable autodrain to yourself' }, { status: 400 });
+    }
+    if (!Number.isFinite(amountCents) || amountCents <= 0) {
+      return Response.json({ ok: false, error: 'Invalid amount' }, { status: 400 });
+    }
+    if (!['DAILY', 'WEEKLY', 'MONTHLY'].includes(cadence)) {
+      return Response.json({ ok: false, error: 'Invalid cadence' }, { status: 400 });
+    }
 
-    // Gespräch muss zwischen den beiden existieren
-    const convo = await prisma.conversation.findFirst({
-      where: {
-        id: conversationId,
-        OR: [
-          { dommeId: toUserId, subId: me.id },
-          { dommeId: me.id, subId: toUserId },
-        ],
-      },
-      select: { id: true, dommeId: true, subId: true },
-    });
-    if (!convo) return Response.json({ ok: false, error: 'Conversation mismatch' }, { status: 403 });
+    // --- Gespräch & Rollen ermitteln ---
+    let dommeId: string | null = null;
+    let subId: string | null = null;
 
-    // Wer ist sub / domme in diesem Fall?
-    const dommeId = convo.dommeId;
-    const subId = convo.subId;
+    if (conversationId) {
+      // exakter Match wie vorher
+      const convo = await prisma.conversation.findFirst({
+        where: {
+          id: conversationId,
+          OR: [
+            { dommeId: toUserId, subId: me.id },
+            { dommeId: me.id, subId: toUserId },
+          ],
+        },
+        select: { id: true, dommeId: true, subId: true },
+      });
+      if (!convo) {
+        return Response.json({ ok: false, error: 'Conversation mismatch' }, { status: 403 });
+      }
+      dommeId = convo.dommeId;
+      subId = convo.subId;
+    } else {
+      // Kein conversationId: versuche existierende Konvo zu finden …
+      const existingConvo = await prisma.conversation.findFirst({
+        where: {
+          OR: [
+            { dommeId: toUserId, subId: me.id },
+            { dommeId: me.id, subId: toUserId },
+          ],
+        },
+        select: { id: true, dommeId: true, subId: true },
+      });
+
+      if (existingConvo) {
+        dommeId = existingConvo.dommeId;
+        subId = existingConvo.subId;
+      } else {
+        // … oder fallback: weise Rollen logisch zu (toUser ist Domme, ich bin Sub)
+        dommeId = toUserId;
+        subId = me.id;
+      }
+    }
 
     // Nur der Sub darf aktivieren
     if (me.id !== subId) {
       return Response.json({ ok: false, error: 'Only the submissive can enable autodrain' }, { status: 403 });
     }
 
-    // Exists? – falls gleiches aktives Abo schon existiert, re-use
+    // Gleiches aktives Abo schon vorhanden? -> reuse
     const existing = await prisma.autoDrainSubscription.findFirst({
-      where: { dommeId, subId, active: true, amountCents, currency, cadence },
+      where: { dommeId: dommeId!, subId: subId!, active: true, amountCents, currency, cadence },
     });
     if (existing) {
       return Response.json({ ok: true, id: existing.id, nextChargeAt: existing.nextChargeAt.toISOString() });
@@ -63,8 +98,8 @@ export async function POST(req: Request) {
 
     const sub = await prisma.autoDrainSubscription.create({
       data: {
-        dommeId,
-        subId,
+        dommeId: dommeId!,
+        subId: subId!,
         amountCents,
         currency,
         cadence,
