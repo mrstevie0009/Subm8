@@ -677,6 +677,155 @@ function CommunityLinkPreview({ slug, locale }: { slug: string; locale: string }
   );
 }
 
+/* ---------- Invite-Link Preview helpers ---------- */
+function parseInviteLink(text?: string | null): { code: string; url: string } | null {
+  if (!text) return null;
+  // nimm die erste URL im Text (reicht für "…/invite/<code>\nNotiz")
+  const m = text.match(/(https?:\/\/[^\s]+|\/[^\s]+)/);
+  if (!m) return null;
+  const raw = m[1];
+
+  try {
+    const base = typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
+    const u = raw.startsWith('http') ? new URL(raw) : new URL(raw, base);
+    const parts = u.pathname.split('/').filter(Boolean);
+    if (parts[0] === 'invite' && parts[1]) {
+      return { code: parts[1], url: u.toString() };
+    }
+  } catch {}
+  return null;
+}
+
+type InvitePreviewDto = {
+  code: string;
+  href: string; // deeplink zu /invite/<code>
+  community: {
+    slug: string;
+    name: string;
+    memberCount?: number;
+    bannerUrl?: string | null;
+    avatarUrl?: string | null;
+    description?: string | null;
+  };
+  expiresAt?: string | null;
+  remainingUses?: number | null;
+};
+
+// ⬇️ Ersetze NUR diese Funktion
+function InviteLinkPreview({ code, href }: { code: string; href: string }) {
+  const [data, setData] = React.useState<InvitePreviewDto | null>(null);
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+  let cancelled = false;
+  (async () => {
+    try {
+      setLoading(true);
+      const r = await fetch(`/api/invites/preview/${encodeURIComponent(code)}`, { cache: 'no-store' });
+      const j = await r.json().catch(() => null);
+      if (!cancelled && j?.ok && j.invite) setData(j.invite);
+    } finally {
+      if (!cancelled) setLoading(false);
+    }
+  })();
+  return () => { cancelled = true; };
+}, [code]);
+
+  // benutze locale, damit es nicht "unused" ist
+  const go = React.useCallback(async () => {
+    if (data?.community?.slug) {
+      try {
+        // 1) Auto-Join mit Invite-Code triggern (Query-Param -> simpel & robust)
+        await fetch(
+          `/api/communities/${encodeURIComponent(data.community.slug)}/join?invite=${encodeURIComponent(code)}`,
+          { method: 'POST' }
+        );
+      } catch {
+        // Ignore – wir leiten trotzdem weiter
+      }
+
+      // 2) Sauber ins aktuelle Locale weiterleiten
+      const seg = window.location.pathname.split('/').filter(Boolean)[0] || '';
+      const prefix = seg && !['invite', 'c', 'communities', 'p', 'u'].includes(seg) ? `/${seg}` : '';
+      window.location.href = `${prefix}/communities/${data.community.slug}`;
+    } else {
+      // Fallback: ursprünglichen Link öffnen
+      window.location.href = href;
+    }
+  }, [code, data, href]);
+
+  const containerCls =
+    'max-w-[75vw] md:max-w-[560px] rounded-2xl overflow-hidden border bg-white/[.06] border-white/12 hover:bg-white/[.1] cursor-pointer';
+
+  if (loading || !data) {
+    return (
+      <div className={containerCls}>
+        <div className="h-28 bg-white/5" />
+        <div className="p-3 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-white/10 animate-pulse" />
+          <div className="flex-1">
+            <div className="h-3 w-48 bg-white/10 rounded animate-pulse" />
+            <div className="mt-2 h-3 w-28 bg-white/10 rounded animate-pulse" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className={containerCls}
+      onClick={go}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') go(); }}
+    >
+      {/* Banner oben */}
+      <div className="h-[160px] bg-white/[.03]">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={data.community.bannerUrl || '/images/banner-placeholder.png'}
+          alt=""
+          className="w-full h-full object-cover"
+        />
+      </div>
+
+      {/* Inhalt UNTER dem Banner (ohne Avatar) */}
+      <div className="px-3 py-2">
+        <div className="text-[15px] font-semibold leading-tight">
+          {data.community.name}
+        </div>
+        <div className="text-[12px] text-white/70">
+          @{data.community.slug}
+          {typeof data.community.memberCount === 'number'
+            ? ` · ${data.community.memberCount} members`
+            : ''}
+        </div>
+
+        {data.community.description && (
+          <div className="mt-1 text-[13px] text-white/80 line-clamp-3">
+            {data.community.description}
+          </div>
+        )}
+
+        {(data.expiresAt || typeof data.remainingUses === 'number') && (
+          <div className="mt-2 flex items-center gap-3 text-[12px] text-white/60">
+            {data.expiresAt && (
+              <span>Expires: {new Date(data.expiresAt).toLocaleDateString()}</span>
+            )}
+            {typeof data.remainingUses === 'number' && (
+              <span>Uses left: {data.remainingUses}</span>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+
+
+
 /* ------------------------- Page ------------------------- */
 export default function ChatThreadPage() {
   const { id } = useParams<{ id: string }>();
@@ -1129,6 +1278,31 @@ export default function ChatThreadPage() {
                           </div>
                         )}
                         <div className="text-[11px] mt-1 text-white/60 text-right">
+                          {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+
+                // --- INVITE LINK PREVIEW ---
+                const inv = parseInviteLink(m.text);
+                if (inv) {
+                  // optionale Notiz: Text ohne die Invite-URL
+                  const note = (m.text || '').replace(inv.url, '').trim();
+                  return (
+                    <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
+                      <div>
+                        <InviteLinkPreview code={inv.code} href={inv.url} />
+                        {note && (
+                          <div className={`mt-1 text-[13px] ${mine ? 'text-white/90' : 'text-white/80'}`}>
+                            <RichText text={note} locale={locale} validateMentions variant={mine ? 'chat' : 'default'} />
+                          </div>
+                        )}
+                        <div
+                          className="text-[11px] mt-1 text-white/60 text-right"
+                          title={new Date(m.createdAt).toLocaleString()}
+                        >
                           {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </div>
                       </div>

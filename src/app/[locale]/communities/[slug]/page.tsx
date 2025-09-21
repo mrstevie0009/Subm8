@@ -1,3 +1,4 @@
+// src/app/[locale]/communities/[slug]/page.tsx
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/currentUser';
 import { notFound } from 'next/navigation';
@@ -7,6 +8,7 @@ import BackButton from '@/components/BackButton';
 import CommunityCompactHeader from '@/components/CommunityCompactHeader';
 import CommunityFeedClient from '@/components/CommunityFeedClient';
 import CommunityShareButton from '@/components/CommunityShareButton';
+import CommunityInviteButton from '@/components/CommunityInviteButton';
 import type { FeedPost as PostCardFeedPost } from '@/components/PostCard';
 
 type Params = { locale: string; slug: string };
@@ -218,7 +220,12 @@ export default async function CommunityPage({ params }: { params: Promise<Params
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 relative pl-10">
             <div className="absolute left-0 top-0.5">
-              <BackButton fallbackHref={`/${locale}/communities`} />
+              <BackButton
+                fallbackHref={`/${locale}/communities`}
+                forceFallback
+                replaceOnFallback
+              />
+
             </div>
 
             <div className="text-xl font-bold truncate">{community.name}</div>
@@ -230,12 +237,19 @@ export default async function CommunityPage({ params }: { params: Promise<Params
             </div>
           </div>
 
-          {/* Join/Leave + Share */}
+          {/* Join/Leave + Invite + Share */}
           <div className="flex items-center gap-2">
             <CommunityJoinButton
               slug={community.slug}
               initialJoined={joined}
               initialMembers={community._count.CommunityMember}
+            />
+            <CommunityInviteButton
+              locale={locale}
+              slug={community.slug}
+              name={community.name}
+              joined={joined}
+              joinPolicy={community.joinPolicy}
             />
             <CommunityShareButton
               locale={locale}

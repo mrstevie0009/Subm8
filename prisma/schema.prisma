@@ -79,6 +79,9 @@ model User {
   // genau ein angepinnter Post pro User (optional)
   pinnedPostId String? @unique
   pinnedPost   Post?   @relation("UserPinnedPost", fields: [pinnedPostId], references: [id], onDelete: SetNull)
+
+  createdInvites  CommunityInvite[] @relation("InviteCreatedBy")
+  receivedInvites CommunityInvite[] @relation("InviteTarget")
 }
 
 model Follow {
@@ -291,6 +294,7 @@ model Community {
   User            User                @relation(fields: [createdById], references: [id], onDelete: Cascade)
   CommunityMember CommunityMember[]
   Post            Post[]
+  invites CommunityInvite[]
 }
 
 model CommunityMember {
@@ -302,6 +306,37 @@ model CommunityMember {
   User        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([communityId, userId])
+}
+
+model CommunityInvite {
+  id           String      @id @default(cuid())
+
+  // Beziehungen
+  communityId  String
+  community    Community   @relation(fields: [communityId], references: [id])
+
+  createdById  String
+  createdBy    User        @relation("InviteCreatedBy", fields: [createdById], references: [id])
+
+  // Für DIRECT-Einladungen (nur dieser/diese User darf annehmen)
+  targetUserId String?
+  targetUser   User?       @relation("InviteTarget", fields: [targetUserId], references: [id])
+
+  // Meta
+  type         InviteType
+  token        String      @unique
+  note         String?
+
+  maxUses      Int?
+  usedCount    Int         @default(0)
+  expiresAt    DateTime?
+  revokedAt    DateTime?
+
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@index([communityId])
+  @@index([targetUserId])
 }
 
 /**
@@ -559,6 +594,11 @@ model AutoDrainCharge {
 enum Role {
   DOMME
   SUBMISSIVE
+}
+
+enum InviteType {
+  LINK
+  DIRECT
 }
 
 enum AutoDrainCadence {
