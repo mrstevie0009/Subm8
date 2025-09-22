@@ -1,4 +1,3 @@
-//src/app/[locale]/layout.tsx
 import '../globals.css';
 import { NextIntlClientProvider } from 'next-intl';
 import { notFound } from 'next/navigation';
@@ -14,7 +13,7 @@ const inter = Inter({
 
 type LayoutProps = {
   children: React.ReactNode;
-  params: Promise<{ locale: 'en' | 'de' }>;
+  params: Promise<{ locale: 'en' | 'de' | 'es' | 'fr' }>;
 };
 
 export default async function RootLayout({ children, params }: LayoutProps) {
@@ -22,6 +21,7 @@ export default async function RootLayout({ children, params }: LayoutProps) {
 
   let messages: Record<string, unknown>;
   try {
+    // Struktur beibehalten: messages/<locale>/common.json
     messages = (await import(`../../messages/${locale}/common.json`)).default;
   } catch {
     notFound();

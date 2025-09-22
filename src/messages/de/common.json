@@ -1,4 +1,11 @@
 {
-"nav": {"home": "Start", "search": "Suche", "communities": "Communities", "chat": "Chat"},
-"brand": {"name": "Subm8"}
+  "nav": {
+    "home": "Start",
+    "search": "Suche",
+    "communities": "Communities",
+    "chat": "Chat"
+  },
+  "brand": {
+    "name": "Subm8"
+  }
 }

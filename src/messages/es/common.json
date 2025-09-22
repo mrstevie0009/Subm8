@@ -1,0 +1,11 @@
+{
+  "nav": {
+    "home": "Inicio",
+    "search": "Buscar",
+    "communities": "Comunidades",
+    "chat": "Chat"
+  },
+  "brand": {
+    "name": "Subm8"
+  }
+}
