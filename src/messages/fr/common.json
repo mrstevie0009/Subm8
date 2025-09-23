@@ -4,6 +4,182 @@
     "brand": { "name": "Subm8" },
     "time": { "now": "maintenant", "m": "{count}m", "h": "{count}h", "d": "{count}j" },
 
+    "auth": {
+    "signin": {
+      "title": "Se connecter",
+      "alerts": {
+        "registered": "Inscription réussie. Veuillez vous connecter."
+      },
+      "fields": {
+        "identifier": {
+          "label": "E-mail ou identifiant",
+          "placeholder": "vous@example.com ou @votreidentifiant"
+        },
+        "password": {
+          "label": "Mot de passe"
+        }
+      },
+      "errors": {
+        "invalidCredentials": "E-mail/identifiant ou mot de passe incorrect."
+      },
+      "buttons": {
+        "submit": "Se connecter",
+        "submitLoading": "Connexion…",
+        "google": "Se connecter avec Google"
+      },
+      "or": "ou",
+      "signup": {
+        "cta": "Pas encore de compte ?",
+        "link": "Inscrivez-vous"
+      }
+    },
+    "signup": {
+      "welcome": "Bienvenue sur {brand}",
+      "chooseUsername": "Choisissez un nom d’utilisateur pour commencer.",
+      "fields": {
+        "username": {
+          "placeholder": "Nom d’utilisateur",
+          "formatHelp": "3–20 caractères, a–z, 0–9, underscore.",
+          "checking": "Vérification de la disponibilité…"
+        }
+      },
+      "roleCard": {
+        "sub": {
+          "title": "Je suis Sub",
+          "desc": "Mon épanouissement réside dans le service et le suivi."
+        },
+        "domme": {
+          "title": "Je suis Domme",
+          "desc": "J’aime diriger et fixer les règles."
+        }
+      },
+      "selectTypeTitle": "Sélectionnez le type de compte",
+      "enterToContinue": "Appuyez sur",
+      "login": {
+        "cta": "Vous avez déjà un compte ?",
+        "link": "Connexion"
+      },
+      "errors": {
+        "handleTaken": "Ce nom d’utilisateur est déjà pris.",
+        "checkFailed": "Impossible de vérifier la disponibilité. Réessayez.",
+        "startFailed": "L’inscription n’a pas pu démarrer.",
+        "network": "Erreur réseau. Veuillez réessayer.",
+        "selectTypeRequired": "Veuillez sélectionner votre type de compte."
+      }
+    },
+    "signupAccount": {
+      "headerTop": "Créez votre compte",
+      "headerTitle": "On y est presque",
+      "dommeDisclaimer": {
+        "title": "Important : fonctionnement des pourboires sur Subm8",
+        "li1": "Les pourboires sur Subm8 sont des dons volontaires, pas des paiements pour des services.",
+        "li2": "Vous ne devez pas promouvoir ni garantir des services en échange de pourboires.",
+        "li3": "Si vous proposez des services ailleurs, vous êtes seul responsable de la conformité légale et fiscale.",
+        "li4": "Un usage abusif peut entraîner la suspension du compte.",
+        "checkbox": "Je comprends que les pourboires sur Subm8 sont des dons volontaires non liés à des services."
+      },
+      "fields": {
+        "email": {
+          "label": "E-mail",
+          "placeholder": "vous@example.com"
+        },
+        "password": {
+          "label": "Mot de passe",
+          "placeholder": "8 caractères minimum",
+          "help": "Utilisez au moins 8 caractères."
+        },
+        "password2": {
+          "label": "Confirmer le mot de passe"
+        }
+      },
+      "agree": "J’accepte les Conditions & la Politique de confidentialité.",
+      "buttons": {
+        "create": "Créer le compte",
+        "creating": "Création…",
+        "google": "Continuer avec Google"
+      },
+      "login": {
+        "cta": "Vous avez déjà un compte ?",
+        "link": "Connexion"
+      },
+      "errors": {
+        "signupFailed": "Échec de l’inscription"
+      }
+    }
+  },
+
+    "paymentsPage": {
+    "ariaBack": "Retour au fil",
+    "title": "Paiements & historique",
+    "guestNote": "Veuillez vous connecter pour voir l’historique des paiements.",
+    "payoutBtn": "Virement",
+    "payoutTooltip": "Demander un virement (bientôt)",
+    "avatarAlt": "Avatar de {name}",
+    "balance": {
+      "title": "Solde actuel du compte :",
+      "export": "Export CSV"
+    },
+    "autodrain": {
+      "title": "Autodrain actif",
+      "outgoing": { "title": "Activé par vous" },
+      "incoming": { "title": "Autodrain reçu" },
+      "none": "Aucun abonnement actif.",
+      "th": {
+        "avatar": "Avatar",
+        "domme": "Domme",
+        "sub": "Sub",
+        "amount": "Montant",
+        "cadence": "Fréquence",
+        "next": "Prochain prélèvement"
+      },
+      "cancel": "Annuler",
+      "cadence": {
+        "daily": "Quotidien",
+        "weekly": "Hebdomadaire",
+        "monthly": "Mensuel"
+      }
+    },
+    "payments": {
+      "received": {
+        "title": "Réceptions",
+        "empty": "Aucun paiement reçu."
+      },
+      "sent": {
+        "title": "Vous avez envoyé",
+        "empty": "Aucun paiement sortant."
+      },
+      "th": {
+        "avatar": "Avatar",
+        "date": "Date",
+        "username": "Nom d’utilisateur",
+        "amount": "Montant",
+        "what": "Motif",
+        "status": "Statut"
+      },
+      "amountPrefixReceived": "Reçu : {amount}",
+      "amountPrefixSent": "Envoyé : {amount}",
+      "what": {
+        "tip": "Pourboire"
+      },
+      "status": {
+        "created": "Créé",
+        "processing": "En cours",
+        "succeeded": "Réussi",
+        "failed": "Échoué",
+        "canceled": "Annulé"
+      }
+    }
+  },
+
+    "bookmarksPage": {
+    "ariaBack": "Retour au fil",
+    "title": "Marque-pages",
+    "guestTitle": "Enregistrer des posts pour plus tard",
+    "guestDesc": "Ajoutez des marque-pages aux posts pour les retrouver facilement.",
+    "emptyTitle": "Aucun marque-page pour le moment",
+    "emptyDesc": "Enregistrez des posts pour les retrouver ici à tout moment."
+  },
+
     "monetizationPage": {
       "ariaBack": "Retour",
       "title": "Monétisation",

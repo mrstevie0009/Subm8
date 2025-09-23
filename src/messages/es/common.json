@@ -4,6 +4,182 @@
     "brand": { "name": "Subm8" },
     "time": { "now": "ahora", "m": "{count}m", "h": "{count}h", "d": "{count}d" },
 
+    "auth": {
+    "signin": {
+      "title": "Iniciar sesión",
+      "alerts": {
+        "registered": "Registro exitoso. Inicia sesión."
+      },
+      "fields": {
+        "identifier": {
+          "label": "Correo o usuario",
+          "placeholder": "tu@example.com o @tuusuario"
+        },
+        "password": {
+          "label": "Contraseña"
+        }
+      },
+      "errors": {
+        "invalidCredentials": "Correo/usuario o contraseña incorrectos."
+      },
+      "buttons": {
+        "submit": "Iniciar sesión",
+        "submitLoading": "Iniciando…",
+        "google": "Iniciar con Google"
+      },
+      "or": "o",
+      "signup": {
+        "cta": "¿Aún no tienes cuenta?",
+        "link": "Regístrate ahora"
+      }
+    },
+    "signup": {
+      "welcome": "Bienvenido a {brand}",
+      "chooseUsername": "Elige un nombre de usuario para comenzar.",
+      "fields": {
+        "username": {
+          "placeholder": "Usuario",
+          "formatHelp": "3–20 caracteres, a–z, 0–9, guion bajo.",
+          "checking": "Comprobando disponibilidad…"
+        }
+      },
+      "roleCard": {
+        "sub": {
+          "title": "Soy Sub",
+          "desc": "Mi realización está en servir y seguir."
+        },
+        "domme": {
+          "title": "Soy Domme",
+          "desc": "Disfruto liderar y establecer las reglas."
+        }
+      },
+      "selectTypeTitle": "Selecciona tu tipo de cuenta",
+      "enterToContinue": "Pulsa",
+      "login": {
+        "cta": "¿Ya tienes cuenta?",
+        "link": "Entrar"
+      },
+      "errors": {
+        "handleTaken": "Este usuario ya está en uso.",
+        "checkFailed": "No se pudo comprobar la disponibilidad. Inténtalo de nuevo.",
+        "startFailed": "No se pudo iniciar el registro.",
+        "network": "Error de red. Inténtalo de nuevo.",
+        "selectTypeRequired": "Selecciona tu tipo de cuenta."
+      }
+    },
+    "signupAccount": {
+      "headerTop": "Crea tu cuenta",
+      "headerTitle": "Ya casi",
+      "dommeDisclaimer": {
+        "title": "Importante: cómo funcionan las propinas en Subm8",
+        "li1": "Las propinas en Subm8 son donaciones voluntarias, no pagos por servicios.",
+        "li2": "No debes promocionar ni garantizar servicios a cambio de propinas.",
+        "li3": "Si ofreces servicios en otro lugar, eres el único responsable del cumplimiento legal y fiscal.",
+        "li4": "El uso indebido puede conllevar la suspensión de la cuenta.",
+        "checkbox": "Entiendo que las propinas en Subm8 son donaciones voluntarias y no están ligadas a servicios."
+      },
+      "fields": {
+        "email": {
+          "label": "Correo electrónico",
+          "placeholder": "tu@example.com"
+        },
+        "password": {
+          "label": "Contraseña",
+          "placeholder": "Mínimo 8 caracteres",
+          "help": "Usa al menos 8 caracteres."
+        },
+        "password2": {
+          "label": "Confirmar contraseña"
+        }
+      },
+      "agree": "Acepto los Términos y la Política de privacidad.",
+      "buttons": {
+        "create": "Crear cuenta",
+        "creating": "Creando…",
+        "google": "Continuar con Google"
+      },
+      "login": {
+        "cta": "¿Ya tienes cuenta?",
+        "link": "Entrar"
+      },
+      "errors": {
+        "signupFailed": "No se pudo completar el registro"
+      }
+    }
+  },
+
+    "paymentsPage": {
+    "ariaBack": "Volver al feed",
+    "title": "Pagos e historial",
+    "guestNote": "Inicia sesión para ver tu historial de pagos.",
+    "payoutBtn": "Retiro",
+    "payoutTooltip": "Solicitar retiro (próximamente)",
+    "avatarAlt": "Avatar de {name}",
+    "balance": {
+      "title": "Saldo actual de la cuenta:",
+      "export": "Exportar CSV"
+    },
+    "autodrain": {
+      "title": "Autodrain activo",
+      "outgoing": { "title": "Activado por ti" },
+      "incoming": { "title": "Autodrain recibido" },
+      "none": "No hay suscripciones activas.",
+      "th": {
+        "avatar": "Avatar",
+        "domme": "Domme",
+        "sub": "Sub",
+        "amount": "Importe",
+        "cadence": "Frecuencia",
+        "next": "Próximo cargo"
+      },
+      "cancel": "Cancelar",
+      "cadence": {
+        "daily": "Diario",
+        "weekly": "Semanal",
+        "monthly": "Mensual"
+      }
+    },
+    "payments": {
+      "received": {
+        "title": "Entradas",
+        "empty": "No hay pagos recibidos."
+      },
+      "sent": {
+        "title": "Has enviado",
+        "empty": "No hay pagos salientes."
+      },
+      "th": {
+        "avatar": "Avatar",
+        "date": "Fecha",
+        "username": "Usuario",
+        "amount": "Importe",
+        "what": "Concepto",
+        "status": "Estado"
+      },
+      "amountPrefixReceived": "Recibido: {amount}",
+      "amountPrefixSent": "Enviado: {amount}",
+      "what": {
+        "tip": "Propina"
+      },
+      "status": {
+        "created": "Creado",
+        "processing": "Procesando",
+        "succeeded": "Completado",
+        "failed": "Fallido",
+        "canceled": "Cancelado"
+      }
+    }
+  },
+
+    "bookmarksPage": {
+    "ariaBack": "Volver al feed",
+    "title": "Marcadores",
+    "guestTitle": "Guardar publicaciones para más tarde",
+    "guestDesc": "Añade marcadores a las publicaciones para encontrarlas fácilmente después.",
+    "emptyTitle": "Aún no hay marcadores",
+    "emptyDesc": "Guarda publicaciones para volver a ellas aquí cuando quieras."
+  },
+
     "monetizationPage": {
       "ariaBack": "Atrás",
       "title": "Monetización",

@@ -3,6 +3,181 @@
     "nav": { "home": "Start", "search": "Suche", "communities": "Communities", "chat": "Chat" },
     "brand": { "name": "Subm8" },
     "time": { "now": "jetzt", "m": "{count}m", "h": "{count}h", "d": "{count}d" },
+    "auth": {
+        "signin": {
+          "title": "Anmelden",
+          "alerts": {
+            "registered": "Registrierung erfolgreich. Bitte anmelden."
+          },
+          "fields": {
+            "identifier": {
+              "label": "E-Mail oder Handle",
+              "placeholder": "you@example.com oder @deinhandle"
+            },
+            "password": {
+              "label": "Passwort"
+            }
+          },
+          "errors": {
+            "invalidCredentials": "E-Mail/Handle oder Passwort ist falsch."
+          },
+          "buttons": {
+            "submit": "Anmelden",
+            "submitLoading": "Anmelden…",
+            "google": "Mit Google anmelden"
+          },
+          "or": "oder",
+          "signup": {
+            "cta": "Noch kein Konto?",
+            "link": "Jetzt registrieren"
+          }
+        },
+        "signup": {
+          "welcome": "Willkommen bei {brand}",
+          "chooseUsername": "Wähle einen Benutzernamen, um zu starten.",
+          "fields": {
+            "username": {
+              "placeholder": "Benutzername",
+              "formatHelp": "3–20 Zeichen, a–z, 0–9, Unterstrich.",
+              "checking": "Verfügbarkeit wird geprüft…"
+            }
+          },
+          "roleCard": {
+            "sub": {
+              "title": "Ich bin Sub",
+              "desc": "Erfüllung finde ich im Dienen und Folgen."
+            },
+            "domme": {
+              "title": "Ich bin Domme",
+              "desc": "Ich führe gerne und setze die Regeln."
+            }
+          },
+          "selectTypeTitle": "Wähle deinen Account-Typ",
+          "enterToContinue": "Drücke",
+          "login": {
+            "cta": "Schon ein Konto?",
+            "link": "Login"
+          },
+          "errors": {
+            "handleTaken": "Dieser Benutzername ist bereits vergeben.",
+            "checkFailed": "Verfügbarkeit konnte nicht geprüft werden. Bitte erneut versuchen.",
+            "startFailed": "Registrierung konnte nicht gestartet werden.",
+            "network": "Netzwerkfehler. Bitte versuche es erneut.",
+            "selectTypeRequired": "Bitte wähle deinen Account-Typ."
+          }
+        },
+        "signupAccount": {
+          "headerTop": "Erstelle dein Konto",
+          "headerTitle": "Fast geschafft",
+          "dommeDisclaimer": {
+            "title": "Wichtig: So funktionieren Tipps auf Subm8",
+            "li1": "Tipps auf Subm8 sind freiwillige Geschenke, keine Zahlungen für Leistungen.",
+            "li2": "Du darfst keine Leistungen für Tipps bewerben oder garantieren.",
+            "li3": "Wenn du anderswo Leistungen anbietest, bist du allein für Rechts- und Steuerkonformität verantwortlich.",
+            "li4": "Missbrauch kann zur Kontosperrung führen.",
+            "checkbox": "Ich verstehe, dass Tipps auf Subm8 freiwillige Geschenke sind und nicht an Leistungen geknüpft."
+          },
+          "fields": {
+            "email": {
+              "label": "E-Mail",
+              "placeholder": "you@example.com"
+            },
+            "password": {
+              "label": "Passwort",
+              "placeholder": "Mindestens 8 Zeichen",
+              "help": "Verwende mindestens 8 Zeichen."
+            },
+            "password2": {
+              "label": "Passwort bestätigen"
+            }
+          },
+          "agree": "Ich stimme den Nutzungsbedingungen & der Datenschutzerklärung zu.",
+          "buttons": {
+            "create": "Konto erstellen",
+            "creating": "Erstelle…",
+            "google": "Mit Google fortfahren"
+          },
+          "login": {
+            "cta": "Schon ein Konto?",
+            "link": "Login"
+          },
+          "errors": {
+            "signupFailed": "Registrierung fehlgeschlagen"
+          }
+        }
+      },
+
+    "paymentsPage": {
+    "ariaBack": "Zurück zum Feed",
+    "title": "Zahlungen & Verlauf",
+    "guestNote": "Bitte melde dich an, um deinen Zahlungsverlauf zu sehen.",
+    "payoutBtn": "Auszahlung",
+    "payoutTooltip": "Auszahlung anfordern (bald verfügbar)",
+    "avatarAlt": "{name} Avatar",
+    "balance": {
+      "title": "Aktueller Kontostand:",
+      "export": "CSV-Export"
+    },
+    "autodrain": {
+      "title": "Aktiver Autodrain",
+      "outgoing": { "title": "Von dir aktiviert" },
+      "incoming": { "title": "Eingehender Autodrain" },
+      "none": "Keine aktiven Abos.",
+      "th": {
+        "avatar": "Avatar",
+        "domme": "Domme",
+        "sub": "Sub",
+        "amount": "Betrag",
+        "cadence": "Rhythmus",
+        "next": "Nächste Abbuchung"
+      },
+      "cancel": "Beenden",
+      "cadence": {
+        "daily": "Täglich",
+        "weekly": "Wöchentlich",
+        "monthly": "Monatlich"
+      }
+    },
+    "payments": {
+      "received": {
+        "title": "Eingänge",
+        "empty": "Keine eingegangenen Zahlungen."
+      },
+      "sent": {
+        "title": "Du hast gesendet",
+        "empty": "Keine ausgehenden Zahlungen."
+      },
+      "th": {
+        "avatar": "Avatar",
+        "date": "Datum",
+        "username": "Nutzername",
+        "amount": "Betrag",
+        "what": "Verwendungszweck",
+        "status": "Status"
+      },
+      "amountPrefixReceived": "Eingegangen: {amount}",
+      "amountPrefixSent": "Gesendet: {amount}",
+      "what": {
+        "tip": "Trinkgeld"
+      },
+      "status": {
+        "created": "Erstellt",
+        "processing": "In Bearbeitung",
+        "succeeded": "Erfolgreich",
+        "failed": "Fehlgeschlagen",
+        "canceled": "Storniert"
+      }
+    }
+  },
+
+    "bookmarksPage": {
+    "ariaBack": "Zurück zum Feed",
+    "title": "Lesezeichen",
+    "guestTitle": "Beiträge für später speichern",
+    "guestDesc": "Füge Beiträgen Lesezeichen hinzu, damit du sie später schnell wiederfindest.",
+    "emptyTitle": "Noch keine Lesezeichen",
+    "emptyDesc": "Speichere Beiträge, um sie hier jederzeit wieder aufzurufen."
+  },
 
     "monetizationPage": {
       "ariaBack": "Zurück",

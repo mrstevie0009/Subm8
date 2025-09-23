@@ -4,6 +4,182 @@
     "brand": { "name": "Subm8" },
     "time": { "now": "now", "m": "{count}m", "h": "{count}h", "d": "{count}d" },
 
+    "auth": {
+    "signin": {
+      "title": "Sign in",
+      "alerts": {
+        "registered": "Registration successful. Please sign in."
+      },
+      "fields": {
+        "identifier": {
+          "label": "Email or handle",
+          "placeholder": "you@example.com or @yourhandle"
+        },
+        "password": {
+          "label": "Password"
+        }
+      },
+      "errors": {
+        "invalidCredentials": "Email/handle or password is incorrect."
+      },
+      "buttons": {
+        "submit": "Sign in",
+        "submitLoading": "Signing in…",
+        "google": "Sign in with Google"
+      },
+      "or": "or",
+      "signup": {
+        "cta": "No account yet?",
+        "link": "Sign up now"
+      }
+    },
+    "signup": {
+      "welcome": "Welcome to {brand}",
+      "chooseUsername": "Choose a username to get started.",
+      "fields": {
+        "username": {
+          "placeholder": "Username",
+          "formatHelp": "3–20 chars, a–z, 0–9, underscore.",
+          "checking": "Checking availability…"
+        }
+      },
+      "roleCard": {
+        "sub": {
+          "title": "I am a Sub",
+          "desc": "My fulfillment lies in serving and following."
+        },
+        "domme": {
+          "title": "I am a Domme",
+          "desc": "I take pleasure in leading and setting the rules."
+        }
+      },
+      "selectTypeTitle": "Select your Account Type",
+      "enterToContinue": "Press",
+      "login": {
+        "cta": "Already have an account?",
+        "link": "Login"
+      },
+      "errors": {
+        "handleTaken": "This username is already taken.",
+        "checkFailed": "Could not check availability. Try again.",
+        "startFailed": "Signup could not start.",
+        "network": "Network error. Please try again.",
+        "selectTypeRequired": "Please select your account type."
+      }
+    },
+    "signupAccount": {
+      "headerTop": "Create your account",
+      "headerTitle": "Almost there",
+      "dommeDisclaimer": {
+        "title": "Important: How Tips Work on Subm8",
+        "li1": "Tips on Subm8 are voluntary gifts, not payments for services.",
+        "li2": "You must not advertise or guarantee services in exchange for tips.",
+        "li3": "If you offer services elsewhere, you are solely responsible for legal/tax compliance.",
+        "li4": "Misuse may result in account suspension.",
+        "checkbox": "I understand that tips on Subm8 are voluntary gifts and not tied to services."
+      },
+      "fields": {
+        "email": {
+          "label": "Email",
+          "placeholder": "you@example.com"
+        },
+        "password": {
+          "label": "Password",
+          "placeholder": "Minimum 8 characters",
+          "help": "Use at least 8 characters."
+        },
+        "password2": {
+          "label": "Confirm password"
+        }
+      },
+      "agree": "I agree to the Terms & Privacy Policy.",
+      "buttons": {
+        "create": "Create account",
+        "creating": "Creating…",
+        "google": "Continue with Google"
+      },
+      "login": {
+        "cta": "Already have an account?",
+        "link": "Login"
+      },
+      "errors": {
+        "signupFailed": "Failed to sign up"
+      }
+    }
+  },
+
+    "paymentsPage": {
+    "ariaBack": "Back to feed",
+    "title": "Payments & History",
+    "guestNote": "Please sign in to see your payment history.",
+    "payoutBtn": "Payout",
+    "payoutTooltip": "Request payout (coming soon)",
+    "avatarAlt": "{name} avatar",
+    "balance": {
+      "title": "Current Account Balance:",
+      "export": "CSV export"
+    },
+    "autodrain": {
+      "title": "Active Autodrain",
+      "outgoing": { "title": "Enabled by you" },
+      "incoming": { "title": "Receiving Autodrain" },
+      "none": "No active subscriptions.",
+      "th": {
+        "avatar": "Avatar",
+        "domme": "Domme",
+        "sub": "Sub",
+        "amount": "Amount",
+        "cadence": "Cadence",
+        "next": "Next charge"
+      },
+      "cancel": "Cancel",
+      "cadence": {
+        "daily": "Daily",
+        "weekly": "Weekly",
+        "monthly": "Monthly"
+      }
+    },
+    "payments": {
+      "received": {
+        "title": "Sends",
+        "empty": "No received payments."
+      },
+      "sent": {
+        "title": "You Sent",
+        "empty": "No outgoing payments."
+      },
+      "th": {
+        "avatar": "Avatar",
+        "date": "Date",
+        "username": "Username",
+        "amount": "Amount",
+        "what": "What",
+        "status": "Status"
+      },
+      "amountPrefixReceived": "Received: {amount}",
+      "amountPrefixSent": "Sent: {amount}",
+      "what": {
+        "tip": "Tip"
+      },
+      "status": {
+        "created": "Created",
+        "processing": "Processing",
+        "succeeded": "Succeeded",
+        "failed": "Failed",
+        "canceled": "Canceled"
+      }
+    }
+  },
+
+    "bookmarksPage": {
+    "ariaBack": "Back to feed",
+    "title": "Bookmarks",
+    "guestTitle": "Save posts for later",
+    "guestDesc": "Add bookmarks to posts so you can easily find them again in the future.",
+    "emptyTitle": "No bookmarks yet",
+    "emptyDesc": "Save posts to revisit them here anytime."
+    },
+
     "monetizationPage": {
       "ariaBack": "Back",
       "title": "Monetization",

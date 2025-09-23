@@ -4,13 +4,14 @@
 import * as React from 'react';
 import { signIn } from 'next-auth/react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import Link from 'next/link';
 
 export default function SignInPage() {
   const sp = useSearchParams();
   const router = useRouter();
   const locale = useLocale();
+  const t = useTranslations('common.auth.signin');
 
   // sowohl ?email= als auch ?handle= als Vorausfüllung unterstützen
   const preset =
@@ -38,16 +39,16 @@ export default function SignInPage() {
 
     try {
       const res = await signIn('credentials', {
-        redirect: false,          // <— wichtig: nicht umleiten
-        callbackUrl: `/${locale}`,// Ziel bei Erfolg
-        identifier,               // E-Mail ODER Handle
+        redirect: false,           // <— wichtig: nicht umleiten
+        callbackUrl: `/${locale}`, // Ziel bei Erfolg
+        identifier,                // E-Mail ODER Handle
         password,
       });
 
       if (res?.error) {
         // Fehler lokal anzeigen und Felder rot markieren
         setInvalid(true);
-        setInlineError('E-Mail/Handle oder Passwort ist falsch.');
+        setInlineError(t('errors.invalidCredentials'));
         return;
       }
 
@@ -61,7 +62,7 @@ export default function SignInPage() {
 
   return (
     <div className="mx-auto max-w-sm p-6 space-y-6">
-      <h1 className="text-xl font-semibold">Anmelden</h1>
+      <h1 className="text-xl font-semibold">{t('title')}</h1>
 
       {(registered || topErrorMsg) && (
         <div
@@ -71,13 +72,15 @@ export default function SignInPage() {
               : 'border-red-200 bg-red-50 text-red-800'
           }`}
         >
-          {registered ? 'Registrierung erfolgreich. Bitte einloggen.' : topErrorMsg}
+          {registered ? t('alerts.registered') : topErrorMsg}
         </div>
       )}
 
       <form onSubmit={handleCredentials} className="space-y-3" noValidate>
         <div className="space-y-1">
-          <label htmlFor="identifier" className="block text-sm">E-Mail oder Handle</label>
+          <label htmlFor="identifier" className="block text-sm">
+            {t('fields.identifier.label')}
+          </label>
           <input
             id="identifier"
             value={identifier}
@@ -88,7 +91,7 @@ export default function SignInPage() {
             type="text" // kein "email", damit @handle erlaubt ist
             autoComplete="username"
             required
-            placeholder="you@example.com oder @deinhandle"
+            placeholder={t('fields.identifier.placeholder')}
             aria-invalid={invalid || undefined}
             aria-describedby={invalid ? 'identifier-error' : undefined}
             className={`w-full rounded-md border px-3 py-2 outline-none
@@ -103,7 +106,9 @@ export default function SignInPage() {
         </div>
 
         <div className="space-y-1">
-          <label htmlFor="password" className="block text-sm">Passwort</label>
+          <label htmlFor="password" className="block text-sm">
+            {t('fields.password.label')}
+          </label>
           <input
             id="password"
             value={password}
@@ -132,23 +137,23 @@ export default function SignInPage() {
           disabled={loading}
           className="w-full rounded-md bg-black py-2 text-white disabled:opacity-60"
         >
-          {loading ? 'Anmelden…' : 'Anmelden'}
+          {loading ? t('buttons.submitLoading') : t('buttons.submit')}
         </button>
       </form>
 
-      <div className="text-center text-xs text-muted-foreground">oder</div>
+      <div className="text-center text-xs text-muted-foreground">{t('or')}</div>
 
       <button
         onClick={() => signIn('google', { callbackUrl: `/${locale}` })}
         className="w-full rounded-md border py-2"
       >
-        Mit Google anmelden
+        {t('buttons.google')}
       </button>
 
       <p className="text-sm">
-        Noch kein Konto?{' '}
+        {t('signup.cta')}{' '}
         <Link href={`/${locale}/signup`} className="text-[var(--purple)] hover:underline">
-          Jetzt registrieren
+          {t('signup.link')}
         </Link>
       </p>
     </div>

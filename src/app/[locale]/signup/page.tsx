@@ -4,7 +4,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 
 // shadcn/ui
 import { Input } from '@/components/ui/input';
@@ -64,6 +64,8 @@ function AccountTypeCard({
 export default function SignupStartPage() {
   const router = useRouter();
   const locale = useLocale();
+  const t = useTranslations('common.auth.signup');
+  const tc = useTranslations('common');
 
   const [username, setUsername] = React.useState('');
   const [touched, setTouched] = React.useState(false);
@@ -89,7 +91,8 @@ export default function SignupStartPage() {
   const showFormatError = touched && !handleFormatOk;
   const showTakenError = handleState === 'taken';
 
-  async function checkHandleAvailability(h: string): Promise<'ok' | 'taken' | 'skip' | 'error'> {
+  /** ←——— FIX: als useCallback, damit der Effekt eine stabile Dep bekommt */
+  const checkHandleAvailability = React.useCallback(async (h: string): Promise<'ok' | 'taken' | 'skip' | 'error'> => {
     if (!validHandle(h)) return 'skip';
     setHandleState('checking');
     setHandleMsg('');
@@ -107,8 +110,7 @@ export default function SignupStartPage() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data: unknown = await res.json().catch(() => ({}));
 
-      const available =
-        isHandleAvailableResponse(data) ? data.available : false;
+      const available = isHandleAvailableResponse(data) ? data.available : false;
 
       if (available) {
         setHandleState('ok');
@@ -116,15 +118,15 @@ export default function SignupStartPage() {
         return 'ok';
       } else {
         setHandleState('taken');
-        setHandleMsg('This username is already taken.');
+        setHandleMsg(t('errors.handleTaken'));
         return 'taken';
       }
     } catch {
       setHandleState('error');
-      setHandleMsg('Could not check availability. Try again.');
+      setHandleMsg(t('errors.checkFailed'));
       return 'error';
     }
-  }
+  }, [t]);
 
   // Live-Check bei Username-Änderung (debounced)
   React.useEffect(() => {
@@ -144,7 +146,7 @@ export default function SignupStartPage() {
     return () => {
       if (debounceTimer.current) window.clearTimeout(debounceTimer.current);
     };
-  }, [username, touched]);
+  }, [username, touched, checkHandleAvailability]); // ←——— FIX: Funktion als Dep
 
   /** Weiterleitung ausführen (inkl. finaler Server-Validierung) */
   const proceed = React.useCallback(
@@ -172,18 +174,16 @@ export default function SignupStartPage() {
             const okVal = (payload as Record<string, unknown>).ok;
             if (typeof okVal === 'boolean' && okVal === false) ok = false;
           }
-        } catch {
-          /* ignore json parse errors */
-        }
+        } catch { /* ignore */ }
 
         if (!ok) {
           const err = readErrorMessage(payload);
           if (res.status === 409 || (err && /exist|taken|vergeben/i.test(err))) {
             setHandleState('taken');
-            setHandleMsg('This username is already taken.');
+            setHandleMsg(t('errors.handleTaken'));
           } else {
             setHandleState('error');
-            setHandleMsg(err || 'Signup could not start.');
+            setHandleMsg(err || t('errors.startFailed'));
           }
           started.current = false;
           setBusy(false);
@@ -193,12 +193,12 @@ export default function SignupStartPage() {
         router.push(`/${locale}/signup/account?handle=${encodeURIComponent(h)}&role=${roleDb}`);
       } catch {
         setHandleState('error');
-        setHandleMsg('Network error. Please try again.');
+        setHandleMsg(t('errors.network'));
         started.current = false;
         setBusy(false);
       }
     },
-    [router, locale, handleState]
+    [router, locale, handleState, t]
   );
 
   /** Username ändern — kein Auto-Redirect, nur Live-Validierung */
@@ -258,22 +258,23 @@ export default function SignupStartPage() {
           <CardContent className="p-8 bg-[rgba(162,89,255,0.45)]">
             {/* Header */}
             <div className="text-center mb-8">
-              <p className="text-white/80 mb-2">Welcome to</p>
+              <p className="text-white/80 mb-2">
+                {t('welcome', { brand: tc('brand.name') })}
+              </p>
               <Link
                 href={`/${locale}`}
                 prefetch={false}
                 className="text-white text-4xl mb-4 inline-block font-extrabold"
               >
-                Subm8
+                {tc('brand.name')}
               </Link>
-              <p className="text-white/70">Choose a username to get started.</p>
+              <p className="text-white/70">{t('chooseUsername')}</p>
             </div>
 
             {/* Formular (Enter löst submit aus) */}
             <form className="space-y-6" onSubmit={onSubmit} noValidate>
               {/* Username Input mit @ */}
               <div>
-                {/* Nur Input + @ sind relativ zueinander */}
                 <div className="relative">
                   <div
                     className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-white/70 select-none"
@@ -283,7 +284,7 @@ export default function SignupStartPage() {
                   </div>
                   <Input
                     type="text"
-                    placeholder="Username"
+                    placeholder={t('fields.username.placeholder')}
                     value={username}
                     onChange={(e) => onUsernameChange(e.target.value)}
                     onBlur={() => setTouched(true)}
@@ -298,20 +299,20 @@ export default function SignupStartPage() {
                   />
                 </div>
 
-                {/* Helper/Fehlermeldung außerhalb, damit die Höhe den @-Anker nicht beeinflusst */}
+                {/* Helper/Fehlermeldung */}
                 {showHelperRow && (
                   <div className="mt-2 text-[12px]">
                     {showFormatError && (
-                      <span className="text-red-300">3–20 chars, a–z, 0–9, underscore.</span>
+                      <span className="text-red-300">{t('fields.username.formatHelp')}</span>
                     )}
                     {!showFormatError && handleState === 'checking' && (
-                      <span className="text-white/70">Checking availability…</span>
+                      <span className="text-white/70">{t('fields.username.checking')}</span>
                     )}
                     {!showFormatError && handleState === 'taken' && (
-                      <span className="text-red-300">{handleMsg || 'This username is already taken.'}</span>
+                      <span className="text-red-300">{handleMsg || t('errors.handleTaken')}</span>
                     )}
                     {!showFormatError && handleState === 'error' && (
-                      <span className="text-yellow-200">{handleMsg || 'Could not check availability.'}</span>
+                      <span className="text-yellow-200">{handleMsg || t('errors.checkFailed')}</span>
                     )}
                   </div>
                 )}
@@ -319,48 +320,49 @@ export default function SignupStartPage() {
 
               {/* Account Type Selection */}
               <div>
-                <p className="text-white/80 mb-4 text-center">Select your Account Type</p>
+                <p className="text-white/80 mb-4 text-center">{t('selectTypeTitle')}</p>
                 <div className="grid grid-cols-2 gap-4">
                   <AccountTypeCard
                     type="sub"
                     emoji="😊"
-                    title="I am a Sub"
-                    description="My fulfillment lies in serving and following."
+                    title={t('roleCard.sub.title')}
+                    description={t('roleCard.sub.desc')}
                     isSelected={selected === 'sub'}
                     onSelect={() => onSelect('sub')}
                   />
                   <AccountTypeCard
                     type="domme"
                     emoji="👑"
-                    title="I am a Domme"
-                    description="I take pleasure in leading and setting the rules."
+                    title={t('roleCard.domme.title')}
+                    description={t('roleCard.domme.desc')}
                     isSelected={selected === 'domme'}
                     onSelect={() => onSelect('domme')}
                   />
                 </div>
                 {submitAttempted && !selected && (
                   <div className="mt-2 text-center text-[12px] text-red-300">
-                    Please select your account type.
+                    {t('errors.selectTypeRequired')}
                   </div>
                 )}
               </div>
 
               {/* Kein Button — Enter im Username-Feld triggert onSubmit */}
               <div className="text-center text-xs text-white/60">
-                Press <kbd className="px-1 py-0.5 rounded border border-white/20">Enter</kbd> to continue.
+                {t('enterToContinue')}&nbsp;
+                <kbd className="px-1 py-0.5 rounded border border-white/20">Enter</kbd>.
               </div>
             </form>
 
             {/* Login Link */}
             <div className="mt-6 text-center">
               <p className="text-white/70">
-                Already have an account?{' '}
+                {t('login.cta')}{' '}
                 <Link
                   href={`/${locale}/signin`}
                   prefetch={false}
                   className="text-purple-300 hover:text-purple-200 underline transition-colors"
                 >
-                  Login
+                  {t('login.link')}
                 </Link>
               </p>
             </div>

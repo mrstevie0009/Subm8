@@ -3,7 +3,8 @@ import Link from 'next/link';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/currentUser';
 import type { Role } from '@prisma/client';
-import PostCard, { type Post as UIPost } from '@/components/PostCard';
+import PostCard, { type FeedPost } from '@/components/PostCard';
+import { getTranslations } from 'next-intl/server';
 
 type Params = { locale: string };
 
@@ -18,6 +19,7 @@ type BookmarkRow = {
     mediaAlt: string | null;
     createdAt: Date;
     author: {
+      id: string;
       handle: string;
       displayName: string | null;
       avatarUrl: string | null;
@@ -28,6 +30,7 @@ type BookmarkRow = {
 
 export default async function BookmarksPage({ params }: { params: Params }) {
   const { locale } = params;
+  const t = await getTranslations({ locale, namespace: 'common' });
 
   // Aktuellen User holen (mit id!)
   const me = await getCurrentUser();
@@ -39,7 +42,7 @@ export default async function BookmarksPage({ params }: { params: Params }) {
       <div className="flex items-center">
         <Link
           href={`/${locale}`}
-          aria-label="Zurück zum Feed"
+          aria-label={t('bookmarksPage.ariaBack')}
           className="inline-flex items-center justify-center p-1 hover:opacity-85 focus:outline-none focus:ring-2 focus:ring-[var(--purple)]/40"
           style={{ color: 'var(--purple)' }}
         >
@@ -47,7 +50,7 @@ export default async function BookmarksPage({ params }: { params: Params }) {
         </Link>
 
         <div className="ml-2 sm:ml-3">
-          <h1 className="text-[22px] font-bold leading-tight">Bookmarks</h1>
+          <h1 className="text-[22px] font-bold leading-tight">{t('bookmarksPage.title')}</h1>
           <div className="text-sm text-white/60">@{handle}</div>
         </div>
       </div>
@@ -61,10 +64,10 @@ export default async function BookmarksPage({ params }: { params: Params }) {
         {Header}
         <div className="p-10 md:p-14">
           <h2 className="text-[28px] md:text-[36px] font-extrabold leading-tight mb-3">
-            Save posts for later
+            {t('bookmarksPage.guestTitle')}
           </h2>
           <p className="text-white/70 text-[15px] md:text-[17px]">
-            Add bookmarks to posts so you can easily find them again in the future.
+            {t('bookmarksPage.guestDesc')}
           </p>
         </div>
       </section>
@@ -85,10 +88,10 @@ export default async function BookmarksPage({ params }: { params: Params }) {
         {Header}
         <div className="p-10 md:p-14">
           <h2 className="text-[28px] md:text-[36px] font-extrabold leading-tight mb-3">
-            Save posts for later
+            {t('bookmarksPage.emptyTitle')}
           </h2>
           <p className="text-white/70 text-[15px] md:text-[17px]">
-            Add bookmarks to posts so you can easily find them again in the future.
+            {t('bookmarksPage.emptyDesc')}
           </p>
         </div>
       </section>
@@ -96,24 +99,32 @@ export default async function BookmarksPage({ params }: { params: Params }) {
   }
 
   // In UI-Posts mappen
-  const posts: UIPost[] = rows.map((b) => {
+  const posts: FeedPost[] = rows.map((b) => {
     const p = b.post;
     const a = p.author;
-    const roleUI: 'domme' | 'submissive' = a.role === 'DOMME' ? 'domme' : 'submissive';
     return {
       id: p.id,
-      author: {
-        name: a.displayName ?? a.handle,
-        handle: a.handle,
-        role: roleUI,
-        avatarUrl: a.avatarUrl ?? undefined,
+      createdAtISO: p.createdAt.toISOString(),
+      content: {
+        id: p.id,
+        text: p.text ?? '',
+        mediaUrl: p.mediaUrl ?? null,
+        mediaAlt: p.mediaAlt ?? null,
+        createdAt: p.createdAt.toISOString(),
+        author: {
+          id: a.id,
+          handle: a.handle,
+          displayName: a.displayName ?? a.handle,
+          role: a.role, // 'DOMME' | 'SUBMISSIVE'
+          avatarUrl: a.avatarUrl,
+        },
+        quote: null,
       },
-      createdAt: p.createdAt.toISOString(),
-      text: p.text ?? '',
-      mediaUrl: p.mediaUrl ?? undefined,
-      mediaAlt: p.mediaAlt ?? undefined,
+      reposter: null,
       stats: { comments: 0, reposts: 0, likes: 0 },
+      viewer: { liked: false, bookmarked: true, hasBlockedAuthor: false, blockedByAuthor: false },
       initiallyBookmarked: true,
+      community: null,
     };
   });
 

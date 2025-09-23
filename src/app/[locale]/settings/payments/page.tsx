@@ -4,6 +4,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/currentUser";
 import { cancelAutodrainAction } from "@/app/actions/autodrain"; // ← keeps cancel per-sub working
+import { getTranslations } from "next-intl/server";
 
 type Params = { locale: string };
 
@@ -24,11 +25,18 @@ function parseMeta(input: unknown): PaymentMeta {
 }
 
 type AutoDrainCadence = "DAILY" | "WEEKLY" | "MONTHLY";
-const cadenceLabel = (c: AutoDrainCadence) => (c === "DAILY" ? "Daily" : c === "WEEKLY" ? "Weekly" : "Monthly");
 
 export default async function PaymentsPage({ params }: { params: Promise<Params> }) {
   // params is a promise in your setup
   const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: "common" });
+
+  const cadenceLabel = (c: AutoDrainCadence) =>
+    c === "DAILY"
+      ? t("paymentsPage.autodrain.cadence.daily")
+      : c === "WEEKLY"
+      ? t("paymentsPage.autodrain.cadence.weekly")
+      : t("paymentsPage.autodrain.cadence.monthly");
 
   const me = await getCurrentUser().catch(() => null);
   const handle = (me as { handle?: string | null } | null)?.handle ?? "—";
@@ -40,20 +48,20 @@ export default async function PaymentsPage({ params }: { params: Promise<Params>
           <div className="flex items-center">
             <Link
               href={`/${locale}`}
-              aria-label="Back to feed"
+              aria-label={t("paymentsPage.ariaBack")}
               className="inline-flex items-center p-1 hover:opacity-85 focus:outline-none focus:ring-2 focus:ring-[var(--purple)]/40"
               style={{ color: "var(--purple)" }}
             >
               <ChevronLeftIcon />
             </Link>
             <div className="ml-2 sm:ml-3">
-              <h1 className="text-[22px] font-bold leading-tight">Payments &amp; History</h1>
+              <h1 className="text-[22px] font-bold leading-tight">{t("paymentsPage.title")}</h1>
               <div className="text-sm text-white/60">@{handle}</div>
             </div>
           </div>
         </header>
 
-        <div className="p-8 text-center text-white/80">Please sign in to see your payment history.</div>
+        <div className="p-8 text-center text-white/80">{t("paymentsPage.guestNote")}</div>
       </section>
     );
   }
@@ -93,7 +101,7 @@ export default async function PaymentsPage({ params }: { params: Promise<Params>
       direction: incoming ? ("in" as const) : ("out" as const),
       amountCents,
       currency: p.currency,
-      what: meta.note ?? "Tip",
+      what: meta.note ?? t("paymentsPage.payments.what.tip"),
       status: p.status as "CREATED" | "PROCESSING" | "SUCCEEDED" | "FAILED" | "CANCELED",
     };
   });
@@ -136,14 +144,14 @@ export default async function PaymentsPage({ params }: { params: Promise<Params>
           <div className="flex items-center gap-3">
             <Link
               href={`/${locale}`}
-              aria-label="Back to feed"
+              aria-label={t("paymentsPage.ariaBack")}
               className="inline-flex items-center p-1 hover:opacity-85 focus:outline-none focus:ring-2 focus:ring-[var(--purple)]/40"
               style={{ color: "var(--purple)" }}
             >
               <ChevronLeftIcon />
             </Link>
             <div className="ml-2 sm:ml-3">
-              <h1 className="text-[22px] font-bold leading-tight">Payments &amp; History</h1>
+              <h1 className="text-[22px] font-bold leading-tight">{t("paymentsPage.title")}</h1>
               <div className="text-sm text-white/60">@{handle}</div>
             </div>
           </div>
@@ -151,9 +159,9 @@ export default async function PaymentsPage({ params }: { params: Promise<Params>
           <button
             type="button"
             className="px-4 py-1.5 rounded-full bg-[var(--purple)] hover:opacity-95 text-white"
-            title="Request payout (coming soon)"
+            title={t("paymentsPage.payoutTooltip")}
           >
-            Payout
+            {t("paymentsPage.payoutBtn")}
           </button>
         </div>
       </header>
@@ -162,9 +170,14 @@ export default async function PaymentsPage({ params }: { params: Promise<Params>
       <section className="border-y border-white/10">
         <div className="px-4 py-8 md:py-10 min-h-[50px] flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="text-[17px] font-medium opacity-90 whitespace-nowrap">Current Account Balance:</div>
-            <a href={csvUrl} className="px-4 py-2 rounded-full bg-[var(--purple)]/90 hover:bg-[var(--purple)] text-white text-[14px] whitespace-nowrap">
-              CSV-Export
+            <div className="text-[17px] font-medium opacity-90 whitespace-nowrap">
+              {t("paymentsPage.balance.title")}
+            </div>
+            <a
+              href={csvUrl}
+              className="px-4 py-2 rounded-full bg-[var(--purple)]/90 hover:bg-[var(--purple)] text-white text-[14px] whitespace-nowrap"
+            >
+              {t("paymentsPage.balance.export")}
             </a>
           </div>
 
@@ -176,24 +189,24 @@ export default async function PaymentsPage({ params }: { params: Promise<Params>
 
       {/* Active Autodrain */}
       <section className="px-4 py-6 border-b border-white/10">
-        <h2 className="text-[18px] font-semibold mb-3">Active Autodrain</h2>
+        <h2 className="text-[18px] font-semibold mb-3">{t("paymentsPage.autodrain.title")}</h2>
 
         {/* Enabled by you (you are Sub) */}
         <div className="mb-6">
-          <div className="text-[13px] text-white/70 mb-2">Enabled by you</div>
+          <div className="text-[13px] text-white/70 mb-2">{t("paymentsPage.autodrain.outgoing.title")}</div>
           {outgoingSubs.length === 0 ? (
-            <div className="text-white/60 text-sm">No active subscriptions.</div>
+            <div className="text-white/60 text-sm">{t("paymentsPage.autodrain.none")}</div>
           ) : (
             <div className="overflow-auto" style={{ maxHeight: 360 }}>
               <table className="w-full text-left" style={{ minWidth: 720 }}>
                 <thead className="sticky top-0 z-10 bg-black/70 backdrop-blur border-b border-white/10">
                   <tr className="[&>th]:py-2.5 [&>th]:px-3 text-white/80">
-                    <th style={{ width: 98 }}>Avatar</th>
-                    <th style={{ width: 220 }}>Domme</th>
-                    <th style={{ width: 180 }}>Amount</th>
-                    <th style={{ width: 180 }}>Cadence</th>
-                    <th style={{ width: 220 }}>Next charge</th>
-                    <th style={{ width: 160 }}></th>
+                    <th style={{ width: 98 }}>{t("paymentsPage.autodrain.th.avatar")}</th>
+                    <th style={{ width: 220 }}>{t("paymentsPage.autodrain.th.domme")}</th>
+                    <th style={{ width: 180 }}>{t("paymentsPage.autodrain.th.amount")}</th>
+                    <th style={{ width: 180 }}>{t("paymentsPage.autodrain.th.cadence")}</th>
+                    <th style={{ width: 220 }}>{t("paymentsPage.autodrain.th.next")}</th>
+                    <th style={{ width: 160 }} />
                   </tr>
                 </thead>
                 <tbody className="[&>tr]:border-b [&>tr]:border-white/10">
@@ -206,7 +219,7 @@ export default async function PaymentsPage({ params }: { params: Promise<Params>
                           <div className="w-9 h-9 rounded-full overflow-hidden bg-white/10 border border-white/10">
                             <Image
                               src={u?.avatarUrl ?? "/images/avatar-placeholder.png"}
-                              alt={`${who} avatar`}
+                              alt={t("paymentsPage.avatarAlt", { name: who })}
                               width={36}
                               height={36}
                               className="object-cover w-9 h-9"
@@ -225,7 +238,7 @@ export default async function PaymentsPage({ params }: { params: Promise<Params>
                               type="submit"
                               className="px-3 py-1.5 rounded-lg border border-white/20 hover:bg-white/10 text-[13px]"
                             >
-                              Cancel
+                              {t("paymentsPage.autodrain.cancel")}
                             </button>
                           </form>
                         </td>
@@ -238,22 +251,22 @@ export default async function PaymentsPage({ params }: { params: Promise<Params>
           )}
         </div>
 
-        {/* Paying you*/}
+        {/* Paying you */}
         <div>
-          <h2 className="text-[18px] font-semibold mb-3">Receiving Autodrain</h2>
+          <h2 className="text-[18px] font-semibold mb-3">{t("paymentsPage.autodrain.incoming.title")}</h2>
           {incomingSubs.length === 0 ? (
-            <div className="text-white/60 text-sm">No active subscriptions.</div>
+            <div className="text-white/60 text-sm">{t("paymentsPage.autodrain.none")}</div>
           ) : (
             <div className="overflow-auto" style={{ maxHeight: 360 }}>
               <table className="w-full text-left" style={{ minWidth: 720 }}>
                 <thead className="sticky top-0 z-10 bg-black/70 backdrop-blur border-b border-white/10">
                   <tr className="[&>th]:py-2.5 [&>th]:px-3 text-white/80">
-                    <th style={{ width: 98 }}>Avatar</th>
-                    <th style={{ width: 220 }}>Sub</th>
-                    <th style={{ width: 180 }}>Amount</th>
-                    <th style={{ width: 180 }}>Cadence</th>
-                    <th style={{ width: 220 }}>Next charge</th>
-                    <th style={{ width: 160 }}></th>
+                    <th style={{ width: 98 }}>{t("paymentsPage.autodrain.th.avatar")}</th>
+                    <th style={{ width: 220 }}>{t("paymentsPage.autodrain.th.sub")}</th>
+                    <th style={{ width: 180 }}>{t("paymentsPage.autodrain.th.amount")}</th>
+                    <th style={{ width: 180 }}>{t("paymentsPage.autodrain.th.cadence")}</th>
+                    <th style={{ width: 220 }}>{t("paymentsPage.autodrain.th.next")}</th>
+                    <th style={{ width: 160 }} />
                   </tr>
                 </thead>
                 <tbody className="[&>tr]:border-b [&>tr]:border-white/10">
@@ -266,7 +279,7 @@ export default async function PaymentsPage({ params }: { params: Promise<Params>
                           <div className="w-9 h-9 rounded-full overflow-hidden bg-white/10 border border-white/10">
                             <Image
                               src={u?.avatarUrl ?? "/images/avatar-placeholder.png"}
-                              alt={`${who} avatar`}
+                              alt={t("paymentsPage.avatarAlt", { name: who })}
                               width={36}
                               height={36}
                               className="object-cover w-9 h-9"
@@ -290,26 +303,28 @@ export default async function PaymentsPage({ params }: { params: Promise<Params>
 
       {/* Sends (incoming payments) */}
       <section className="px-4 py-6 border-b border-white/10">
-        <h2 className="text-[18px] font-semibold mb-3">Sends</h2>
+        <h2 className="text-[18px] font-semibold mb-3">{t("paymentsPage.payments.received.title")}</h2>
         {receivedRows.length === 0 ? (
-          <div className="text-white/60 text-sm">No received payments.</div>
+          <div className="text-white/60 text-sm">{t("paymentsPage.payments.received.empty")}</div>
         ) : (
           <div className="overflow-auto" style={{ maxHeight: "60vh" }}>
             <table className="w-full text-left" style={{ minWidth: 760 }}>
               <thead className="sticky top-0 z-10 bg-black/70 backdrop-blur border-b border-white/10">
                 <tr className="[&>th]:py-3 [&>th]:px-4 text-white/80">
-                  <th style={{ width: 110, minWidth: 110 }}>Avatar</th>
-                  <th style={{ width: 200, minWidth: 200 }}>Date</th>
-                  <th style={{ width: 220, minWidth: 220 }}>Username</th>
-                  <th style={{ width: 180, minWidth: 180 }}>Amount</th>
-                  <th style={{ width: 200, minWidth: 200 }}>What</th>
-                  <th style={{ width: 160, minWidth: 160 }}>Status</th>
+                  <th style={{ width: 110, minWidth: 110 }}>{t("paymentsPage.payments.th.avatar")}</th>
+                  <th style={{ width: 200, minWidth: 200 }}>{t("paymentsPage.payments.th.date")}</th>
+                  <th style={{ width: 220, minWidth: 220 }}>{t("paymentsPage.payments.th.username")}</th>
+                  <th style={{ width: 180, minWidth: 180 }}>{t("paymentsPage.payments.th.amount")}</th>
+                  <th style={{ width: 200, minWidth: 200 }}>{t("paymentsPage.payments.th.what")}</th>
+                  <th style={{ width: 160, minWidth: 160 }}>{t("paymentsPage.payments.th.status")}</th>
                 </tr>
               </thead>
               <tbody className="[&>tr]:border-b [&>tr]:border-white/10">
                 {receivedRows.map((r) => {
                   const who = r.counterparty.displayName ?? r.counterparty.handle;
-                  const amountLabel = `Received: ${fmtMoney(r.amountCents, r.currency, locale)}`;
+                  const amountLabel = t("paymentsPage.payments.amountPrefixReceived", {
+                    amount: fmtMoney(r.amountCents, r.currency, locale),
+                  });
                   const statusTone =
                     r.status === "SUCCEEDED"
                       ? "text-emerald-400"
@@ -325,7 +340,7 @@ export default async function PaymentsPage({ params }: { params: Promise<Params>
                         <div className="w-10 h-10 rounded-full overflow-hidden bg-white/10 border border-white/10">
                           <Image
                             src={r.counterparty.avatarUrl ?? "/images/avatar-placeholder.png"}
-                            alt={`${who} avatar`}
+                            alt={t("paymentsPage.avatarAlt", { name: who })}
                             width={40}
                             height={40}
                             className="object-cover w-10 h-10"
@@ -336,7 +351,9 @@ export default async function PaymentsPage({ params }: { params: Promise<Params>
                       <td className="whitespace-nowrap">{who}</td>
                       <td className="whitespace-nowrap">{amountLabel}</td>
                       <td className="whitespace-nowrap">{r.what}</td>
-                      <td className={`whitespace-nowrap font-medium ${statusTone}`}>{r.status}</td>
+                      <td className={`whitespace-nowrap font-medium ${statusTone}`}>
+                        {t(`paymentsPage.payments.status.${r.status.toLowerCase() as "created"|"processing"|"succeeded"|"failed"|"canceled"}`)}
+                      </td>
                     </tr>
                   );
                 })}
@@ -348,26 +365,28 @@ export default async function PaymentsPage({ params }: { params: Promise<Params>
 
       {/* You Sent (outgoing payments) */}
       <section className="px-4 py-6">
-        <h2 className="text-[18px] font-semibold mb-3">You Sent</h2>
+        <h2 className="text-[18px] font-semibold mb-3">{t("paymentsPage.payments.sent.title")}</h2>
         {sentRows.length === 0 ? (
-          <div className="text-white/60 text-sm">No outgoing payments.</div>
+          <div className="text-white/60 text-sm">{t("paymentsPage.payments.sent.empty")}</div>
         ) : (
           <div className="overflow-auto" style={{ maxHeight: "60vh" }}>
             <table className="w-full text-left" style={{ minWidth: 760 }}>
               <thead className="sticky top-0 z-10 bg-black/70 backdrop-blur border-b border-white/10">
                 <tr className="[&>th]:py-3 [&>th]:px-4 text-white/80">
-                  <th style={{ width: 110, minWidth: 110 }}>Avatar</th>
-                  <th style={{ width: 200, minWidth: 200 }}>Date</th>
-                  <th style={{ width: 220, minWidth: 220 }}>Username</th>
-                  <th style={{ width: 180, minWidth: 180 }}>Amount</th>
-                  <th style={{ width: 200, minWidth: 200 }}>What</th>
-                  <th style={{ width: 160, minWidth: 160 }}>Status</th>
+                  <th style={{ width: 110, minWidth: 110 }}>{t("paymentsPage.payments.th.avatar")}</th>
+                  <th style={{ width: 200, minWidth: 200 }}>{t("paymentsPage.payments.th.date")}</th>
+                  <th style={{ width: 220, minWidth: 220 }}>{t("paymentsPage.payments.th.username")}</th>
+                  <th style={{ width: 180, minWidth: 180 }}>{t("paymentsPage.payments.th.amount")}</th>
+                  <th style={{ width: 200, minWidth: 200 }}>{t("paymentsPage.payments.th.what")}</th>
+                  <th style={{ width: 160, minWidth: 160 }}>{t("paymentsPage.payments.th.status")}</th>
                 </tr>
               </thead>
               <tbody className="[&>tr]:border-b [&>tr]:border-white/10">
                 {sentRows.map((r) => {
                   const who = r.counterparty.displayName ?? r.counterparty.handle;
-                  const amountLabel = `Sent: ${fmtMoney(r.amountCents, r.currency, locale)}`;
+                  const amountLabel = t("paymentsPage.payments.amountPrefixSent", {
+                    amount: fmtMoney(r.amountCents, r.currency, locale),
+                  });
                   const statusTone =
                     r.status === "SUCCEEDED"
                       ? "text-emerald-400"
@@ -383,7 +402,7 @@ export default async function PaymentsPage({ params }: { params: Promise<Params>
                         <div className="w-10 h-10 rounded-full overflow-hidden bg-white/10 border border-white/10">
                           <Image
                             src={r.counterparty.avatarUrl ?? "/images/avatar-placeholder.png"}
-                            alt={`${who} avatar`}
+                            alt={t("paymentsPage.avatarAlt", { name: who })}
                             width={40}
                             height={40}
                             className="object-cover w-10 h-10"
@@ -394,7 +413,9 @@ export default async function PaymentsPage({ params }: { params: Promise<Params>
                       <td className="whitespace-nowrap">{who}</td>
                       <td className="whitespace-nowrap">{amountLabel}</td>
                       <td className="whitespace-nowrap">{r.what}</td>
-                      <td className={`whitespace-nowrap font-medium ${statusTone}`}>{r.status}</td>
+                      <td className={`whitespace-nowrap font-medium ${statusTone}`}>
+                        {t(`paymentsPage.payments.status.${r.status.toLowerCase() as "created"|"processing"|"succeeded"|"failed"|"canceled"}`)}
+                      </td>
                     </tr>
                   );
                 })}
