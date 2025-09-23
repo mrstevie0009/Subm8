@@ -1,10 +1,18 @@
+// src/app/[locale]/settings/page.tsx
 import Link from 'next/link';
 import { getCurrentUser } from '@/lib/currentUser';
+import { setRequestLocale, getTranslations } from 'next-intl/server';
 
 type Params = { locale: string };
 
 export default async function SettingsPage({ params }: { params: Promise<Params> }) {
   const { locale } = await params;
+
+  // WICHTIG: Locale für SSR setzen
+  setRequestLocale(locale);
+
+  // Übersetzungen explizit mit Locale + Namespace laden
+  const t = await getTranslations({ locale, namespace: 'common.settingsPage' });
 
   // User laden (tolerant typisiert)
   const me = (await getCurrentUser().catch(() => null)) as
@@ -21,45 +29,44 @@ export default async function SettingsPage({ params }: { params: Promise<Params>
   }> = [
     {
       href: `/${locale}/profile`,
-      title: 'Dein Account',
-      desc:
-        'Profilinfo ansehen und bearbeiten (Name, Bio, Avatar, Banner), Daten exportieren und Account-Optionen.',
+      title: t('items.account.title'),
+      desc: t('items.account.desc'),
       icon: <UserIcon />,
     },
     {
-      href: `/${locale}/security`, 
-      title: 'Sicherheit & Zugriff',
-      desc: 'Login-Sicherheit prüfen, verbundene Apps verwalten und Zugriff überwachen.',
+      href: `/${locale}/security`,
+      title: t('items.security.title'),
+      desc: t('items.security.desc'),
       icon: <LockIcon />,
     },
     {
       href: `/${locale}/settings/premium`,
-      title: 'Premium',
-      desc: 'Vorteile ansehen und deine Premium-Einstellungen verwalten.',
+      title: t('items.premium.title'),
+      desc: t('items.premium.desc'),
       icon: <PremiumIcon />,
     },
     {
       href: `/${locale}/monetization`,
-      title: 'Monetarisierung',
-      desc: 'Vom Tip bis zur Community. Alle Wege zu stabilen Einnahmen.',
+      title: t('items.monetization.title'),
+      desc: t('items.monetization.desc'),
       icon: <MoneyIcon />,
     },
     {
       href: `/${locale}/legal`,
-      title: 'Datenschutz',
-      desc: 'Steuere, welche Informationen du siehst und teilst, und passe deine Privatsphäre an.',
+      title: t('items.privacy.title'),
+      desc: t('items.privacy.desc'),
       icon: <ShieldIcon />,
     },
     {
       href: `/${locale}/settings/notifications`,
-      title: 'Mitteilungen',
-      desc: 'Lege fest, über welche Aktivitäten, Empfehlungen und Nachrichten du benachrichtigt wirst.',
+      title: t('items.notifications.title'),
+      desc: t('items.notifications.desc'),
       icon: <BellIcon />,
     },
     {
       href: `/${locale}/settings/bookmarks`,
-      title: 'Bookmarks',
-      desc: 'Gespeicherte Posts verwalten.',
+      title: t('items.bookmarks.title'),
+      desc: t('items.bookmarks.desc'),
       icon: <BookmarkIcon />,
     },
   ];
@@ -71,7 +78,7 @@ export default async function SettingsPage({ params }: { params: Promise<Params>
         <div className="flex items-center">
           <Link
             href={`/${locale}`}
-            aria-label="Zurück zum Feed"
+            aria-label={t('ariaBack')}
             className="inline-flex items-center justify-center p-1 hover:opacity-85 focus:outline-none focus:ring-2 focus:ring-[var(--purple)]/40"
             style={{ color: 'var(--purple)' }} // ⬅️ Pfeil in Lila
           >
@@ -80,7 +87,7 @@ export default async function SettingsPage({ params }: { params: Promise<Params>
 
           {/* Titelblock etwas nach rechts schieben */}
           <div className="ml-2 sm:ml-3">
-            <h1 className="text-[22px] font-bold leading-tight">Einstellungen</h1>
+            <h1 className="text-[22px] font-bold leading-tight">{t('title')}</h1>
             <div className="text-sm text-white/60">@{handle}</div>
           </div>
         </div>
@@ -93,7 +100,7 @@ export default async function SettingsPage({ params }: { params: Promise<Params>
             </span>
             <input
               type="search"
-              placeholder="Einstellungen durchsuchen"
+              placeholder={t('searchPlaceholder')}
               className="w-full bg-white/5 border border-white/10 rounded-full pl-10 pr-3 h-10 outline-none focus:ring-2 focus:ring-[var(--purple)]/40"
             />
           </div>

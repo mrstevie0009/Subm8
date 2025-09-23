@@ -1,11 +1,170 @@
 {
-  "nav": {
-    "home": "Accueil",
-    "search": "Recherche",
-    "communities": "Communautés",
-    "chat": "Chat"
-  },
-  "brand": {
-    "name": "Subm8"
+  "common": {
+    "nav": { "home": "Accueil", "search": "Recherche", "communities": "Communautés", "chat": "Messages" },
+    "brand": { "name": "Subm8" },
+
+    "time": {
+      "now": "mtn",
+      "m": "{count}min",
+      "h": "{count}h",
+      "d": "{count}j"
+    },
+
+    "comments": {
+      "placeholder": "Écrire un commentaire…",
+      "replyPlaceholder": "Écrire une réponse…",
+      "noComments": "Pas encore de commentaires.",
+      "loadMore": "Charger plus",
+      "loading": "Chargement…",
+      "reply": "Répondre",
+      "like": "J’aime",
+      "unlike": "Je n’aime plus",
+      "remove": "Retirer",
+      "addGif": "Ajouter un GIF",
+      "attachImage": "Joindre une image",
+      "send": "Envoyer",
+      "sending": "Envoi…",
+      "searchGifs": "Rechercher des GIFs…",
+      "search": "Rechercher",
+      "close": "Fermer",
+      "pick": "Choisir",
+      "errorLoading": "Impossible de charger les commentaires.",
+      "errorGifs": "Impossible de charger les GIFs."
+    },
+
+    "post": {
+      "communityPost": "Publication de communauté",
+      "repostedBy": "{name} a repartagé",
+      "pinned": "Épinglé",
+      "ariaOpen": "Ouvrir la publication",
+      "ariaBack": "Retour",
+      "headerTitle": "Publication",
+      "interactionBlocked": "Les interactions sont bloquées",
+      "like": "J’aime",
+      "unlike": "Je n’aime plus",
+      "comment": "Commenter",
+      "repost": "Repartager",
+      "quotePost": "Citer la publication",
+      "more": "Plus",
+      "copyText": "Copier le texte du post",
+      "block": "Bloquer le compte",
+      "unblock": "Débloquer le compte",
+      "report": "Signaler la publication",
+      "pinToProfile": "Épingler au profil",
+      "unpinFromProfile": "Retirer l’épingle",
+      "role": { "domme": "Dominante", "submissive": "Soumis·e" },
+      "blockStatus": { "youBlock": "Vous bloquez", "blocksYou": "Vous bloque" },
+
+      "share": {
+        "title": "Partager",
+        "label": "Partager",
+        "dm": "Envoyer par message direct",
+        "shareInDm": "Partager en message direct",
+        "copy": "Copier le lien",
+        "copied": "Copié !",
+        "system": "Partager sur l’appareil…",
+        "systemTitle": "{name} sur {brand}",
+        "systemText": "Découvrez ce post sur {brand}",
+        "dmTitle": "Envoyer par message direct",
+        "searchPlaceholder": "Rechercher des personnes/conversations",
+        "loadingChats": "Chargement des messages…",
+        "empty": "Aucune conversation trouvée.",
+        "notePlaceholder": "Ajouter un commentaire (facultatif)…",
+        "cancel": "Annuler",
+        "send": "Envoyer",
+        "sending": "Envoi…"
+      },
+
+      "cantInteract": "Vous ne pouvez pas interagir avec ce compte."
+    },
+
+    "settings": {
+      "aria": "Paramètres",
+      "guest": "Invité",
+      "roleDomme": "Dominante",
+      "roleSub": "Sub",
+      "statsFollowing": "Abonnements",
+      "statsFollowers": "Abonnés",
+      "statsError": "Erreur lors du chargement des statistiques",
+      "menu": {
+        "profile": "Profil",
+        "settings": "Paramètres",
+        "bookmarks": "Signets",
+        "premium": "Premium",
+        "payments": "Paiements"
+      },
+      "recommended": "Profils recommandés",
+      "suggestionsEmpty": "Aucune suggestion pour le moment.",
+      "follow": "Suivre",
+      "unfollow": "Ne plus suivre",
+      "signIn": "Se connecter",
+      "signOut": "Se déconnecter",
+      "loading": "Chargement…",
+      "noHandle": "—",
+      "avatarAlt": "Avatar du profil"
+    },
+
+    "profile": {
+      "more": "Plus",
+      "shareProfileViaDm": "Partager le profil en MD",
+      "copyProfileLink": "Copier le lien du profil",
+      "blockUser": "Bloquer l’utilisateur",
+      "unblockUser": "Débloquer l’utilisateur",
+      "reportUser": "Signaler l’utilisateur",
+      "message": "Message",
+      "tabs": {
+        "posts": "Posts",
+        "gallery": "Galerie",
+        "leaderboard": "Classement"
+      },
+      "editProfile": "Modifier le profil",
+      "tipActions": "Actions pour pourboire",
+      "sendTip": "Envoyer un pourboire",
+      "autodrain": "Autodrain",
+      "offer": "Offre",
+      "offerMenu": "Menu des offres",
+      "follow": "Suivre",
+      "unfollow": "Ne plus suivre",
+      "blockedBy": "Cet utilisateur vous a bloqué",
+      "youBlocked": "Vous avez bloqué cet utilisateur",
+      "messagingDisabled": "Messagerie désactivée en raison d’un blocage",
+      "joined": "Membre depuis"
+    },
+
+    "settingsPage": {
+      "ariaBack": "Retour au fil",
+      "title": "Paramètres",
+      "searchPlaceholder": "Rechercher dans les paramètres",
+      "items": {
+        "account": {
+          "title": "Votre compte",
+          "desc": "Voir et modifier les infos du profil (nom, bio, avatar, bannière), exporter les données et options du compte."
+        },
+        "security": {
+          "title": "Sécurité & accès",
+          "desc": "Vérifier la sécurité de connexion, gérer les applications connectées et surveiller les accès."
+        },
+        "premium": {
+          "title": "Premium",
+          "desc": "Voir les avantages et gérer vos paramètres Premium."
+        },
+        "monetization": {
+          "title": "Monétisation",
+          "desc": "Des pourboires aux communautés. Toutes les voies vers des revenus stables."
+        },
+        "privacy": {
+          "title": "Confidentialité",
+          "desc": "Contrôlez ce que vous voyez et partagez, et ajustez votre confidentialité."
+        },
+        "notifications": {
+          "title": "Notifications",
+          "desc": "Choisissez quelles activités, recommandations et messages vous avertissent."
+        },
+        "bookmarks": {
+          "title": "Signets",
+          "desc": "Gérer les publications enregistrées."
+        }
+      }
+    }
   }
 }

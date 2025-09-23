@@ -1,4 +1,3 @@
-// src/components/SettingsDrawer.tsx
 'use client';
 
 import * as React from 'react';
@@ -6,7 +5,7 @@ import { createPortal } from 'react-dom';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useSession, signOut } from 'next-auth/react';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { followAction, unfollowAction } from '@/app/actions/follow';
 
@@ -35,6 +34,8 @@ export default function SettingsDrawer({ open, onClose }: Props) {
   const locale = useLocale();
   const pathname = usePathname();
   const search = useSearchParams();
+
+  const t = useTranslations('settings');
 
   const isAuth = Boolean(session?.user);
 
@@ -67,11 +68,16 @@ export default function SettingsDrawer({ open, onClose }: Props) {
       | { name?: string; handle?: string; image?: string | null; role?: string | null }
       | undefined) ?? {};
 
-  const displayName = meBasic?.displayName ?? u.name ?? 'Guest';
+  const displayName = meBasic?.displayName ?? u.name ?? t('guest');
   const handle = meBasic?.handle ?? u.handle ?? '';
   const image = meBasic?.avatarUrl ?? u.image ?? AVATAR_PH;
   const roleRaw = (meBasic?.role ?? (u.role ?? '')).toString().toUpperCase();
-  const roleLabel = roleRaw === 'DOMME' ? 'Domina' : roleRaw ? 'Sub' : '—';
+  const roleLabel =
+    roleRaw === 'DOMME'
+      ? t('roleDomme')
+      : roleRaw === 'SUBMISSIVE'
+      ? t('roleSub')
+      : t('noHandle');
 
   const [followers, setFollowers] = React.useState<number>(0);
   const [following, setFollowing] = React.useState<number>(0);
@@ -87,40 +93,39 @@ export default function SettingsDrawer({ open, onClose }: Props) {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const json: { ok?: boolean; followers?: number; following?: number; error?: string } =
           await res.json();
-        if (!json?.ok) throw new Error(json?.error || 'Unknown error');
+        if (!json?.ok) throw new Error(json?.error || 'error');
         if (!cancelled) {
           setFollowers(Number(json.followers ?? 0));
           setFollowing(Number(json.following ?? 0));
         }
-      } catch (e: unknown) {
-        const msg = e instanceof Error ? e.message : 'Fehler beim Laden der Stats';
-        if (!cancelled) setStatsError(msg);
+      } catch {
+        if (!cancelled) setStatsError(t('statsError'));
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [open, isAuth]);
+  }, [open, isAuth, t]);
 
-  const [headline, setHeadline] = React.useState<string>('Loading…');
+  const [headline, setHeadline] = React.useState<string>(t('loading'));
   const [sugs, setSugs] = React.useState<Suggestion[]>([]);
   const [suggErr, setSuggErr] = React.useState<string | null>(null);
 
   const loadSuggestions = React.useCallback(async () => {
     try {
       setSuggErr(null);
-      setHeadline('Loading…');
+      setHeadline(t('loading'));
       const res = await fetch('/api/suggestions', { cache: 'no-store' });
       const json = await res.json();
       if (!json?.ok) throw new Error(json?.error || 'Failed to load suggestions');
-      setHeadline(String(json.headline || 'Recommended profiles'));
+      setHeadline(String(json.headline || t('recommended')));
       setSugs(json.users as Suggestion[]);
     } catch (e) {
-      setHeadline('Recommended profiles');
+      setHeadline(t('recommended'));
       setSuggErr(e instanceof Error ? e.message : 'Failed to load');
       setSugs([]);
     }
-  }, []);
+  }, [t]);
 
   React.useEffect(() => {
     if (!open) return;
@@ -185,7 +190,7 @@ export default function SettingsDrawer({ open, onClose }: Props) {
       settings: `/${locale}/settings`,
       bookmarks: `/${locale}/settings/bookmarks`,
       premium: `/${locale}/settings/premium`,
-      payments: `/${locale}/settings/payments`,
+      payments: `/${locale}/settings/payments`
     }),
     [isAuth, handle, locale, callbackUrl]
   );
@@ -198,7 +203,7 @@ export default function SettingsDrawer({ open, onClose }: Props) {
     zIndex: 2147483600,
     backgroundColor: 'rgba(0,0,0,0.60)',
     backdropFilter: 'blur(6px)',
-    WebkitBackdropFilter: 'blur(6px)',
+    WebkitBackdropFilter: 'blur(6px)'
   };
 
   const panelStyle: React.CSSProperties = {
@@ -213,7 +218,7 @@ export default function SettingsDrawer({ open, onClose }: Props) {
     transition: 'transform 220ms ease',
     padding: '20px 16px',
     paddingBottom: 'calc(env(safe-area-inset-bottom) + 16px)',
-    overflowY: 'auto',
+    overflowY: 'auto'
   };
 
   const root = (
@@ -224,7 +229,7 @@ export default function SettingsDrawer({ open, onClose }: Props) {
       }}
       role="dialog"
       aria-modal="true"
-      aria-label="Settings"
+      aria-label={t('aria')}
     >
       <aside style={panelStyle} onMouseDown={(e) => e.stopPropagation()}>
         {/* Header */}
@@ -238,10 +243,18 @@ export default function SettingsDrawer({ open, onClose }: Props) {
                   height: 62,
                   borderRadius: 9999,
                   overflow: 'hidden',
-                  background: 'rgba(255,255,255,0.08)',
+                  background: 'rgba(255,255,255,0.08)'
                 }}
               >
-                <Image key={image} src={image} alt="Profile avatar" fill className="object-cover" sizes="64px" priority />
+                <Image
+                  key={image}
+                  src={image}
+                  alt={t('avatarAlt')}
+                  fill
+                  className="object-cover"
+                  sizes="64px"
+                  priority
+                />
               </div>
               <span
                 style={{
@@ -253,7 +266,7 @@ export default function SettingsDrawer({ open, onClose }: Props) {
                   color: 'var(--purple)',
                   background: 'rgba(139,92,246,0.12)',
                   border: '1px solid rgba(139,92,246,0.25)',
-                  whiteSpace: 'nowrap',
+                  whiteSpace: 'nowrap'
                 }}
               >
                 {roleLabel}
@@ -262,7 +275,7 @@ export default function SettingsDrawer({ open, onClose }: Props) {
 
             <div style={{ lineHeight: 1.1, marginTop: 10, display: 'flex', flexDirection: 'column', gap: 2 }}>
               <div style={{ fontWeight: 600 }}>{displayName}</div>
-              <div style={{ opacity: 0.7, fontSize: 14 }}>{handle ? `@${handle}` : '—'}</div>
+              <div style={{ opacity: 0.7, fontSize: 14 }}>{handle ? `@${handle}` : t('noHandle')}</div>
             </div>
           </div>
 
@@ -270,11 +283,11 @@ export default function SettingsDrawer({ open, onClose }: Props) {
             <div style={{ display: 'flex', gap: 16, marginTop: 10, fontSize: 14 }}>
               <div title={statsError ?? undefined}>
                 <span style={{ fontWeight: 600 }}>{following}</span>{' '}
-                <span style={{ opacity: 0.7 }}>Following</span>
+                <span style={{ opacity: 0.7 }}>{t('statsFollowing')}</span>
               </div>
               <div title={statsError ?? undefined}>
                 <span style={{ fontWeight: 600 }}>{followers}</span>{' '}
-                <span style={{ opacity: 0.7 }}>Follower</span>
+                <span style={{ opacity: 0.7 }}>{t('statsFollowers')}</span>
               </div>
             </div>
           )}
@@ -282,11 +295,11 @@ export default function SettingsDrawer({ open, onClose }: Props) {
 
         {/* Menüs */}
         <nav style={{ paddingTop: 8 }}>
-          <MenuItem icon={ProfileIcon} label="Profile" href={hrefs.profile} onClick={onClose} />
-          <MenuItem icon={CogIcon} label="Settings" href={hrefs.settings} onClick={onClose} />
-          <MenuItem icon={BookmarkIcon} label="Bookmarks" href={hrefs.bookmarks} onClick={onClose} />
-          <MenuItem icon={BoltIcon} label="Premium" href={hrefs.premium} onClick={onClose} />
-          <MenuItem icon={PaymentsIcon} label="Payments" href={hrefs.payments} onClick={onClose} />
+          <MenuItem icon={ProfileIcon} label={t('menu.profile')} href={hrefs.profile} onClick={onClose} />
+          <MenuItem icon={CogIcon} label={t('menu.settings')} href={hrefs.settings} onClick={onClose} />
+          <MenuItem icon={BookmarkIcon} label={t('menu.bookmarks')} href={hrefs.bookmarks} onClick={onClose} />
+          <MenuItem icon={BoltIcon} label={t('menu.premium')} href={hrefs.premium} onClick={onClose} />
+          <MenuItem icon={PaymentsIcon} label={t('menu.payments')} href={hrefs.payments} onClick={onClose} />
         </nav>
 
         <div style={{ height: 1, background: 'rgba(255,255,255,0.1)', margin: '10px 0' }} />
@@ -297,6 +310,7 @@ export default function SettingsDrawer({ open, onClose }: Props) {
           sugs={sugs}
           locale={locale}
           onReplace={replaceSuggestion}
+          t={t}
         />
 
         <div style={{ height: 1, background: 'rgba(255,255,255,0.1)', margin: '10px 0' }} />
@@ -308,7 +322,7 @@ export default function SettingsDrawer({ open, onClose }: Props) {
             className="w-full text-left px-4 py-3 rounded-lg hover:bg-white/[.06]"
             style={{ color: 'rgba(255,255,255,0.85)' }}
           >
-            Sign out
+            {t('signOut')}
           </button>
         ) : (
           <Link
@@ -317,7 +331,7 @@ export default function SettingsDrawer({ open, onClose }: Props) {
             className="block w-full text-left px-4 py-3 rounded-lg hover:bg-white/[.06]"
             style={{ color: 'rgba(255,255,255,0.85)' }}
           >
-            Sign in
+            {t('signIn')}
           </Link>
         )}
       </aside>
@@ -333,12 +347,14 @@ function SuggestionsSection({
   sugs,
   locale,
   onReplace,
+  t
 }: {
   headline: string;
   suggErr: string | null;
   sugs: Suggestion[];
   locale: string;
   onReplace: (goneId: string) => void | Promise<void>;
+  t: ReturnType<typeof useTranslations<'settings'>>;
 }) {
   return (
     <section>
@@ -351,11 +367,11 @@ function SuggestionsSection({
       )}
 
       {sugs.map((s) => (
-        <SuggestionRow key={s.id} s={s} locale={locale} onReplace={onReplace} />
+        <SuggestionRow key={s.id} s={s} locale={locale} onReplace={onReplace} t={t} />
       ))}
 
       {!suggErr && sugs.length === 0 && (
-        <div className="text-[13px] text-white/70">No suggestions right now.</div>
+        <div className="text-[13px] text-white/70">{t('suggestionsEmpty')}</div>
       )}
     </section>
   );
@@ -365,7 +381,7 @@ function MenuItem({
   icon: Icon,
   label,
   href,
-  onClick,
+  onClick
 }: {
   icon: (c: string) => React.ReactNode;
   label: string;
@@ -390,10 +406,12 @@ function SuggestionRow({
   s,
   locale,
   onReplace,
+  t
 }: {
   s: Suggestion;
   locale: string;
   onReplace: (goneId: string) => void | Promise<void>;
+  t: ReturnType<typeof useTranslations<'settings'>>;
 }) {
   const [isFollowing, setIsFollowing] = React.useState<boolean>(s.isFollowing);
   const [pending, startTransition] = React.useTransition();
@@ -437,9 +455,9 @@ function SuggestionRow({
           className={`px-3 py-1.5 rounded-full text-[13px] transition-colors ${
             isFollowing ? 'border border-white/25 hover:bg-white/5' : 'bg-[var(--purple)] text-white hover:opacity-95'
           }`}
-          title={isFollowing ? 'Unfollow' : 'Follow'}
+          title={isFollowing ? t('unfollow') : t('follow')}
         >
-          {isFollowing ? 'Unfollow' : 'Follow'}
+          {isFollowing ? t('unfollow') : t('follow')}
         </button>
       </form>
     </div>

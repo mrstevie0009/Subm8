@@ -3,6 +3,7 @@
 
 import * as React from 'react';
 import { useFormStatus } from 'react-dom';
+import { useTranslations } from 'next-intl';
 import { addCommentActionVoid } from '@/app/actions/comments';
 
 type Props = {
@@ -19,6 +20,7 @@ type Props = {
 
 function SubmitButton({ disabled }: { disabled: boolean }) {
   const { pending } = useFormStatus();
+  const t = useTranslations('comments');
   return (
     <button
       type="submit"
@@ -26,7 +28,7 @@ function SubmitButton({ disabled }: { disabled: boolean }) {
       disabled={pending || disabled}
       className="px-3 py-1.5 rounded-md bg-[var(--purple)] text-white disabled:opacity-60"
     >
-      {pending ? 'Sending…' : 'Send'}
+      {pending ? t('sending') : t('send')}
     </button>
   );
 }
@@ -39,6 +41,8 @@ export default function CommentComposer({
   onCancel,
   className,
 }: Props) {
+  const t = useTranslations('comments');
+
   const [text, setText] = React.useState('');
   const textareaRef = React.useRef<HTMLTextAreaElement | null>(null);
   const formRef = React.useRef<HTMLFormElement | null>(null);
@@ -100,7 +104,7 @@ export default function CommentComposer({
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={onKeyDown}
-          placeholder="Write a comment…"
+          placeholder={t('placeholder')}
           rows={3}
           className="flex-1 rounded-md bg-transparent border border-white/10 px-2 py-1.5 outline-none focus:ring-2 focus:ring-[var(--purple)]/40 resize-vertical"
         />
@@ -116,7 +120,7 @@ export default function CommentComposer({
               }}
               className="px-3 py-1.5 rounded-md border border-white/15 hover:bg-white/5"
             >
-              Cancel
+              {t('cancel')}
             </button>
           )}
           <SubmitButton disabled={!text.trim()} />

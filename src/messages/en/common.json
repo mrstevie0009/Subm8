@@ -1,11 +1,170 @@
 {
-  "nav": {
-    "home": "Home",
-    "search": "Search",
-    "communities": "Communities",
-    "chat": "Chat"
-  },
-  "brand": {
-    "name": "Subm8"
+  "common": {
+    "nav": { "home": "Home", "search": "Search", "communities": "Communities", "chat": "Chat" },
+    "brand": { "name": "Subm8" },
+
+    "time": {
+      "now": "now",
+      "m": "{count}m",
+      "h": "{count}h",
+      "d": "{count}d"
+    },
+
+    "comments": {
+      "placeholder": "Write a comment…",
+      "replyPlaceholder": "Write a reply…",
+      "noComments": "No comments yet.",
+      "loadMore": "Load more",
+      "loading": "Loading…",
+      "reply": "Reply",
+      "like": "Like",
+      "unlike": "Unlike",
+      "remove": "Remove",
+      "addGif": "Add GIF",
+      "attachImage": "Attach image",
+      "send": "Send",
+      "sending": "Sending…",
+      "searchGifs": "Search GIFs…",
+      "search": "Search",
+      "close": "Close",
+      "pick": "Pick",
+      "errorLoading": "Failed to load comments.",
+      "errorGifs": "Could not load GIFs."
+    },
+
+    "post": {
+      "communityPost": "Community post",
+      "repostedBy": "{name} reposted",
+      "pinned": "Pinned",
+      "ariaOpen": "Open post",
+      "ariaBack": "Back",
+      "headerTitle": "Post",
+      "interactionBlocked": "Interactions are blocked",
+      "like": "Like",
+      "unlike": "Unlike",
+      "comment": "Comment",
+      "repost": "Repost",
+      "quotePost": "Quote post",
+      "more": "More",
+      "copyText": "Copy post text",
+      "block": "Block account",
+      "unblock": "Unblock account",
+      "report": "Report post",
+      "pinToProfile": "Pin to profile",
+      "unpinFromProfile": "Remove pin",
+      "role": { "domme": "Domme", "submissive": "Submissive" },
+      "blockStatus": { "youBlock": "You block", "blocksYou": "Blocks you" },
+
+      "share": {
+        "title": "Share",
+        "label": "Share",
+        "dm": "Send via direct message",
+        "shareInDm": "Share in direct message",
+        "copy": "Copy link",
+        "copied": "Copied!",
+        "system": "Share on device…",
+        "systemTitle": "{name} on {brand}",
+        "systemText": "Check this post on {brand}",
+        "dmTitle": "Send via direct message",
+        "searchPlaceholder": "Search people/chats",
+        "loadingChats": "Loading chats…",
+        "empty": "No conversations found.",
+        "notePlaceholder": "Add a comment (optional)…",
+        "cancel": "Cancel",
+        "send": "Send",
+        "sending": "Sending…"
+      },
+
+      "cantInteract": "You can't interact with this account."
+    },
+
+    "settings": {
+      "aria": "Settings",
+      "guest": "Guest",
+      "roleDomme": "Domme",
+      "roleSub": "Sub",
+      "statsFollowing": "Following",
+      "statsFollowers": "Followers",
+      "statsError": "Error loading stats",
+      "menu": {
+        "profile": "Profile",
+        "settings": "Settings",
+        "bookmarks": "Bookmarks",
+        "premium": "Premium",
+        "payments": "Payments"
+      },
+      "recommended": "Recommended profiles",
+      "suggestionsEmpty": "No suggestions right now.",
+      "follow": "Follow",
+      "unfollow": "Unfollow",
+      "signIn": "Sign in",
+      "signOut": "Sign out",
+      "loading": "Loading…",
+      "noHandle": "—",
+      "avatarAlt": "Profile avatar"
+    },
+
+    "profile": {
+      "more": "More",
+      "shareProfileViaDm": "Share profile via DM",
+      "copyProfileLink": "Copy profile link",
+      "blockUser": "Block user",
+      "unblockUser": "Unblock user",
+      "reportUser": "Report user",
+      "message": "Message",
+      "tabs": {
+        "posts": "Posts",
+        "gallery": "Gallery",
+        "leaderboard": "Leaderboard"
+      },
+      "editProfile": "Edit profile",
+      "tipActions": "Tip actions",
+      "sendTip": "Send tip",
+      "autodrain": "Autodrain",
+      "offer": "Offer",
+      "offerMenu": "Offer menu",
+      "follow": "Follow",
+      "unfollow": "Unfollow",
+      "blockedBy": "This user has blocked you",
+      "youBlocked": "You have blocked this user",
+      "messagingDisabled": "Messaging is disabled due to blocking",
+      "joined": "Joined"
+    },
+
+    "settingsPage": {
+      "ariaBack": "Back to feed",
+      "title": "Settings",
+      "searchPlaceholder": "Search settings",
+      "items": {
+        "account": {
+          "title": "Your account",
+          "desc": "View & edit profile info (name, bio, avatar, banner), export data and account options."
+        },
+        "security": {
+          "title": "Security & access",
+          "desc": "Check login security, manage connected apps and monitor access."
+        },
+        "premium": {
+          "title": "Premium",
+          "desc": "See benefits and manage your Premium settings."
+        },
+        "monetization": {
+          "title": "Monetization",
+          "desc": "From tips to communities. All paths to stable income."
+        },
+        "privacy": {
+          "title": "Privacy",
+          "desc": "Control what you see and share, and adjust your privacy."
+        },
+        "notifications": {
+          "title": "Notifications",
+          "desc": "Choose which activities, recommendations and messages alert you."
+        },
+        "bookmarks": {
+          "title": "Bookmarks",
+          "desc": "Manage saved posts."
+        }
+      }
+    }
   }
 }

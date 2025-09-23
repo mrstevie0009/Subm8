@@ -1,4 +1,3 @@
-// src/app/[locale]/p/[id]/page.tsx
 import { prisma } from '@/lib/prisma';
 import { notFound } from 'next/navigation';
 import PostCard, { type FeedPost } from '@/components/PostCard';
@@ -13,12 +12,11 @@ export default async function PostDetailPage({ params }: { params: Promise<Param
   const p = await prisma.post.findUnique({
     where: { id },
     include: {
-      // WICHTIG: Relation heißt hier "Community" (großes C)
       Community: {
-        select: { name: true, slug: true },
+        select: { name: true, slug: true }
       },
       author: {
-        select: { id: true, handle: true, displayName: true, role: true, avatarUrl: true },
+        select: { id: true, handle: true, displayName: true, role: true, avatarUrl: true }
       },
       repostOf: {
         select: {
@@ -28,10 +26,10 @@ export default async function PostDetailPage({ params }: { params: Promise<Param
           mediaAlt: true,
           createdAt: true,
           author: {
-            select: { id: true, handle: true, displayName: true, role: true, avatarUrl: true },
+            select: { id: true, handle: true, displayName: true, role: true, avatarUrl: true }
           },
-          _count: { select: { Like: true, Comment: true, reposts: true } },
-        },
+          _count: { select: { Like: true, Comment: true, reposts: true } }
+        }
       },
       quoteOf: {
         select: {
@@ -41,12 +39,12 @@ export default async function PostDetailPage({ params }: { params: Promise<Param
           mediaAlt: true,
           createdAt: true,
           author: {
-            select: { id: true, handle: true, displayName: true, role: true, avatarUrl: true },
-          },
-        },
+            select: { id: true, handle: true, displayName: true, role: true, avatarUrl: true }
+          }
+        }
       },
-      _count: { select: { Like: true, Comment: true, reposts: true } },
-    },
+      _count: { select: { Like: true, Comment: true, reposts: true } }
+    }
   });
 
   if (!p) notFound();
@@ -65,9 +63,9 @@ export default async function PostDetailPage({ params }: { params: Promise<Param
           handle: p.repostOf!.author.handle,
           displayName: p.repostOf!.author.displayName,
           role: p.repostOf!.author.role,
-          avatarUrl: p.repostOf!.author.avatarUrl,
+          avatarUrl: p.repostOf!.author.avatarUrl
         },
-        quote: null,
+        quote: null
       }
     : {
         id: p.id,
@@ -80,7 +78,7 @@ export default async function PostDetailPage({ params }: { params: Promise<Param
           handle: p.author.handle,
           displayName: p.author.displayName,
           role: p.author.role,
-          avatarUrl: p.author.avatarUrl,
+          avatarUrl: p.author.avatarUrl
         },
         quote: p.quoteOf
           ? {
@@ -94,10 +92,10 @@ export default async function PostDetailPage({ params }: { params: Promise<Param
                 handle: p.quoteOf.author.handle,
                 displayName: p.quoteOf.author.displayName,
                 role: p.quoteOf.author.role,
-                avatarUrl: p.quoteOf.author.avatarUrl,
-              },
+                avatarUrl: p.quoteOf.author.avatarUrl
+              }
             }
-          : null,
+          : null
       };
 
   const statSource = isRepost ? p.repostOf! : p;
@@ -112,17 +110,16 @@ export default async function PostDetailPage({ params }: { params: Promise<Param
     stats: {
       comments: statSource._count.Comment ?? 0,
       reposts: statSource._count.reposts ?? 0,
-      likes: statSource._count.Like ?? 0,
+      likes: statSource._count.Like ?? 0
     },
     viewer: {
       liked: false,
       bookmarked: false,
       hasBlockedAuthor: false,
-      blockedByAuthor: false,
+      blockedByAuthor: false
     },
     initiallyBookmarked: false,
-    // Community-Badge Daten an PostCard weitergeben
-    community: p.Community ? { name: p.Community.name, slug: p.Community.slug } : null,
+    community: p.Community ? { name: p.Community.name, slug: p.Community.slug } : null
   };
 
   return (

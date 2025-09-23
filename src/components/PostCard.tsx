@@ -1,4 +1,4 @@
-// src/components/PostCard.tsx
+//src/components/PostCard.tsx
 'use client';
 
 import * as React from 'react';
@@ -6,6 +6,7 @@ import { createPortal } from 'react-dom';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import ProfileLink from '@/components/ProfileLink';
 import BookmarkButton from '@/components/BookmarkButton';
 import { likePostAction, unlikePostAction } from '@/app/actions/likes';
@@ -60,14 +61,12 @@ export type FeedPost = {
     blockedByAuthor?: boolean;
   };
   initiallyBookmarked?: boolean;
-  // ← NEU: Community-Label für die Karte
   community?: { name: string; slug: string } | null;
 };
 
 /** --- Fix: Form-Action-Signatur für Server Actions an React angleichen --- */
 type VoidFormAction = (formData: FormData) => void | Promise<void>;
 const pinPostFormAction = pinPostAction as unknown as VoidFormAction;
-// unpin hat ggf. keine Parameter – Cast auf (FormData) => Promise<void> ist zur Compile-Zeit ausreichend
 const unpinPostFormAction = unpinPostAction as unknown as VoidFormAction;
 
 function Counter({ value = 0, active }: { value?: number; active?: boolean }) {
@@ -78,17 +77,18 @@ function Counter({ value = 0, active }: { value?: number; active?: boolean }) {
   );
 }
 
-function timeAgoShort(iso: string) {
+/** Lokalisierte Kurzzeit-Angabe: now / 5m / 2h / 3d */
+function timeAgoShort(iso: string, tTime: ReturnType<typeof useTranslations>) {
   const now = Date.now();
   const then = new Date(iso).getTime();
   const diff = Math.max(0, now - then);
   const m = Math.floor(diff / 60000);
-  if (m < 1) return 'now';
-  if (m < 60) return `${m}m`;
+  if (m < 1) return tTime('time.now');
+  if (m < 60) return tTime('time.m', { count: m });
   const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h`;
+  if (h < 24) return tTime('time.h', { count: h });
   const d = Math.floor(h / 24);
-  return `${d}d`;
+  return tTime('time.d', { count: d });
 }
 
 /* ----------------------------- Icons ----------------------------- */
@@ -122,19 +122,15 @@ function RepostBadgeIcon({
       strokeLinecap="round"
       strokeLinejoin="round"
     >
-      {/* obere Pfeilschleife (nach rechts) */}
       <path d="M7 7h9" />
       <path d="M16 7l-2-2" />
       <path d="M16 7l-2 2" />
-
-      {/* untere Pfeilschleife (nach links) */}
       <path d="M17 17H8" />
       <path d="M8 17l2-2" />
       <path d="M8 17l2 2" />
     </svg>
   );
 }
-/** Schönes Share-Icon (Pfeil aus Kasten) */
 function ShareIcon({ size = 22 }: { size?: number }) {
   return (
     <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden fill="none" stroke="currentColor" strokeWidth="2">
@@ -146,18 +142,26 @@ function ShareIcon({ size = 22 }: { size?: number }) {
 }
 
 /* ------------------------ Blockstatus-Badges ------------------------ */
-function BlockBadges({ hasBlockedAuthor, blockedByAuthor }: { hasBlockedAuthor: boolean; blockedByAuthor: boolean }) {
+function BlockBadges({
+  hasBlockedAuthor,
+  blockedByAuthor,
+  tPost,
+}: {
+  hasBlockedAuthor: boolean;
+  blockedByAuthor: boolean;
+  tPost: ReturnType<typeof useTranslations>;
+}) {
   if (!hasBlockedAuthor && !blockedByAuthor) return null;
   return (
     <span className="ml-2 inline-flex items-center gap-1" data-no-nav>
       {hasBlockedAuthor && (
         <span className="inline-flex items-center gap-1 rounded-full border border-red-400/40 bg-red-500/10 px-2 py-0.5 text-[10px] uppercase tracking-wide text-red-300">
-          <BanIcon /> Du blockierst
+          <BanIcon /> {tPost('block.youBlock')}
         </span>
       )}
       {blockedByAuthor && (
         <span className="inline-flex items-center gap-1 rounded-full border border-red-400/40 bg-red-500/10 px-2 py-0.5 text-[10px] uppercase tracking-wide text-red-300">
-          <ShieldOffIcon /> Blockiert dich
+          <ShieldOffIcon /> {tPost('block.blocksYou')}
         </span>
       )}
     </span>
@@ -184,7 +188,6 @@ function MediaView({
 }: { url?: string | null; alt?: string | null; priority?: boolean }) {
   if (!url) return null;
 
-  // Videos
   if (isVideoUrl(url)) {
     const stop = (e: React.SyntheticEvent) => { e.stopPropagation(); };
     return (
@@ -205,7 +208,6 @@ function MediaView({
     );
   }
 
-  // GIFs immer als <img> (Animation + keine next/image-Domain-Pflicht)
   if (isGifUrl(url)) {
     return (
       <figure className="mt-3 overflow-hidden rounded-xl border border-white/10 bg-black/20">
@@ -221,7 +223,6 @@ function MediaView({
     );
   }
 
-  // Sonstige Bilder: next/image
   return (
     <figure className="mt-3 overflow-hidden rounded-xl border border-white/10 bg-black/20">
       <div className="relative w-full">
@@ -239,7 +240,7 @@ function MediaView({
   );
 }
 
-/* ------------------- DM Share Overlay (mit StopPropagation) ------------------- */
+/* ------------------- DM Share Overlay ------------------- */
 function DMShareOverlay({
   open,
   onClose,
@@ -251,6 +252,8 @@ function DMShareOverlay({
   postId: string;
   locale: string;
 }) {
+  const tPost = useTranslations('post');
+
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [items, setItems] = React.useState<Array<{
@@ -361,23 +364,23 @@ function DMShareOverlay({
         onMouseDown={(e) => e.stopPropagation()}
       >
         <div className="px-2 py-2 border-b border-white/10">
-          <div className="text-[18px] font-semibold">Per Direktnachricht senden</div>
+          <div className="text-[18px] font-semibold">{tPost('share.dmTitle')}</div>
           <div className="mt-2">
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Nach Personen/Chats suchen"
+              placeholder={tPost('share.searchPlaceholder')}
               className="w-full rounded-xl bg-white/[.06] border border-white/10 px-3 py-2 outline-none"
             />
           </div>
         </div>
 
         <div className="mt-2 overflow-y-auto" style={{ maxHeight: '50vh' }}>
-          {loading && <div className="px-3 py-6 text-sm text-white/70">Lade Chats…</div>}
+          {loading && <div className="px-3 py-6 text-sm text-white/70">{tPost('share.loadingChats')}</div>}
           {!loading && error && <div className="px-3 py-3 text-sm text-red-400">{error}</div>}
 
           {!loading && !error && filtered.length === 0 && (
-            <div className="px-3 py-6 text-sm text-white/70">Keine Konversationen gefunden.</div>
+            <div className="px-3 py-6 text-sm text-white/70">{tPost('share.empty')}</div>
           )}
 
           <ul className="divide-y divide-white/10">
@@ -429,7 +432,7 @@ function DMShareOverlay({
             onChange={(e) => setNote(e.target.value)}
             rows={2}
             maxLength={200}
-            placeholder="Kommentar hinzufügen (optional)…"
+            placeholder={tPost('share.notePlaceholder')}
             className="w-full rounded-xl bg-white/[.06] border border-white/10 px-3 py-2 outline-none"
           />
         </div>
@@ -441,7 +444,7 @@ function DMShareOverlay({
             className="px-3 py-2 rounded-lg border border-white/15 hover:bg-white/10"
             disabled={sending}
           >
-            Abbrechen
+            {tPost('share.cancel')}
           </button>
           <button
             type="button"
@@ -449,7 +452,7 @@ function DMShareOverlay({
             disabled={sending || selected.size === 0}
             className="px-4 py-2 rounded-lg bg-[var(--purple)] text-white hover:opacity-95 disabled:opacity-50"
           >
-            {sending ? 'Senden…' : 'Senden'}
+            {sending ? tPost('share.sending') : tPost('share.send')}
           </button>
         </div>
       </div>
@@ -467,6 +470,10 @@ export default function PostCard({
   const params = useParams() as { locale: string; handle?: string };
   const { locale, handle } = params;
 
+  const t = useTranslations();       // Root (common.json)
+  const tPost = useTranslations('post');
+  const tTime = useTranslations();    // time.* liegen im Root
+
   const c = post.content;
   const uiRole = c.author.role === 'DOMME' ? 'domme' : c.author.role === 'SUBMISSIVE' ? 'submissive' : undefined;
 
@@ -480,28 +487,21 @@ export default function PostCard({
   const [quoteOpen, setQuoteOpen] = React.useState(false);
   const [moreOpen, setMoreOpen] = React.useState(false);
 
-  // NEU: Repost-Pending (für Disabled/Optimismus)
   const [reposting, setReposting] = React.useState(false);
-
-  // Pin (nur sinnvoll im Profil-Kontext, aber nutzbar überall)
   const [isPinned, setIsPinned] = React.useState<boolean>(false);
 
-  // Share
   const [shareMenuOpen, setShareMenuOpen] = React.useState(false);
   const [dmShareOpen, setDmShareOpen] = React.useState(false);
   const [copied, setCopied] = React.useState(false);
 
-  // Block-Status
   const initialHasBlocked = !!post.viewer?.hasBlockedAuthor;
   const initialBlockedByAuthor = !!post.viewer?.blockedByAuthor;
   const [hasBlockedAuthor, setHasBlockedAuthor] = React.useState<boolean>(initialHasBlocked);
   const blockedByEither = initialBlockedByAuthor || hasBlockedAuthor;
 
-  // Avatar
   const [avatarSrc, setAvatarSrc] = React.useState<string>(c.author.avatarUrl || AVATAR_PH);
   const [pendingLike, startLikeTransition] = React.useTransition();
 
-  // Navigation
   const goDetail = React.useCallback(
     (e: React.MouseEvent) => {
       const target = e.target as HTMLElement | null;
@@ -519,7 +519,6 @@ export default function PostCard({
     }
   };
 
-  // Auf globale Pin-Änderungen reagieren (andere Karten des gleichen Profils)
   React.useEffect(() => {
     function onPinnedChange(ev: Event) {
       const ce = ev as CustomEvent<{ postId: string; pinned: boolean }>;
@@ -528,7 +527,6 @@ export default function PostCard({
       if (postId === c.id) {
         setIsPinned(!!pinned);
       } else if (pinned) {
-        // Ein anderer Post wurde gepinnt ⇒ diese Karte ist sicher nicht gepinnt
         setIsPinned(false);
       }
     }
@@ -544,7 +542,6 @@ export default function PostCard({
     }
   }, [pinnedPostId, c.id]);
 
-  // heuristisch: sind wir auf einer Profilseite dieser Autorin / dieses Autors?
   const onProfileOfAuthor = typeof handle === 'string' && handle.toLowerCase() === c.author.handle.toLowerCase();
 
   /* ---------- Actions ---------- */
@@ -572,7 +569,7 @@ export default function PostCard({
           className="group flex items-center gap-2 rounded px-2 py-1 hover:bg-white/5 disabled:opacity-50"
           aria-pressed={liked || undefined}
           aria-disabled={disabled || undefined}
-          title={blockedByEither ? 'Interaktionen sind blockiert' : undefined}
+          title={blockedByEither ? tPost('interactionBlocked') : undefined}
         >
           <span className="inline-grid place-items-center" style={{ width: 'clamp(18px,1.8vw,26px)', height: 'clamp(18px,1.8vw,26px)' }} aria-hidden>
             <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full" style={{ color: liked ? 'var(--purple)' : 'rgba(255,255,255,.95)' }}>
@@ -580,7 +577,7 @@ export default function PostCard({
             </svg>
           </span>
           <Counter value={likes} active={liked} />
-          <span className="sr-only">{liked ? 'Unlike' : 'Like'}</span>
+          <span className="sr-only">{liked ? tPost('unlike') : tPost('like')}</span>
         </button>
       </form>
     );
@@ -600,7 +597,7 @@ export default function PostCard({
         className="group flex items-center gap-2 rounded px-2 py-1 hover:bg-white/5 disabled:opacity-50"
         aria-expanded={composerOpen || undefined}
         aria-disabled={disabled || undefined}
-        title={disabled ? 'Interaktionen sind blockiert' : undefined}
+        title={disabled ? tPost('interactionBlocked') : undefined}
       >
         <span className="inline-grid place-items-center" style={{ width: 'clamp(18px,1.8vw,26px)', height: 'clamp(18px,1.8vw,26px)' }} aria-hidden>
           <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full" style={{ color: 'rgba(255,255,255,.95)' }}>
@@ -608,7 +605,7 @@ export default function PostCard({
           </svg>
         </span>
         <Counter value={comments} />
-        <span className="sr-only">Comment</span>
+        <span className="sr-only">{tPost('comment')}</span>
       </button>
     );
   }
@@ -624,13 +621,13 @@ export default function PostCard({
           disabled={disabled}
           aria-expanded={repostMenuOpen || undefined}
           aria-disabled={disabled || undefined}
-          title={disabled ? 'Interaktionen sind blockiert' : undefined}
+          title={disabled ? tPost('interactionBlocked') : undefined}
         >
           <span className="inline-grid place-items-center" style={{ width: 'clamp(18px,1.8vw,26px)', height: 'clamp(18px,1.8vw,26px)' }} aria-hidden>
             <RepostBadgeIcon />
           </span>
           <Counter value={reposts} />
-          <span className="sr-only">Repost</span>
+          <span className="sr-only">{tPost('repost')}</span>
         </button>
 
         {repostMenuOpen && (
@@ -644,7 +641,6 @@ export default function PostCard({
               className="w-full text-left px-3 py-2 rounded hover:bg-white/10 disabled:opacity-50"
               disabled={reposting}
               onClick={async () => {
-                // Optimistisch + Server speichern
                 setRepostMenuOpen(false);
                 setReposting(true);
                 setReposts((n) => n + 1);
@@ -652,20 +648,17 @@ export default function PostCard({
                   const resp = await fetch(`/api/posts/${c.id}/repost`, { method: 'POST' });
                   const j = await resp.json().catch(() => null);
                   if (!resp.ok || !j?.ok) throw new Error(j?.error || `HTTP ${resp.status}`);
-
-                  // Optional: globales Event, falls jemand darauf hören möchte
                   try {
                     window.dispatchEvent(new CustomEvent('post:reposted', { detail: { originalId: c.id, newId: j.id } }));
                   } catch {}
                 } catch {
-                  // Rollback bei Fehler
                   setReposts((n) => Math.max(0, n - 1));
                 } finally {
                   setReposting(false);
                 }
               }}
             >
-              Repost
+              {tPost('repost')}
             </button>
             <button
               type="button"
@@ -675,7 +668,7 @@ export default function PostCard({
                 setQuoteOpen(true);
               }}
             >
-              Quote post
+              {tPost('quotePost')}
             </button>
           </div>
         )}
@@ -693,12 +686,14 @@ export default function PostCard({
         ? `${window.location.origin}/${locale}/p/${post.id}`
         : `/${locale}/p/${post.id}`;
 
+    const brand = t('brand.name');
+
     const systemShare = async () => {
       try {
         if (navigator.share) {
           await navigator.share({
-            title: `${c.author.displayName} on Subm8`,
-            text: c.text?.slice(0, 120) ?? 'Check this post on Subm8',
+            title: tPost('share.systemTitle', { name: c.author.displayName, brand }),
+            text: tPost('share.systemText', { brand }),
             url,
           });
           setShareMenuOpen(false);
@@ -722,7 +717,7 @@ export default function PostCard({
           className="group flex items-center gap-2 rounded px-2 py-1 hover:bg-white/5"
           onClick={() => setShareMenuOpen((v) => !v)}
           aria-expanded={shareMenuOpen || undefined}
-          title="Teilen"
+          title={tPost('share.title')}
         >
           <span
             className="inline-grid place-items-center"
@@ -731,7 +726,7 @@ export default function PostCard({
           >
             <ShareIcon />
           </span>
-          <span className="sr-only">Share</span>
+          <span className="sr-only">{tPost('share.label')}</span>
         </button>
 
         {shareMenuOpen && (
@@ -746,9 +741,9 @@ export default function PostCard({
                 setShareMenuOpen(false);
                 setDmShareOpen(true);
               }}
-              title="In Direktnachricht teilen"
+              title={tPost('share.shareInDm')}
             >
-              Per Direktnachricht senden
+              {tPost('share.dm')}
               <span className="opacity-70 text-xs">→</span>
             </button>
 
@@ -756,18 +751,18 @@ export default function PostCard({
               type="button"
               className="w-full text-left px-3 py-2 rounded hover:bg-white/10"
               onClick={copyLink}
-              title="Link kopieren"
+              title={tPost('share.copy')}
             >
-              {copied ? 'Kopiert!' : 'Link kopieren'}
+              {copied ? tPost('share.copied') : tPost('share.copy')}
             </button>
 
             <button
               type="button"
               className="w-full text-left px-3 py-2 rounded hover:bg-white/10"
               onClick={systemShare}
-              title="System-Share"
+              title={tPost('share.system')}
             >
-              Auf Gerät teilen…
+              {tPost('share.system')}
             </button>
           </div>
         )}
@@ -776,7 +771,6 @@ export default function PostCard({
   }
 
   function MoreMenu() {
-    // Zeige Pin/Unpin im MoreMenu, wenn wir auf der Profilseite der Autor*in sind.
     const showPinControls = onProfileOfAuthor;
 
     const optimisticBroadcast = (pinned: boolean) => {
@@ -787,7 +781,7 @@ export default function PostCard({
 
     return (
       <div className="relative" data-no-nav onClick={(e) => e.stopPropagation()}>
-        <button type="button" aria-label="Mehr" className="rounded p-1.5 hover:bg-white/5" onClick={() => setMoreOpen((v) => !v)}>
+        <button type="button" aria-label={tPost('more')} className="rounded p-1.5 hover:bg-white/5" onClick={() => setMoreOpen((v) => !v)}>
           <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth={2}>
             <circle cx="5" cy="12" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="19" cy="12" r="1.6" />
           </svg>
@@ -810,7 +804,7 @@ export default function PostCard({
                     <input type="hidden" name="locale" value={locale} />
                     <input type="hidden" name="postId" value={c.id} />
                     <button type="submit" className="w-full text-left px-3 py-2 rounded hover:bg-white/10">
-                      Auf Profil anpinnen
+                      {tPost('pinToProfile')}
                     </button>
                   </form>
                 ) : (
@@ -824,10 +818,9 @@ export default function PostCard({
                   >
                     <input type="hidden" name="handle" value={c.author.handle} />
                     <input type="hidden" name="locale" value={locale} />
-                    {/* keine postId nötig fürs Unpin, aber schadet nicht */}
                     <input type="hidden" name="postId" value={c.id} />
                     <button type="submit" className="w-full text-left px-3 py-2 rounded hover:bg-white/10">
-                      Pinned entfernen
+                      {tPost('unpinFromProfile')}
                     </button>
                   </form>
                 )}
@@ -840,25 +833,25 @@ export default function PostCard({
               className="flex w-full items-center justify-between px-3 py-2 rounded hover:bg-white/10"
               onClick={() => { copyPostText(); setMoreOpen(false); }}
             >
-              <span>Post-Text kopieren</span>
+              <span>{tPost('copyText')}</span>
             </button>
 
             {!hasBlockedAuthor ? (
               <form action={blockUserAction} onSubmit={() => { setHasBlockedAuthor(true); setMoreOpen(false); }}>
                 <input type="hidden" name="blockedHandle" value={c.author.handle} />
-                <button className="w-full text-left px-3 py-2 rounded hover:bg-white/10">Account blockieren</button>
+                <button className="w-full text-left px-3 py-2 rounded hover:bg-white/10">{tPost('block')}</button>
               </form>
             ) : (
               <form action={unblockUserAction} onSubmit={() => { setHasBlockedAuthor(false); setMoreOpen(false); }}>
                 <input type="hidden" name="blockedHandle" value={c.author.handle} />
-                <button className="w-full text-left px-3 py-2 rounded hover:bg-white/10">Account entblocken</button>
+                <button className="w-full text-left px-3 py-2 rounded hover:bg-white/10">{tPost('unblock')}</button>
               </form>
             )}
 
             <form action={reportPostAction} onSubmit={() => setMoreOpen(false)}>
               <input type="hidden" name="postId" value={c.id} />
               <input type="hidden" name="reason" value="OTHER" />
-              <button className="w-full text-left px-3 py-2 rounded hover:bg-white/10 text-red-300">Post melden</button>
+              <button className="w-full text-left px-3 py-2 rounded hover:bg-white/10 text-red-300">{tPost('report')}</button>
             </form>
           </div>
         )}
@@ -870,7 +863,7 @@ export default function PostCard({
     if (!role) return null;
     return (
       <span className="mt-1 text-[11px] leading-none px-2 py-1 rounded-full" style={{ color: 'var(--purple)', background: 'rgba(139,92,246,.15)', border: '1px solid rgba(139,92,246,.25)' }}>
-        {role.charAt(0).toUpperCase() + role.slice(1)}
+        {tPost(`role.${role}`)}
       </span>
     );
   };
@@ -885,9 +878,9 @@ export default function PostCard({
         if (e.key !== 'Enter' && e.key !== ' ') return;
         e.preventDefault();
       }
-      const root = e.currentTarget as HTMLElement;                 // der Quote-Container
+      const root = e.currentTarget as HTMLElement;
       const barrier = (e.target as HTMLElement | null)?.closest('[data-no-nav]');
-      if (barrier && barrier !== root) return;                     // nur abbrechen, wenn es ein KIND mit data-no-nav ist
+      if (barrier && barrier !== root) return;
       router.push(`/${locale}/p/${q.id}`);
     };
 
@@ -915,7 +908,7 @@ export default function PostCard({
                 </ProfileLink>
               </span>
               <span className="opacity-70 truncate">@{q.author.handle}</span>
-              <span className="opacity-50">· {timeAgoShort(q.createdAt)}</span>
+              <span className="opacity-50">· {timeAgoShort(q.createdAt, tTime)}</span>
             </div>
             <div className="mt-1 text-[0.95rem] whitespace-pre-wrap break-words">{q.text}</div>
             {q.mediaUrl && <MediaView url={q.mediaUrl} alt={q.mediaAlt ?? ''} />}
@@ -932,9 +925,8 @@ export default function PostCard({
       onKeyDown={onKeyActivate}
       role="button"
       tabIndex={0}
-      aria-label="Open post"
+      aria-label={tPost('ariaOpen')}
     >
-      {/* ← NEU: Community-Badge */}
       {post.community && (
         <div className="mb-3 -mt-1 text-[12px] text-white/80">
           <Link
@@ -942,7 +934,7 @@ export default function PostCard({
             className="inline-flex items-center gap-2 px-2 py-0.5 rounded-full border border-white/12 bg-white/[.04] hover:bg-white/[.08]"
             onClick={(e) => e.stopPropagation()}
           >
-            <span className="opacity-90 font-medium">Community Post</span>
+            <span className="opacity-90 font-medium">{tPost('communityPost')}</span>
             <span className="opacity-70">·</span>
             <span className="opacity-90">{post.community.name}</span>
           </Link>
@@ -952,7 +944,7 @@ export default function PostCard({
       {post.reposter && (
         <div className="mb-1 -mt-1 flex items-center gap-2 text-[12px] text-white/70">
           <span className="inline-grid place-items-center w-4 h-4"><RepostBadgeIcon /></span>
-          <span><strong>{post.reposter.displayName}</strong> reposted</span>
+          <span>{tPost('repostedBy', { name: post.reposter.displayName })}</span>
         </div>
       )}
 
@@ -989,17 +981,20 @@ export default function PostCard({
               </ProfileLink>
             </div>
 
-            {/* "Pinned"-Badge falls diese Karte aktuell gepinnt ist (z.B. im Profil) */}
             {isPinned && (
               <span className="ml-2 text-[10px] px-2 py-0.5 rounded-full bg-[var(--purple)]/20 text-[var(--purple)] border border-[var(--purple)]/30">
-                Pinned
+                {tPost('pinned')}
               </span>
             )}
 
-            <BlockBadges hasBlockedAuthor={!!hasBlockedAuthor} blockedByAuthor={!!initialBlockedByAuthor} />
+            <BlockBadges
+              hasBlockedAuthor={!!hasBlockedAuthor}
+              blockedByAuthor={!!initialBlockedByAuthor}
+              tPost={tPost}
+            />
             <span className="text-muted mx-2 text-xs md:text-[13px]" aria-hidden>·</span>
             <time className="text-muted whitespace-nowrap text-xs md:text-[13px]" dateTime={c.createdAt} title={c.createdAt}>
-              {timeAgoShort(c.createdAt)}
+              {timeAgoShort(c.createdAt, tTime)}
             </time>
           </div>
 
@@ -1039,7 +1034,7 @@ export default function PostCard({
             </div>
           )}
           {composerOpen && blockedByEither && (
-            <div className="mt-2 text-[12px] text-white/60">Du kannst mit diesem Account nicht interagieren.</div>
+            <div className="mt-2 text-[12px] text-white/60">{tPost('cantInteract')}</div>
           )}
         </div>
       </header>

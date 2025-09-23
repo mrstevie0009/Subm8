@@ -5,7 +5,7 @@ import * as React from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import type { Profile } from '@/types/profile';
 import { followAction, unfollowAction } from '@/app/actions/follow';
@@ -15,13 +15,10 @@ import OfferViewerModal from '@/components/OfferViewerModal';
 import TipModal from '@/components/TipModal';
 import AutoDrainEnableModal from '@/components/AutoDrainEnableModal';
 
-
-
 const AVATAR_PH = '/images/avatar-placeholder.png';
 const BANNER_PH = '/images/banner-placeholder.png';
 const TIPPAID_PREFIX = 'TIPPAID::';
 const ADACC_PREFIX   = 'ADACC::';
-
 
 function Chip({
   children,
@@ -102,6 +99,10 @@ export default function ProfileHeader({
 }: Props) {
   const locale = useLocale();
   const router = useRouter();
+
+  // 🔤 Translations
+  const tPost = useTranslations('post');      // für share-Overlay (vorhandene Keys)
+  const tProf = useTranslations('profile');   // neue Keys für ProfileHeader
 
   const AVATAR_BIG   = 'clamp(88px, 18vw, 136px)';
   const AVATAR_SMALL = '40px';
@@ -422,22 +423,23 @@ export default function ProfileHeader({
           onMouseDown={(e) => e.stopPropagation()}
         >
           <div className="px-2 py-2 border-b border-white/10">
-            <div className="text-[18px] font-semibold">Per Direktnachricht senden</div>
+            <div className="text-[18px] font-semibold">{tPost('share.dmTitle')}</div>
             <div className="mt-2">
               <input
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
-                placeholder="Nach Personen/Chats suchen"
+                onKeyDown={(e) => e.key === 'Enter' && runSearch()}
+                placeholder={tPost('share.searchPlaceholder')}
                 className="w-full rounded-xl bg-white/[.06] border border-white/10 px-3 py-2 outline-none"
               />
             </div>
           </div>
 
           <div className="mt-2 overflow-y-auto" style={{ maxHeight: '50vh' }}>
-            {loading && <div className="px-3 py-6 text-sm text-white/70">Lade Chats…</div>}
+            {loading && <div className="px-3 py-6 text-sm text-white/70">{tPost('share.loadingChats')}</div>}
             {!loading && error && <div className="px-3 py-3 text-sm text-red-400">{error}</div>}
             {!loading && !error && filtered.length === 0 && (
-              <div className="px-3 py-6 text-sm text-white/70">Keine Konversationen gefunden.</div>
+              <div className="px-3 py-6 text-sm text-white/70">{tPost('share.empty')}</div>
             )}
 
             <ul className="divide-y divide-white/10">
@@ -489,7 +491,7 @@ export default function ProfileHeader({
               onChange={(e) => setNote(e.target.value)}
               rows={2}
               maxLength={200}
-              placeholder="Kommentar hinzufügen (optional)…"
+              placeholder={tPost('share.notePlaceholder')}
               className="w-full rounded-xl bg-white/[.06] border border-white/10 px-3 py-2 outline-none"
             />
           </div>
@@ -501,7 +503,7 @@ export default function ProfileHeader({
               className="px-3 py-2 rounded-lg border border-white/15 hover:bg-white/10"
               disabled={sending}
             >
-              Abbrechen
+              {tPost('share.cancel')}
             </button>
             <button
               type="button"
@@ -509,13 +511,17 @@ export default function ProfileHeader({
               disabled={sending || selected.size === 0}
               className="px-4 py-2 rounded-lg bg-[var(--purple)] text-white hover:opacity-95 disabled:opacity-50"
             >
-              {sending ? 'Senden…' : 'Senden'}
+              {sending ? tPost('share.sending') : tPost('share.send')}
             </button>
           </div>
         </div>
       </div>,
       document.body
     );
+
+    function runSearch() {
+      // gleiche UX wie vorher: Enter löst Suche aus – hier reicht setQ, da Filter in useMemo erfolgt
+    }
   }
 
   function MoreMenu() {
@@ -525,7 +531,7 @@ export default function ProfileHeader({
       <div className="relative">
         <button
           type="button"
-          aria-label="More"
+          aria-label={tProf('more')}
           className="rounded-full p-1.5 border border-white/15 hover:bg-white/5"
           onClick={() => setOpen(v => !v)}
         >
@@ -543,7 +549,7 @@ export default function ProfileHeader({
               onClick={() => { setShareOpen(true); setOpen(false); }}
             >
               <ShareIcon className="w-[16px] h-[16px]" />
-              Share profile via DM
+              {tProf('shareProfileViaDm')}
             </button>
 
             <button
@@ -551,25 +557,25 @@ export default function ProfileHeader({
               className="w-full text-left px-3 py-2 rounded hover:bg-white/10"
               onClick={() => { copyProfileLink(); setOpen(false); }}
             >
-              Copy profile link
+              {tProf('copyProfileLink')}
             </button>
 
             {!hasBlocked ? (
               <form action={blockUserAction} onSubmit={() => { setHasBlocked(true); setOpen(false); }} >
                 <input type="hidden" name="blockedHandle" value={profile.username} />
-                <button className="w-full text-left px-3 py-2 rounded hover:bg-white/10 text-red-300">Block User</button>
+                <button className="w-full text-left px-3 py-2 rounded hover:bg-white/10 text-red-300">{tProf('blockUser')}</button>
               </form>
             ) : (
               <form action={unblockUserAction} onSubmit={() => { setHasBlocked(false); setOpen(false); }} >
                 <input type="hidden" name="blockedHandle" value={profile.username} />
-                <button className="w-full text-left px-3 py-2 rounded hover:bg-white/10 text-red-300">Unblock User</button>
+                <button className="w-full text-left px-3 py-2 rounded hover:bg-white/10 text-red-300">{tProf('unblockUser')}</button>
               </form>
             )}
 
             <form action={reportUserAction} onSubmit={() => setOpen(false)}>
               <input type="hidden" name="handle" value={profile.username} />
               <input type="hidden" name="reason" value="OTHER" />
-              <button className="w-full text-left px-3 py-2 rounded hover:bg-white/10 text-red-300">Report User</button>
+              <button className="w-full text-left px-3 py-2 rounded hover:bg-white/10 text-red-300">{tProf('reportUser')}</button>
             </form>
           </div>
         )}
@@ -622,8 +628,8 @@ export default function ProfileHeader({
               <Link
                 href={`/${locale}/chat/new?to=${profile.username}`}
                 prefetch={false}
-                aria-label="Message"
-                title="Message"
+                aria-label={tProf('message')}
+                title={tProf('message')}
                 className="inline-grid place-items-center rounded-full border border-white/20 hover:bg-white/5 h-8 w-8"
               >
                 <MessageIcon className="w-[16px] h-[16px]" />
@@ -635,9 +641,9 @@ export default function ProfileHeader({
           {showTabs && (
             <nav className="px-1 border-t border-white/10">
               <ul className="grid grid-cols-3 text-center text-[14px] font-medium">
-                <TabBtn label="Posts"       active={activeTab === 'posts'}       onClick={() => onTabChange?.('posts')} />
-                <TabBtn label="Galerie"     active={activeTab === 'gallery'}     onClick={() => onTabChange?.('gallery')} />
-                <TabBtn label="Leaderboard" active={activeTab === 'leaderboard'} onClick={() => onTabChange?.('leaderboard')} />
+                <TabBtn label={tProf('tabs.posts')}       active={activeTab === 'posts'}       onClick={() => onTabChange?.('posts')} />
+                <TabBtn label={tProf('tabs.gallery')}     active={activeTab === 'gallery'}     onClick={() => onTabChange?.('gallery')} />
+                <TabBtn label={tProf('tabs.leaderboard')} active={activeTab === 'leaderboard'} onClick={() => onTabChange?.('leaderboard')} />
               </ul>
             </nav>
           )}
@@ -709,7 +715,7 @@ export default function ProfileHeader({
                 href={`/${locale}/u/${profile.username}/edit`}
                 className="px-3 sm:px-4 h-9 inline-flex items-center rounded-full border border-white/20 hover:bg-white/5 text-[12px] sm:text-[13px]"
               >
-                Edit Profile
+                {tProf('editProfile')}
               </Link>
             ) : (
               <>
@@ -721,8 +727,8 @@ export default function ProfileHeader({
                       type="button"
                       onClick={() => openTipMenu()}
                       className="inline-grid place-items-center rounded-full border border-white/20 hover:bg-white/5 h-9 w-9"
-                      aria-label="Tip actions"
-                      title="Tip actions"
+                      aria-label={tProf('tipActions')}
+                      title={tProf('tipActions')}
                     >
                       <DollarIcon />
                     </button>
@@ -737,7 +743,7 @@ export default function ProfileHeader({
                             setTipOpen(true);   // << Modal öffnen
                           }}
                         >
-                          Sent Tip
+                          {tProf('sendTip')}
                         </button>
 
                         <button
@@ -748,7 +754,7 @@ export default function ProfileHeader({
                             setAutoDrainOpen(true);
                           }}
                         >
-                          Autodrain
+                          {tProf('autodrain')}
                         </button>
                       </ActionMenu>
                     )}
@@ -770,17 +776,17 @@ export default function ProfileHeader({
                           : 'bg-[var(--purple)] text-white hover:opacity-95'
                       }`}
                     >
-                      {isFollowing ? 'Unfollow' : 'Follow'}
+                      {isFollowing ? tProf('unfollow') : tProf('follow')}
                     </button>
                   </form>
                 ) : (
                   <button
                     type="button"
                     disabled
-                    title={isBlockedByProfile ? 'This user has blocked you' : 'You have blocked this user'}
+                    title={isBlockedByProfile ? tProf('blockedBy') : tProf('youBlocked')}
                     className="px-3 sm:px-4 h-9 rounded-full border border-white/20 text-white/60 cursor-not-allowed text-[12px] sm:text-[13px]"
                   >
-                    Follow
+                    {tProf('follow')}
                   </button>
                 )}
 
@@ -788,17 +794,17 @@ export default function ProfileHeader({
                   <Link
                     href={`/${locale}/chat/new?to=${profile.username}`}
                     prefetch={false}
-                    aria-label="Message"
-                    title="Message"
+                    aria-label={tProf('message')}
+                    title={tProf('message')}
                     className="inline-grid place-items-center rounded-full border border-white/20 hover:bg-white/5 h-9 w-9"
                   >
                     <MessageIcon className="w-[18px] h-[18px]" />
-                    <span className="sr-only">Message</span>
+                    <span className="sr-only">{tProf('message')}</span>
                   </Link>
                 ) : (
                   <span
                     aria-hidden
-                    title="Messaging is disabled due to blocking"
+                    title={tProf('messagingDisabled')}
                     className="inline-grid place-items-center rounded-full border border-white/20 text-white/60 h-9 w-9 cursor-not-allowed"
                   >
                     <MessageIcon className="w-[18px] h-[18px] opacity-60" />
@@ -810,11 +816,11 @@ export default function ProfileHeader({
                   onClick={handleOfferClick}
                   className="h-9 inline-flex items-center rounded-full bg-[var(--purple)]/95 text-white text-[12px] sm:text-[13px] font-semibold shadow-[0_8px_30px_-12px_rgba(139,92,246,.9)]
                             hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--purple)]/60 px-2 sm:px-4"
-                  aria-label="Offer Menu"
-                  title="Offer Menu"
+                  aria-label={tProf('offerMenu')}
+                  title={tProf('offerMenu')}
                 >
                   <GiftIcon className="w-[18px] h-[18px] sm:mr-1.5" />
-                  <span className="hidden sm:inline">Offer</span>
+                  <span className="hidden sm:inline">{tProf('offer')}</span>
                 </button>
               </>
             )}
@@ -844,7 +850,7 @@ export default function ProfileHeader({
                 <rect x="3.5" y="5.5" width="17" height="15" rx="2" />
                 <path d="M8 3.5v4M16 3.5v4M3.5 9.5h17" />
               </svg>
-              Joined {joinedMonthYear(profile.createdAt)}
+              {tProf('joined')} {joinedMonthYear(profile.createdAt)}
             </span>
           )}
 
@@ -868,14 +874,13 @@ export default function ProfileHeader({
         <div className="mt-4" />
       </div>
 
-
       {/* Tabs (nur wenn nicht compact) */}
       {showTabs && (
         <nav className={`border-t border-white/10 ${compact ? 'hidden' : 'block'}`}>
           <ul className="grid grid-cols-3 text-center text-[14px] font-medium">
-            <TabBtn label="Posts"       active={activeTab === 'posts'}       onClick={() => onTabChange?.('posts')} />
-            <TabBtn label="Galerie"     active={activeTab === 'gallery'}     onClick={() => onTabChange?.('gallery')} />
-            <TabBtn label="Leaderboard" active={activeTab === 'leaderboard'} onClick={() => onTabChange?.('leaderboard')} />
+            <TabBtn label={tProf('tabs.posts')}       active={activeTab === 'posts'}       onClick={() => onTabChange?.('posts')} />
+            <TabBtn label={tProf('tabs.gallery')}     active={activeTab === 'gallery'}     onClick={() => onTabChange?.('gallery')} />
+            <TabBtn label={tProf('tabs.leaderboard')} active={activeTab === 'leaderboard'} onClick={() => onTabChange?.('leaderboard')} />
           </ul>
         </nav>
       )}

@@ -1,11 +1,170 @@
 {
-  "nav": {
-    "home": "Start",
-    "search": "Suche",
-    "communities": "Communities",
-    "chat": "Chat"
-  },
-  "brand": {
-    "name": "Subm8"
+  "common": {
+    "nav": { "home": "Start", "search": "Suche", "communities": "Communities", "chat": "Chat" },
+    "brand": { "name": "Subm8" },
+
+    "time": {
+      "now": "jetzt",
+      "m": "{count}m",
+      "h": "{count}h",
+      "d": "{count}d"
+    },
+
+    "comments": {
+      "placeholder": "Kommentar schreiben…",
+      "replyPlaceholder": "Antwort schreiben…",
+      "noComments": "Noch keine Kommentare.",
+      "loadMore": "Mehr laden",
+      "loading": "Lade…",
+      "reply": "Antworten",
+      "like": "Gefällt mir",
+      "unlike": "Gefällt mir nicht mehr",
+      "remove": "Entfernen",
+      "addGif": "GIF hinzufügen",
+      "attachImage": "Bild anhängen",
+      "send": "Senden",
+      "sending": "Senden…",
+      "searchGifs": "GIFs suchen…",
+      "search": "Suchen",
+      "close": "Schließen",
+      "pick": "Auswählen",
+      "errorLoading": "Kommentare konnten nicht geladen werden.",
+      "errorGifs": "GIFs konnten nicht geladen werden."
+    },
+
+    "post": {
+      "communityPost": "Community-Post",
+      "repostedBy": "{name} hat repostet",
+      "pinned": "Gepinnt",
+      "ariaOpen": "Post öffnen",
+      "ariaBack": "Zurück",
+      "headerTitle": "Post",
+      "interactionBlocked": "Interaktionen sind blockiert",
+      "like": "Gefällt mir",
+      "unlike": "Gefällt mir nicht mehr",
+      "comment": "Kommentieren",
+      "repost": "Repost",
+      "quotePost": "Post zitieren",
+      "more": "Mehr",
+      "copyText": "Post-Text kopieren",
+      "block": "Account blockieren",
+      "unblock": "Account entblocken",
+      "report": "Post melden",
+      "pinToProfile": "Auf Profil anpinnen",
+      "unpinFromProfile": "Pin entfernen",
+      "role": { "domme": "Domme", "submissive": "Sub" },
+      "blockStatus": { "youBlock": "Du blockierst", "blocksYou": "Blockiert dich" },
+
+      "share": {
+        "title": "Teilen",
+        "label": "Teilen",
+        "dm": "Per Direktnachricht senden",
+        "shareInDm": "In Direktnachricht teilen",
+        "copy": "Link kopieren",
+        "copied": "Kopiert!",
+        "system": "Auf Gerät teilen…",
+        "systemTitle": "{name} auf {brand}",
+        "systemText": "Sieh dir diesen Post auf {brand} an",
+        "dmTitle": "Per Direktnachricht senden",
+        "searchPlaceholder": "Nach Personen/Chats suchen",
+        "loadingChats": "Lade Chats…",
+        "empty": "Keine Konversationen gefunden.",
+        "notePlaceholder": "Kommentar hinzufügen (optional)…",
+        "cancel": "Abbrechen",
+        "send": "Senden",
+        "sending": "Senden…"
+      },
+
+      "cantInteract": "Du kannst mit diesem Account nicht interagieren."
+    },
+
+    "settings": {
+      "aria": "Einstellungen",
+      "guest": "Gast",
+      "roleDomme": "Domina",
+      "roleSub": "Sub",
+      "statsFollowing": "Folge ich",
+      "statsFollowers": "Follower",
+      "statsError": "Fehler beim Laden der Statistiken",
+      "menu": {
+        "profile": "Profil",
+        "settings": "Einstellungen",
+        "bookmarks": "Lesezeichen",
+        "premium": "Premium",
+        "payments": "Zahlungen"
+      },
+      "recommended": "Empfohlene Profile",
+      "suggestionsEmpty": "Derzeit keine Vorschläge.",
+      "follow": "Folgen",
+      "unfollow": "Entfolgen",
+      "signIn": "Anmelden",
+      "signOut": "Abmelden",
+      "loading": "Laden…",
+      "noHandle": "—",
+      "avatarAlt": "Profilbild"
+    },
+
+    "profile": {
+      "more": "Mehr",
+      "shareProfileViaDm": "Profil per Direktnachricht teilen",
+      "copyProfileLink": "Profil-Link kopieren",
+      "blockUser": "Nutzer blockieren",
+      "unblockUser": "Nutzer entblocken",
+      "reportUser": "Nutzer melden",
+      "message": "Nachricht",
+      "tabs": {
+        "posts": "Posts",
+        "gallery": "Galerie",
+        "leaderboard": "Leaderboard"
+      },
+      "editProfile": "Profil bearbeiten",
+      "tipActions": "Trinkgeld-Aktionen",
+      "sendTip": "Trinkgeld senden",
+      "autodrain": "Autodrain",
+      "offer": "Angebot",
+      "offerMenu": "Angebotsmenü",
+      "follow": "Folgen",
+      "unfollow": "Entfolgen",
+      "blockedBy": "Dieser Nutzer hat dich blockiert",
+      "youBlocked": "Du hast diesen Nutzer blockiert",
+      "messagingDisabled": "Nachrichten sind wegen Blockierung deaktiviert",
+      "joined": "Dabei seit"
+    },
+
+    "settingsPage": {
+      "ariaBack": "Zurück zum Feed",
+      "title": "Einstellungen",
+      "searchPlaceholder": "Einstellungen durchsuchen",
+      "items": {
+        "account": {
+          "title": "Dein Account",
+          "desc": "Profilinfo ansehen und bearbeiten (Name, Bio, Avatar, Banner), Daten exportieren und Account-Optionen."
+        },
+        "security": {
+          "title": "Sicherheit & Zugriff",
+          "desc": "Login-Sicherheit prüfen, verbundene Apps verwalten und Zugriff überwachen."
+        },
+        "premium": {
+          "title": "Premium",
+          "desc": "Vorteile ansehen und deine Premium-Einstellungen verwalten."
+        },
+        "monetization": {
+          "title": "Monetarisierung",
+          "desc": "Vom Tip bis zur Community. Alle Wege zu stabilen Einnahmen."
+        },
+        "privacy": {
+          "title": "Datenschutz",
+          "desc": "Steuere, welche Informationen du siehst und teilst, und passe deine Privatsphäre an."
+        },
+        "notifications": {
+          "title": "Mitteilungen",
+          "desc": "Lege fest, über welche Aktivitäten, Empfehlungen und Nachrichten du benachrichtigt wirst."
+        },
+        "bookmarks": {
+          "title": "Bookmarks",
+          "desc": "Gespeicherte Posts verwalten."
+        }
+      }
+    }
   }
 }

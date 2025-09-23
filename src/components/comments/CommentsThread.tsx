@@ -4,6 +4,7 @@
 import * as React from 'react';
 import Image from 'next/image';
 import { addCommentAction } from '@/app/actions/comments';
+import { useTranslations } from 'next-intl';
 
 const AVATAR_PH = '/images/avatar-placeholder.png';
 
@@ -29,6 +30,7 @@ function GifPickerModal({
   onClose: () => void;
   onPick: (gifUrl: string) => void;
 }) {
+  const t = useTranslations('comments');
   const [q, setQ] = React.useState('');
   const [loading, setLoading] = React.useState(false);
   const [err, setErr] = React.useState<string | null>(null);
@@ -58,11 +60,11 @@ function GifPickerModal({
           .filter(Boolean) as { id: string; url: string }[];
       setItems(list);
     } catch {
-      setErr('Could not load GIFs.');
+      setErr(t('errorGifs'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   React.useEffect(() => {
     if (open) run();
@@ -79,7 +81,7 @@ function GifPickerModal({
             value={q}
             onChange={(e) => setQ(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && run(q)}
-            placeholder="Search GIFs…"
+            placeholder={t('searchGifs')}
             className="flex-1 h-10 rounded-xl bg-white/[.06] border border-white/10 px-3 outline-none"
           />
           <button
@@ -87,21 +89,21 @@ function GifPickerModal({
             onClick={() => run(q)}
             className="h-10 px-4 rounded-xl bg-[var(--purple)] text-white hover:opacity-95"
           >
-            Search
+            {t('search')}
           </button>
           <button
             type="button"
             onClick={onClose}
             className="h-10 px-3 rounded-xl border border-white/15 hover:bg-white/10"
           >
-            Close
+            {t('close')}
           </button>
         </div>
 
         <div className="mt-3">
           {err && <div className="text-red-300 text-sm mb-2">{err}</div>}
           {loading ? (
-            <div className="text-sm text-white/80 py-8 text-center">Loading…</div>
+            <div className="text-sm text-white/80 py-8 text-center">{t('loading')}</div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 overflow-y-auto max-h-[65vh] pr-1">
               {items.map((it) => (
@@ -110,7 +112,7 @@ function GifPickerModal({
                   type="button"
                   className="relative group rounded-lg overflow-hidden border border-white/10 hover:border-white/25"
                   onClick={() => onPick(it.url)}
-                  title="Pick"
+                  title={t('pick')}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={it.url} alt="" loading="lazy" decoding="async" className="block w-full h-44 object-cover" />
@@ -154,6 +156,7 @@ function Counter({ value = 0, active }: { value?: number; active?: boolean }) {
 }
 
 export default function CommentsThread({ postId }: { postId: string }) {
+  const t = useTranslations('comments');
   const [tree, setTree] = React.useState<TreeComment[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [nextCursor, setNextCursor] = React.useState<string | null>(null);
@@ -167,16 +170,16 @@ export default function CommentsThread({ postId }: { postId: string }) {
         if (!reset && nextCursor) url.searchParams.set('after', nextCursor);
         const res = await fetch(url.toString(), { cache: 'no-store' });
         const json = await res.json();
-        if (!json.ok) throw new Error(json.error || 'Failed to load comments');
+        if (!json.ok) throw new Error(json.error || t('errorLoading'));
         setTree((prev) => (reset ? json.items : [...prev, ...json.items]));
         setNextCursor(json.nextCursor ?? null);
       } catch (e) {
-        setErr(e instanceof Error ? e.message : 'Failed to load comments');
+        setErr(e instanceof Error ? e.message : t('errorLoading'));
       } finally {
         setLoading(false);
       }
     },
-    [postId, nextCursor]
+    [postId, nextCursor, t]
   );
 
   React.useEffect(() => {
@@ -192,7 +195,7 @@ export default function CommentsThread({ postId }: { postId: string }) {
     <div className="mt-2">
       <Composer postId={postId} parentId={null} onDone={() => load(true)} />
 
-      {tree.length === 0 && !loading && <div className="text-sm text-muted mt-2">No comments yet.</div>}
+      {tree.length === 0 && !loading && <div className="text-sm text-muted mt-2">{t('noComments')}</div>}
 
       <ul className="mt-3 space-y-3">
         {tree.map((n) => (
@@ -206,7 +209,7 @@ export default function CommentsThread({ postId }: { postId: string }) {
           disabled={loading}
           onClick={() => load(false)}
         >
-          {loading ? 'Loading…' : 'Load more'}
+          {loading ? t('loading') : t('loadMore')}
         </button>
       )}
     </div>
@@ -224,6 +227,7 @@ function CommentNode({
   depth: number;
   onChanged: () => void;
 }) {
+  const t = useTranslations('comments');
   const [showReply, setShowReply] = React.useState(false);
   const [liked, setLiked] = React.useState(Boolean(node.viewer?.liked));
   const [likeCount, setLikeCount] = React.useState(node.counts.likes);
@@ -233,36 +237,12 @@ function CommentNode({
     setLikeCount(node.counts.likes);
   }, [node.viewer?.liked, node.counts.likes]);
 
-  // ---- small helper: fire-and-forget hook for notifications
-  function fireNotiHook(url: string, payload: unknown) {
-    try {
-      const body = JSON.stringify(payload);
-      if (typeof navigator !== 'undefined' && 'sendBeacon' in navigator) {
-        const blob = new Blob([body], { type: 'application/json' });
-        (navigator as Navigator & { sendBeacon?: (u: string, d?: Blob | FormData) => boolean }).sendBeacon?.(url, blob);
-      } else {
-        // #eslint-disable-next-line @typescript-eslint/no-floating-promises
-        fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body }).catch(() => {});
-      }
-    } catch {
-      // swallow
-    }
-  }
-
   async function toggleLike() {
     const res = await fetch(`/api/comments/${node.id}/like`, { method: 'POST' });
     const json = await res.json();
     if (json.ok) {
       setLiked(json.liked);
       setLikeCount((c) => (json.liked ? c + 1 : Math.max(0, c - 1)));
-
-      // ⬇️ optionaler Hook: notify comment author when someone liked their comment
-      if (json.liked === true) {
-        fireNotiHook('/api/notifications/hooks/comment-like', {
-          commentId: node.id,
-          postId,
-        });
-      }
     }
   }
 
@@ -284,10 +264,8 @@ function CommentNode({
               <span className="text-muted">· {timeAgoShort(node.createdAt)}</span>
             </div>
 
-            {/* Text */}
             {node.text && <div className="mt-1 whitespace-pre-wrap break-words">{node.text}</div>}
 
-            {/* Bild/GIF im Kommentar – begrenzte Größe */}
             {node.mediaUrl && (
               <figure className="mt-2 overflow-hidden rounded-xl border border-white/10 bg-black/20 flex justify-center">
                 <Image
@@ -307,17 +285,16 @@ function CommentNode({
 
             <div className="mt-2 flex items-center gap-4 text-sm">
               <button className="text-muted hover:text-white" onClick={() => setShowReply((s) => !s)}>
-                Reply
+                {t('reply')}
               </button>
 
-              {/* Like wie in PostCard */}
               <button
                 type="button"
                 data-no-nav
                 onClick={toggleLike}
                 className="group flex items-center gap-2 rounded px-2 py-1 hover:bg-white/5"
                 aria-pressed={liked || undefined}
-                title="Like"
+                title={t('like')}
               >
                 <span
                   className="inline-grid place-items-center"
@@ -334,7 +311,7 @@ function CommentNode({
                   </svg>
                 </span>
                 <Counter value={likeCount} active={liked} />
-                <span className="sr-only">{liked ? 'Unlike' : 'Like'}</span>
+                <span className="sr-only">{liked ? t('unlike') : t('like')}</span>
               </button>
             </div>
 
@@ -376,14 +353,11 @@ function Composer({
   parentId: string | null;
   onDone: () => void;
 }) {
+  const t = useTranslations('comments');
   const [text, setText] = React.useState('');
   const [busy, setBusy] = React.useState(false);
-
-  // Bild/GIF Auswahl + Vorschau
   const [file, setFile] = React.useState<File | null>(null);
   const [preview, setPreview] = React.useState<string | null>(null);
-
-  // GIF Modal
   const [gifOpen, setGifOpen] = React.useState(false);
 
   React.useEffect(() => {
@@ -408,9 +382,7 @@ function Composer({
       const file = new File([blob], `gif_${Date.now()}.gif`, { type: blob.type || 'image/gif' });
       onPick(file);
       setGifOpen(false);
-    } catch {
-      // ignore (option: toast)
-    }
+    } catch {}
   }
 
   function clearFile() {
@@ -419,42 +391,19 @@ function Composer({
     setPreview(null);
   }
 
-  // ---- small helper: fire-and-forget hook for notifications
-  function fireNotiHook(url: string, payload: unknown) {
-    try {
-      const body = JSON.stringify(payload);
-      if (typeof navigator !== 'undefined' && 'sendBeacon' in navigator) {
-        const blob = new Blob([body], { type: 'application/json' });
-        (navigator as Navigator & { sendBeacon?: (u: string, d?: Blob | FormData) => boolean }).sendBeacon?.(url, blob);
-      } else {
-        // #eslint-disable-next-line @typescript-eslint/no-floating-promises
-        fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body }).catch(() => {});
-      }
-    } catch {
-      // swallow
-    }
-  }
-
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    const t = text.trim();
-    if (!t && !file) return;
+    const tText = text.trim();
+    if (!tText && !file) return;
     setBusy(true);
     const fd = new FormData();
     fd.set('postId', postId);
-    fd.set('text', t);
+    fd.set('text', tText);
     if (parentId) fd.set('parentId', parentId);
     if (file) fd.set('media', file);
     const res = await addCommentAction(fd);
     setBusy(false);
     if (res.ok) {
-      // ⬇️ optional: backend-hook für Benachrichtigung (Post-Kommentar ODER Reply)
-      fireNotiHook('/api/notifications/hooks/comment', {
-        postId,
-        parentId: parentId ?? null,
-        text: t || null,
-      });
-
       setText('');
       clearFile();
       onDone();
@@ -463,7 +412,6 @@ function Composer({
 
   return (
     <form onSubmit={submit} className="rounded-xl border border-white/10 bg-white/5 p-2 shadow-sm">
-      {/* Bild/GIF-Vorschau (begrenzt) */}
       {preview && (
         <figure className="relative mb-2 overflow-hidden rounded-xl border border-white/10 bg-black/20 flex justify-center">
           <Image
@@ -483,9 +431,9 @@ function Composer({
             type="button"
             onClick={clearFile}
             className="absolute top-2 right-2 px-2 py-1 rounded-md bg-black/70 border border-white/20 hover:bg-black/80 text-[13px]"
-            title="Remove"
+            title={t('remove')}
           >
-            Remove
+            {t('remove')}
           </button>
         </figure>
       )}
@@ -494,27 +442,24 @@ function Composer({
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder={parentId ? 'Write a reply…' : 'Write a comment…'}
+          placeholder={parentId ? t('replyPlaceholder') : t('placeholder')}
           className="flex-1 min-h-[60px] max-h-[180px] resize-y rounded-lg bg-transparent p-2 text-sm outline-none
                      placeholder:text-white/40 focus:ring-2 focus:ring-subm8-purple/40 border border-white/10"
         />
 
-        {/* Toolbar rechts: GIF über Image, Send mittig */}
         <div className="flex flex-col items-center justify-center gap-2 pr-[2px]">
-          {/* GIF Button */}
           <button
             type="button"
             onClick={() => setGifOpen(true)}
             className="inline-grid place-items-center size-9 rounded-md border border-white/15 hover:bg-white/5"
-            title="Add GIF"
+            title={t('addGif')}
           >
             <GifIcon />
           </button>
 
-          {/* Image Button (leicht darunter) */}
           <label
             className="inline-grid place-items-center size-9 rounded-md border border-white/15 hover:bg-white/5 cursor-pointer"
-            title="Attach image"
+            title={t('attachImage')}
           >
             <input
               type="file"
@@ -529,13 +474,12 @@ function Composer({
             </svg>
           </label>
 
-          {/* Send Button – vertikal mittig zur Textarea */}
           <button
             type="submit"
             disabled={busy || (!text.trim() && !file)}
             className="inline-grid place-items-center size-9 rounded-md bg-[var(--purple)] text-white shadow
                        hover:brightness-110 active:translate-y-px disabled:opacity-50"
-            title="Send"
+            title={t('send')}
           >
             <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden>
               <path d="M22 2 11 13" />
@@ -545,7 +489,6 @@ function Composer({
         </div>
       </div>
 
-      {/* GIF Modal */}
       <GifPickerModal open={gifOpen} onClose={() => setGifOpen(false)} onPick={(url) => void onPickGifByUrl(url)} />
     </form>
   );
