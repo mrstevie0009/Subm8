@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/currentUser';
+import { getTranslations } from 'next-intl/server';
 
 type Params = { locale: string };
 
@@ -218,22 +219,23 @@ export default async function NotificationsPage({
 }) {
   const { locale } = params;
   const me = await getCurrentUser().catch(() => null);
+  const t = await getTranslations({ locale, namespace: 'common' });
 
   if (!me) {
     return (
       <section className="rounded-xl border border-white/10 overflow-hidden">
         <header className="px-4 pt-3 pb-4 border-b border-white/10">
           <div className="flex items-center gap-2">
-            <Link href={`/${locale}/settings`} className="p-1" aria-label="Zurück">
+            <Link href={`/${locale}/settings`} className="p-1" aria-label={t('notifications.ariaBack')}>
               <ChevronLeftIcon />
             </Link>
             <div>
-              <h1 className="text-lg font-semibold">Benachrichtigungen</h1>
-              <p className="text-sm text-white/60">Bitte melde dich an.</p>
+              <h1 className="text-lg font-semibold">{t('notifications.title')}</h1>
+              <p className="text-sm text-white/60">{t('notifications.notSignedInNote')}</p>
             </div>
           </div>
         </header>
-        <div className="p-6 text-white/80">Diese Seite verwaltet deine Push-, E-Mail- und Filter-Einstellungen.</div>
+        <div className="p-6 text-white/80">{t('notifications.notSignedInIntro')}</div>
       </section>
     );
   }
@@ -244,55 +246,55 @@ export default async function NotificationsPage({
     <section className="rounded-xl border border-white/10 overflow-hidden">
       <header className="px-4 pt-3 pb-4 border-b border-white/10">
         <div className="flex items-center gap-2">
-          <Link href={`/${locale}/settings`} className="p-1" aria-label="Zurück">
+          <Link href={`/${locale}/settings`} className="p-1" aria-label={t('notifications.ariaBack')}>
             <ChevronLeftIcon />
           </Link>
           <div>
-            <h1 className="text-lg font-semibold">Benachrichtigungen</h1>
-            <p className="text-sm text-white/60">Verwalte Push-Mitteilungen, E-Mails & Filter.</p>
+            <h1 className="text-lg font-semibold">{t('notifications.title')}</h1>
+            <p className="text-sm text-white/60">{t('notifications.intro')}</p>
           </div>
         </div>
       </header>
 
       <form action={saveNotificationsAction} className="grid gap-6 p-4">
         {/* Global */}
-        <Card title="Push-Mitteilungen">
-          <Toggle name="pushEnabled" label="Push-Mitteilungen aktiv" defaultChecked={s.pushEnabled} />
-          <p className="text-xs text-white/50">Steuert alle Push-Benachrichtigungen auf deinem Gerät.</p>
+        <Card title={t('notifications.cards.push.title')}>
+          <Toggle name="pushEnabled" label={t('notifications.cards.push.toggleActive')} defaultChecked={s.pushEnabled} />
+          <p className="text-xs text-white/50">{t('notifications.cards.push.note')}</p>
         </Card>
 
         {/* Direktnachrichten */}
-        <Card title="Direktnachrichten">
-          <Toggle name="dmMessages" label="Direktnachrichten" defaultChecked={s.dmMessages} />
-          <Toggle name="dmReactions" label="Reaktionen auf deine Nachrichten" defaultChecked={s.dmReactions} />
+        <Card title={t('notifications.cards.dm.title')}>
+          <Toggle name="dmMessages" label={t('notifications.cards.dm.messages')} defaultChecked={s.dmMessages} />
+          <Toggle name="dmReactions" label={t('notifications.cards.dm.reactions')} defaultChecked={s.dmReactions} />
         </Card>
 
         {/* Feed & Aktivitäten */}
-        <Card title="Feed & Aktivitäten">
-          <Toggle name="mentions" label="Erwähnungen (@handle)" defaultChecked={s.mentions} />
-          <Toggle name="comments" label="Kommentare auf deine Posts" defaultChecked={s.comments} />
-          <Toggle name="likes" label="Likes auf deine Posts" defaultChecked={s.likes} />
-          <Toggle name="newFollowers" label="Neue Follower" defaultChecked={s.newFollowers} />
-          <Toggle name="photoTags" label="Foto-Markierungen" defaultChecked={s.photoTags} />
+        <Card title={t('notifications.cards.feed.title')}>
+          <Toggle name="mentions" label={t('notifications.cards.feed.mentions')} defaultChecked={s.mentions} />
+          <Toggle name="comments" label={t('notifications.cards.feed.comments')} defaultChecked={s.comments} />
+          <Toggle name="likes" label={t('notifications.cards.feed.likes')} defaultChecked={s.likes} />
+          <Toggle name="newFollowers" label={t('notifications.cards.feed.newFollowers')} defaultChecked={s.newFollowers} />
+          <Toggle name="photoTags" label={t('notifications.cards.feed.photoTags')} defaultChecked={s.photoTags} />
         </Card>
 
         {/* E-Mail */}
-        <Card title="E-Mail">
-          <Toggle name="emailMessages" label="E-Mail bei neuen Nachrichten" defaultChecked={s.emailMessages} />
-          <Toggle name="emailDigest" label="Wöchentliche Zusammenfassung per E-Mail" defaultChecked={s.emailDigest} />
-          <p className="text-xs text-white/50">Wir senden nur selten & zielgerichtet. Du kannst jederzeit abbestellen.</p>
+        <Card title={t('notifications.cards.email.title')}>
+          <Toggle name="emailMessages" label={t('notifications.cards.email.messages')} defaultChecked={s.emailMessages} />
+          <Toggle name="emailDigest" label={t('notifications.cards.email.digest')} defaultChecked={s.emailDigest} />
+          <p className="text-xs text-white/50">{t('notifications.cards.email.note')}</p>
         </Card>
 
         {/* Stummschalt-Filter */}
-        <Card title="Mitteilungen stummschalten von Personen">
-          <Toggle name="muteNotFollowing" label="… denen du nicht folgst" defaultChecked={s.muteNotFollowing} />
-          <Toggle name="muteNotFollowers" label="… die dir nicht folgen" defaultChecked={s.muteNotFollowers} />
-          <Toggle name="muteNewAccounts" label="… mit einem neuen Account" defaultChecked={s.muteNewAccounts} />
-          <Toggle name="muteNoAvatar" label="… die ein Standard-Profilfoto haben" defaultChecked={s.muteNoAvatar} />
-          <Toggle name="requireEmailVerified" label="… deren E-Mail nicht bestätigt ist" defaultChecked={s.requireEmailVerified} />
-          <Toggle name="requirePhoneVerified" label="… deren Telefonnummer nicht bestätigt ist" defaultChecked={s.requirePhoneVerified} />
+        <Card title={t('notifications.cards.filters.title')}>
+          <Toggle name="muteNotFollowing" label={t('notifications.cards.filters.notFollowing')} defaultChecked={s.muteNotFollowing} />
+          <Toggle name="muteNotFollowers" label={t('notifications.cards.filters.notFollowers')} defaultChecked={s.muteNotFollowers} />
+          <Toggle name="muteNewAccounts" label={t('notifications.cards.filters.newAccounts')} defaultChecked={s.muteNewAccounts} />
+          <Toggle name="muteNoAvatar" label={t('notifications.cards.filters.noAvatar')} defaultChecked={s.muteNoAvatar} />
+          <Toggle name="requireEmailVerified" label={t('notifications.cards.filters.emailUnverified')} defaultChecked={s.requireEmailVerified} />
+          <Toggle name="requirePhoneVerified" label={t('notifications.cards.filters.phoneUnverified')} defaultChecked={s.requirePhoneVerified} />
           <p className="text-xs text-white/50">
-            Diese Filter betreffen nur Unbekannte. Kontakte/Followings bleiben unberührt.
+            {t('notifications.cards.filters.note')}
           </p>
         </Card>
 
@@ -301,16 +303,16 @@ export default async function NotificationsPage({
             type="submit"
             className="px-4 py-2 rounded-full bg-white/10 hover:bg-white/15 border border-white/15"
           >
-            Einstellungen speichern
+            {t('notifications.actions.save')}
           </button>
 
           <form action={resetNotificationsAction}>
             <button
               type="submit"
               className="px-4 py-2 rounded-full border border-red-400/40 text-red-200/90 hover:bg-red-500/10"
-              title="Auf Werkseinstellungen zurücksetzen"
+              title={t('notifications.actions.resetTitle')}
             >
-              Auf Standard zurücksetzen
+              {t('notifications.actions.reset')}
             </button>
           </form>
         </div>

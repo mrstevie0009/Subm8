@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 
 type Params = { locale: string };
 
@@ -12,21 +13,22 @@ export default async function LegalLayout({
   params: Promise<Params>;
 }) {
   const { locale } = await params;
+  const t = await getTranslations("common");
 
   const items = [
-    { href: `/${locale}/legal/community-guidelines`, label: "Community Guidelines" },
-    { href: `/${locale}/legal/privacy`, label: "Datenschutzerklärung" },
-    { href: `/${locale}/legal/terms`, label: "Terms of Service" },
-    { href: `/${locale}/legal/age-verification`, label: "Age Verification" },
-    { href: `/${locale}/legal/refunds`, label: "Refund Policy" },
-    { href: `/${locale}/legal/impressum`, label: "Impressum" }
+    { href: `/${locale}/legal/community-guidelines`, label: t("legal.guidelines.title") },
+    { href: `/${locale}/legal/privacy`, label: t("legal.privacy.title") },
+    { href: `/${locale}/legal/terms`, label: t("legal.terms.title") },
+    { href: `/${locale}/legal/age-verification`, label: t("legal.age.title") },
+    { href: `/${locale}/legal/refunds`, label: t("legal.refund.title") },
+    { href: `/${locale}/legal/impressum`, label: t("legal.imprint.title") }
   ];
 
   return (
     <section className="rounded-xl border border-white/10 overflow-hidden">
       <header className="px-4 pt-3 pb-4 border-b border-white/10">
         <div className="flex items-center gap-2">
-          <Link href={`/${locale}/settings`} className="p-1" aria-label="Zurück">
+          <Link href={`/${locale}/settings`} className="p-1" aria-label={t("monetizationPage.ariaBack")}>
             <ChevronLeftIcon />
           </Link>
           <div>

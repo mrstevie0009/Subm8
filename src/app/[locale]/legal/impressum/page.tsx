@@ -1,33 +1,35 @@
 import { LegalArticle } from '@/components/legal/LegalArticle';
+import { getTranslations } from 'next-intl/server';
 
 export const dynamic = 'force-static';
 
-export default function ImprintPage() {
+export default async function ImprintPage() {
+  const t = await getTranslations('common.legal.imprint');
+
   return (
     <LegalArticle
-      title="Impressum"
-      subtitle="Anbieterkennzeichnung gemäß § 5 TMG / EU-Recht."
+      title={t('title')}
+      subtitle={t('subtitle')}
       updated="30.08.2025"
     >
       <p className="text-white/80">
-        Subm8 Plattform<br />
+        {t('content.line_1')}<br />
         [Dein Firmenname oder bürgerlicher Name]<br />
         [Straße Hausnummer]<br />
         [PLZ, Stadt, Land]
       </p>
       <p className="mt-3">
-        <strong>Kontakt:</strong> E-Mail: [deine Mailadresse]
+        <strong>{t('content.contact_label')}:</strong> E-Mail: [deine Mailadresse]
       </p>
       <p>
-        <strong>Vertreten durch:</strong> [Name, falls juristische Person]
+        <strong>{t('content.represented_by_label')}:</strong> [Name, falls juristische Person]
       </p>
       <p>
-        <strong>Umsatzsteuer-ID:</strong> [falls vorhanden]
+        <strong>{t('content.vat_label')}:</strong> [falls vorhanden]
       </p>
       <hr />
       <p className="text-sm text-white/70">
-        Hinweis: Diese Plattform ist ausschließlich für volljährige Nutzer*innen. Inhalte können
-        NSFW/Adult sein.
+        {t('content.adult_note')}
       </p>
     </LegalArticle>
   );

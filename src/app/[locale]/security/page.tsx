@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import QRCode from 'qrcode';
 import { authenticator } from 'otplib';
+import { getTranslations } from 'next-intl/server';
 
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/currentUser';
@@ -147,6 +148,7 @@ export async function logoutAllSessionsAction() {
 
 export default async function SecurityPage({ params }: { params: Promise<Params> }) {
   const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: 'common.securityPage' });
   const user = await getAuthUser();
 
   if (!user) {
@@ -154,16 +156,16 @@ export default async function SecurityPage({ params }: { params: Promise<Params>
       <section className="rounded-xl border border-white/10 overflow-hidden">
         <header className="px-4 pt-3 pb-4 border-b border-white/10">
           <div className="flex items-center gap-2">
-            <Link href={`/${locale}/settings`} className="p-1" aria-label="Zurück">
+            <Link href={`/${locale}/settings`} className="p-1" aria-label={t('ariaBack')}>
               <ChevronLeftIcon />
             </Link>
             <div>
-              <h1 className="text-lg font-semibold">Sicherheit &amp; Zugriff</h1>
+              <h1 className="text-lg font-semibold">{t('title')}</h1>
               <p className="text-sm text-white/60">@—</p>
             </div>
           </div>
         </header>
-        <div className="p-6 text-white/80">Bitte melde dich an, um Sicherheitsoptionen zu verwalten.</div>
+        <div className="p-6 text-white/80">{t('notSignedInMessage')}</div>
       </section>
     );
   }
@@ -180,11 +182,11 @@ export default async function SecurityPage({ params }: { params: Promise<Params>
     <section className="rounded-xl border border-white/10 overflow-hidden">
       <header className="px-4 pt-3 pb-4 border-b border-white/10">
         <div className="flex items-center gap-2">
-          <Link href={`/${locale}/settings`} className="p-1" aria-label="Zurück">
+          <Link href={`/${locale}/settings`} className="p-1" aria-label={t('ariaBack')}>
             <ChevronLeftIcon />
           </Link>
           <div>
-            <h1 className="text-lg font-semibold">Sicherheit &amp; Zugriff</h1>
+            <h1 className="text-lg font-semibold">{t('title')}</h1>
             <p className="text-sm text-white/60">@{user.handle}</p>
           </div>
         </div>
@@ -193,42 +195,36 @@ export default async function SecurityPage({ params }: { params: Promise<Params>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-4">
         {/* Zwei-Faktor-Authentifizierung */}
         <section className="rounded-lg border border-white/10 p-4">
-          <h2 className="text-base font-semibold mb-2">Zwei-Faktor-Authentifizierung</h2>
-          <p className="text-sm text-white/70 mb-4">
-            Schütze deinen Account mit einer zweiten Anmeldestufe. Du kannst eine App (TOTP), SMS
-            (wenn Telefonnummer hinterlegt) oder später Sicherheitsschlüssel/Passkeys verwenden.
-          </p>
+          <h2 className="text-base font-semibold mb-2">{t('twofa.title')}</h2>
+          <p className="text-sm text-white/70 mb-4">{t('twofa.intro')}</p>
 
           {/* TOTP (App) */}
           <div className="mb-6">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="font-medium">Authenticator-App (TOTP)</h3>
+              <h3 className="font-medium">{t('twofa.totpTitle')}</h3>
               {user.twoFactorEnabled && user.twoFactorType === 'TOTP' ? (
                 <form action={disable2FAAction}>
                   <button className="px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/15 border border-white/15 text-sm">
-                    Deaktivieren
+                    {t('twofa.disable')}
                   </button>
                 </form>
               ) : user.twoFactorTempSecret ? null : (
                 <form action={startTotpSetupAction}>
                   <button className="px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/15 border border-white/15 text-sm">
-                    Einrichten
+                    {t('twofa.setup')}
                   </button>
                 </form>
               )}
             </div>
 
             {user.twoFactorEnabled && user.twoFactorType === 'TOTP' && (
-              <p className="text-sm text-emerald-300">Aktiv: App-basierte 2FA ist eingeschaltet.</p>
+              <p className="text-sm text-emerald-300">{t('twofa.active')}</p>
             )}
 
             {/* Setup-Step: QR + Code-Eingabe */}
             {user.twoFactorTempSecret && qrDataUrl && (
               <div className="mt-3 rounded-md border border-white/10 p-3">
-                <p className="text-sm mb-2">
-                  Scanne den QR-Code mit deiner Authenticator-App und gib anschließend den 6-stelligen
-                  Code ein.
-                </p>
+                <p className="text-sm mb-2">{t('twofa.scanIntro')}</p>
                 <div className="w-40 h-40 relative mb-3">
                   <Image
                     src={qrDataUrl}
@@ -245,14 +241,14 @@ export default async function SecurityPage({ params }: { params: Promise<Params>
                     name="token"
                     inputMode="numeric"
                     pattern="[0-9]*"
-                    placeholder="123456"
+                    placeholder={t('twofa.tokenPlaceholder')}
                     className="w-32 rounded-md bg-white/5 border border-white/10 px-3 py-2 outline-none focus:ring-2 focus:ring-white/20"
                   />
                   <button
                     type="submit"
                     className="px-3 py-2 rounded-full bg-white/10 hover:bg-white/15 border border-white/15 text-sm"
                   >
-                    Bestätigen
+                    {t('twofa.confirm')}
                   </button>
                 </form>
               </div>
@@ -262,58 +258,52 @@ export default async function SecurityPage({ params }: { params: Promise<Params>
           {/* SMS (deaktiviert) */}
           <div className="mb-6 opacity-60 pointer-events-none">
             <div className="flex items-center justify-between mb-1">
-              <h3 className="font-medium">SMS-Codes</h3>
+              <h3 className="font-medium">{t('twofa.smsTitle')}</h3>
               <span className="text-xs px-2 py-1 rounded-full bg-white/10 border border-white/15">
-                Bald
+                {t('twofa.soon')}
               </span>
             </div>
-            <p className="text-sm text-white/70">
-              Verfügbar, wenn eine Telefonnummer hinterlegt ist und SMS-Versand konfiguriert wurde.
-            </p>
+            <p className="text-sm text-white/70">{t('twofa.smsNote')}</p>
           </div>
 
           {/* Sicherheitsschlüssel / Passkeys (deaktiviert) */}
           <div className="opacity-60 pointer-events-none">
             <div className="flex items-center justify-between mb-1">
-              <h3 className="font-medium">Sicherheitsschlüssel / Passkeys</h3>
+              <h3 className="font-medium">{t('twofa.passkeysTitle')}</h3>
               <span className="text-xs px-2 py-1 rounded-full bg-white/10 border border-white/15">
-                Bald
+                {t('twofa.soon')}
               </span>
             </div>
-            <p className="text-sm text-white/70">
-              Unterstützung für WebAuthn/Passkeys folgt.
-            </p>
+            <p className="text-sm text-white/70">{t('twofa.passkeysNote')}</p>
           </div>
         </section>
 
         {/* Zusätzlicher Passwortschutz */}
         <section className="rounded-lg border border-white/10 p-4">
-          <h2 className="text-base font-semibold mb-2">Zusätzlicher Passwortschutz</h2>
-          <p className="text-sm text-white/70 mb-4">
-            Beim Zurücksetzen des Passworts muss zusätzlich E-Mail oder Telefonnummer bestätigt werden.
-          </p>
+          <h2 className="text-base font-semibold mb-2">{t('extraPassword.title')}</h2>
+          <p className="text-sm text-white/70 mb-4">{t('extraPassword.desc')}</p>
 
           <form action={togglePasswordResetProtectionAction}>
             <button
               type="submit"
               className="px-4 py-2 rounded-full border border-white/15 bg-white/10 hover:bg-white/15"
-              title="Passwort-Zurücksetzungsschutz umschalten"
+              title={t('extraPassword.toggle.title')}
             >
-              {user.passwordResetProtection ? 'Schutz deaktivieren' : 'Schutz aktivieren'}
+              {user.passwordResetProtection
+                ? t('extraPassword.toggle.disable')
+                : t('extraPassword.toggle.enable')}
             </button>
           </form>
 
           <div className="mt-6">
-            <h3 className="font-medium mb-2">Sitzungen beenden</h3>
-            <p className="text-sm text-white/70 mb-3">
-              Beendet alle aktiven Sitzungen auf allen Geräten und meldet dich hier ab.
-            </p>
+            <h3 className="font-medium mb-2">{t('sessions.title')}</h3>
+            <p className="text-sm text-white/70 mb-3">{t('sessions.desc')}</p>
             <form action={logoutAllSessionsAction}>
               <button
                 type="submit"
                 className="px-4 py-2 rounded-full border border-white/15 bg-white/10 hover:bg-white/15"
               >
-                Alle Sitzungen beenden
+                {t('sessions.endAll')}
               </button>
             </form>
           </div>

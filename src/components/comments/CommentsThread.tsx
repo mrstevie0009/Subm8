@@ -30,7 +30,7 @@ function GifPickerModal({
   onClose: () => void;
   onPick: (gifUrl: string) => void;
 }) {
-  const t = useTranslations('comments');
+  const t = useTranslations('common.comments');
   const [q, setQ] = React.useState('');
   const [loading, setLoading] = React.useState(false);
   const [err, setErr] = React.useState<string | null>(null);
@@ -41,30 +41,33 @@ function GifPickerModal({
     return m?.gif?.url || m?.mediumgif?.url || m?.tinygif?.url || m?.nanogif?.url || null;
   };
 
-  const run = React.useCallback(async (query?: string) => {
-    setErr(null);
-    setLoading(true);
-    try {
-      const endpoint =
-        query && query.trim()
-          ? `${TENOR_BASE}/search?q=${encodeURIComponent(query)}&key=${TENOR_KEY}&limit=24&media_filter=minimal`
-          : `${TENOR_BASE}/trending?key=${TENOR_KEY}&limit=24&media_filter=minimal`;
-      const r = await fetch(endpoint);
-      const j = (await r.json()) as TenorResp;
-      const list =
-        (j.results ?? [])
-          .map((it) => {
-            const url = pickUrlFromItem(it);
-            return url ? { id: it.id ?? crypto.randomUUID(), url } : null;
-          })
-          .filter(Boolean) as { id: string; url: string }[];
-      setItems(list);
-    } catch {
-      setErr(t('errorGifs'));
-    } finally {
-      setLoading(false);
-    }
-  }, [t]);
+  const run = React.useCallback(
+    async (query?: string) => {
+      setErr(null);
+      setLoading(true);
+      try {
+        const endpoint =
+          query && query.trim()
+            ? `${TENOR_BASE}/search?q=${encodeURIComponent(query)}&key=${TENOR_KEY}&limit=24&media_filter=minimal`
+            : `${TENOR_BASE}/trending?key=${TENOR_KEY}&limit=24&media_filter=minimal`;
+        const r = await fetch(endpoint);
+        const j = (await r.json()) as TenorResp;
+        const list =
+          (j.results ?? [])
+            .map((it) => {
+              const url = pickUrlFromItem(it);
+              return url ? { id: it.id ?? crypto.randomUUID(), url } : null;
+            })
+            .filter(Boolean) as { id: string; url: string }[];
+        setItems(list);
+      } catch {
+        setErr(t('errorGifs'));
+      } finally {
+        setLoading(false);
+      }
+    },
+    [t]
+  );
 
   React.useEffect(() => {
     if (open) run();
@@ -156,7 +159,8 @@ function Counter({ value = 0, active }: { value?: number; active?: boolean }) {
 }
 
 export default function CommentsThread({ postId }: { postId: string }) {
-  const t = useTranslations('comments');
+  const t = useTranslations('common.comments');
+
   const [tree, setTree] = React.useState<TreeComment[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [nextCursor, setNextCursor] = React.useState<string | null>(null);
@@ -227,7 +231,8 @@ function CommentNode({
   depth: number;
   onChanged: () => void;
 }) {
-  const t = useTranslations('comments');
+  const t = useTranslations('common.comments');
+  const tTime = useTranslations('common');
   const [showReply, setShowReply] = React.useState(false);
   const [liked, setLiked] = React.useState(Boolean(node.viewer?.liked));
   const [likeCount, setLikeCount] = React.useState(node.counts.likes);
@@ -261,7 +266,7 @@ function CommentNode({
             <div className="text-sm">
               <span className="font-semibold">{node.author.displayName}</span>{' '}
               <span className="text-muted">@{node.author.handle}</span>{' '}
-              <span className="text-muted">· {timeAgoShort(node.createdAt)}</span>
+              <span className="text-muted">· {timeAgoShort(node.createdAt, tTime)}</span>
             </div>
 
             {node.text && <div className="mt-1 whitespace-pre-wrap break-words">{node.text}</div>}
@@ -353,7 +358,7 @@ function Composer({
   parentId: string | null;
   onDone: () => void;
 }) {
-  const t = useTranslations('comments');
+  const t = useTranslations('common.comments');
   const [text, setText] = React.useState('');
   const [busy, setBusy] = React.useState(false);
   const [file, setFile] = React.useState<File | null>(null);
@@ -495,39 +500,38 @@ function Composer({
 }
 
 function RolePill({ role }: { role: 'DOMME' | 'SUBMISSIVE' }) {
+  const tPost = useTranslations('common.post');
   const isDomme = role === 'DOMME';
-  if (isDomme) {
-    return (
-      <span
-        className="mt-1 text-[11px] leading-none px-2 py-1 rounded-full"
-        style={{
-          color: 'var(--purple)',
-          background: 'rgba(139,92,246,.15)',
-          border: '1px solid rgba(139,92,246,.25)',
-        }}
-      >
-        Domme
-      </span>
-    );
-  }
-  return (
+  return isDomme ? (
+    <span
+      className="mt-1 text-[11px] leading-none px-2 py-1 rounded-full"
+      style={{
+        color: 'var(--purple)',
+        background: 'rgba(139,92,246,.15)',
+        border: '1px solid rgba(139,92,246,.25)',
+      }}
+    >
+      {tPost('role.domme')}
+    </span>
+  ) : (
     <span className="mt-1 text-[11px] leading-none px-2 py-1 rounded-full border border-sky-500/25 bg-sky-600/15 text-sky-300">
-      Sub
+      {tPost('role.submissive')}
     </span>
   );
 }
 
-function timeAgoShort(iso: string) {
+/* Lokalisierte Kurzzeit-Angabe über common.time */
+function timeAgoShort(iso: string, tTime: ReturnType<typeof useTranslations>) {
   const now = Date.now();
   const then = new Date(iso).getTime();
   const diff = Math.max(0, now - then);
   const m = Math.floor(diff / 60000);
-  if (m < 1) return 'now';
-  if (m < 60) return `${m}m`;
+  if (m < 1) return tTime('time.now');
+  if (m < 60) return tTime('time.m', { count: m });
   const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h`;
+  if (h < 24) return tTime('time.h', { count: h });
   const d = Math.floor(h / 24);
-  return `${d}d`;
+  return tTime('time.d', { count: d });
 }
 
 /* --------- Icon --------- */

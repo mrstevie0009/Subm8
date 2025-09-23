@@ -1,50 +1,31 @@
-// src/app/[locale]/legal/guidelines/page.tsx
 import { LegalArticle, Callout } from '@/components/legal/LegalArticle';
+import { getTranslations } from 'next-intl/server';
 
 export const dynamic = 'force-static';
 
-export default function GuidelinesPage() {
+export default async function GuidelinesPage() {
+  const t = await getTranslations('common.legal.guidelines');
+
   return (
     <LegalArticle
-      title="Community Guidelines"
-      subtitle="Respekt, Einvernehmlichkeit und Sicherheit zuerst."
+      title={t('title')}
+      subtitle={t('subtitle')}
       updated="30.08.2025"
     >
       <ol className="list-decimal pl-6 space-y-3 marker:font-semibold">
-        <li>
-          <span className="font-semibold">Nur 18+</span> – keine Minderjährigen, keine Inhalte mit
-          Bezug zu Minderjährigen.
-        </li>
-        <li>
-          <span className="font-semibold">Einvernehmlichkeit</span> – keine Belästigung, kein Zwang.
-        </li>
-        <li>
-          <span className="font-semibold">Respektvoller Umgang</span> – kein Hate Speech, keine
-          Diskriminierung, kein Mobbing.
-        </li>
-        <li>
-          <span className="font-semibold">NSFW-Inhalte</span> – erlaubt, aber korrekt
-          gekennzeichnet (z. B. NSFW-Flag).
-        </li>
-        <li>
-          <span className="font-semibold">Privatsphäre</span> – keine Weitergabe privater Daten ohne
-          Zustimmung.
-        </li>
-        <li>
-          <span className="font-semibold">Spam &amp; Werbung</span> – verboten, außer klar
-          gekennzeichnet und regelkonform.
-        </li>
-        <li>
-          <span className="font-semibold">Missbrauch melden</span> – Verstöße können gemeldet
-          werden; Wiederholung führt zu Maßnahmen.
-        </li>
+        <li>{t('list.li_1')}</li>
+        <li>{t('list.li_2')}</li>
+        <li>{t('list.li_3')}</li>
+        <li>{t('list.li_4')}</li>
+        <li>{t('list.li_5')}</li>
+        <li>{t('list.li_6')}</li>
+        <li>{t('list.li_7')}</li>
       </ol>
 
       <hr className="my-8 border-white/10" />
 
-      <Callout tone="info" title="Sicher bleiben">
-        Nutze die Meldefunktion bei Grenzverletzungen. Unser Team prüft Meldungen zügig und
-        verhältnismäßig.
+      <Callout tone="info" title={t('callout_title')}>
+        {t('callout_body')}
       </Callout>
     </LegalArticle>
   );

@@ -2,12 +2,150 @@
   "common": {
     "nav": { "home": "Start", "search": "Suche", "communities": "Communities", "chat": "Chat" },
     "brand": { "name": "Subm8" },
+    "time": { "now": "jetzt", "m": "{count}m", "h": "{count}h", "d": "{count}d" },
 
-    "time": {
-      "now": "jetzt",
-      "m": "{count}m",
-      "h": "{count}h",
-      "d": "{count}d"
+    "monetizationPage": {
+      "ariaBack": "Zurück",
+      "title": "Monetarisierung",
+      "subtitle": "So verdienst du Geld auf Subm8 – Überblick & Best Practices",
+
+      "hero": {
+        "walletRealtime": {
+          "title": "Wallet in Echtzeit",
+          "text": "Einnahmen landen sofort im Domme-Wallet und in der Historie."
+        },
+        "flexibleSources": {
+          "title": "Flexible Einnahmequellen",
+          "text": "Direkte Tips, Pay-per-View, Custom Tributes & Paid Communities."
+        },
+        "clearTransparent": {
+          "title": "Klar & Transparent",
+          "text": "Eindeutige Regeln zu Gebühren und Auszahlungen (SEPA, später mehr)."
+        }
+      },
+
+      "methodCard": {
+        "whatIsThis": "Was ist das?",
+        "howItWorks": "So funktioniert’s",
+        "featureHint": "Nutze dieses Feature, wenn es zu deiner Audience passt – Preisgestaltung und Messaging sind entscheidend."
+      },
+
+      "methods": {
+        "tips": {
+          "number": 1,
+          "title": "Direkte Tips (Tributes)",
+          "badge": "Basis",
+          "bullets": [
+            "Sub sendet beliebigen Betrag im Chat oder Profil über den Tip-Button.",
+            "Domme erhält den vollen Betrag.",
+            "Plattformgebühr wird vom Sub getragen.",
+            "Sofort sichtbar im Wallet & Einnahmen-Historie."
+          ],
+          "steps": [
+            "Aktiviere Tips im Profil (falls deaktiviert).",
+            "Verweise im Chat auf deinen Tip-Button.",
+            "Bedanke dich öffentlich – Social Proof steigert Folge-Tips."
+          ],
+          "ctaBackToSettings": "Zurück zu Settings"
+        },
+
+        "ppv": {
+          "number": 2,
+          "title": "Pay-per-View (optional)",
+          "badge": "Optional",
+          "bullets": [
+            "Premium-Content (z. B. NSFW-Medien) nur gegen Micropayment sichtbar.",
+            "Ideal bei hohem Chat-Volumen oder exklusiven Drops.",
+            "Feingranulare Preise möglich (z. B. pro Bild/Clip)."
+          ],
+          "steps": [
+            "Markiere Inhalte als „PPV“.",
+            "Setze einen fairen Preis und tease den Content an.",
+            "Nutze Story/Feed/Chat, um Traffic auf PPV zu lenken."
+          ]
+        },
+
+        "customTributes": {
+          "number": 3,
+          "title": "Custom Tributes (Drainer / Tribute-Timer)",
+          "badge": "Wiederkehrend",
+          "bullets": [
+            "Subs richten regelmäßige Zahlungen ein (z. B. 5 € täglich, 20 € wöchentlich).",
+            "Läuft automatisch bis zum Stopp – volle Kontrolle beim Sub.",
+            "Dommes können solche Drainer aktiv „anfordern“."
+          ],
+          "steps": [
+            "Erzeuge eine klare „Anforderung“ (Betrag + Intervall + Dauer).",
+            "Nutze Deadlines & Belohnungen (Badges, exklusive Clips).",
+            "Tracke Laufzeiten und erneuere aktiv vor Ablauf."
+          ]
+        },
+
+        "paidCommunities": {
+          "number": 4,
+          "title": "Community-Beiträge (Paid Communities)",
+          "badge": "Gruppen-Upsell",
+          "bullets": [
+            "Erstelle eine Community mit kostenpflichtigem Zugang.",
+            "Subs zahlen monatlich oder einmalig für den Beitritt.",
+            "Exklusivität + Gruppendynamik = höherer Lifetime-Value."
+          ],
+          "steps": [
+            "Definiere klaren Mehrwert (z. B. Wochen-Drops, Live-Q&A, Votings).",
+            "Setze einen Preis und begrenze Slots für Knappheit.",
+            "Promote Einladungen im Profil & Chat."
+          ],
+          "ctaOpenCommunities": "Communities öffnen"
+        },
+
+        "payouts": {
+          "number": 5,
+          "title": "Payouts (Auszahlungen)",
+          "badge": "Wallet",
+          "bullets": [
+            "Alle Einnahmen sammeln sich im Domme-Wallet (Export für Buchhaltung möglich).",
+            "Auszahlung via SEPA/Banküberweisung (später: PayPal, Crypto).",
+            "Klare Übersicht in „Einnahmen & Verlauf“."
+          ],
+          "steps": [
+            "Hinterlege Empfängerdaten (IBAN).",
+            "Starte eine Auszahlung aus deinem Wallet.",
+            "Lade bei Bedarf CSV/Export für die Buchhaltung."
+          ],
+          "note": "Hinweis: Auszahlungsoptionen können je nach Region variieren."
+        },
+
+        "leaderboardBadges": {
+          "number": 6,
+          "title": "Leaderboard & Badges (Gamification)",
+          "badge": "Sichtbarkeit",
+          "bullets": [
+            "Dommes mit hohen Einnahmen werden prominent gelistet.",
+            "Badges & Meilensteine erhöhen Social Proof.",
+            "Mehr Sichtbarkeit → mehr Motivation bei Subs → mehr Umsatz."
+          ],
+          "steps": [
+            "Halte Aktivität & Content-Qualität hoch.",
+            "Nutze Events/Challenges, um Peaks zu erzeugen.",
+            "Zeige Badges im Profil & in Communities."
+          ]
+        }
+      },
+
+      "fees": {
+        "title": "Gebühren – kurz & bündig",
+        "bullets": [
+          "Direkte Tips: Domme erhält den vollen Betrag; die Plattformgebühr trägt der Sub.",
+          "Weitere Features (PPV, Communities, etc.) können eigene Gebührenmodelle haben. Details siehst du direkt im jeweiligen Flow.",
+          "Auszahlungen: transparent in deinem Wallet dokumentiert."
+        ]
+      },
+
+      "links": {
+        "security": "Sicherheit & Zugriff",
+        "profile": "Profil optimieren",
+        "feed": "Zum Feed"
+      }
     },
 
     "comments": {
@@ -86,13 +224,7 @@
       "statsFollowing": "Folge ich",
       "statsFollowers": "Follower",
       "statsError": "Fehler beim Laden der Statistiken",
-      "menu": {
-        "profile": "Profil",
-        "settings": "Einstellungen",
-        "bookmarks": "Lesezeichen",
-        "premium": "Premium",
-        "payments": "Zahlungen"
-      },
+      "menu": { "profile": "Profil", "settings": "Einstellungen", "bookmarks": "Lesezeichen", "premium": "Premium", "payments": "Zahlungen" },
       "recommended": "Empfohlene Profile",
       "suggestionsEmpty": "Derzeit keine Vorschläge.",
       "follow": "Folgen",
@@ -112,11 +244,7 @@
       "unblockUser": "Nutzer entblocken",
       "reportUser": "Nutzer melden",
       "message": "Nachricht",
-      "tabs": {
-        "posts": "Posts",
-        "gallery": "Galerie",
-        "leaderboard": "Leaderboard"
-      },
+      "tabs": { "posts": "Posts", "gallery": "Galerie", "leaderboard": "Leaderboard" },
       "editProfile": "Profil bearbeiten",
       "tipActions": "Trinkgeld-Aktionen",
       "sendTip": "Trinkgeld senden",
@@ -136,33 +264,333 @@
       "title": "Einstellungen",
       "searchPlaceholder": "Einstellungen durchsuchen",
       "items": {
-        "account": {
-          "title": "Dein Account",
-          "desc": "Profilinfo ansehen und bearbeiten (Name, Bio, Avatar, Banner), Daten exportieren und Account-Optionen."
+        "account": { "title": "Dein Account", "desc": "Profilinfo ansehen und bearbeiten (Name, Bio, Avatar, Banner), Daten exportieren und Account-Optionen." },
+        "security": { "title": "Sicherheit & Zugriff", "desc": "Login-Sicherheit prüfen, verbundene Apps verwalten und Zugriff überwachen." },
+        "premium": { "title": "Premium", "desc": "Vorteile ansehen und deine Premium-Einstellungen verwalten." },
+        "monetization": { "title": "Monetarisierung", "desc": "Vom Tip bis zur Community. Alle Wege zu stabilen Einnahmen." },
+        "privacy": { "title": "Datenschutz", "desc": "Steuere, welche Informationen du siehst und teilst, und passe deine Privatsphäre an." },
+        "notifications": { "title": "Mitteilungen", "desc": "Lege fest, über welche Aktivitäten, Empfehlungen und Nachrichten du benachrichtigt wirst." },
+        "bookmarks": { "title": "Bookmarks", "desc": "Gespeicherte Posts verwalten." }
+      }
+    },
+
+    "profileSettings": {
+      "ariaBack": "Zurück",
+      "headerTitle": "Profil & Account verwalten",
+      "notSignedInMessage": "Bitte melde dich an, um Einstellungen zu ändern.",
+      "profileSectionTitle": "Profil",
+      "passwordSectionTitle": "Passwort",
+      "logoutSectionTitle": "Abmelden",
+      "dangerZoneTitle": "Gefahrenbereich",
+      "handleLabel": "Handle",
+      "handlePlaceholder": "dein.handle",
+      "handleHelp": "3–20 Zeichen; a–z, 0–9, „_“ und „.“ erlaubt.",
+      "emailLabel": "E-Mail",
+      "emailPlaceholder": "du@example.com",
+      "phoneLabel": "Telefonnummer",
+      "phonePlaceholder": "+49 170 1234567",
+      "phoneMissing": "Spalte fehlt in DB",
+      "countryLabel": "Land",
+      "countryPlaceholder": "DE, AT, CH, US",
+      "countryMissing": "Spalte fehlt in DB",
+      "saveProfile": "Profil speichern",
+      "currentPasswordLabel": "Aktuelles Passwort",
+      "newPasswordLabel": "Neues Passwort",
+      "newPasswordPlaceholder": "mind. 8 Zeichen",
+      "newPassword2Label": "Neues Passwort (Wiederholen)",
+      "newPassword2Placeholder": "nochmal eingeben",
+      "changePassword": "Passwort ändern",
+      "logoutButton": "Abmelden",
+      "dangerZoneDesc": "Das Deaktivieren sperrt dein Profil und beendet deine Sitzungen.",
+      "deactivateButton": "Account deaktivieren",
+      "deactivateNotAvailable": "Deaktivieren nicht verfügbar",
+      "alreadyDeactivated": "Account ist deaktiviert"
+    },
+
+    "securityPage": {
+      "ariaBack": "Zurück",
+      "title": "Sicherheit & Zugriff",
+      "notSignedInMessage": "Bitte melde dich an, um Sicherheitsoptionen zu verwalten.",
+
+      "twofa": {
+        "title": "Zwei-Faktor-Authentifizierung",
+        "intro": "Schütze deinen Account mit einer zweiten Anmeldestufe. Nutze eine App (TOTP), SMS (wenn eine Telefonnummer hinterlegt ist) oder später Sicherheitsschlüssel/Passkeys.",
+        "totpTitle": "Authenticator-App (TOTP)",
+        "disable": "Deaktivieren",
+        "setup": "Einrichten",
+        "active": "Aktiv: App-basierte 2FA ist eingeschaltet.",
+        "scanIntro": "Scanne den QR-Code mit deiner Authenticator-App und gib anschließend den 6-stelligen Code ein.",
+        "tokenPlaceholder": "123456",
+        "confirm": "Bestätigen",
+        "smsTitle": "SMS-Codes",
+        "soon": "Bald",
+        "smsNote": "Verfügbar, wenn eine Telefonnummer hinterlegt ist und SMS-Versand konfiguriert wurde.",
+        "passkeysTitle": "Sicherheitsschlüssel / Passkeys",
+        "passkeysNote": "Unterstützung für WebAuthn/Passkeys folgt."
+      },
+
+      "extraPassword": {
+        "title": "Zusätzlicher Passwortschutz",
+        "desc": "Beim Zurücksetzen des Passworts muss zusätzlich E-Mail oder Telefonnummer bestätigt werden.",
+        "toggle": { "title": "Passwort-Zurücksetzungsschutz umschalten", "enable": "Schutz aktivieren", "disable": "Schutz deaktivieren" }
+      },
+
+      "sessions": {
+        "title": "Sitzungen beenden",
+        "desc": "Beendet alle aktiven Sitzungen auf allen Geräten und meldet dich hier ab.",
+        "endAll": "Alle Sitzungen beenden"
+      }
+    },
+
+    "notifications": {
+      "ariaBack": "Zurück",
+      "title": "Benachrichtigungen",
+      "notSignedInNote": "Bitte melde dich an.",
+      "notSignedInIntro": "Diese Seite verwaltet deine Push-, E-Mail- und Filter-Einstellungen.",
+      "intro": "Verwalte Push-Mitteilungen, E-Mails & Filter.",
+
+      "cards": {
+        "push": {
+          "title": "Push-Mitteilungen",
+          "toggleActive": "Push-Mitteilungen aktiv",
+          "note": "Steuert alle Push-Benachrichtigungen auf deinem Gerät."
         },
-        "security": {
-          "title": "Sicherheit & Zugriff",
-          "desc": "Login-Sicherheit prüfen, verbundene Apps verwalten und Zugriff überwachen."
+        "dm": {
+          "title": "Direktnachrichten",
+          "messages": "Direktnachrichten",
+          "reactions": "Reaktionen auf deine Nachrichten"
         },
-        "premium": {
-          "title": "Premium",
-          "desc": "Vorteile ansehen und deine Premium-Einstellungen verwalten."
+        "feed": {
+          "title": "Feed & Aktivitäten",
+          "mentions": "Erwähnungen (@handle)",
+          "comments": "Kommentare auf deine Posts",
+          "likes": "Likes auf deine Posts",
+          "newFollowers": "Neue Follower",
+          "photoTags": "Foto-Markierungen"
         },
-        "monetization": {
-          "title": "Monetarisierung",
-          "desc": "Vom Tip bis zur Community. Alle Wege zu stabilen Einnahmen."
+        "email": {
+          "title": "E-Mail",
+          "messages": "E-Mail bei neuen Nachrichten",
+          "digest": "Wöchentliche Zusammenfassung per E-Mail",
+          "note": "Wir senden nur selten & zielgerichtet. Du kannst jederzeit abbestellen."
         },
-        "privacy": {
-          "title": "Datenschutz",
-          "desc": "Steuere, welche Informationen du siehst und teilst, und passe deine Privatsphäre an."
+        "filters": {
+          "title": "Mitteilungen stummschalten von Personen",
+          "notFollowing": "… denen du nicht folgst",
+          "notFollowers": "… die dir nicht folgen",
+          "newAccounts": "… mit einem neuen Account",
+          "noAvatar": "… die ein Standard-Profilfoto haben",
+          "emailUnverified": "… deren E-Mail nicht bestätigt ist",
+          "phoneUnverified": "… deren Telefonnummer nicht bestätigt ist",
+          "note": "Diese Filter betreffen nur Unbekannte. Kontakte/Followings bleiben unberührt."
+        }
+      },
+
+      "actions": {
+        "save": "Einstellungen speichern",
+        "reset": "Auf Standard zurücksetzen",
+        "resetTitle": "Auf Werkseinstellungen zurücksetzen"
+      }
+    },
+
+    "legal": {
+      "shared": {
+        "updated": "Aktualisiert",
+        "note": "Hinweis",
+        "info": "Info",
+        "warn": "Wichtig",
+        "danger": "Achtung"
+      },
+
+      "overview": {
+        "title": "Terms of Service (Nutzungsbedingungen)",
+        "subtitle": "Verbindliche Regeln für die Nutzung von Subm8.",
+        "sections": {
+          "scope": "1. Geltungsbereich",
+          "audience": "2. Zielgruppe",
+          "roles": "3. Rollen & Inhalte",
+          "payments": "4. Zahlungen & Wallet",
+          "termination": "5. Kündigung & Sperre",
+          "liability": "6. Haftung",
+          "changes": "7. Änderungen"
         },
-        "notifications": {
-          "title": "Mitteilungen",
-          "desc": "Lege fest, über welche Aktivitäten, Empfehlungen und Nachrichten du benachrichtigt wirst."
+        "content": {
+          "p_scope": "Diese Nutzungsbedingungen gelten für die Nutzung der Plattform Subm8 („Plattform“, „wir“) durch registrierte Nutzer*innen („User“, „du“). Mit der Registrierung erklärst du dich mit diesen Bedingungen einverstanden.",
+          "audience_li_1": "Nutzung ausschließlich ab 18 Jahren.",
+          "audience_li_2": "Inhalte können NSFW / Adult Content enthalten.",
+          "audience_li_3": "Wir behalten uns vor, Identitäts- oder Altersnachweise zu verlangen.",
+          "p_roles": "Subm8 ermöglicht Interaktionen zwischen Dommes und Subs.",
+          "roles_li_1": "Du lädst nur Inhalte hoch, an denen du die Rechte besitzt.",
+          "roles_li_2": "Keine Verstöße gegen geltendes Recht.",
+          "roles_li_3": "Verboten: Gewaltverherrlichung, nicht-einvernehmliche Inhalte, Minderjährige, Diskriminierung.",
+          "payments_li_1": "Dommes können Zahlungen (Tips, Abos, Communities) erhalten.",
+          "payments_li_2": "Subm8 erhebt eine Plattformgebühr zzgl. ggf. Provider-Fees.",
+          "payments_li_3": "Auszahlungen ab Mindestbetrag (im Dashboard ausgewiesen).",
+          "payments_li_4": "Keine Haftung für Rückbuchungen oder externe Zahlungsprobleme.",
+          "termination_li_1": "Du kannst dein Konto jederzeit löschen.",
+          "termination_li_2": "Wir können Accounts sperren oder Inhalte entfernen, wenn Gesetze oder diese Bedingungen verletzt werden.",
+          "liability_li_1": "Wir haften nicht für das Verhalten von Usern.",
+          "liability_li_2": "Die Nutzung erfolgt auf eigene Verantwortung.",
+          "p_changes": "Wir behalten uns vor, diese Bedingungen anzupassen. Über wesentliche Änderungen informieren wir rechtzeitig.",
+          "callout_title": "Hinweis",
+          "callout_body": "Ergänzende Dokumente: Datenschutzerklärung, Impressum, Community Guidelines, Refund Policy, Age Verification."
+        }
+      },
+
+      "terms": {
+        "title": "Terms of Service (Nutzungsbedingungen)",
+        "subtitle": "Verbindliche Regeln für die Nutzung von Subm8.",
+        "sections": {
+          "scope": "1. Geltungsbereich",
+          "audience": "2. Zielgruppe & Altersgrenze",
+          "roles": "3. Rollen & Inhalte",
+          "tips": "4. Tips („Gifts“)",
+          "fees": "5. Zahlungen, Fees & Payouts",
+          "tax": "6. Steuern & Rechtspflichten der User",
+          "termination": "7. Kündigung & Enforcement",
+          "liability": "8. Haftung",
+          "changes": "9. Änderungen",
+          "law": "10. Anwendbares Recht & Gerichtsstand"
         },
-        "bookmarks": {
-          "title": "Bookmarks",
-          "desc": "Gespeicherte Posts verwalten."
+        "content": {
+          "p_scope": "Diese Nutzungsbedingungen gelten für die Nutzung der Plattform Subm8 („Plattform“, „wir“) durch registrierte Nutzer*innen („User“, „du“). Mit der Registrierung erklärst du dich mit diesen Bedingungen einverstanden.",
+          "audience_li_1": "Nutzung ausschließlich ab 18 Jahren; wir können Alters-/Identitätsnachweise verlangen.",
+          "audience_li_2": "Plattform kann NSFW-/Adult-Inhalte enthalten. Verboten sind Minderjährige & nicht-einvernehmliche Inhalte.",
+          "p_roles": "Subm8 ermöglicht Interaktionen zwischen Dommes und Subs.",
+          "roles_li_1": "Du besitzt die Rechte an deinen Inhalten und verletzt keine Gesetze oder Rechte Dritter.",
+          "roles_li_2": "Verboten: u. a. nicht-einvernehmliche Darstellungen, Minderjährige, Gewaltverherrlichung, Hetze/Diskriminierung.",
+          "roles_li_3": "Wir können Inhalte moderieren, sperren oder entfernen, um Gesetze und diese Terms durchzusetzen.",
+          "tips_li_1": "Freiwillige Geschenke: Tips sind freiwillige Zuwendungen von User zu User.",
+          "tips_li_2": "Kein Service-Entgelt: Tips sind keine Bezahlung für Waren/Dienstleistungen und begründen keinen Anspruch auf konkrete Inhalte, Antworten oder Handlungen.",
+          "tips_li_3": "Plattformrolle: Subm8 vermittelt lediglich die Übertragung (Intermediär) und bestimmt nicht, wie Empfänger*innen Tips verwenden.",
+          "tips_li_4": "Finalität: Nach Bestätigung sind Gifts grundsätzlich final und nicht erstattbar (Ausnahme: gesetzlich zwingend oder klarer technischer Fehler, siehe Refund Policy).",
+          "tips_li_5": "Services ≠ Gifts: Separat vereinbarte Services (z. B. Coaching, Custom Content) fallen nicht unter „Gifts“. Für solche Leistungen sind ggf. Steuern/Verbraucherschutz zu beachten (Eigenverantwortung der Anbieter*innen).",
+          "fees_li_1": "Subm8 erhebt eine Plattformgebühr (z. B. 10 %) sowie ggf. Provider-Fees.",
+          "fees_li_2": "Bei Gifts wird für Zahler*innen ggf. ein Aufschlag angezeigt („on top“). Der ausgewiesene „Amount to creator“ ist der Basisbetrag, der Empfänger*innen gutgeschrieben wird.",
+          "fees_li_3": "Auszahlungen erfolgen ab Mindestbetrag und nach internen Prüfungen (u. a. Risiko/Compliance).",
+          "fees_li_4": "Chargebacks/Fraud: Wir können Accounts temporär sperren und Beträge zurückhalten, bis Sachverhalte geklärt sind.",
+          "tax_li_1": "Du trägst Verantwortung für deine steuerliche Behandlung (z. B. Einkommensteuer, ggf. USt/VAT) in deinem Land, soweit anwendbar.",
+          "tax_li_2": "Subm8 ist nicht Vertragspartei von zwischen Usern separat vereinbarten Services.",
+          "tax_li_3": "Wo Subm8 rechtlich zur Meldung/Einbehaltung verpflichtet ist, werden wir das tun.",
+          "termination_li_1": "Du kannst dein Konto jederzeit löschen (gesetzliche Aufbewahrungen bleiben unberührt).",
+          "termination_li_2": "Wir können Accounts sperren/entfernen und Auszahlungen verzögern/ablehnen, wenn Gesetze, diese Terms oder Sicherheitsvorgaben verletzt werden.",
+          "liability_li_1": "Wir haften nicht für Verhalten/Leistungen Dritter (andere User, Zahlungsdienstleister).",
+          "liability_li_2": "Plattform wird „as is“ bereitgestellt; Nutzung auf eigene Verantwortung, soweit gesetzlich zulässig.",
+          "p_changes": "Wir können diese Terms anpassen; über wesentliche Änderungen informieren wir rechtzeitig innerhalb der App/Web.",
+          "p_law": "Es gilt das Recht des Sitzlandes der Betreiberin (Details im Impressum), unter Ausschluss kollisionsrechtlicher Normen, soweit zwingendes Verbraucherschutzrecht nicht entgegensteht.",
+          "callout_title": "Kurzfassung „Gifts“",
+          "callout_body": "Gifts sind freiwillig, nicht erstattbar und nicht an Services geknüpft. Subm8 vermittelt nur. Für separat vereinbarte Leistungen bist du selbst verantwortlich (inkl. Steuern)."
+        }
+      },
+
+      "refund": {
+        "title": "Refund Policy",
+        "subtitle": "Regeln zu Erstattungen für Gifts, Abos und Fehler.",
+        "sections": {
+          "gifts": "1. Gifts (Tips) & Einmalzahlungen",
+          "subs": "2. Abonnements / Mitgliedschaften",
+          "tech": "3. Technische Fehler",
+          "unauth": "4. Unautorisierte Zahlungen & Chargebacks",
+          "process": "5. Ablauf bei Erstattungen"
+        },
+        "content": {
+          "gifts_li_1": "Gifts sind freiwillige Zuwendungen zwischen Usern und grundsätzlich final (nicht erstattbar).",
+          "gifts_li_2": "Ausnahmen: gesetzlich zwingend, klarer technischer Fehler (z. B. Doppelbelastung) oder verifizierter Betrug.",
+          "subs_li_1": "Abos können jederzeit gekündigt werden, wirksam zum nächsten Abrechnungszeitpunkt.",
+          "subs_li_2": "Bereits gezahlte Beträge laufender Perioden werden nicht anteilig erstattet, sofern gesetzlich nicht anders verlangt.",
+          "p_tech": "Bei Doppelbelastungen oder Fehlbuchungen erstatten wir nach Prüfung. Bitte melde dich innerhalb von 14 Tagen nach Feststellung mit Transaktions-ID und Nachweisen.",
+          "p_chargebacks": "Bei Chargebacks/Fraud können wir den Account vorübergehend sperren und Auszahlungen zurückhalten, bis der Sachverhalt geklärt ist. Missbräuchliche Rückbuchungen können zur Sperre führen.",
+          "process_li_1": "Support kontaktieren (siehe Impressum) mit Belegen.",
+          "process_li_2": "Wir prüfen binnen angemessener Frist und informieren dich über Ergebnis und ggf. Rückzahlungskanal.",
+          "process_li_3": "Erstattungen erfolgen grundsätzlich über denselben Zahlungsweg.",
+          "callout_title": "Wichtig",
+          "callout_body": "Für Zahlungen gelten zusätzlich die AGB/Policies der Zahlungsdienstleister (Provider-Fees, Fristen, Prüfprozesse). Subm8 vermittelt Zahlungen, verkauft aber selbst keine Services."
+        }
+      },
+
+      "privacy": {
+        "title": "Datenschutzerklärung (Privacy Policy / DSGVO)",
+        "subtitle": "Wie wir Daten verarbeiten – transparent und zweckgebunden.",
+        "sections": {
+          "controller": "1. Verantwortlicher",
+          "data": "2. Erhobene Daten",
+          "purpose": "3. Zweck der Verarbeitung",
+          "legal": "4. Rechtsgrundlagen",
+          "sharing": "5. Weitergabe an Dritte",
+          "retention": "6. Speicherdauer",
+          "rights": "7. Betroffenenrechte",
+          "cookies": "8. Cookies & Tracking"
+        },
+        "content": {
+          "p_controller": "Subm8 (Betreiber: [Dein Name / Firma], [Adresse], [E-Mail]) ist verantwortlich für die Verarbeitung personenbezogener Daten auf dieser Plattform.",
+          "data_li_1": "Registrierungsdaten (Handle, E-Mail, Passwort, Rolle)",
+          "data_li_2": "Profildaten (Avatar, Banner, Bio, Community-Mitgliedschaften)",
+          "data_li_3": "Zahlungsdaten (Tipps, Abos, Wallet-Salden, Auszahlungen)",
+          "data_li_4": "Nutzungsdaten (Logins, Feed-Interaktionen, Nachrichten-Metadaten)",
+          "purpose_li_1": "Bereitstellung der Plattform und Services",
+          "purpose_li_2": "Abwicklung von Zahlungen & Wallet",
+          "purpose_li_3": "Kommunikation (Chats, Benachrichtigungen)",
+          "purpose_li_4": "Sicherheit, Missbrauchserkennung & Betrugsprävention",
+          "legal_li_1": "Vertragserfüllung (Art. 6 Abs. 1 lit. b DSGVO)",
+          "legal_li_2": "Berechtigtes Interesse (Art. 6 Abs. 1 lit. f DSGVO)",
+          "legal_li_3": "Einwilligung (Art. 6 Abs. 1 lit. a DSGVO) – z. B. Newsletter",
+          "sharing_li_1": "Zahlungsdienstleister (z. B. Stripe, PayPal oder andere PSPs)",
+          "sharing_li_2": "Hosting- & Infrastruktur-Partner (z. B. Vercel, NeonDB)",
+          "sharing_li_3": "Keine Weitergabe an Dritte zu Werbezwecken",
+          "p_retention": "Speicherung, solange dein Konto aktiv ist. Nach Löschung: Löschung oder Anonymisierung, sofern keine gesetzlichen Aufbewahrungspflichten bestehen.",
+          "rights_li_1": "Auskunft, Berichtigung, Löschung, Einschränkung",
+          "rights_li_2": "Widerspruch gegen Verarbeitung, Datenübertragbarkeit",
+          "rights_li_3": "Beschwerderecht bei einer Aufsichtsbehörde",
+          "p_cookies": "Subm8 nutzt notwendige Cookies für Login und Sicherheit. Analytics – sofern vorhanden – erfolgt anonymisiert/pseudonymisiert.",
+          "callout_title": "Transparenz",
+          "callout_body": "Details zu eingesetzten Anbietern und Speicherorten listen wir in der technischen Dokumentation und im Dashboard („Recht & Datenschutz“) auf."
+        }
+      },
+
+      "imprint": {
+        "title": "Impressum",
+        "subtitle": "Anbieterkennzeichnung gemäß § 5 TMG / EU-Recht.",
+        "content": {
+          "line_1": "Subm8 Plattform",
+          "contact_label": "Kontakt",
+          "represented_by_label": "Vertreten durch",
+          "vat_label": "Umsatzsteuer-ID",
+          "adult_note": "Hinweis: Diese Plattform ist ausschließlich für volljährige Nutzer*innen. Inhalte können NSFW/Adult sein."
+        }
+      },
+
+      "guidelines": {
+        "title": "Community Guidelines",
+        "subtitle": "Respekt, Einvernehmlichkeit und Sicherheit zuerst.",
+        "list": {
+          "li_1": "Nur 18+ – keine Minderjährigen, keine Inhalte mit Bezug zu Minderjährigen.",
+          "li_2": "Einvernehmlichkeit – keine Belästigung, kein Zwang.",
+          "li_3": "Respektvoller Umgang – kein Hate Speech, keine Diskriminierung, kein Mobbing.",
+          "li_4": "NSFW-Inhalte – erlaubt, aber korrekt gekennzeichnet (z. B. NSFW-Flag).",
+          "li_5": "Privatsphäre – keine Weitergabe privater Daten ohne Zustimmung.",
+          "li_6": "Spam & Werbung – verboten, außer klar gekennzeichnet und regelkonform.",
+          "li_7": "Missbrauch melden – Verstöße können gemeldet werden; Wiederholung führt zu Maßnahmen."
+        },
+        "callout_title": "Sicher bleiben",
+        "callout_body": "Nutze die Meldefunktion bei Grenzverletzungen. Unser Team prüft Meldungen zügig und verhältnismäßig."
+      },
+
+      "age": {
+        "title": "Age Verification Policy",
+        "subtitle": "Zugang nur für Volljährige.",
+        "sections": {
+          "access": "1. Zugang nur ab 18 Jahren",
+          "proof": "2. Altersnachweis",
+          "protection": "3. Schutz Minderjähriger"
+        },
+        "content": {
+          "p_access": "Die Nutzung von Subm8 ist ausschließlich Volljährigen gestattet. Mit der Registrierung bestätigst du, mindestens 18 Jahre alt zu sein.",
+          "proof_li_1": "Wir können eine Verifizierung (z. B. Ausweis-Upload oder externe Anbieter) verlangen.",
+          "proof_li_2": "Ohne erfolgreiche Verifizierung kann der Zugang zu bestimmten Funktionen eingeschränkt werden.",
+          "protection_li_1": "Falsche Altersangaben führen zur sofortigen Sperrung des Accounts.",
+          "protection_li_2": "Inhalte mit Bezug zu Minderjährigen sind strikt verboten und werden umgehend gemeldet und entfernt.",
+          "callout_title": "Null-Toleranz",
+          "callout_body": "Verstöße gegen Jugendschutzbestimmungen werden konsequent verfolgt – inklusive Meldung an zuständige Stellen, wo erforderlich."
         }
       }
     }

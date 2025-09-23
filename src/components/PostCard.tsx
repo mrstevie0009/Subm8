@@ -470,9 +470,9 @@ export default function PostCard({
   const params = useParams() as { locale: string; handle?: string };
   const { locale, handle } = params;
 
-  const t = useTranslations();       // Root (common.json)
-  const tPost = useTranslations('post');
-  const tTime = useTranslations();    // time.* liegen im Root
+  const t = useTranslations('common');       // Root (common.json)
+  const tPost = useTranslations('common.post');
+  const tTime = useTranslations('common');    // time.* liegen im Root
 
   const c = post.content;
   const uiRole = c.author.role === 'DOMME' ? 'domme' : c.author.role === 'SUBMISSIVE' ? 'submissive' : undefined;

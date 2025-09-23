@@ -1,75 +1,62 @@
-// src/app/[locale]/legal/page.tsx
 import { LegalArticle, Callout } from '@/components/legal/LegalArticle';
+import { getTranslations } from 'next-intl/server';
 
 export const dynamic = 'force-static';
 
-export default function LegalPage() {
+export default async function LegalPage() {
+  const t = await getTranslations('common.legal.overview');
   const updated = new Intl.DateTimeFormat('de-DE', { dateStyle: 'medium' }).format(new Date());
 
   return (
     <LegalArticle
-      title="Terms of Service (Nutzungsbedingungen)"
-      subtitle="Verbindliche Regeln für die Nutzung von Subm8."
+      title={t('title')}
+      subtitle={t('subtitle')}
       updated={updated}
     >
-      <h3 id="geltungsbereich" className="font-bold">1. Geltungsbereich</h3>
-      <p>
-        Diese Nutzungsbedingungen gelten für die Nutzung der Plattform Subm8 („Plattform“, „wir“)
-        durch registrierte Nutzer*innen („User“, „du“). Mit der Registrierung erklärst du dich mit
-        diesen Bedingungen einverstanden.
-      </p>
+      <h3 id="geltungsbereich" className="font-bold">{t('sections.scope')}</h3>
+      <p>{t('content.p_scope')}</p>
 
-      <h3 id="zielgruppe" className="font-bold">2. Zielgruppe</h3>
+      <h3 id="zielgruppe" className="font-bold">{t('sections.audience')}</h3>
       <ul>
-        <li>Nutzung ausschließlich ab 18 Jahren.</li>
-        <li>Inhalte können NSFW / Adult Content enthalten.</li>
-        <li>Wir behalten uns vor, Identitäts- oder Altersnachweise zu verlangen.</li>
+        <li>{t('content.audience_li_1')}</li>
+        <li>{t('content.audience_li_2')}</li>
+        <li>{t('content.audience_li_3')}</li>
       </ul>
 
-      <h3 id="rollen-inhalte" className="font-bold">3. Rollen &amp; Inhalte</h3>
-      <p>Subm8 ermöglicht Interaktionen zwischen Dommes und Subs.</p>
+      <h3 id="rollen-inhalte" className="font-bold">{t('sections.roles')}</h3>
+      <p>{t('content.p_roles')}</p>
       <ul>
-        <li>Du lädst nur Inhalte hoch, an denen du die Rechte besitzt.</li>
-        <li>Keine Verstöße gegen geltendes Recht.</li>
-        <li>
-          Verboten: Gewaltverherrlichung, nicht-einvernehmliche Inhalte, Minderjährige,
-          Diskriminierung.
-        </li>
+        <li>{t('content.roles_li_1')}</li>
+        <li>{t('content.roles_li_2')}</li>
+        <li>{t('content.roles_li_3')}</li>
       </ul>
 
-      <h3 id="zahlungen-wallet" className="font-bold">4. Zahlungen &amp; Wallet</h3>
+      <h3 id="zahlungen-wallet" className="font-bold">{t('sections.payments')}</h3>
       <ul>
-        <li>Dommes können Zahlungen (Tips, Abos, Communities) erhalten.</li>
-        <li>Subm8 erhebt eine Plattformgebühr zzgl. ggf. Provider-Fees.</li>
-        <li>Auszahlungen ab Mindestbetrag (im Dashboard ausgewiesen).</li>
-        <li>Keine Haftung für Rückbuchungen oder externe Zahlungsprobleme.</li>
+        <li>{t('content.payments_li_1')}</li>
+        <li>{t('content.payments_li_2')}</li>
+        <li>{t('content.payments_li_3')}</li>
+        <li>{t('content.payments_li_4')}</li>
       </ul>
 
-      <h3 id="kündigung-sperre" className="font-bold">5. Kündigung &amp; Sperre</h3>
+      <h3 id="kündigung-sperre" className="font-bold">{t('sections.termination')}</h3>
       <ul>
-        <li>Du kannst dein Konto jederzeit löschen.</li>
-        <li>
-          Wir können Accounts sperren oder Inhalte entfernen, wenn Gesetze oder diese Bedingungen
-          verletzt werden.
-        </li>
+        <li>{t('content.termination_li_1')}</li>
+        <li>{t('content.termination_li_2')}</li>
       </ul>
 
-      <h3 id="haftung" className="font-bold">6. Haftung</h3>
+      <h3 id="haftung" className="font-bold">{t('sections.liability')}</h3>
       <ul>
-        <li>Wir haften nicht für das Verhalten von Usern.</li>
-        <li>Die Nutzung erfolgt auf eigene Verantwortung.</li>
+        <li>{t('content.liability_li_1')}</li>
+        <li>{t('content.liability_li_2')}</li>
       </ul>
 
-      <h3 id="änderungen" className="font-bold">7. Änderungen</h3>
-      <p>
-        Wir behalten uns vor, diese Bedingungen anzupassen. Über wesentliche Änderungen informieren
-        wir rechtzeitig.
-      </p>
+      <h3 id="änderungen" className="font-bold">{t('sections.changes')}</h3>
+      <p>{t('content.p_changes')}</p>
 
       <hr />
-      <Callout tone="info" title="Hinweis">
-        Ergänzende Dokumente: Datenschutzerklärung, Impressum, Community Guidelines, Refund Policy,
-        Age Verification.
+      <Callout tone="info" title={t('content.callout_title')}>
+        {t('content.callout_body')}
       </Callout>
     </LegalArticle>
   );

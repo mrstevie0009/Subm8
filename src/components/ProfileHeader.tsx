@@ -101,8 +101,8 @@ export default function ProfileHeader({
   const router = useRouter();
 
   // 🔤 Translations
-  const tPost = useTranslations('post');      // für share-Overlay (vorhandene Keys)
-  const tProf = useTranslations('profile');   // neue Keys für ProfileHeader
+  const tPost = useTranslations('common.post');      // für share-Overlay (vorhandene Keys)
+  const tProf = useTranslations('common.profile');   // neue Keys für ProfileHeader
 
   const AVATAR_BIG   = 'clamp(88px, 18vw, 136px)';
   const AVATAR_SMALL = '40px';

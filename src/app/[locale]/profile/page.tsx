@@ -1,4 +1,4 @@
-// src/app/[locale]/profile/page.tsx
+// src/app/[locale]/profile/page.tsx 
 import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
@@ -8,7 +8,8 @@ import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
 import { hashPassword } from '@/lib/password';
 import { getCurrentUser } from '@/lib/currentUser';
-import type { User} from '@prisma/client';
+import type { User } from '@prisma/client';
+import { getTranslations, setRequestLocale } from 'next-intl/server';
 
 type Params = { locale: string };
 
@@ -221,22 +222,27 @@ export async function logoutAction() {
 export default async function SettingsPage({ params }: { params: Params }) {
   const { locale } = params;
 
+  // ⬅️ Locale für SSR setzen, damit getTranslations die richtige Sprache lädt
+  setRequestLocale(locale);
+
+  const t = await getTranslations('common.profileSettings');
+
   const me = await getCurrentUser().catch(() => null);
   if (!me) {
     return (
       <section className="rounded-xl border border-white/10 overflow-hidden">
         <header className="px-4 pt-3 pb-4 border-b border-white/10">
           <div className="flex items-center gap-2">
-            <Link href={`/${locale}/settings`} className="p-1" aria-label="Zurück">
+            <Link href={`/${locale}/settings`} className="p-1" aria-label={t('ariaBack')}>
               <ChevronLeftIcon />
             </Link>
             <div>
-              <h1 className="text-lg font-semibold">Manage your Profile &amp; Account</h1>
+              <h1 className="text-lg font-semibold">{t('headerTitle')}</h1>
               <p className="text-sm text-white/60">@—</p>
             </div>
           </div>
         </header>
-        <div className="p-6 text-white/80">Bitte melde dich an, um Einstellungen zu ändern.</div>
+        <div className="p-6 text-white/80">{t('notSignedInMessage')}</div>
       </section>
     );
   }
@@ -286,11 +292,11 @@ export default async function SettingsPage({ params }: { params: Params }) {
     <section className="rounded-xl border border-white/10 overflow-hidden">
       <header className="px-4 pt-3 pb-4 border-b border-white/10">
         <div className="flex items-center gap-2">
-          <Link href={`/${locale}/settings`} className="p-1" aria-label="Zurück">
+          <Link href={`/${locale}/settings`} className="p-1" aria-label={t('ariaBack')}>
             <ChevronLeftIcon />
           </Link>
           <div>
-            <h1 className="text-lg font-semibold">Manage your Profile &amp; Account</h1>
+            <h1 className="text-lg font-semibold">{t('headerTitle')}</h1>
             <p className="text-sm text-white/60">@{user.handle}</p>
           </div>
         </div>
@@ -299,50 +305,48 @@ export default async function SettingsPage({ params }: { params: Params }) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-4">
         {/* Profile */}
         <section className="rounded-lg border border-white/10 p-4">
-          <h2 className="text-base font-semibold mb-4">Profil</h2>
+          <h2 className="text-base font-semibold mb-4">{t('profileSectionTitle')}</h2>
           <form action={updateProfileAction} className="space-y-4">
             <div>
-              <label className="block text-sm mb-1">Handle</label>
+              <label className="block text-sm mb-1">{t('handleLabel')}</label>
               <input
                 name="handle"
                 defaultValue={user.handle ?? ''}
-                placeholder="dein.handle"
+                placeholder={t('handlePlaceholder')}
                 className="w-full rounded-md bg-white/5 border border-white/10 px-3 py-2 outline-none focus:ring-2 focus:ring-white/20"
               />
-              <p className="text-xs text-white/50 mt-1">
-                3–20 Zeichen; a–z, 0–9, „_“ und „.“ erlaubt.
-              </p>
+              <p className="text-xs text-white/50 mt-1">{t('handleHelp')}</p>
             </div>
 
             <div>
-              <label className="block text-sm mb-1">E-Mail</label>
+              <label className="block text-sm mb-1">{t('emailLabel')}</label>
               <input
                 type="email"
                 name="email"
                 defaultValue={user.email ?? ''}
-                placeholder="du@example.com"
+                placeholder={t('emailPlaceholder')}
                 className="w-full rounded-md bg-white/5 border border-white/10 px-3 py-2 outline-none focus:ring-2 focus:ring-white/20"
               />
             </div>
 
             <div>
-              <label className="block text-sm mb-1">Telefonnummer</label>
+              <label className="block text-sm mb-1">{t('phoneLabel')}</label>
               <input
                 type="tel"
                 name="phone"
                 defaultValue={user.phone ?? ''}
-                placeholder={hasPhone ? '+49 170 1234567' : 'Spalte fehlt in DB'}
+                placeholder={hasPhone ? t('phonePlaceholder') : t('phoneMissing')}
                 disabled={!hasPhone}
                 className="w-full rounded-md bg-white/5 border border-white/10 px-3 py-2 outline-none focus:ring-2 focus:ring-white/20"
               />
             </div>
 
             <div>
-              <label className="block text-sm mb-1">Land</label>
+              <label className="block text-sm mb-1">{t('countryLabel')}</label>
               <input
                 name="country"
                 defaultValue={user.country ?? ''}
-                placeholder={hasCountry ? 'DE, AT, CH, US' : 'Spalte fehlt in DB'}
+                placeholder={hasCountry ? t('countryPlaceholder') : t('countryMissing')}
                 disabled={!hasCountry}
                 className="w-full rounded-md bg-white/5 border border-white/10 px-3 py-2 outline-none focus:ring-2 focus:ring-white/20"
               />
@@ -353,7 +357,7 @@ export default async function SettingsPage({ params }: { params: Params }) {
                 type="submit"
                 className="px-4 py-2 rounded-full bg-white/10 hover:bg-white/15 border border-white/15"
               >
-                Profil speichern
+                {t('saveProfile')}
               </button>
             </div>
           </form>
@@ -361,10 +365,10 @@ export default async function SettingsPage({ params }: { params: Params }) {
 
         {/* Password */}
         <section className="rounded-lg border border-white/10 p-4">
-          <h2 className="text-base font-semibold mb-4">Passwort</h2>
+          <h2 className="text-base font-semibold mb-4">{t('passwordSectionTitle')}</h2>
           <form action={changePasswordAction} className="space-y-4">
             <div>
-              <label className="block text-sm mb-1">Aktuelles Passwort</label>
+              <label className="block text-sm mb-1">{t('currentPasswordLabel')}</label>
               <input
                 type="password"
                 name="currentPassword"
@@ -374,21 +378,21 @@ export default async function SettingsPage({ params }: { params: Params }) {
               />
             </div>
             <div>
-              <label className="block text-sm mb-1">Neues Passwort</label>
+              <label className="block text-sm mb-1">{t('newPasswordLabel')}</label>
               <input
                 type="password"
                 name="newPassword"
-                placeholder="mind. 8 Zeichen"
+                placeholder={t('newPasswordPlaceholder')}
                 autoComplete="new-password"
                 className="w-full rounded-md bg-white/5 border border-white/10 px-3 py-2 outline-none focus:ring-2 focus:ring-white/20"
               />
             </div>
             <div>
-              <label className="block text-sm mb-1">Neues Passwort (Wiederholen)</label>
+              <label className="block text-sm mb-1">{t('newPassword2Label')}</label>
               <input
                 type="password"
                 name="newPassword2"
-                placeholder="nochmal eingeben"
+                placeholder={t('newPassword2Placeholder')}
                 autoComplete="new-password"
                 className="w-full rounded-md bg-white/5 border border-white/10 px-3 py-2 outline-none focus:ring-2 focus:ring-white/20"
               />
@@ -399,7 +403,7 @@ export default async function SettingsPage({ params }: { params: Params }) {
                 type="submit"
                 className="px-4 py-2 rounded-full bg-white/10 hover:bg-white/15 border border-white/15"
               >
-                Passwort ändern
+                {t('changePassword')}
               </button>
             </div>
           </form>
@@ -407,24 +411,22 @@ export default async function SettingsPage({ params }: { params: Params }) {
 
         {/* Logout */}
         <section className="rounded-lg border border-white/10 p-4">
-          <h2 className="text-base font-semibold mb-4">Abmelden</h2>
+          <h2 className="text-base font-semibold mb-4">{t('logoutSectionTitle')}</h2>
           <form action={logoutAction}>
             <button
               type="submit"
               className="px-4 py-2 rounded-full bg-white/10 hover:bg-white/15 border border-white/15"
-              title="Abmelden"
+              title={t('logoutButton')}
             >
-              Abmelden
+              {t('logoutButton')}
             </button>
           </form>
         </section>
 
         {/* Danger Zone */}
         <section className="rounded-lg border border-red-400/30 p-4 bg-red-500/5">
-          <h2 className="text-base font-semibold mb-3 text-red-300">Gefahrenbereich</h2>
-          <p className="text-sm text-white/70 mb-4">
-            Das Deaktivieren sperrt dein Profil und beendet deine Sitzungen.
-          </p>
+          <h2 className="text-base font-semibold mb-3 text-red-300">{t('dangerZoneTitle')}</h2>
+          <p className="text-sm text-white/70 mb-4">{t('dangerZoneDesc')}</p>
           <form action={deactivateAccountAction}>
             <button
               type="submit"
@@ -432,17 +434,17 @@ export default async function SettingsPage({ params }: { params: Params }) {
               disabled={!hasIsDeactivated || !!user.isDeactivated}
               title={
                 !hasIsDeactivated
-                  ? 'Spalte isDeactivated fehlt in DB'
+                  ? t('deactivateNotAvailable')
                   : user.isDeactivated
-                  ? 'Bereits deaktiviert'
-                  : 'Account deaktivieren'
+                  ? t('alreadyDeactivated')
+                  : t('deactivateButton')
               }
             >
               {!hasIsDeactivated
-                ? 'Deaktivieren nicht verfügbar'
+                ? t('deactivateNotAvailable')
                 : user.isDeactivated
-                ? 'Account ist deaktiviert'
-                : 'Account deaktivieren'}
+                ? t('alreadyDeactivated')
+                : t('deactivateButton')}
             </button>
           </form>
         </section>
@@ -454,14 +456,7 @@ export default async function SettingsPage({ params }: { params: Params }) {
 /* ===== Icons ===== */
 function ChevronLeftIcon() {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      width="22"
-      height="22"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2.2}
-    >
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth={2.2}>
       <path d="m15 6-6 6 6 6" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
