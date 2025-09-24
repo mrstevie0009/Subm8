@@ -4,6 +4,255 @@
     "brand": { "name": "Subm8" },
     "time": { "now": "jetzt", "m": "{count}m", "h": "{count}h", "d": "{count}d" },
 
+    "ownershipRequestAcceptModal": {
+    "header": {
+      "title": "Ownership-Anfrage akzeptieren"
+    },
+    "banner": {
+      "previewAlt": "Banner-Vorschau",
+      "noAssetRequested": "Kein Banner-Asset in der Anfrage",
+      "notRequested": "Banner nicht angefordert"
+    },
+    "avatar": {
+      "previewAlt": "Avatar-Vorschau",
+      "noAssetRequested": "Kein Avatar-Asset in der Anfrage",
+      "notRequested": "Avatar nicht angefordert"
+    },
+    "bio": {
+      "none": "Keine Bio enthalten"
+    },
+    "actions": {
+      "cancel": "Abbrechen",
+      "apply": "Übernehmen",
+      "applying": "Übernehme…"
+    },
+    "errors": {
+      "applyFail": "Ownership-Anfrage konnte nicht übernommen werden"
+    }
+  },
+
+    "tipRequestAcceptModal": {
+    "header": {
+      "title": "Geschenkanfrage annehmen",
+      "to": "an {name}"
+    },
+    "disclaimer": "Mit der Bestätigung sendest du ein freiwilliges Geschenk. Dies ist keine Bezahlung für Leistungen. Geschenke sind endgültig (keine Rückerstattung, außer gesetzlich vorgeschrieben).",
+    "requested": {
+      "label": "Angeforderter Betrag",
+      "note": "Die Creatorin/der Creator sieht diesen Betrag. Auf deinen Zahlbetrag wird eine Plattformgebühr von {pct}% aufgeschlagen."
+    },
+    "breakdown": {
+      "amount": "Betrag",
+      "fee": "Plattformgebühr ({pct}%)",
+      "youPay": "Du zahlst"
+    },
+    "actions": {
+      "cancel": "Abbrechen",
+      "processing": "Verarbeite…",
+      "sendGiftAccept": "Geschenk senden & annehmen ({total})",
+      "closeAria": "Schließen"
+    },
+    "errors": {
+      "create": "Zahlung konnte nicht erstellt werden",
+      "confirm": "Bestätigung fehlgeschlagen",
+      "generic": "Etwas ist schiefgelaufen"
+    }
+  },
+
+    "autoDrainAcceptModal": {
+    "header": {
+      "title": "Autodrain aktivieren",
+      "to": "für {name}"
+    },
+    "disclaimer": "Geschenke sind freiwillig und keine Bezahlung für Leistungen. Geschenke sind endgültig (keine Rückerstattung, außer gesetzlich vorgeschrieben).",
+    "charge": {
+      "label": "Abbuchungsbetrag",
+      "recurringNote": "Wiederkehrende Abbuchung bis zur Kündigung."
+    },
+    "cadence": {
+      "daily": "täglich",
+      "weekly": "wöchentlich",
+      "monthly": "monatlich"
+    },
+    "acknowledge": "Ich verstehe, dass Geschenke freiwillig und endgültig sind. Es werden keine Leistungen zugesichert.",
+    "actions": {
+      "cancel": "Abbrechen",
+      "enable": "Autodrain aktivieren",
+      "enabling": "Aktiviere…",
+      "closeAria": "Schließen"
+    },
+    "errors": {
+      "generic": "Etwas ist schiefgelaufen"
+    }
+  },
+
+    "chatThread": {
+    "loading": "Lade…",
+    "disabled": {
+      "byOther": "Du kannst dieser Person keine Direktnachrichten mehr senden.",
+      "youBlocked": "Du hast diese Person blockiert. Senden ist deaktiviert."
+    },
+    "audio": {
+      "play": "Abspielen",
+      "pause": "Pause"
+    },
+    "actions": {
+      "accept": "Akzeptieren",
+      "decline": "Ablehnen"
+    },
+    "community": {
+      "members": "{count} Mitglieder"
+    },
+    "invite": {
+      "expires": "Läuft ab: {date}",
+      "usesLeft": "Verbleibende Nutzungen: {count}"
+    },
+    "envelopes": {
+      "tipRequest": {
+        "title": "TRINKGELD-ANFRAGE",
+        "declinedMsg": "❌ Trinkgeld-Anfrage abgelehnt"
+      },
+      "tipPaid": {
+        "title": "TRINKGELD BEZAHLT"
+      },
+      "autodrainRequest": {
+        "title": "AUTODRAIN-ANFRAGE",
+        "recurrenceLabel": "Wiederholung: {cadence}",
+        "cadence": {
+          "daily": "Täglich",
+          "weekly": "Wöchentlich",
+          "monthly": "Monatlich"
+        },
+        "declinedMsg": "❌ Autodrain-Anfrage abgelehnt"
+      },
+      "autodrainEnabled": {
+        "title": "AUTODRAIN AKTIVIERT"
+      },
+      "ownershipRequest": {
+        "title": "OWNERSHIP-ANFRAGE",
+        "items": {
+          "avatar": "Avatar",
+          "banner": "Banner",
+          "bio": "Bio"
+        },
+        "declinedMsg": "❌ Ownership-Anfrage abgelehnt"
+      },
+      "ownershipAccepted": {
+        "title": "OWNERSHIP BESTÄTIGT",
+        "applied": "Änderungen wurden im Sub-Profil übernommen."
+      }
+    }
+  },
+
+    "ownershipRequest": {
+    "title": "Ownership-Anfrage",
+    "subtitle": "für @{handle}",
+    "aria": {
+      "close": "Schließen"
+    },
+    "emptySaved": "Noch kein lokales „Ownership-Profil“ gespeichert (Profil bearbeiten → Ownership-Tab).",
+    "fields": {
+      "avatar": "Avatar",
+      "banner": "Banner",
+      "bio": "Bio"
+    },
+    "actions": {
+      "cancel": "Abbrechen",
+      "send": "Anfrage senden",
+      "uploading": "Lade hoch…"
+    },
+    "errors": {
+      "createFailed": "Ownership-Anfrage konnte nicht erstellt werden"
+    }
+  },
+
+    "tipRequest": {
+    "title": "Trinkgeld-Anfrage erstellen",
+    "subtitle": "Lege den Betrag fest, den der Sub zahlen soll.",
+    "amount": {
+      "label": "Angeforderter Betrag",
+      "placeholder": "50"
+    },
+    "note": {
+      "label": "Notiz (optional)",
+      "placeholder": "Kurze Notiz hinzufügen…"
+    },
+    "actions": {
+      "cancel": "Abbrechen",
+      "create": "Anfrage erstellen"
+    }
+  },
+
+    "autoDrain": {
+    "title": "Autodrain-Anfrage erstellen",
+    "subtitle": "Betrag und Wiederholung festlegen.",
+    "amount": {
+      "label": "Betrag pro Abbuchung",
+      "placeholder": "50"
+    },
+    "recurrence": {
+      "label": "Wiederholung",
+      "options": {
+        "daily": "Täglich",
+        "weekly": "Wöchentlich",
+        "monthly": "Monatlich"
+      }
+    },
+    "actions": {
+      "cancel": "Abbrechen",
+      "create": "Anfrage erstellen"
+    }
+  },
+
+    "tipModal": {
+    "roles": {
+      "domme": "Domme",
+      "sub": "Sub"
+    },
+    "aria": {
+      "close": "Schließen"
+    },
+    "header": {
+      "title": "Sende ein Geschenk an {name}",
+      "subtitleFinal": "Geschenke sind freiwillig und endgültig."
+    },
+    "disclaimer": {
+      "top": "Geschenke sind freiwillig und keine Bezahlung für Dienstleistungen. Subm8 vermittelt nur die Übertragung.",
+      "legal": "Mit der Bestätigung sendest du ein freiwilliges Geschenk. Es handelt sich nicht um eine Bezahlung für Dienstleistungen. Geschenke sind endgültig (keine Rückerstattung, außer gesetzlich vorgeschrieben)."
+    },
+    "amount": {
+      "label": "Betrag für die Creatorin/den Creator",
+      "placeholder": "50"
+    },
+    "note": {
+      "label": "Notiz (optional)",
+      "placeholder": "Schreibe etwas Nettes…"
+    },
+    "breakdown": {
+      "amountToCreator": "Betrag (geht an Creator:in)",
+      "platformFeeTop": "Plattformgebühr (10% oben drauf)",
+      "youPay": "Du zahlst"
+    },
+    "ack": {
+      "checkbox": "Ich verstehe, dass Geschenke freiwillig und endgültig sind."
+    },
+    "actions": {
+      "cancel": "Abbrechen",
+      "sendGift": "Geschenk senden",
+      "sending": "Sende…",
+      "done": "Fertig"
+    },
+    "success": {
+      "title": "Geschenk gesendet!",
+      "youPaid": "Du hast {amount} bezahlt"
+    },
+    "errors": {
+      "generic": "Etwas ist schiefgelaufen",
+      "createFailed": "Zahlung konnte nicht erstellt werden",
+      "confirmFailed": "Bestätigung fehlgeschlagen"
+    }
+  },
+
     "chatComposer": {
     "disabled": {
       "default": "Diese Unterhaltung ist blockiert."

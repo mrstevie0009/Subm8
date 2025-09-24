@@ -1,7 +1,9 @@
+// src/components/OwnershipRequestAcceptModal.tsx
 'use client';
 
 import * as React from 'react';
 import { createPortal } from 'react-dom';
+import { useTranslations } from 'next-intl';
 
 export type OwnershipReqPayload = {
   // Flags/Text aus der Anfrage
@@ -52,6 +54,8 @@ export default function OwnershipRequestAcceptModal({
   onSuccess,
   selfUserId,
 }: Props) {
+  const t = useTranslations('common.ownershipRequestAcceptModal');
+
   const [mounted, setMounted] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
   const [err, setErr] = React.useState<string | null>(null);
@@ -83,7 +87,6 @@ export default function OwnershipRequestAcceptModal({
       const fd = new FormData();
 
       if (selfUserId) fd.append('userId', selfUserId); // Fallback für die Route
-
       if (canApplyBio) fd.append('bio', payload.bio!.trim());
 
       if (canApplyAvatar && avatarSrc) {
@@ -95,9 +98,7 @@ export default function OwnershipRequestAcceptModal({
         fd.append('banner', b, 'banner');
       }
 
-      const headers: HeadersInit | undefined = selfUserId
-        ? { 'x-user-id': selfUserId }
-        : undefined;
+      const headers: HeadersInit | undefined = selfUserId ? { 'x-user-id': selfUserId } : undefined;
 
       const res = await fetch('/api/profile/ownership/apply', {
         method: 'POST',
@@ -108,8 +109,9 @@ export default function OwnershipRequestAcceptModal({
       if (!res.ok) throw new Error(`Apply failed (${res.status})`);
 
       onSuccess();
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Failed to apply ownership request');
+    } catch {
+      setErr(t('errors.applyFail'));
+      return;
     } finally {
       setBusy(false);
     }
@@ -120,7 +122,7 @@ export default function OwnershipRequestAcceptModal({
       <div className="absolute inset-0 bg-black/60 backdrop-blur" onClick={onClose} />
       <div className="relative w-[min(96vw,720px)] rounded-2xl border border-white/12 bg-black/92 shadow-2xl">
         <div className="px-4 py-3 border-b border-white/10 text-[15px] font-semibold">
-          Accept ownership request
+          {t('header.title')}
         </div>
 
         <div className="p-4 space-y-4">
@@ -130,13 +132,15 @@ export default function OwnershipRequestAcceptModal({
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={bannerSrc}
-                alt="Banner preview"
+                alt={t('banner.previewAlt')}
                 className="w-full h-full object-cover"
-                onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).style.display = 'none';
+                }}
               />
             ) : (
               <div className="w-full h-full grid place-items-center text-white/60 text-sm">
-                {payload.banner ? 'No banner asset in request' : 'Banner not requested'}
+                {payload.banner ? t('banner.noAssetRequested') : t('banner.notRequested')}
               </div>
             )}
           </div>
@@ -151,13 +155,15 @@ export default function OwnershipRequestAcceptModal({
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={avatarSrc}
-                  alt="Avatar preview"
+                  alt={t('avatar.previewAlt')}
                   className="w-full h-full object-cover"
-                  onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).style.display = 'none';
+                  }}
                 />
               ) : (
                 <div className="w-full h-full grid place-items-center text-white/60 text-sm">
-                  {payload.avatar ? 'No avatar asset in request' : 'Avatar not requested'}
+                  {payload.avatar ? t('avatar.noAssetRequested') : t('avatar.notRequested')}
                 </div>
               )}
             </div>
@@ -165,7 +171,7 @@ export default function OwnershipRequestAcceptModal({
             {canApplyBio ? (
               <div className="text-[14px] text-white/90 whitespace-pre-wrap">{payload.bio}</div>
             ) : (
-              <div className="text-[13px] text-white/60">No bio included</div>
+              <div className="text-[13px] text-white/60">{t('bio.none')}</div>
             )}
           </div>
 
@@ -183,7 +189,7 @@ export default function OwnershipRequestAcceptModal({
             className="px-4 h-9 rounded-full border border-white/20 hover:bg-white/10"
             disabled={busy}
           >
-            Cancel
+            {t('actions.cancel')}
           </button>
           <button
             type="button"
@@ -191,7 +197,7 @@ export default function OwnershipRequestAcceptModal({
             disabled={busy || nothingToApply}
             className="px-5 h-9 rounded-full bg-[var(--purple)] text-white disabled:opacity-50 hover:opacity-95"
           >
-            {busy ? 'Applying…' : 'Apply'}
+            {busy ? t('actions.applying') : t('actions.apply')}
           </button>
         </div>
       </div>

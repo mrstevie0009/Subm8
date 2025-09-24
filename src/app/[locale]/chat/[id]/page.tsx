@@ -3,7 +3,7 @@
 
 import * as React from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import Image from 'next/image';
 import ChatHeader from '@/components/ChatHeader';
 import ChatComposer from '@/components/ChatComposer';
@@ -115,8 +115,6 @@ function parseAutoDrainAcc(text?: string | null): AutoDrainAccPayload | null {
   } catch {}
   return null;
 }
-const cadenceLabel = (c: AutoDrainReqPayload['cadence']) =>
-  c === 'DAILY' ? 'Daily' : c === 'WEEKLY' ? 'Weekly' : 'Monthly';
 
 const OWNREQ_PREFIX = 'OWNREQ::';
 const OWNACC_PREFIX = 'OWNACC::';
@@ -141,7 +139,7 @@ function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null;
 }
 
-/** Legacy-Shape-Erkennung nur für Bequemen Zugriff */
+/** Legacy-Shape-Erkennung nur für bequemen Zugriff */
 type LegacyDataUrls = { avatarDataUrl?: string; bannerDataUrl?: string; bio?: string };
 function isLegacyDataUrls(p: OwnershipReqPayload): p is LegacyDataUrls {
   return isRecord(p) && (
@@ -155,7 +153,7 @@ function fmtCurrency(cents: number, currency: string) {
   return new Intl.NumberFormat(undefined, { style: 'currency', currency }).format((cents || 0) / 100);
 }
 
-/* ---------- Media-Type Guards (MIME-first) ---------- */
+/* ---------- Media-Type Guards ---------- */
 function getExt(url?: string) {
   if (!url) return '';
   const clean = url.split('?')[0];
@@ -247,9 +245,10 @@ function AudioBubble({
   mine: boolean;
   avatarUrl?: string | null;
 }) {
+  const t = useTranslations('common.chatThread');
   const audioRef = React.useRef<HTMLAudioElement | null>(null);
   const [dur, setDur] = React.useState(0);
-  const [t, setT] = React.useState(0);
+  const [tNow, setTNow] = React.useState(0);
   const [playing, setPlaying] = React.useState(false);
 
   const peaks = usePeaks(src, 56);
@@ -258,7 +257,7 @@ function AudioBubble({
     const a = audioRef.current;
     if (!a) return;
     const onMeta = () => setDur(a.duration || 0);
-    const onTime = () => setT(a.currentTime || 0);
+    const onTime = () => setTNow(a.currentTime || 0);
     const onEnd = () => setPlaying(false);
     a.addEventListener('loadedmetadata', onMeta);
     a.addEventListener('timeupdate', onTime);
@@ -282,7 +281,7 @@ function AudioBubble({
     }
   };
 
-  const progress = dur > 0 ? t / dur : 0;
+  const progress = dur > 0 ? tNow / dur : 0;
   const activeIdx = peaks ? Math.floor(progress * peaks.length) : 0;
 
   const onWavePointer = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -292,7 +291,7 @@ function AudioBubble({
     const ratio = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
     const newT = ratio * dur;
     a.currentTime = newT;
-    setT(newT);
+    setTNow(newT);
   };
 
   const bubbleBase = mine ? 'bg-[var(--purple)] text-white' : 'bg-white/[.07] text-white border border-white/10';
@@ -308,7 +307,7 @@ function AudioBubble({
           type="button"
           onClick={toggle}
           className="grid place-items-center rounded-full w-8 h-8 bg-black/15 hover:bg-black/25 shrink-0"
-          aria-label={playing ? 'Pause' : 'Play'}
+          aria-label={playing ? t('audio.pause') : t('audio.play')}
         >
           {playing ? (
             <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden>
@@ -326,7 +325,7 @@ function AudioBubble({
           role="slider"
           aria-valuemin={0}
           aria-valuemax={dur || 0}
-          aria-valuenow={t}
+          aria-valuenow={tNow}
           className="h-8 flex-1 min-w-[120px] max-w-full flex items-end gap-[1px] overflow-hidden cursor-pointer select-none"
           onPointerDown={onWavePointer}
         >
@@ -352,7 +351,7 @@ function AudioBubble({
         </div>
 
         <div className="text-[12px] opacity-90 tabular-nums w-[68px] text-right shrink-0">
-          {fmtTime(t)} / {fmtTime(dur)}
+          {fmtTime(tNow)} / {fmtTime(dur)}
         </div>
 
         <audio ref={audioRef} preload="metadata" src={src} />
@@ -588,7 +587,6 @@ function parseCommunityLink(text?: string | null): { slug: string; url: string }
     const u = raw.startsWith('http') ? new URL(raw) : new URL(raw, base);
     const parts = u.pathname.split('/').filter(Boolean);
 
-    // try /c/:slug OR /communities/:slug
     const cIdx = parts.indexOf('c');
     const commIdx = parts.indexOf('communities');
 
@@ -611,6 +609,7 @@ type CommunityPreviewDto = {
 };
 
 function CommunityLinkPreview({ slug, locale }: { slug: string; locale: string }) {
+  const t = useTranslations('common.chatThread');
   const [data, setData] = React.useState<CommunityPreviewDto | null>(null);
   const [loading, setLoading] = React.useState(true);
 
@@ -619,7 +618,6 @@ function CommunityLinkPreview({ slug, locale }: { slug: string; locale: string }
     (async () => {
       try {
         setLoading(true);
-        // Prefer plural like /api/communities/preview/:slug to mirror posts; adjust if your API differs.
         const r = await fetch(`/api/communities/preview/${encodeURIComponent(slug)}`, { cache: 'no-store' });
         const j: { ok: boolean; community?: CommunityPreviewDto } = await r.json();
         if (!cancelled && j?.ok && j.community) setData(j.community);
@@ -631,8 +629,6 @@ function CommunityLinkPreview({ slug, locale }: { slug: string; locale: string }
   }, [slug]);
 
   const go = () => {
-    // Navigate to community; adjust path if your detail route differs.
-    // Works with either /c/:slug or /communities/:slug; prefer /c for brevity.
     window.location.href = `/${locale}/c/${slug}`;
   };
 
@@ -666,7 +662,10 @@ function CommunityLinkPreview({ slug, locale }: { slug: string; locale: string }
           </div>
           <div>
             <div className="text-[15px] font-semibold leading-tight">{data.name}</div>
-            <div className="text-[12px] text-white/70">@{data.slug}{typeof data.memberCount === 'number' ? ` · ${data.memberCount} members` : ''}</div>
+            <div className="text-[12px] text-white/70">
+              @{data.slug}
+              {typeof data.memberCount === 'number' ? ` · ${t('community.members', { count: data.memberCount })}` : ''}
+            </div>
           </div>
         </div>
       </div>
@@ -680,7 +679,6 @@ function CommunityLinkPreview({ slug, locale }: { slug: string; locale: string }
 /* ---------- Invite-Link Preview helpers ---------- */
 function parseInviteLink(text?: string | null): { code: string; url: string } | null {
   if (!text) return null;
-  // nimm die erste URL im Text (reicht für "…/invite/<code>\nNotiz")
   const m = text.match(/(https?:\/\/[^\s]+|\/[^\s]+)/);
   if (!m) return null;
   const raw = m[1];
@@ -698,7 +696,7 @@ function parseInviteLink(text?: string | null): { code: string; url: string } | 
 
 type InvitePreviewDto = {
   code: string;
-  href: string; // deeplink zu /invite/<code>
+  href: string;
   community: {
     slug: string;
     name: string;
@@ -711,45 +709,38 @@ type InvitePreviewDto = {
   remainingUses?: number | null;
 };
 
-// ⬇️ Ersetze NUR diese Funktion
 function InviteLinkPreview({ code, href }: { code: string; href: string }) {
+  const t = useTranslations('common.chatThread');
   const [data, setData] = React.useState<InvitePreviewDto | null>(null);
   const [loading, setLoading] = React.useState(true);
 
   React.useEffect(() => {
-  let cancelled = false;
-  (async () => {
-    try {
-      setLoading(true);
-      const r = await fetch(`/api/invites/preview/${encodeURIComponent(code)}`, { cache: 'no-store' });
-      const j = await r.json().catch(() => null);
-      if (!cancelled && j?.ok && j.invite) setData(j.invite);
-    } finally {
-      if (!cancelled) setLoading(false);
-    }
-  })();
-  return () => { cancelled = true; };
-}, [code]);
+    let cancelled = false;
+    (async () => {
+      try {
+        setLoading(true);
+        const r = await fetch(`/api/invites/preview/${encodeURIComponent(code)}`, { cache: 'no-store' });
+        const j = await r.json().catch(() => null);
+        if (!cancelled && j?.ok && j.invite) setData(j.invite);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [code]);
 
-  // benutze locale, damit es nicht "unused" ist
   const go = React.useCallback(async () => {
     if (data?.community?.slug) {
       try {
-        // 1) Auto-Join mit Invite-Code triggern (Query-Param -> simpel & robust)
         await fetch(
           `/api/communities/${encodeURIComponent(data.community.slug)}/join?invite=${encodeURIComponent(code)}`,
           { method: 'POST' }
         );
-      } catch {
-        // Ignore – wir leiten trotzdem weiter
-      }
-
-      // 2) Sauber ins aktuelle Locale weiterleiten
+      } catch {}
       const seg = window.location.pathname.split('/').filter(Boolean)[0] || '';
       const prefix = seg && !['invite', 'c', 'communities', 'p', 'u'].includes(seg) ? `/${seg}` : '';
       window.location.href = `${prefix}/communities/${data.community.slug}`;
     } else {
-      // Fallback: ursprünglichen Link öffnen
       window.location.href = href;
     }
   }, [code, data, href]);
@@ -780,7 +771,6 @@ function InviteLinkPreview({ code, href }: { code: string; href: string }) {
       tabIndex={0}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') go(); }}
     >
-      {/* Banner oben */}
       <div className="h-[160px] bg-white/[.03]">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
@@ -790,7 +780,6 @@ function InviteLinkPreview({ code, href }: { code: string; href: string }) {
         />
       </div>
 
-      {/* Inhalt UNTER dem Banner (ohne Avatar) */}
       <div className="px-3 py-2">
         <div className="text-[15px] font-semibold leading-tight">
           {data.community.name}
@@ -798,7 +787,7 @@ function InviteLinkPreview({ code, href }: { code: string; href: string }) {
         <div className="text-[12px] text-white/70">
           @{data.community.slug}
           {typeof data.community.memberCount === 'number'
-            ? ` · ${data.community.memberCount} members`
+            ? ` · ${t('community.members', { count: data.community.memberCount })}`
             : ''}
         </div>
 
@@ -811,10 +800,10 @@ function InviteLinkPreview({ code, href }: { code: string; href: string }) {
         {(data.expiresAt || typeof data.remainingUses === 'number') && (
           <div className="mt-2 flex items-center gap-3 text-[12px] text-white/60">
             {data.expiresAt && (
-              <span>Expires: {new Date(data.expiresAt).toLocaleDateString()}</span>
+              <span>{t('invite.expires', { date: new Date(data.expiresAt).toLocaleDateString() })}</span>
             )}
             {typeof data.remainingUses === 'number' && (
-              <span>Uses left: {data.remainingUses}</span>
+              <span>{t('invite.usesLeft', { count: data.remainingUses })}</span>
             )}
           </div>
         )}
@@ -823,11 +812,9 @@ function InviteLinkPreview({ code, href }: { code: string; href: string }) {
   );
 }
 
-
-
-
 /* ------------------------- Page ------------------------- */
 export default function ChatThreadPage() {
+  const t = useTranslations('common.chatThread');
   const { id } = useParams<{ id: string }>();
   const searchParams = useSearchParams();
   const locale = useLocale();
@@ -928,10 +915,10 @@ export default function ChatThreadPage() {
     (async () => {
       if (!cancelled) await load();
     })();
-    const t = setInterval(load, 4000);
+    const tmr = setInterval(load, 4000);
     return () => {
       cancelled = true;
-      clearInterval(t);
+      clearInterval(tmr);
     };
   }, [load]);
 
@@ -976,8 +963,8 @@ export default function ChatThreadPage() {
   const disabled = viewerHasBlocked || isBlockedByOther;
   const disabledNotice = disabled
     ? isBlockedByOther
-      ? 'Du kannst dieser Person keine Direktnachrichten mehr senden.'
-      : 'Du hast diese Person blockiert. Senden ist deaktiviert.'
+      ? t('disabled.byOther')
+      : t('disabled.youBlocked')
     : undefined;
 
   if (!loading && error) {
@@ -987,6 +974,11 @@ export default function ChatThreadPage() {
       </main>
     );
   }
+
+  const cadenceLabel = (c: AutoDrainReqPayload['cadence']) =>
+    c === 'DAILY' ? t('envelopes.autodrainRequest.cadence.daily')
+      : c === 'WEEKLY' ? t('envelopes.autodrainRequest.cadence.weekly')
+      : t('envelopes.autodrainRequest.cadence.monthly');
 
   return (
     <>
@@ -1014,7 +1006,7 @@ export default function ChatThreadPage() {
           }}
         >
           {loading ? (
-            <div className="py-8 text-sm text-muted">Loading…</div>
+            <div className="py-8 text-sm text-muted">{t('loading')}</div>
           ) : (
             <div className="space-y-2 pb-24">
               {messages.map((m) => {
@@ -1028,7 +1020,7 @@ export default function ChatThreadPage() {
                   return (
                     <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
                       <div className="max-w-[75%] rounded-2xl px-3 py-2 border bg-white/[.07] border-white/10">
-                        <div className="text-[11px] uppercase tracking-wide text-white/70 mb-1">TIP REQUEST</div>
+                        <div className="text-[11px] uppercase tracking-wide text-white/70 mb-1">{t('envelopes.tipRequest.title')}</div>
                         <div className="text-[15px] font-semibold">{fmtCurrency(req.amountCents, req.currency)}</div>
                         {req.note && <div className="mt-1 text-[13px] text-white/80 whitespace-pre-wrap">{req.note}</div>}
                         {canAct && (
@@ -1046,14 +1038,14 @@ export default function ChatThreadPage() {
                                 });
                               }}
                             >
-                              Accept
+                              {t('actions.accept')}
                             </button>
                             <button
                               type="button"
                               className="px-3 py-1.5 rounded-lg border border-white/15 hover:bg-white/10"
-                              onClick={() => void sendMessage({ text: '❌ Declined tip request' })}
+                              onClick={() => void sendMessage({ text: t('envelopes.tipRequest.declinedMsg') })}
                             >
-                              Decline
+                              {t('actions.decline')}
                             </button>
                           </div>
                         )}
@@ -1072,9 +1064,11 @@ export default function ChatThreadPage() {
                   return (
                     <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
                       <div className="max-w-[75%] rounded-2xl px-3 py-2 border bg-white/[.07] border-white/10">
-                        <div className="text-[11px] uppercase tracking-wide text-white/70 mb-1">AUTODRAIN REQUEST</div>
+                        <div className="text-[11px] uppercase tracking-wide text-white/70 mb-1">{t('envelopes.autodrainRequest.title')}</div>
                         <div className="text-[15px] font-semibold">{fmtCurrency(ad.amountCents, ad.currency)}</div>
-                        <div className="text-[13px] text-white/80 mt-0.5">Recurrence: {cadenceLabel(ad.cadence)}</div>
+                        <div className="text-[13px] text-white/80 mt-0.5">
+                          {t('envelopes.autodrainRequest.recurrenceLabel', { cadence: cadenceLabel(ad.cadence) })}
+                        </div>
                         {canAct && (
                           <div className="mt-2 flex items-center gap-2">
                             <button
@@ -1091,14 +1085,14 @@ export default function ChatThreadPage() {
                                 })
                               }
                             >
-                              Accept
+                              {t('actions.accept')}
                             </button>
                             <button
                               type="button"
                               className="px-3 py-1.5 rounded-lg border border-white/15 hover:bg-white/10"
-                              onClick={() => void sendMessage({ text: '❌ Declined autodrain request' })}
+                              onClick={() => void sendMessage({ text: t('envelopes.autodrainRequest.declinedMsg') })}
                             >
-                              Decline
+                              {t('actions.decline')}
                             </button>
                           </div>
                         )}
@@ -1110,7 +1104,7 @@ export default function ChatThreadPage() {
                   );
                 }
 
-                // --- AUTODRAIN ACCEPTED (styled like TIP PAID) ---
+                // --- AUTODRAIN ACCEPTED ---
                 const adAcc = parseAutoDrainAcc(m.text);
                 if (adAcc) {
                   return (
@@ -1121,11 +1115,13 @@ export default function ChatThreadPage() {
                             <circle cx="12" cy="12" r="9" />
                             <path d="M8.5 12.5l2.5 2.5 4.5-5" />
                           </svg>
-                          <span>AUTODRAIN ENABLED</span>
+                          <span>{t('envelopes.autodrainEnabled.title')}</span>
                           {adAcc.id && <span className="text-white/50 normal-case ml-1">#{String(adAcc.id).slice(0, 6)}</span>}
                         </div>
                         <div className="text-[15px] font-semibold">{fmtCurrency(adAcc.amountCents, adAcc.currency)}</div>
-                        <div className="mt-1 text-[13px] text-white/80">Recurrence: {cadenceLabel(adAcc.cadence)}</div>
+                        <div className="mt-1 text-[13px] text-white/80">
+                          {t('envelopes.autodrainRequest.recurrenceLabel', { cadence: cadenceLabel(adAcc.cadence) })}
+                        </div>
                         <div className="text-[11px] mt-2 text-white/60" title={new Date(m.createdAt).toLocaleString()}>
                           {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </div>
@@ -1145,7 +1141,7 @@ export default function ChatThreadPage() {
                             <circle cx="12" cy="12" r="9" />
                             <path d="M8.5 12.5l2.5 2.5 4.5-5" />
                           </svg>
-                          <span>TIP PAID</span>
+                          <span>{t('envelopes.tipPaid.title')}</span>
                           {paid.id && <span className="text-white/50 normal-case ml-1">#{paid.id.slice(0, 6)}</span>}
                         </div>
                         <div className="text-[15px] font-semibold">{fmtCurrency(paid.amountCents, paid.currency)}</div>
@@ -1178,11 +1174,11 @@ export default function ChatThreadPage() {
                   return (
                     <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
                       <div className="max-w-[75%] rounded-2xl px-3 py-2 border bg-white/[.07] border-white/10">
-                        <div className="text-[11px] uppercase tracking-wide text-white/70 mb-1">OWNERSHIP REQUEST</div>
+                        <div className="text-[11px] uppercase tracking-wide text-white/70 mb-1">{t('envelopes.ownershipRequest.title')}</div>
                         <ul className="text-[13px] text-white/80 space-y-1 mb-2">
-                          {hasAvatar && <li>• Avatar</li>}
-                          {hasBanner && <li>• Banner</li>}
-                          {hasBio && <li>• Bio</li>}
+                          {hasAvatar && <li>• {t('envelopes.ownershipRequest.items.avatar')}</li>}
+                          {hasBanner && <li>• {t('envelopes.ownershipRequest.items.banner')}</li>}
+                          {hasBio && <li>• {t('envelopes.ownershipRequest.items.bio')}</li>}
                         </ul>
                         {canAct && (
                           <div className="mt-1 flex items-center gap-2">
@@ -1191,14 +1187,14 @@ export default function ChatThreadPage() {
                               className="px-3 py-1.5 rounded-lg bg-[var(--purple)]/90 text-white hover:opacity-95"
                               onClick={() => setOwnToAccept(ownReq)}
                             >
-                              Accept
+                              {t('actions.accept')}
                             </button>
                             <button
                               type="button"
                               className="px-3 py-1.5 rounded-lg border border-white/15 hover:bg-white/10"
-                              onClick={() => void sendMessage({ text: '❌ Declined ownership request' })}
+                              onClick={() => void sendMessage({ text: t('envelopes.ownershipRequest.declinedMsg') })}
                             >
-                              Decline
+                              {t('actions.decline')}
                             </button>
                           </div>
                         )}
@@ -1220,9 +1216,9 @@ export default function ChatThreadPage() {
                             <circle cx="12" cy="12" r="9" />
                             <path d="M8.5 12.5l2.5 2.5 4.5-5" />
                           </svg>
-                          <span>OWNERSHIP ACCEPTED</span>
+                          <span>{t('envelopes.ownershipAccepted.title')}</span>
                         </div>
-                        <div className="text-[13px] text-white/80">Changes were applied to the sub’s profile.</div>
+                        <div className="text-[13px] text-white/80">{t('envelopes.ownershipAccepted.applied')}</div>
                         <div className="text-[11px] mt-2 text-white/60" title={new Date(m.createdAt).toLocaleString()}>
                           {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </div>
@@ -1288,7 +1284,6 @@ export default function ChatThreadPage() {
                 // --- INVITE LINK PREVIEW ---
                 const inv = parseInviteLink(m.text);
                 if (inv) {
-                  // optionale Notiz: Text ohne die Invite-URL
                   const note = (m.text || '').replace(inv.url, '').trim();
                   return (
                     <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
@@ -1403,13 +1398,12 @@ export default function ChatThreadPage() {
           targetHandle={other.username}
           onSend={(text) => sendMessage({ text })}
           onTip={() => setTipOpen(true)}
-          onUpload={(file, caption) => sendMessage({ text: caption || '', file })}  // <- Caption mit Datei senden
+          onUpload={(file, caption) => sendMessage({ text: caption || '', file })}
           onCreateTipRequest={(p: { amountCents: number; currency?: string; note?: string }) => {
             const { amountCents, currency = 'EUR', note } = p;
             const payload = { amountCents, currency, note: note?.trim() || undefined };
             void sendMessage({ text: `${TIPREQ_PREFIX}${JSON.stringify(payload)}` });
           }}
-          // ⬇️ Neu: Autodrain-Request aus dem Composer
           onCreateAutoDrainRequest={(p: { amountCents: number; currency?: string; cadence: 'DAILY' | 'WEEKLY' | 'MONTHLY' }) => {
             const { amountCents, currency = 'EUR', cadence } = p;
             const payload = { amountCents, currency, cadence };

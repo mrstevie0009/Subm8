@@ -3,6 +3,7 @@
 
 import * as React from 'react';
 import Image from 'next/image';
+import { useTranslations } from 'next-intl';
 
 type Props = {
   open: boolean;
@@ -42,6 +43,7 @@ function fmtCurrency(cents: number, currency = CURRENCY) {
 }
 
 function RolePill({ role }: { role: Props['toRole'] }) {
+  const t = useTranslations('common.tipModal.roles');
   const isDomme = String(role).toUpperCase() === 'DOMME';
   return (
     <span
@@ -52,7 +54,7 @@ function RolePill({ role }: { role: Props['toRole'] }) {
         border: '1px solid rgba(139,92,246,.28)',
       }}
     >
-      {isDomme ? 'Domme' : 'Sub'}
+      {isDomme ? t('domme') : t('sub')}
     </span>
   );
 }
@@ -67,6 +69,8 @@ export default function TipModal({
   conversationId,
   onSuccess,
 }: Props) {
+  const t = useTranslations('common.tipModal');
+
   const [amount, setAmount] = React.useState('50');
   const [note, setNote] = React.useState('');
   const [sending, setSending] = React.useState(false);
@@ -77,7 +81,7 @@ export default function TipModal({
     currency: string;
   }>(null);
 
-  // Einmal-Disclaimer: lokal merken (optional später via API persistieren)
+  // Einmal-Disclaimer: lokal merken
   const [giftAck, setGiftAck] = React.useState<boolean>(true);
   React.useEffect(() => {
     if (!open) return;
@@ -118,7 +122,7 @@ export default function TipModal({
         body: JSON.stringify(body),
       });
       const j1 = await res1.json().catch(() => null);
-      if (!res1.ok || !j1?.ok) throw new Error(j1?.error || 'Could not create payment');
+      if (!res1.ok || !j1?.ok) throw new Error(j1?.error || t('errors.createFailed'));
 
       const paymentId: string = j1.paymentId;
       const currency: string = j1.currency || CURRENCY;
@@ -129,7 +133,7 @@ export default function TipModal({
         body: JSON.stringify({ paymentId }),
       });
       const j2 = await res2.json().catch(() => null);
-      if (!res2.ok || !j2?.ok) throw new Error(j2?.error || 'Confirm failed');
+      if (!res2.ok || !j2?.ok) throw new Error(j2?.error || t('errors.confirmFailed'));
 
       const totalFromServer: number = Number(j2.totalCents ?? totalCents);
       const baseFromServer: number = Number(j2.baseAmountCents ?? amountCents);
@@ -139,7 +143,6 @@ export default function TipModal({
       // Einmalig merken
       try {
         localStorage.setItem(GIFT_ACK_KEY, '1');
-        // Optional: in DB persistieren, falls Route vorhanden
         fetch('/api/me/disclaimers', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
@@ -155,7 +158,7 @@ export default function TipModal({
         note: note.trim() || undefined,
       });
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Something went wrong');
+      setError(e instanceof Error ? e.message : t('errors.generic'));
     } finally {
       setSending(false);
     }
@@ -192,17 +195,19 @@ export default function TipModal({
               )}
             </div>
             <div className="min-w-0">
-              <div className="font-semibold text-[16px] leading-tight truncate">Send a gift to {toDisplayName}</div>
+              <div className="font-semibold text-[16px] leading-tight truncate">
+                {t('header.title', { name: toDisplayName })}
+              </div>
               <div className="flex items-center gap-2 text-[12px] text-white/70">
                 <RolePill role={toRole} />
-                <span>Gifts are voluntary &amp; final.</span>
+                <span>{t('header.subtitleFinal')}</span>
               </div>
             </div>
 
             <button
               onClick={() => { setSuccess(null); onClose(); }}
               className="ml-auto inline-grid place-items-center w-9 h-9 rounded-full hover:bg-white/10"
-              aria-label="Close"
+              aria-label={t('aria.close')}
             >
               <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" strokeWidth="2" fill="none">
                 <path d="M6 6l12 12M18 6L6 18" />
@@ -216,17 +221,17 @@ export default function TipModal({
           <div className="px-5 pb-5">
             {/* Hinweis oben */}
             <div className="mb-3 text-[12px] text-white/75">
-              Gifts are voluntary, not payments for services. Subm8 only facilitates the transfer.
+              {t('disclaimer.top')}
             </div>
 
             {/* Betrag */}
             <div className="rounded-xl border border-white/10 bg-white/[.03] p-3">
-              <label className="block text-[12px] text-white/70 mb-1">Amount for the creator</label>
+              <label className="block text-[12px] text-white/70 mb-1">{t('amount.label')}</label>
               <div className="flex items-center gap-2">
                 <div className="shrink-0 px-2 py-2 rounded-lg bg-white/5 border border-white/10 text-white/80">€</div>
                 <input
                   inputMode="decimal"
-                  placeholder="50"
+                  placeholder={t('amount.placeholder')}
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                   className="flex-1 bg-transparent outline-none text-[28px] leading-none font-semibold tracking-wide placeholder:text-white/30"
@@ -249,13 +254,13 @@ export default function TipModal({
 
             {/* Note */}
             <div className="mt-3">
-              <label className="block text-[12px] text-white/70 mb-1">Note (optional)</label>
+              <label className="block text-[12px] text-white/70 mb-1">{t('note.label')}</label>
               <textarea
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 maxLength={200}
                 rows={2}
-                placeholder="Say something sweet…"
+                placeholder={t('note.placeholder')}
                 className="w-full rounded-xl bg-white/[.03] border border-white/10 px-3 py-2 outline-none text-white"
               />
               <div className="mt-1 text-[12px] text-white/50">{note.length}/200</div>
@@ -264,23 +269,23 @@ export default function TipModal({
             {/* Breakdown */}
             <div className="mt-4 rounded-xl border border-white/10 bg-gradient-to-b from-white/[.04] to-transparent p-3">
               <div className="flex items-center justify-between text-[14px] mb-1">
-                <span>Amount (goes to creator)</span>
+                <span>{t('breakdown.amountToCreator')}</span>
                 <strong className="text-white">{fmtCurrency(amountCents)}</strong>
               </div>
               <div className="flex items-center justify-between text-[13px] text-white/70">
-                <span>Platform fee (10% on top)</span>
+                <span>{t('breakdown.platformFeeTop')}</span>
                 <span>{fmtCurrency(topupFeeCents)}</span>
               </div>
               <div className="mt-2 border-t border-white/10 pt-2 flex items-center justify-between">
-                <span className="text-[14px]">You pay</span>
+                <span className="text-[14px]">{t('breakdown.youPay')}</span>
                 <span className="text-[16px] font-semibold">{fmtCurrency(totalCents)}</span>
               </div>
               <div className="mt-2 text-[12px] text-white/70">
-                By confirming, you are sending a voluntary gift. This is not a payment for services. Gifts are final (no refunds unless required by law).
+                {t('disclaimer.legal')}
               </div>
             </div>
 
-            {/* Einmal-Bestätigung (nur wenn noch nicht bestätigt) */}
+            {/* Einmal-Bestätigung */}
             {(!giftAck) && (
               <label className="mt-3 flex items-start gap-2 text-[13px]">
                 <input
@@ -289,7 +294,7 @@ export default function TipModal({
                   checked={giftAck}
                   onChange={(e) => setGiftAck(e.target.checked)}
                 />
-                <span>I understand that gifts are voluntary and final.</span>
+                <span>{t('ack.checkbox')}</span>
               </label>
             )}
 
@@ -306,7 +311,7 @@ export default function TipModal({
                 className="px-3 py-2 rounded-lg border border-white/15 hover:bg-white/10"
                 disabled={sending}
               >
-                Cancel
+                {t('actions.cancel')}
               </button>
               <button
                 type="button"
@@ -317,7 +322,7 @@ export default function TipModal({
               >
                 <span className="inline-flex items-center gap-2">
                   <SparkleIcon />
-                  {sending ? 'Sending…' : 'Send Gift'}
+                  {sending ? t('actions.sending') : t('actions.sendGift')}
                 </span>
               </button>
             </div>
@@ -329,15 +334,17 @@ export default function TipModal({
               <div className="inline-grid place-items-center w-16 h-16 rounded-full bg-[var(--purple)]/20 border border-[var(--purple)]/30">
                 <HeartIcon big />
               </div>
-              <h3 className="mt-3 text-[18px] font-semibold">Gift sent!</h3>
-              <p className="mt-1 text-white/80">You paid <strong>{fmtCurrency(success.totalCents)}</strong></p>
+              <h3 className="mt-3 text-[18px] font-semibold">{t('success.title')}</h3>
+              <p className="mt-1 text-white/80">
+                {t('success.youPaid', { amount: fmtCurrency(success.totalCents) })}
+              </p>
               <div className="mt-5">
                 <button
                   type="button"
                   onClick={() => { setSuccess(null); onClose(); }}
                   className="px-4 py-2 rounded-lg bg-[var(--purple)] text-white hover:opacity-95"
                 >
-                  Done
+                  {t('actions.done')}
                 </button>
               </div>
             </div>

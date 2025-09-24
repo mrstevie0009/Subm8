@@ -3,6 +3,7 @@
 
 import * as React from 'react';
 import { createPortal } from 'react-dom';
+import { useTranslations } from 'next-intl';
 
 /** Payload, das in den Chat gesendet wird */
 export type OwnershipReqPayload = {
@@ -79,7 +80,7 @@ async function downscaleDataUrl(
   const img = await loadImage(dataUrl);
   const { width, height } = img;
 
-  const scale = Math.min(maxW / width, maxH / height, 1); // nie hochskalieren
+  const scale = Math.min(maxW / width, maxH / height, 1);
   const tw = Math.round(width * scale);
   const th = Math.round(height * scale);
 
@@ -90,7 +91,6 @@ async function downscaleDataUrl(
   if (!ctx) throw new Error('Canvas not supported');
   ctx.drawImage(img, 0, 0, tw, th);
 
-  // immer als JPEG ausgeben – spart i.d.R. viel Platz
   return canvas.toDataURL('image/jpeg', quality);
 }
 
@@ -106,7 +106,7 @@ async function tryUploadDataUrl(
     fd.append('kind', kind);
 
     const res = await fetch('/api/ownership/upload', { method: 'POST', body: fd });
-    if (!res.ok) return null; // 404/413/… -> Fallback
+    if (!res.ok) return null;
     const json = (await res.json().catch(() => null)) as { ok?: boolean; url?: string } | null;
     return json?.url ? String(json.url) : null;
   } catch {
@@ -116,20 +116,15 @@ async function tryUploadDataUrl(
 
 /** Upload mit Downscale-Fallback; am Ende URL oder null */
 async function uploadWithFallback(dataUrl: string, kind: 'avatar' | 'banner'): Promise<string | null> {
-  // 1) Original probieren
   const url1 = await tryUploadDataUrl(dataUrl, kind);
   if (url1) return url1;
 
-  // 2) Runterskalieren & erneut probieren (größenfreundlicher)
   try {
     const small = await downscaleDataUrl(dataUrl, { maxW: kind === 'banner' ? 2560 : 1024, maxH: 1440, quality: 0.82 });
     const url2 = await tryUploadDataUrl(small, kind);
     if (url2) return url2;
-  } catch {
-    // Downscale gescheitert – ignorieren, wir haben noch den DataURL-Fallback
-  }
+  } catch {}
 
-  // 3) Als DataURL zurückfallen lassen (AcceptModal kann damit umgehen)
   return null;
 }
 
@@ -141,6 +136,8 @@ export default function OwnershipRequestCreateModal({
   handle,
   onCreate,
 }: Props) {
+  const t = useTranslations('common.ownershipRequest');
+
   const [mounted, setMounted] = React.useState(false);
   const [draft, setDraft] = React.useState<OwnershipDraft | null>(null);
 
@@ -185,23 +182,21 @@ export default function OwnershipRequestCreateModal({
         ...(pickBio && draft.bio ? { bio: draft.bio } : {}),
       };
 
-      // Avatar
       if (pickAvatar && draft.avatarDataUrl) {
         const url = await uploadWithFallback(draft.avatarDataUrl, 'avatar');
         if (url) payload.avatarUrl = url;
-        else payload.avatarDataUrl = draft.avatarDataUrl; // Fallback: DataURL mitsenden
+        else payload.avatarDataUrl = draft.avatarDataUrl;
       }
 
-      // Banner
       if (pickBanner && draft.bannerDataUrl) {
         const url = await uploadWithFallback(draft.bannerDataUrl, 'banner');
         if (url) payload.bannerUrl = url;
-        else payload.bannerDataUrl = draft.bannerDataUrl; // Fallback: DataURL mitsenden
+        else payload.bannerDataUrl = draft.bannerDataUrl;
       }
 
       onCreate(payload);
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Failed to create ownership request');
+    } catch {
+      setErr(t('errors.createFailed'));
       return;
     } finally {
       setBusy(false);
@@ -214,14 +209,14 @@ export default function OwnershipRequestCreateModal({
       <div className="relative w-[min(92vw,520px)] rounded-2xl border border-white/12 bg-black/92 shadow-2xl p-3">
         <div className="flex items-center justify-between px-1 pb-2">
           <div>
-            <div className="text-[15px] font-semibold">Ownership request</div>
-            <div className="text-[12px] text-white/70">@{handle}</div>
+            <div className="text-[15px] font-semibold">{t('title')}</div>
+            <div className="text-[12px] text-white/70">{t('subtitle', { handle })}</div>
           </div>
           <button
             className="w-8 h-8 grid place-items-center rounded-full hover:bg-white/10"
             onClick={onClose}
-            aria-label="Close"
-            title="Close"
+            aria-label={t('aria.close')}
+            title={t('aria.close')}
           >
             <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden>
               <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" />
@@ -231,7 +226,7 @@ export default function OwnershipRequestCreateModal({
 
         {nothingSaved ? (
           <div className="px-2 py-3 text-[14px] text-white/75">
-            No local “Ownership profile” saved yet (Edit profile → Ownership tab).
+            {t('emptySaved')}
           </div>
         ) : (
           <div className="px-2 py-1 space-y-3">
@@ -243,7 +238,7 @@ export default function OwnershipRequestCreateModal({
                   checked={pickAvatar}
                   onChange={(e) => setPickAvatar(e.target.checked)}
                 />
-                <span>Avatar</span>
+                <span>{t('fields.avatar')}</span>
               </label>
             )}
 
@@ -255,7 +250,7 @@ export default function OwnershipRequestCreateModal({
                   checked={pickBanner}
                   onChange={(e) => setPickBanner(e.target.checked)}
                 />
-                <span>Banner</span>
+                <span>{t('fields.banner')}</span>
               </label>
             )}
 
@@ -267,7 +262,7 @@ export default function OwnershipRequestCreateModal({
                   checked={pickBio}
                   onChange={(e) => setPickBio(e.target.checked)}
                 />
-                <span>Bio</span>
+                <span>{t('fields.bio')}</span>
               </label>
             )}
           </div>
@@ -286,7 +281,7 @@ export default function OwnershipRequestCreateModal({
             className="px-4 h-9 rounded-full border border-white/20 hover:bg-white/10"
             disabled={busy}
           >
-            Cancel
+            {t('actions.cancel')}
           </button>
           <button
             type="button"
@@ -294,13 +289,12 @@ export default function OwnershipRequestCreateModal({
             onClick={send}
             className="px-5 h-9 rounded-full bg-[var(--purple)] text-white disabled:opacity-50 hover:opacity-95"
           >
-            {busy ? 'Uploading…' : 'Send request'}
+            {busy ? t('actions.uploading') : t('actions.send')}
           </button>
         </div>
       </div>
     </div>
   );
 
-  // ⬅️ unbedingt in document.body rendern (korrekte Zentrierung)
   return createPortal(overlay, document.body);
 }

@@ -4,6 +4,255 @@
     "brand": { "name": "Subm8" },
     "time": { "now": "now", "m": "{count}m", "h": "{count}h", "d": "{count}d" },
 
+    "ownershipRequestAcceptModal": {
+    "header": {
+      "title": "Accept ownership request"
+    },
+    "banner": {
+      "previewAlt": "Banner preview",
+      "noAssetRequested": "No banner asset in request",
+      "notRequested": "Banner not requested"
+    },
+    "avatar": {
+      "previewAlt": "Avatar preview",
+      "noAssetRequested": "No avatar asset in request",
+      "notRequested": "Avatar not requested"
+    },
+    "bio": {
+      "none": "No bio included"
+    },
+    "actions": {
+      "cancel": "Cancel",
+      "apply": "Apply",
+      "applying": "Applying…"
+    },
+    "errors": {
+      "applyFail": "Failed to apply ownership request"
+    }
+  },
+
+    "tipRequestAcceptModal": {
+    "header": {
+      "title": "Accept gift request",
+      "to": "to {name}"
+    },
+    "disclaimer": "By confirming you are sending a voluntary gift. This is not a payment for services. Gifts are final (no refunds unless required by law).",
+    "requested": {
+      "label": "Requested amount",
+      "note": "The creator sees this amount. A {pct}% platform fee is added to what you pay."
+    },
+    "breakdown": {
+      "amount": "Amount",
+      "fee": "Platform fee ({pct}%)",
+      "youPay": "You pay"
+    },
+    "actions": {
+      "cancel": "Cancel",
+      "processing": "Processing…",
+      "sendGiftAccept": "Send Gift & Accept ({total})",
+      "closeAria": "Close"
+    },
+    "errors": {
+      "create": "Could not create payment",
+      "confirm": "Confirm failed",
+      "generic": "Something went wrong"
+    }
+  },
+
+    "autoDrainAcceptModal": {
+    "header": {
+      "title": "Enable autodrain",
+      "to": "to {name}"
+    },
+    "disclaimer": "Gifts are voluntary, not payments for services. Gifts are final (no refunds unless required by law).",
+    "charge": {
+      "label": "Charge amount",
+      "recurringNote": "Recurring charge until you cancel."
+    },
+    "cadence": {
+      "daily": "daily",
+      "weekly": "weekly",
+      "monthly": "monthly"
+    },
+    "acknowledge": "I understand that gifts are voluntary and final. No services are promised.",
+    "actions": {
+      "cancel": "Cancel",
+      "enable": "Enable Autodrain",
+      "enabling": "Enabling…",
+      "closeAria": "Close"
+    },
+    "errors": {
+      "generic": "Something went wrong"
+    }
+  },
+
+    "chatThread": {
+    "loading": "Loading…",
+    "disabled": {
+      "byOther": "You can no longer send direct messages to this user.",
+      "youBlocked": "You blocked this user. Sending is disabled."
+    },
+    "audio": {
+      "play": "Play",
+      "pause": "Pause"
+    },
+    "actions": {
+      "accept": "Accept",
+      "decline": "Decline"
+    },
+    "community": {
+      "members": "{count} members"
+    },
+    "invite": {
+      "expires": "Expires: {date}",
+      "usesLeft": "Uses left: {count}"
+    },
+    "envelopes": {
+      "tipRequest": {
+        "title": "TIP REQUEST",
+        "declinedMsg": "❌ Declined tip request"
+      },
+      "tipPaid": {
+        "title": "TIP PAID"
+      },
+      "autodrainRequest": {
+        "title": "AUTODRAIN REQUEST",
+        "recurrenceLabel": "Recurrence: {cadence}",
+        "cadence": {
+          "daily": "Daily",
+          "weekly": "Weekly",
+          "monthly": "Monthly"
+        },
+        "declinedMsg": "❌ Declined autodrain request"
+      },
+      "autodrainEnabled": {
+        "title": "AUTODRAIN ENABLED"
+      },
+      "ownershipRequest": {
+        "title": "OWNERSHIP REQUEST",
+        "items": {
+          "avatar": "Avatar",
+          "banner": "Banner",
+          "bio": "Bio"
+        },
+        "declinedMsg": "❌ Declined ownership request"
+      },
+      "ownershipAccepted": {
+        "title": "OWNERSHIP ACCEPTED",
+        "applied": "Changes were applied to the sub’s profile."
+      }
+    }
+  },
+
+    "ownershipRequest": {
+    "title": "Ownership request",
+    "subtitle": "for @{handle}",
+    "aria": {
+      "close": "Close"
+    },
+    "emptySaved": "No local “Ownership profile” saved yet (Edit profile → Ownership tab).",
+    "fields": {
+      "avatar": "Avatar",
+      "banner": "Banner",
+      "bio": "Bio"
+    },
+    "actions": {
+      "cancel": "Cancel",
+      "send": "Send request",
+      "uploading": "Uploading…"
+    },
+    "errors": {
+      "createFailed": "Failed to create ownership request"
+    }
+  },
+
+    "tipRequest": {
+    "title": "Create tip request",
+    "subtitle": "Set the amount the Sub should pay.",
+    "amount": {
+      "label": "Requested amount",
+      "placeholder": "50"
+    },
+    "note": {
+      "label": "Note (optional)",
+      "placeholder": "Add a short note…"
+    },
+    "actions": {
+      "cancel": "Cancel",
+      "create": "Create request"
+    }
+  },
+
+    "autoDrain": {
+    "title": "Create autodrain request",
+    "subtitle": "Set amount and recurrence.",
+    "amount": {
+      "label": "Amount per charge",
+      "placeholder": "50"
+    },
+    "recurrence": {
+      "label": "Recurrence",
+      "options": {
+        "daily": "Daily",
+        "weekly": "Weekly",
+        "monthly": "Monthly"
+      }
+    },
+    "actions": {
+      "cancel": "Cancel",
+      "create": "Create request"
+    }
+  },
+
+    "tipModal": {
+    "roles": {
+      "domme": "Domme",
+      "sub": "Sub"
+    },
+    "aria": {
+      "close": "Close"
+    },
+    "header": {
+      "title": "Send a gift to {name}",
+      "subtitleFinal": "Gifts are voluntary & final."
+    },
+    "disclaimer": {
+      "top": "Gifts are voluntary, not payments for services. Subm8 only facilitates the transfer.",
+      "legal": "By confirming, you are sending a voluntary gift. This is not a payment for services. Gifts are final (no refunds unless required by law)."
+    },
+    "amount": {
+      "label": "Amount for the creator",
+      "placeholder": "50"
+    },
+    "note": {
+      "label": "Note (optional)",
+      "placeholder": "Say something sweet…"
+    },
+    "breakdown": {
+      "amountToCreator": "Amount (goes to creator)",
+      "platformFeeTop": "Platform fee (10% on top)",
+      "youPay": "You pay"
+    },
+    "ack": {
+      "checkbox": "I understand that gifts are voluntary and final."
+    },
+    "actions": {
+      "cancel": "Cancel",
+      "sendGift": "Send Gift",
+      "sending": "Sending…",
+      "done": "Done"
+    },
+    "success": {
+      "title": "Gift sent!",
+      "youPaid": "You paid {amount}"
+    },
+    "errors": {
+      "generic": "Something went wrong",
+      "createFailed": "Could not create payment",
+      "confirmFailed": "Confirm failed"
+    }
+  },
+
 "chatComposer": {
     "disabled": {
       "default": "This conversation is blocked."

@@ -3,6 +3,7 @@
 
 import * as React from 'react';
 import { createPortal } from 'react-dom';
+import { useTranslations } from 'next-intl';
 
 type CreatePayload = {
   amountCents: number;
@@ -34,6 +35,8 @@ export default function TipRequestCreateModal({
   onCreate,
   defaultCurrency = 'EUR',
 }: Props) {
+  const t = useTranslations('common.tipRequest');
+
   const [amount, setAmount] = React.useState('50');
   const [note, setNote] = React.useState('');
 
@@ -66,25 +69,29 @@ export default function TipRequestCreateModal({
       <div
         className="relative w-[min(680px,94vw)] rounded-2xl overflow-hidden border border-white/10 bg-[#0b0b0d]"
         onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="tipreq-title"
       >
         {/* Header */}
         <div className="px-5 py-4 border-b border-white/10">
-          <h3 className="text-[18px] font-semibold">Create tip request</h3>
-          <p className="text-[13px] text-white/70">Set the amount the Sub should pay.</p>
+          <h3 id="tipreq-title" className="text-[18px] font-semibold">{t('title')}</h3>
+          <p className="text-[13px] text-white/70">{t('subtitle')}</p>
         </div>
 
         {/* Body */}
         <div className="px-5 py-4 space-y-4">
           <div className="rounded-xl border border-white/10 bg-white/[.03] p-3">
-            <label className="block text-[12px] text-white/70 mb-1">Requested amount</label>
+            <label className="block text-[12px] text-white/70 mb-1">{t('amount.label')}</label>
             <div className="flex items-center gap-2">
               <div className="shrink-0 px-2 py-2 rounded-lg bg-white/5 border border-white/10 text-white/80">€</div>
               <input
                 inputMode="decimal"
-                placeholder="50"
+                placeholder={t('amount.placeholder')}
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 className="flex-1 bg-transparent outline-none text-[28px] leading-none font-semibold tracking-wide placeholder:text-white/30"
+                aria-describedby="tipreq-amount-help"
               />
             </div>
 
@@ -95,6 +102,7 @@ export default function TipRequestCreateModal({
                   type="button"
                   onClick={() => setAmount(String(p))}
                   className="px-3 py-1.5 rounded-full text-[13px] border border-white/15 hover:bg-white/10"
+                  aria-label={fmtCurrency(p * 100, defaultCurrency)}
                 >
                   {fmtCurrency(p * 100, defaultCurrency)}
                 </button>
@@ -103,16 +111,17 @@ export default function TipRequestCreateModal({
           </div>
 
           <div>
-            <label className="block text-[12px] text-white/70 mb-1">Note (optional)</label>
+            <label className="block text-[12px] text-white/70 mb-1">{t('note.label')}</label>
             <textarea
               value={note}
               onChange={(e) => setNote(e.target.value)}
               maxLength={200}
               rows={2}
               className="w-full rounded-xl bg-white/[.03] border border-white/10 px-3 py-2 outline-none text-white"
-              placeholder="Add a short note…"
+              placeholder={t('note.placeholder')}
+              aria-describedby="tipreq-note-count"
             />
-            <div className="mt-1 text-[12px] text-white/50">{note.length}/200</div>
+            <div id="tipreq-note-count" className="mt-1 text-[12px] text-white/50">{note.length}/200</div>
           </div>
 
           <div className="flex items-center justify-end gap-2">
@@ -120,8 +129,9 @@ export default function TipRequestCreateModal({
               type="button"
               onClick={onClose}
               className="px-3 py-2 rounded-lg border border-white/15 hover:bg-white/10"
+              aria-label={t('actions.cancel')}
             >
-              Cancel
+              {t('actions.cancel')}
             </button>
             <button
               type="button"
@@ -136,8 +146,9 @@ export default function TipRequestCreateModal({
               className={`px-4 py-2 rounded-lg text-white transition ${
                 amountValid ? 'bg-[var(--purple)] hover:opacity-95' : 'bg-white/10 opacity-60 cursor-not-allowed'
               }`}
+              aria-label={t('actions.create')}
             >
-              Create request
+              {t('actions.create')}
             </button>
           </div>
         </div>
@@ -145,6 +156,6 @@ export default function TipRequestCreateModal({
     </div>
   );
 
-  // ⬅️ WICHTIG: in document.body rendern
+  // in document.body rendern
   return createPortal(overlay, document.body);
 }

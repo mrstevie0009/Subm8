@@ -1,8 +1,9 @@
-//src/components/AutoDrainRequestAcceptModal
+// src/components/AutoDrainRequestAcceptModal.tsx
 'use client';
 
 import * as React from 'react';
 import Image from 'next/image';
+import { useTranslations } from 'next-intl';
 
 export type AutoDrainCadence = 'DAILY' | 'WEEKLY' | 'MONTHLY';
 
@@ -42,6 +43,8 @@ export default function AutoDrainRequestAcceptModal({
   conversationId,
   onSuccess,
 }: Props) {
+  const t = useTranslations('common.autoDrainAcceptModal');
+
   const [sending, setSending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [giftAck, setGiftAck] = React.useState<boolean>(true);
@@ -74,7 +77,7 @@ export default function AutoDrainRequestAcceptModal({
         }),
       });
       const j = (await res.json().catch(() => null)) as { ok: boolean; id?: string; error?: string } | null;
-      if (!res.ok || !j?.ok || !j.id) throw new Error(j?.error || 'Could not enable autodrain');
+      if (!res.ok || !j?.ok || !j.id) throw new Error(j?.error || t('errors.generic'));
 
       try {
         localStorage.setItem(GIFT_ACK_KEY, '1');
@@ -88,7 +91,7 @@ export default function AutoDrainRequestAcceptModal({
       onSuccess({ autoDrainId: j.id, amountCents, currency, cadence });
       onClose();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Something went wrong');
+      setError(e instanceof Error ? e.message : t('errors.generic'));
     } finally {
       setSending(false);
     }
@@ -96,7 +99,12 @@ export default function AutoDrainRequestAcceptModal({
 
   if (!open) return null;
 
-  const cadenceLabel = cadence === 'DAILY' ? 'daily' : cadence === 'WEEKLY' ? 'weekly' : 'monthly';
+  const cadenceLabel =
+    cadence === 'DAILY'
+      ? t('cadence.daily')
+      : cadence === 'WEEKLY'
+      ? t('cadence.weekly')
+      : t('cadence.monthly');
 
   return (
     <div className="fixed inset-0 z-[1000] grid place-items-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
@@ -118,10 +126,10 @@ export default function AutoDrainRequestAcceptModal({
               )}
             </div>
             <div className="min-w-0">
-              <div className="font-semibold text-[16px] leading-tight truncate">Enable autodrain</div>
-              <div className="text-[12px] text-white/70 truncate">to {toDisplayName}</div>
+              <div className="font-semibold text-[16px] leading-tight truncate">{t('header.title')}</div>
+              <div className="text-[12px] text-white/70 truncate">{t('header.to', { name: toDisplayName })}</div>
             </div>
-            <button onClick={onClose} className="ml-auto inline-grid place-items-center w-9 h-9 rounded-full hover:bg-white/10" aria-label="Close">
+            <button onClick={onClose} className="ml-auto inline-grid place-items-center w-9 h-9 rounded-full hover:bg-white/10" aria-label={t('actions.closeAria')}>
               <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" strokeWidth="2" fill="none" aria-hidden>
                 <path d="M6 6l12 12M18 6L6 18" />
               </svg>
@@ -132,13 +140,16 @@ export default function AutoDrainRequestAcceptModal({
         {/* Body */}
         <div className="px-5 pb-5">
           <div className="text-[12px] text-white/75 mb-3">
-            Gifts are voluntary, not payments for services. Gifts are final (no refunds unless required by law).
+            {t('disclaimer')}
           </div>
 
           <div className="rounded-xl border border-white/10 bg-white/[.03] p-3">
-            <div className="text-[13px] text-white/70 mb-1">Charge amount</div>
-            <div className="text-[24px] font-semibold">{fmtCurrency(amountCents, currency)} <span className="text-[13px] font-normal text-white/70">({cadenceLabel})</span></div>
-            <div className="mt-1 text-[12px] text-white/60">Recurring charge until you cancel.</div>
+            <div className="text-[13px] text-white/70 mb-1">{t('charge.label')}</div>
+            <div className="text-[24px] font-semibold">
+              {fmtCurrency(amountCents, currency)}{' '}
+              <span className="text-[13px] font-normal text-white/70">({cadenceLabel})</span>
+            </div>
+            <div className="mt-1 text-[12px] text-white/60">{t('charge.recurringNote')}</div>
           </div>
 
           {!giftAck && (
@@ -149,7 +160,7 @@ export default function AutoDrainRequestAcceptModal({
                 checked={giftAck}
                 onChange={(e) => setGiftAck(e.target.checked)}
               />
-              <span>I understand that gifts are voluntary and final. No services are promised.</span>
+              <span>{t('acknowledge')}</span>
             </label>
           )}
 
@@ -161,7 +172,7 @@ export default function AutoDrainRequestAcceptModal({
 
           <div className="mt-4 flex items-center justify-end gap-2">
             <button type="button" onClick={onClose} className="px-3 py-2 rounded-lg border border-white/15 hover:bg-white/10" disabled={sending}>
-              Cancel
+              {t('actions.cancel')}
             </button>
             <button
               type="button"
@@ -169,7 +180,7 @@ export default function AutoDrainRequestAcceptModal({
               disabled={sending || !giftAck}
               className={`px-4 py-2 rounded-lg text-white transition ${giftAck && !sending ? 'bg-[var(--purple)] hover:opacity-95' : 'bg-white/10 opacity-60 cursor-not-allowed'}`}
             >
-              {sending ? 'Enabling…' : 'Enable Autodrain'}
+              {sending ? t('actions.enabling') : t('actions.enable')}
             </button>
           </div>
         </div>

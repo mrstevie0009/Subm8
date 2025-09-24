@@ -4,6 +4,255 @@
     "brand": { "name": "Subm8" },
     "time": { "now": "ahora", "m": "{count}m", "h": "{count}h", "d": "{count}d" },
 
+    "ownershipRequestAcceptModal": {
+    "header": {
+      "title": "Aceptar solicitud de ownership"
+    },
+    "banner": {
+      "previewAlt": "Vista previa del banner",
+      "noAssetRequested": "No hay banner en la solicitud",
+      "notRequested": "Banner no solicitado"
+    },
+    "avatar": {
+      "previewAlt": "Vista previa del avatar",
+      "noAssetRequested": "No hay avatar en la solicitud",
+      "notRequested": "Avatar no solicitado"
+    },
+    "bio": {
+      "none": "Sin biografía incluida"
+    },
+    "actions": {
+      "cancel": "Cancelar",
+      "apply": "Aplicar",
+      "applying": "Aplicando…"
+    },
+    "errors": {
+      "applyFail": "No se pudo aplicar la solicitud de ownership"
+    }
+  },
+
+    "tipRequestAcceptModal": {
+    "header": {
+      "title": "Aceptar solicitud de donación",
+      "to": "a {name}"
+    },
+    "disclaimer": "Al confirmar, envías una donación voluntaria. No es un pago por servicios. Las donaciones son definitivas (sin reembolsos salvo obligación legal).",
+    "requested": {
+      "label": "Importe solicitado",
+      "note": "La creadora/el creador verá este importe. Se añadirá una comisión de plataforma del {pct}% a lo que pagas."
+    },
+    "breakdown": {
+      "amount": "Importe",
+      "fee": "Comisión de plataforma ({pct}%)",
+      "youPay": "Pagas"
+    },
+    "actions": {
+      "cancel": "Cancelar",
+      "processing": "Procesando…",
+      "sendGiftAccept": "Enviar donación y aceptar ({total})",
+      "closeAria": "Cerrar"
+    },
+    "errors": {
+      "create": "No se pudo crear el pago",
+      "confirm": "Fallo al confirmar",
+      "generic": "Algo salió mal"
+    }
+  },
+
+    "autoDrainAcceptModal": {
+    "header": {
+      "title": "Activar autodrain",
+      "to": "para {name}"
+    },
+    "disclaimer": "Las donaciones son voluntarias, no pagos por servicios. Las donaciones son definitivas (sin reembolsos salvo que lo exija la ley).",
+    "charge": {
+      "label": "Importe del cargo",
+      "recurringNote": "Cargo recurrente hasta que lo canceles."
+    },
+    "cadence": {
+      "daily": "diaria",
+      "weekly": "semanal",
+      "monthly": "mensual"
+    },
+    "acknowledge": "Entiendo que las donaciones son voluntarias y definitivas. No se prometen servicios.",
+    "actions": {
+      "cancel": "Cancelar",
+      "enable": "Activar Autodrain",
+      "enabling": "Activando…",
+      "closeAria": "Cerrar"
+    },
+    "errors": {
+      "generic": "Algo salió mal"
+    }
+  },
+
+    "chatThread": {
+    "loading": "Cargando…",
+    "disabled": {
+      "byOther": "Ya no puedes enviar mensajes directos a esta persona.",
+      "youBlocked": "Has bloqueado a esta persona. El envío está deshabilitado."
+    },
+    "audio": {
+      "play": "Reproducir",
+      "pause": "Pausa"
+    },
+    "actions": {
+      "accept": "Aceptar",
+      "decline": "Rechazar"
+    },
+    "community": {
+      "members": "{count} miembros"
+    },
+    "invite": {
+      "expires": "Caduca: {date}",
+      "usesLeft": "Usos restantes: {count}"
+    },
+    "envelopes": {
+      "tipRequest": {
+        "title": "SOLICITUD DE PROPINA",
+        "declinedMsg": "❌ Solicitud de propina rechazada"
+      },
+      "tipPaid": {
+        "title": "PROPINA PAGADA"
+      },
+      "autodrainRequest": {
+        "title": "SOLICITUD DE AUTODRAIN",
+        "recurrenceLabel": "Recurrencia: {cadence}",
+        "cadence": {
+          "daily": "Diaria",
+          "weekly": "Semanal",
+          "monthly": "Mensual"
+        },
+        "declinedMsg": "❌ Solicitud de autodrain rechazada"
+      },
+      "autodrainEnabled": {
+        "title": "AUTODRAIN ACTIVADO"
+      },
+      "ownershipRequest": {
+        "title": "SOLICITUD DE OWNERSHIP",
+        "items": {
+          "avatar": "Avatar",
+          "banner": "Banner",
+          "bio": "Bio"
+        },
+        "declinedMsg": "❌ Solicitud de ownership rechazada"
+      },
+      "ownershipAccepted": {
+        "title": "OWNERSHIP ACEPTADO",
+        "applied": "Se aplicaron los cambios al perfil del sub."
+      }
+    }
+  },
+
+    "ownershipRequest": {
+    "title": "Solicitud de ownership",
+    "subtitle": "para @{handle}",
+    "aria": {
+      "close": "Cerrar"
+    },
+    "emptySaved": "Aún no hay un “perfil de ownership” guardado localmente (Editar perfil → pestaña Ownership).",
+    "fields": {
+      "avatar": "Avatar",
+      "banner": "Banner",
+      "bio": "Biografía"
+    },
+    "actions": {
+      "cancel": "Cancelar",
+      "send": "Enviar solicitud",
+      "uploading": "Subiendo…"
+    },
+    "errors": {
+      "createFailed": "No se pudo crear la solicitud de ownership"
+    }
+  },
+
+    "tipRequest": {
+    "title": "Crear solicitud de propina",
+    "subtitle": "Define el monto que debe pagar el Sub.",
+    "amount": {
+      "label": "Monto solicitado",
+      "placeholder": "50"
+    },
+    "note": {
+      "label": "Nota (opcional)",
+      "placeholder": "Añade una nota breve…"
+    },
+    "actions": {
+      "cancel": "Cancelar",
+      "create": "Crear solicitud"
+    }
+  },
+
+    "autoDrain": {
+    "title": "Crear solicitud de autodrain",
+    "subtitle": "Define el monto y la recurrencia.",
+    "amount": {
+      "label": "Monto por cargo",
+      "placeholder": "50"
+    },
+    "recurrence": {
+      "label": "Recurrencia",
+      "options": {
+        "daily": "Diario",
+        "weekly": "Semanal",
+        "monthly": "Mensual"
+      }
+    },
+    "actions": {
+      "cancel": "Cancelar",
+      "create": "Crear solicitud"
+    }
+  },
+
+    "tipModal": {
+    "roles": {
+      "domme": "Domme",
+      "sub": "Sub"
+    },
+    "aria": {
+      "close": "Cerrar"
+    },
+    "header": {
+      "title": "Enviar un regalo a {name}",
+      "subtitleFinal": "Los regalos son voluntarios y definitivos."
+    },
+    "disclaimer": {
+      "top": "Los regalos son voluntarios, no pagos por servicios. Subm8 solo facilita la transferencia.",
+      "legal": "Al confirmar, estás enviando un regalo voluntario. No es un pago por servicios. Los regalos son definitivos (sin reembolsos salvo lo exigido por ley)."
+    },
+    "amount": {
+      "label": "Cantidad para la creadora/el creador",
+      "placeholder": "50"
+    },
+    "note": {
+      "label": "Nota (opcional)",
+      "placeholder": "Di algo bonito…"
+    },
+    "breakdown": {
+      "amountToCreator": "Cantidad (para la creadora/el creador)",
+      "platformFeeTop": "Comisión de la plataforma (10% adicional)",
+      "youPay": "Pagas"
+    },
+    "ack": {
+      "checkbox": "Entiendo que los regalos son voluntarios y definitivos."
+    },
+    "actions": {
+      "cancel": "Cancelar",
+      "sendGift": "Enviar regalo",
+      "sending": "Enviando…",
+      "done": "Listo"
+    },
+    "success": {
+      "title": "¡Regalo enviado!",
+      "youPaid": "Has pagado {amount}"
+    },
+    "errors": {
+      "generic": "Algo salió mal",
+      "createFailed": "No se pudo crear el pago",
+      "confirmFailed": "Error al confirmar"
+    }
+  },
+
     "chatComposer": {
     "disabled": {
       "default": "Esta conversación está bloqueada."

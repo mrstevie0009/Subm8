@@ -3,10 +3,11 @@
 
 import * as React from 'react';
 import { createPortal } from 'react-dom';
+import { useTranslations } from 'next-intl';
 
 export type AutoDrainCadence = 'DAILY' | 'WEEKLY' | 'MONTHLY';
 
-/** <-- neu: Named Export, damit ChatComposer { AutoDrainReqPayload } importieren kann */
+/** Named Export, damit ChatComposer { AutoDrainReqPayload } importieren kann */
 export type AutoDrainReqPayload = {
   amountCents: number;
   currency?: string;
@@ -16,7 +17,6 @@ export type AutoDrainReqPayload = {
 type Props = {
   open: boolean;
   onClose: () => void;
-  /** <- angepasst: Nutzung des exportierten Typs */
   onCreate: (p: AutoDrainReqPayload) => void;
   defaultCurrency?: string;
 };
@@ -38,6 +38,8 @@ export default function AutoDrainRequestCreateModal({
   onCreate,
   defaultCurrency = 'EUR',
 }: Props) {
+  const t = useTranslations('common.autoDrain');
+
   const [amount, setAmount] = React.useState('50');
   const [cadence, setCadence] = React.useState<AutoDrainCadence>('MONTHLY');
 
@@ -64,23 +66,30 @@ export default function AutoDrainRequestCreateModal({
       <div
         className="relative w-[min(680px,94vw)] rounded-2xl overflow-hidden border border-white/10 bg-[#0b0b0d]"
         onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="adreq-title"
       >
         <div className="px-5 py-4 border-b border-white/10">
-          <h3 className="text-[18px] font-semibold">Create autodrain request</h3>
-          <p className="text-[13px] text-white/70">Set amount and recurrence.</p>
+          <h3 id="adreq-title" className="text-[18px] font-semibold">
+            {t('title')}
+          </h3>
+          <p className="text-[13px] text-white/70">{t('subtitle')}</p>
         </div>
 
         <div className="px-5 py-4 space-y-4">
+          {/* Amount */}
           <div className="rounded-xl border border-white/10 bg-white/[.03] p-3">
-            <label className="block text-[12px] text-white/70 mb-1">Amount per charge</label>
+            <label className="block text-[12px] text-white/70 mb-1">{t('amount.label')}</label>
             <div className="flex items-center gap-2">
               <div className="shrink-0 px-2 py-2 rounded-lg bg-white/5 border border-white/10 text-white/80">€</div>
               <input
                 inputMode="decimal"
-                placeholder="50"
+                placeholder={t('amount.placeholder')}
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 className="flex-1 bg-transparent outline-none text-[28px] leading-none font-semibold tracking-wide placeholder:text-white/30"
+                aria-describedby="adreq-amount-help"
               />
             </div>
 
@@ -91,6 +100,7 @@ export default function AutoDrainRequestCreateModal({
                   type="button"
                   onClick={() => setAmount(String(p))}
                   className="px-3 py-1.5 rounded-full text-[13px] border border-white/15 hover:bg-white/10"
+                  aria-label={fmtCurrency(p * 100, defaultCurrency)}
                 >
                   {fmtCurrency(p * 100, defaultCurrency)}
                 </button>
@@ -98,36 +108,53 @@ export default function AutoDrainRequestCreateModal({
             </div>
           </div>
 
+          {/* Recurrence */}
           <div className="rounded-xl border border-white/10 bg-white/[.03] p-3">
-            <label className="block text-[12px] text-white/70 mb-2">Recurrence</label>
+            <label className="block text-[12px] text-white/70 mb-2">{t('recurrence.label')}</label>
             <div className="grid grid-cols-3 gap-2">
               {(['DAILY', 'WEEKLY', 'MONTHLY'] as AutoDrainCadence[]).map((c) => {
                 const on = cadence === c;
+                const label =
+                  c === 'DAILY' ? t('recurrence.options.daily') :
+                  c === 'WEEKLY' ? t('recurrence.options.weekly') :
+                  t('recurrence.options.monthly');
                 return (
                   <button
                     key={c}
                     type="button"
                     onClick={() => setCadence(c)}
-                    className={`px-3 py-2 rounded-lg border text-[13px] ${on ? 'border-[var(--purple)] bg-[var(--purple)]/25' : 'border-white/15 hover:bg-white/10'}`}
+                    className={`px-3 py-2 rounded-lg border text-[13px] ${
+                      on ? 'border-[var(--purple)] bg-[var(--purple)]/25' : 'border-white/15 hover:bg-white/10'
+                    }`}
+                    aria-pressed={on}
                   >
-                    {c === 'DAILY' ? 'Daily' : c === 'WEEKLY' ? 'Weekly' : 'Monthly'}
+                    {label}
                   </button>
                 );
               })}
             </div>
           </div>
 
+          {/* Actions */}
           <div className="flex items-center justify-end gap-2">
-            <button type="button" onClick={onClose} className="px-3 py-2 rounded-lg border border-white/15 hover:bg-white/10">
-              Cancel
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-3 py-2 rounded-lg border border-white/15 hover:bg-white/10"
+              aria-label={t('actions.cancel')}
+            >
+              {t('actions.cancel')}
             </button>
             <button
               type="button"
               disabled={!amountValid}
               onClick={() => onCreate({ amountCents, cadence, currency: defaultCurrency })}
-              className={`px-4 py-2 rounded-lg text-white transition ${amountValid ? 'bg-[var(--purple)] hover:opacity-95' : 'bg-white/10 opacity-60 cursor-not-allowed'}`}
+              className={`px-4 py-2 rounded-lg text-white transition ${
+                amountValid ? 'bg-[var(--purple)] hover:opacity-95' : 'bg-white/10 opacity-60 cursor-not-allowed'
+              }`}
+              aria-label={t('actions.create')}
             >
-              Create request
+              {t('actions.create')}
             </button>
           </div>
         </div>
