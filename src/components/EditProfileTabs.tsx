@@ -2,7 +2,9 @@
 'use client';
 
 import * as React from 'react';
+import Image from 'next/image';                // <— hinzugefügt
 import { useTranslations } from 'next-intl';
+import BackButton from '@/components/BackButtonStandard';
 import type { EditInitial } from '@/components/EditProfileForm';
 
 /** Props vom Server-Page-Loader */
@@ -55,7 +57,7 @@ function clearDraft(userId: string) {
 /* ---------- File -> DataURL ---------- */
 async function fileToDataUrl(file: File): Promise<string> {
   const MAX = 4 * 1024 * 1024; // 4 MB
-  if (file.size > MAX) throw new Error('err.tooLarge'); // key wird später via t() gemappt
+  if (file.size > MAX) throw new Error('err.tooLarge');
   return new Promise((res, rej) => {
     const r = new FileReader();
     r.onerror = () => rej(new Error('err.readFile'));
@@ -176,8 +178,15 @@ function OwnershipTab({ userId, handle }: { userId: string; handle: string }) {
       {/* Banner */}
       <div className="relative h-[220px] md:h-[260px] bg-white/[.04] border-b border-white/10">
         {banner ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={banner} alt="" className="w-full h-full object-cover" />
+          <Image
+            src={banner}
+            alt=""
+            fill
+            className="object-cover"
+            sizes="(min-width:768px) 720px, 100vw"
+            unoptimized
+            priority={false}
+          />
         ) : (
           <div className="absolute inset-0 grid place-items-center text-white/60">
             <span>{t('placeholders.banner')}</span>
@@ -204,10 +213,19 @@ function OwnershipTab({ userId, handle }: { userId: string; handle: string }) {
             style={{ width: 96, height: 96 }}
           >
             {avatar ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={avatar} alt="" className="w-full h-full object-cover" />
+              <Image
+                src={avatar}
+                alt=""
+                fill
+                className="object-cover"
+                sizes="96px"
+                unoptimized
+                priority={false}
+              />
             ) : (
-              <div className="w-full h-full grid place-items-center text-white/60">{t('placeholders.avatar')}</div>
+              <div className="w-full h-full grid place-items-center text-white/60">
+                {t('placeholders.avatar')}
+              </div>
             )}
             <label
               className="absolute right-0 bottom-0 m-1 inline-flex items-center justify-center w-8 h-8 rounded-full bg-black/65 border border-white/20 cursor-pointer hover:bg-black/75"
@@ -245,7 +263,9 @@ function OwnershipTab({ userId, handle }: { userId: string; handle: string }) {
             placeholder={t('placeholders.bio')}
             className="w-full rounded-xl bg-white/[.03] border border-white/10 px-3 py-2 outline-none"
           />
-          <div className="mt-1 text-[12px] text-white/50">{t('labels.counter', { n: bio.length, max: 280 })}</div>
+          <div className="mt-1 text-[12px] text-white/50">
+            {t('labels.counter', { n: bio.length, max: 280 })}
+          </div>
         </div>
 
         {error && (
@@ -258,7 +278,7 @@ function OwnershipTab({ userId, handle }: { userId: string; handle: string }) {
   );
 }
 
-/* ---------- Tabs-Hülle ---------- */
+/* ---------- Tabs-Hülle mit BackArrow ---------- */
 export default function EditProfileTabs({
   locale,
   userId,
@@ -277,9 +297,18 @@ export default function EditProfileTabs({
 
   return (
     <main className="mx-auto px-3" style={{ maxWidth: 760 }}>
-      {/* Tabs Header */}
+      {/* Sticky Header: Back + Tabs */}
       <div className="sticky top-[calc(var(--header-h,56px)+8px)] z-10 bg-black/55 backdrop-blur border-b border-white/10">
         <div className="flex items-center gap-2 px-2 py-2">
+          <BackButton
+            ariaLabel="Back"
+            fallbackHref={`/${locale}/u/${handle}`}
+            className="inline-flex items-center justify-center p-1 rounded hover:opacity-85 focus:outline-none focus:ring-2 focus:ring-[var(--purple)]/40"
+            style={{ color: 'var(--purple)' }}
+          >
+            <ChevronLeftIcon />
+          </BackButton>
+
           <button
             type="button"
             onClick={() => setTab('general')}
@@ -318,5 +347,22 @@ export default function EditProfileTabs({
         <OwnershipTab userId={userId} handle={handle} />
       )}
     </main>
+  );
+}
+
+/* ===== Icons ===== */
+function ChevronLeftIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="22"
+      height="22"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2.2}
+      aria-hidden="true"
+    >
+      <path d="m15 6-6 6 6 6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   );
 }

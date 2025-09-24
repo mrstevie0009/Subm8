@@ -48,7 +48,6 @@ export default async function BookmarksPage({ params }: { params: Params }) {
         >
           <ChevronLeftIcon />
         </BackButton>
-
         <div className="ml-2 sm:ml-3">
           <h1 className="text-[22px] font-bold leading-tight">{t('bookmarksPage.title')}</h1>
           <div className="text-sm text-white/60">@{handle}</div>
