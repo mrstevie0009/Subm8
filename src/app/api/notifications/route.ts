@@ -1,4 +1,3 @@
-// src/app/api/notifications/route.ts
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/currentUser';
@@ -10,17 +9,25 @@ type NotiUser = { handle: string; displayName: string; avatarUrl?: string | null
 
 type NotiItem =
   | { id: string; kind: 'follow'; time: string; user: NotiUser }
-  | { id: string; kind: 'like'; time: string; user: NotiUser; text: string; postId: string }               // like on your POST
+  | { id: string; kind: 'like'; time: string; user: NotiUser; text: string; postId: string }
   | { id: string; kind: 'mention'; time: string; user: NotiUser; text: string; postId?: string }
-  | { id: string; kind: 'comment'; time: string; user: NotiUser; text: string; postId: string }            // comment on your POST (not a reply to you)
-  | { id: string; kind: 'reply'; time: string; user: NotiUser; text: string; postId: string }              // reply to YOUR COMMENT
-  | { id: string; kind: 'comment_like'; time: string; user: NotiUser; text: string; postId: string };      // like on YOUR COMMENT
+  | { id: string; kind: 'comment'; time: string; user: NotiUser; text: string; postId: string }
+  | { id: string; kind: 'reply'; time: string; user: NotiUser; text: string; postId: string }
+  | { id: string; kind: 'comment_like'; time: string; user: NotiUser; text: string; postId: string };
 
 export async function GET(req: Request) {
   try {
     const me = await getCurrentUser();
-    if (!me) return NextResponse.json({ ok: false, error: 'UNAUTHENTICATED' }, { status: 401 });
 
+    // Unauth -> leere Antwort
+    if (!me) {
+      return NextResponse.json(
+        { ok: true, items: [] as NotiItem[] },
+        { status: 200, headers: { 'cache-control': 'private, no-store' } },
+      );
+    }
+
+    // 👇 ab hier NUR wenn authentifiziert – und wirklich benutzt
     const url = new URL(req.url);
     const tab = (url.searchParams.get('tab') || 'all') as 'all' | 'mentions' | 'comments';
     const limit = Math.min(Math.max(Number(url.searchParams.get('limit') || 50), 1), 100);
@@ -71,8 +78,8 @@ export async function GET(req: Request) {
     // ---- Replies to YOUR comments ----
     const repliesToMe = await prisma.comment.findMany({
       where: {
-        parent: { userId: me.id },          // replying to a comment that you authored
-        userId: { not: me.id },             // ignore your own replies
+        parent: { userId: me.id },
+        userId: { not: me.id },
       },
       orderBy: { createdAt: 'desc' },
       take: limit,
@@ -83,15 +90,12 @@ export async function GET(req: Request) {
       },
     });
 
-    // ---- Comments on YOUR posts (that are NOT replies to you) ----
+    // ---- Comments on YOUR posts (not replies to you) ----
     const commentsOnMyPosts = await prisma.comment.findMany({
       where: {
         Post: { authorId: me.id },
         userId: { not: me.id },
-        OR: [
-          { parentId: null },                               // top level
-          { parent: { userId: { not: me.id } } },           // reply, but not to you
-        ],
+        OR: [{ parentId: null }, { parent: { userId: { not: me.id } } }],
       },
       orderBy: { createdAt: 'desc' },
       take: limit,
@@ -171,19 +175,21 @@ export async function GET(req: Request) {
       })),
     ];
 
-    // de-dupe + sort + filter tab
     const seen = new Set<string>();
     const sorted = notis
       .sort((a, b) => +new Date(b.time) - +new Date(a.time))
       .filter((n) => {
         if (tab === 'mentions') return n.kind === 'mention';
         if (tab === 'comments') return n.kind === 'comment' || n.kind === 'reply' || n.kind === 'comment_like';
-        return true; // 'all'
+        return true;
       })
       .filter((n) => (seen.has(n.id) ? false : (seen.add(n.id), true)))
       .slice(0, limit);
 
-    return NextResponse.json({ ok: true, items: sorted });
+    return NextResponse.json(
+      { ok: true, items: sorted },
+      { headers: { 'cache-control': 'private, no-store' } },
+    );
   } catch (err) {
     if (process.env.NODE_ENV !== 'production') console.error('notifications GET failed:', err);
     return NextResponse.json({ ok: false, error: 'FAILED' }, { status: 500 });

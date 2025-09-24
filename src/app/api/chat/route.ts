@@ -1,4 +1,3 @@
-//src/app/api/chat/route.ts
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/currentUser';
 
@@ -6,9 +5,15 @@ export const dynamic = 'force-dynamic';
 
 export async function GET() {
   const me = await getCurrentUser();
-  if (!me) return Response.json({ ok: false, error: 'Not authenticated' }, { status: 401 });
 
-  // Alle Konversationen, in denen ich domme oder sub bin
+  // 👇 Statt 401: leere Antwort
+  if (!me) {
+    return Response.json(
+      { ok: true, items: [] },
+      { status: 200, headers: { 'cache-control': 'private, no-store' } },
+    );
+  }
+
   const convos = await prisma.conversation.findMany({
     where: { OR: [{ dommeId: me.id }, { subId: me.id }] },
     orderBy: { createdAt: 'desc' },
@@ -25,15 +30,12 @@ export async function GET() {
     },
   });
 
-  // Unread counts (pro Konvo)
   const convoIds = convos.map(c => c.id);
   const unreadCounts = await prisma.message.groupBy({
     by: ['conversationId'],
     where: {
       conversationId: { in: convoIds },
-      // nur Nachrichten, die NICHT von mir sind …
       authorId: { not: me.id },
-      // … und die ich noch nicht gelesen habe
       reads: { none: { readerUserId: me.id } },
     },
     _count: { conversationId: true },
@@ -46,9 +48,8 @@ export async function GET() {
     const last = c.messages[0];
 
     let lastSnippet = 'Media';
-    if (last?.text?.trim()) {
-      lastSnippet = last.text.trim();
-    } else if (last?.mediaType) {
+    if (last?.text?.trim()) lastSnippet = last.text.trim();
+    else if (last?.mediaType) {
       if (last.mediaType.startsWith('video/')) lastSnippet = 'Video';
       else if (last.mediaType.startsWith('image/')) lastSnippet = 'Photo';
     }
@@ -67,5 +68,5 @@ export async function GET() {
     };
   });
 
-  return Response.json({ ok: true, items });
+  return Response.json({ ok: true, items }, { headers: { 'cache-control': 'private, no-store' } });
 }
