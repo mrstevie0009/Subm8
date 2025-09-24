@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/currentUser';
 import { getTranslations } from 'next-intl/server';
+import BackButton from '@/components/BackButtonStandard';
 
 type Params = { locale: string };
 
@@ -246,10 +247,15 @@ export default async function NotificationsPage({
     <section className="rounded-xl border border-white/10 overflow-hidden">
       <header className="px-4 pt-3 pb-4 border-b border-white/10">
         <div className="flex items-center gap-2">
-          <Link href={`/${locale}/settings`} className="p-1" aria-label={t('notifications.ariaBack')}>
-            <ChevronLeftIcon />
-          </Link>
-          <div>
+          <BackButton
+                    fallbackHref={`/${locale}`}
+                    ariaLabel={t('bookmarksPage.ariaBack')}
+                    className="inline-flex items-center justify-center p-1 hover:opacity-85 focus:outline-none focus:ring-2 focus:ring-[var(--purple)]/40"
+                    style={{ color: 'var(--purple)' }}
+                  >
+                    <ChevronLeftIcon />
+                  </BackButton>
+                  <div className="ml-2 sm:ml-3">
             <h1 className="text-lg font-semibold">{t('notifications.title')}</h1>
             <p className="text-sm text-white/60">{t('notifications.intro')}</p>
           </div>

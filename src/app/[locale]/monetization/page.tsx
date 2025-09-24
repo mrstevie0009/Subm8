@@ -1,6 +1,7 @@
 // src/app/[locale]/monetization/page.tsx
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
+import BackButton from '@/components/BackButtonStandard';
 
 type Params = { locale: string };
 
@@ -28,9 +29,14 @@ export default async function MonetizationPage({ params }: { params: Params }) {
       {/* Header */}
       <header className="px-4 pt-3 pb-5 border-b border-white/10 bg-gradient-to-b from-white/5 to-transparent">
         <div className="flex items-center gap-2">
-          <Link href={`/${locale}/settings`} className="p-1" aria-label={str("ariaBack", "Back")}>
-            <ChevronLeftIcon />
-          </Link>
+          <BackButton
+                    fallbackHref={`/${locale}`}
+                    ariaLabel={t('bookmarksPage.ariaBack')}
+                    className="inline-flex items-center justify-center p-1 hover:opacity-85 focus:outline-none focus:ring-2 focus:ring-[var(--purple)]/40"
+                    style={{ color: 'var(--purple)' }}
+                  >
+                    <ChevronLeftIcon />
+                  </BackButton>
           <div className="flex items-center gap-3">
             <CoinIcon className="w-6 h-6 opacity-80" />
             <div>

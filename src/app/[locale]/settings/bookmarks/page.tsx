@@ -1,10 +1,10 @@
 // src/app/[locale]/settings/bookmarks/page.tsx
-import Link from 'next/link';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/currentUser';
 import type { Role } from '@prisma/client';
 import PostCard, { type FeedPost } from '@/components/PostCard';
 import { getTranslations } from 'next-intl/server';
+import BackButton from '@/components/BackButtonStandard';
 
 type Params = { locale: string };
 
@@ -40,14 +40,14 @@ export default async function BookmarksPage({ params }: { params: Params }) {
   const Header = (
     <header className="px-4 pt-3 pb-4 border-b border-white/10">
       <div className="flex items-center">
-        <Link
-          href={`/${locale}`}
-          aria-label={t('bookmarksPage.ariaBack')}
+        <BackButton
+          fallbackHref={`/${locale}`}
+          ariaLabel={t('bookmarksPage.ariaBack')}
           className="inline-flex items-center justify-center p-1 hover:opacity-85 focus:outline-none focus:ring-2 focus:ring-[var(--purple)]/40"
           style={{ color: 'var(--purple)' }}
         >
           <ChevronLeftIcon />
-        </Link>
+        </BackButton>
 
         <div className="ml-2 sm:ml-3">
           <h1 className="text-[22px] font-bold leading-tight">{t('bookmarksPage.title')}</h1>

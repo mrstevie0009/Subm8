@@ -1,5 +1,6 @@
 // src/app/[locale]/settings/premium/page.tsx
 import Link from "next/link";
+import BackButton from "@/components/BackButtonStandard"; // ⬅️ NEU
 
 type Params = { locale: string };
 
@@ -15,14 +16,14 @@ export default async function PremiumPage({
       {/* Header (sticky) */}
       <header className="sticky top-[calc(var(--header-h))] z-10 bg-black/80 backdrop-blur border-b border-white/10">
         <div className="px-4 py-3 flex items-center">
-          <Link
-            href={`/${locale}`}
-            aria-label="Back"
+          <BackButton
+            ariaLabel="Back"
+            fallbackHref={`/${locale}`}
             className="inline-flex items-center justify-center p-1 rounded hover:opacity-85 focus:outline-none focus:ring-2 focus:ring-[var(--purple)]/40"
             style={{ color: "var(--purple)" }}
           >
             <ChevronLeftIcon />
-          </Link>
+          </BackButton>
           <div className="ml-2 sm:ml-3">
             <h1 className="text-xl font-semibold">Premium</h1>
             <p className="text-sm opacity-70">Unlock more with Subm8 Premium</p>
