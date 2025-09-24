@@ -246,6 +246,29 @@ export default function BottomNav() {
   const [mounted, setMounted] = React.useState(false);
   const elRef = React.useRef<HTMLElement | null>(null);
 
+  // NEU: Overlay-Status
+  const [overlayOpen, setOverlayOpen] = React.useState<boolean>(() => {
+    if (typeof document === 'undefined') return false;
+    return document.body?.dataset?.overlayOpen === 'true';
+    });
+
+  React.useEffect(() => {
+    const onToggle = (e: Event) => {
+      const ce = e as CustomEvent<{ open: boolean }>;
+      setOverlayOpen(!!ce?.detail?.open);
+    };
+    window.addEventListener('ui:overlay-toggle', onToggle as EventListener);
+    // Falls sich nur das data-Flag ändert, ohne Event:
+    const obs = new MutationObserver(() => {
+      setOverlayOpen(document.body?.dataset?.overlayOpen === 'true');
+    });
+    obs.observe(document.body, { attributes: true, attributeFilter: ['data-overlay-open'] });
+    return () => {
+      window.removeEventListener('ui:overlay-toggle', onToggle as EventListener);
+      obs.disconnect();
+    };
+  }, []);
+
   React.useEffect(() => {
     const el = document.createElement('div');
     el.style.position = 'relative';
@@ -260,5 +283,9 @@ export default function BottomNav() {
   }, []);
 
   if (!mounted || !elRef.current) return null;
+
+  // NEU: Wenn Overlay offen, Nav nicht rendern
+  if (overlayOpen) return null;
+
   return createPortal(<NavContent />, elRef.current);
 }

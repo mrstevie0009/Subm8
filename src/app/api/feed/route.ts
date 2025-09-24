@@ -16,9 +16,22 @@ function canSeeCommunity(policy: JoinPolicy, viewerRole: Role, isMember: boolean
   return false;
 }
 
-// Hilfsfunktion: effektive Community bestimmen (bei Reposts vom Original übernehmen)
+// Effektive Community (bei Reposts vom Original übernehmen)
 function effectiveCommunityId(p: { communityId: string | null; repostOf?: { communityId: string | null } | null }) {
   return p.communityId ?? p.repostOf?.communityId ?? null;
+}
+
+// UploadedMedia → API-Shape { url, alt, kind, mime }
+function mapUploaded(
+  rows: Array<{ url: string; alt: string | null; type: string | null }> | null | undefined,
+) {
+  return (rows ?? []).map((u) => {
+    const mime = u.type ?? null;
+    const kind =
+      mime === 'image/gif' ? 'gif' :
+      (mime && mime.startsWith('video/')) ? 'video' : 'image';
+    return { url: u.url, alt: u.alt ?? null, kind, mime };
+  });
 }
 
 export async function GET(req: Request) {
@@ -33,7 +46,7 @@ export async function GET(req: Request) {
 
   const me = await getCurrentUser().catch(() => null);
 
-  // Rolle sicher laden (ohne any)
+  // Rolle sicher laden
   let viewerRole: Role = null;
   if (me) {
     const row = await prisma.user.findUnique({
@@ -45,14 +58,14 @@ export async function GET(req: Request) {
 
   // Communities & Memberships laden und Posts nach Policy filtern
   async function filterAndCollect<T extends { id: string; communityId: string | null; repostOf?: { communityId: string | null } | null }>(
-    posts: T[]
+    posts: T[],
   ) {
     const communityIds = Array.from(
       new Set(
         posts
           .map((p) => effectiveCommunityId(p))
-          .filter((id): id is string => typeof id === 'string')
-      )
+          .filter((id): id is string => typeof id === 'string'),
+      ),
     );
 
     const communities = communityIds.length
@@ -72,7 +85,7 @@ export async function GET(req: Request) {
                 where: { userId: me.id, communityId: { in: communityIds } },
                 select: { communityId: true },
               })
-            ).map((m) => m.communityId)
+            ).map((m) => m.communityId),
           )
         : new Set<string>();
 
@@ -88,14 +101,14 @@ export async function GET(req: Request) {
   }
 
   if (onlyCount) {
-    // Für das Polling reicht eine gefilterte Zählung über die letzten X Einträge
+    // Für Polling reicht eine gefilterte Zählung
     const recent = await prisma.post.findMany({
       where: { createdAt: { gt: sinceDate } },
       select: {
         id: true,
         communityId: true,
         createdAt: true,
-        repostOf: { select: { communityId: true } }, // wichtig für Repost-Community
+        repostOf: { select: { communityId: true } },
       },
       orderBy: { createdAt: 'desc' },
       take: 200,
@@ -112,14 +125,17 @@ export async function GET(req: Request) {
       author: {
         select: { id: true, handle: true, displayName: true, role: true, avatarUrl: true },
       },
+      // Hauptpost (inkl. neuem uploaded)
+      uploaded: true,
       repostOf: {
         select: {
           id: true,
           text: true,
           mediaUrl: true,
           mediaAlt: true,
+          uploaded: true,
           createdAt: true,
-          communityId: true, // ← damit Badge bei Reposts erhalten bleibt
+          communityId: true,
           author: {
             select: {
               id: true,
@@ -138,6 +154,7 @@ export async function GET(req: Request) {
           text: true,
           mediaUrl: true,
           mediaAlt: true,
+          uploaded: true,
           createdAt: true,
           author: {
             select: {
@@ -155,35 +172,23 @@ export async function GET(req: Request) {
     take: 50,
   });
 
-  // Likes/Bookmarks/Blocks wie gehabt
+  // Likes/Bookmarks/Blocks
   const likeTargetIds = posts.map((p) => (p.repostOf ? p.repostOf.id : p.id));
   const bookmarkIds = posts.map((p) => p.id);
   const authorIds = Array.from(new Set(posts.map((p) => p.author.id)));
 
   const [likes, bms, myBlocks, blocksMe] = await Promise.all([
     me
-      ? prisma.like.findMany({
-          where: { userId: me.id, postId: { in: likeTargetIds } },
-          select: { postId: true },
-        })
+      ? prisma.like.findMany({ where: { userId: me.id, postId: { in: likeTargetIds } }, select: { postId: true } })
       : Promise.resolve([] as { postId: string }[]),
     me
-      ? prisma.bookmark.findMany({
-          where: { userId: me.id, postId: { in: bookmarkIds } },
-          select: { postId: true },
-        })
+      ? prisma.bookmark.findMany({ where: { userId: me.id, postId: { in: bookmarkIds } }, select: { postId: true } })
       : Promise.resolve([] as { postId: string }[]),
     me
-      ? prisma.block.findMany({
-          where: { blockerId: me.id, blockedId: { in: authorIds } },
-          select: { blockedId: true },
-        })
+      ? prisma.block.findMany({ where: { blockerId: me.id, blockedId: { in: authorIds } }, select: { blockedId: true } })
       : Promise.resolve([] as { blockedId: string }[]),
     me
-      ? prisma.block.findMany({
-          where: { blockerId: { in: authorIds }, blockedId: me.id },
-          select: { blockerId: true },
-        })
+      ? prisma.block.findMany({ where: { blockerId: { in: authorIds }, blockedId: me.id }, select: { blockerId: true } })
       : Promise.resolve([] as { blockerId: string }[]),
   ]);
 
@@ -202,15 +207,16 @@ export async function GET(req: Request) {
       const statSource = isRepost ? p.repostOf! : p;
       const likeRefId = isRepost ? p.repostOf!.id : p.id;
 
-      // Effektive Community für Badge (bei Reposts vom Original)
+      // Effektive Community fürs Badge
       const effectiveCid = effectiveCommunityId(p);
       const community = effectiveCid ? communitiesById.get(effectiveCid) ?? null : null;
 
       return {
         id: p.id,
         text: p.text,
-        mediaUrl: p.mediaUrl,
-        mediaAlt: p.mediaAlt,
+        mediaUrl: p.mediaUrl,             // legacy
+        mediaAlt: p.mediaAlt,             // legacy
+        uploaded: mapUploaded(p.uploaded), // NEU: ins erwartete Shape gemappt
         createdAt: p.createdAt.toISOString(),
 
         _count: {
@@ -231,8 +237,9 @@ export async function GET(req: Request) {
           ? {
               id: p.repostOf!.id,
               text: p.repostOf!.text,
-              mediaUrl: p.repostOf!.mediaUrl,
-              mediaAlt: p.repostOf!.mediaAlt,
+              mediaUrl: p.repostOf!.mediaUrl,      // legacy
+              mediaAlt: p.repostOf!.mediaAlt,      // legacy
+              uploaded: mapUploaded(p.repostOf!.uploaded),
               createdAt: p.repostOf!.createdAt.toISOString(),
               author: {
                 id: p.repostOf!.author.id,
@@ -248,8 +255,9 @@ export async function GET(req: Request) {
           ? {
               id: p.quoteOf!.id,
               text: p.quoteOf!.text,
-              mediaUrl: p.quoteOf!.mediaUrl,
-              mediaAlt: p.quoteOf!.mediaAlt,
+              mediaUrl: p.quoteOf!.mediaUrl,       // legacy
+              mediaAlt: p.quoteOf!.mediaAlt,       // legacy
+              uploaded: mapUploaded(p.quoteOf!.uploaded),
               createdAt: p.quoteOf!.createdAt.toISOString(),
               author: {
                 id: p.quoteOf!.author.id,
@@ -268,7 +276,6 @@ export async function GET(req: Request) {
           blockedByAuthor: me ? blockedBySet.has(p.author.id) : false,
         },
 
-        // Community-Infos fürs Badge
         community: community ? { name: community.name, slug: community.slug } : null,
       };
     }),

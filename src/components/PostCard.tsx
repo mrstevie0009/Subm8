@@ -1,4 +1,4 @@
-//src/components/PostCard.tsx
+// src/components/PostCard.tsx
 'use client';
 
 import * as React from 'react';
@@ -20,15 +20,24 @@ import VideoPlayer from '@/components/VideoPlayer';
 
 const AVATAR_PH = '/images/avatar-placeholder.png';
 
-/** —— Gemeinsames Feed-Shape (inkl. optionaler Quote) —— */
+/** —— Feed-Shape (mit optionaler Quote) + NEU: Multi-Media-Unterstützung —— */
+type ContentMedia = { url: string; alt?: string | null; kind?: 'image' | 'video' | 'gif' };
+
 export type FeedPost = {
   id: string;
   createdAtISO: string;
   content: {
     id: string;
     text: string;
+    /** Alt: Einzelnes Medium */
     mediaUrl?: string | null;
     mediaAlt?: string | null;
+    /** Neu: Mehrere Medien */
+    media?: ContentMedia[] | null;
+    uploaded?: ContentMedia[] | null;     // <— HINZU
+    /** Alternative API-Shapes */
+    mediaUrls?: string[] | null;
+    attachments?: Array<{ url: string; alt?: string | null; kind?: 'image' | 'video' | 'gif' }> | null;
     createdAt: string;
     author: {
       id: string;
@@ -42,6 +51,10 @@ export type FeedPost = {
       text: string;
       mediaUrl?: string | null;
       mediaAlt?: string | null;
+      media?: ContentMedia[] | null;
+      uploaded?: ContentMedia[] | null;     // <— HINZU
+      mediaUrls?: string[] | null;
+      attachments?: Array<{ url: string; alt?: string | null; kind?: 'image' | 'video' | 'gif' }> | null;
       createdAt: string;
       author: {
         id: string;
@@ -106,10 +119,7 @@ function ShieldOffIcon({ size = 12 }: { size?: number }) {
     </svg>
   );
 }
-function RepostBadgeIcon({
-  size = 22,
-  strokeWidth = 1.9,
-}: { size?: number; strokeWidth?: number }) {
+function RepostBadgeIcon({ size = 22, strokeWidth = 1.9 }: { size?: number; strokeWidth?: number }) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -142,15 +152,7 @@ function ShareIcon({ size = 22 }: { size?: number }) {
 }
 
 /* ------------------------ Blockstatus-Badges ------------------------ */
-function BlockBadges({
-  hasBlockedAuthor,
-  blockedByAuthor,
-  tPost,
-}: {
-  hasBlockedAuthor: boolean;
-  blockedByAuthor: boolean;
-  tPost: ReturnType<typeof useTranslations>;
-}) {
+function BlockBadges({ hasBlockedAuthor, blockedByAuthor, tPost }: { hasBlockedAuthor: boolean; blockedByAuthor: boolean; tPost: ReturnType<typeof useTranslations> }) {
   if (!hasBlockedAuthor && !blockedByAuthor) return null;
   return (
     <span className="ml-2 inline-flex items-center gap-1" data-no-nav>
@@ -179,16 +181,64 @@ function isGifUrl(url?: string | null): boolean {
   const clean = url.split('?')[0].toLowerCase();
   return /\.gif$/i.test(clean);
 }
+const kindFromUrl = (url: string): 'image' | 'video' | 'gif' =>
+  isVideoUrl(url) ? 'video' : isGifUrl(url) ? 'gif' : 'image';
 
-/** Media-Renderer */
-function MediaView({
-  url,
-  alt,
+/** Vereinheitlicht alle möglichen Felder zu ContentMedia[] */
+type MediaContainer = {
+  media?: ContentMedia[] | null;
+  uploaded?: ContentMedia[] | null;
+  mediaUrls?: string[] | null;
+  attachments?: Array<{ url: string; alt?: string | null; kind?: 'image' | 'video' | 'gif' }> | null;
+  mediaUrl?: string | null;
+  mediaAlt?: string | null;
+};
+function normalizeMediaFields(src: MediaContainer): ContentMedia[] {
+  const out: ContentMedia[] = [];
+
+  // bereits normalisierte Arrays
+  const pushArr = (arr?: ContentMedia[] | null) => {
+    if (!Array.isArray(arr)) return;
+    for (const m of arr) {
+      if (m?.url) out.push({ url: m.url, alt: m.alt ?? null, kind: m.kind ?? kindFromUrl(m.url) });
+    }
+  };
+  pushArr(src.media);
+  pushArr(src.uploaded);  // <— NEU
+
+  // alternative Shapes
+  if (Array.isArray(src.attachments)) {
+    for (const m of src.attachments) if (m?.url) out.push({ url: m.url, alt: m.alt ?? null, kind: m.kind ?? kindFromUrl(m.url) });
+  }
+  if (Array.isArray(src.mediaUrls)) {
+    for (const url of src.mediaUrls) if (url) out.push({ url, alt: null, kind: kindFromUrl(url) });
+  }
+  if (src.mediaUrl) {
+    out.push({ url: src.mediaUrl, alt: src.mediaAlt ?? null, kind: kindFromUrl(src.mediaUrl) });
+  }
+
+  // de-dupe
+  const seen = new Set<string>();
+  return out.filter(m => (seen.has(m.url) ? false : (seen.add(m.url), true)));
+}
+
+
+/** Einzelnes Medium (Bild/GIF/Video) */
+function SingleMedia({
+  m,
   priority = false,
-}: { url?: string | null; alt?: string | null; priority?: boolean }) {
-  if (!url) return null;
+  onOpen,
+  index = 0,
+}: {
+  m: ContentMedia;
+  priority?: boolean;
+  onOpen?: (startIndex: number) => void;
+  index?: number;
+}) {
+  const alt = m.alt ?? '';
+  const open = () => onOpen?.(index);
 
-  if (isVideoUrl(url)) {
+  if (m.kind === 'video') {
     const stop = (e: React.SyntheticEvent) => { e.stopPropagation(); };
     return (
       <figure
@@ -203,44 +253,338 @@ function MediaView({
           }
         }}
       >
-        <VideoPlayer src={url} className="w-full h-auto max-h-[65vh] sm:max-h-[70vh]" />
+        <VideoPlayer src={m.url} className="w-full h-auto max-h-[65vh] sm:max-h-[70vh]" />
       </figure>
     );
   }
 
-  if (isGifUrl(url)) {
-    return (
-      <figure className="mt-3 overflow-hidden rounded-xl border border-white/10 bg-black/20">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={url}
-          alt={alt ?? ''}
-          loading={priority ? 'eager' : 'lazy'}
-          decoding="async"
-          className="block mx-auto h-auto w-auto max-w-full max-h-[65vh] sm:max-h-[70vh] object-contain"
-        />
-      </figure>
-    );
-  }
+  const ImgTag = (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={m.url}
+      alt={alt}
+      loading={priority ? 'eager' : 'lazy'}
+      decoding="async"
+      className="block mx-auto h-auto w-auto max-w-full max-h-[65vh] sm:max-h-[70vh] object-contain"
+    />
+  );
 
   return (
-    <figure className="mt-3 overflow-hidden rounded-xl border border-white/10 bg-black/20">
-      <div className="relative w-full">
-        <Image
-          src={url}
-          alt={alt ?? ''}
-          width={1200}
-          height={900}
-          className="block mx-auto h-auto w-auto max-w-full max-h-[65vh] sm:max-h-[70vh]"
-          priority={priority}
-          draggable={false}
-        />
+    <figure
+      className="mt-3 overflow-hidden rounded-xl border border-white/10 bg-black/20"
+      role={onOpen ? 'button' : undefined}
+      tabIndex={onOpen ? 0 : -1}
+      data-no-nav
+      onClick={open}
+      onKeyDown={(e) => {
+        if ((e.key === 'Enter' || e.key === ' ') && onOpen) { e.preventDefault(); open(); }
+      }}
+    >
+      {ImgTag}
+    </figure>
+  );
+}
+
+/** Mosaik-Layout für reine Bilder (≤4) */
+function MediaMosaic({
+  items,
+  onOpen,
+}: {
+  items: ContentMedia[];
+  onOpen?: (startIndex: number) => void;
+}) {
+  const images = items.filter((m) => m.kind !== 'video');
+  if (images.length !== items.length || items.length === 0 || items.length > 4) return null;
+
+  if (items.length === 1) return <SingleMedia m={items[0]} priority onOpen={onOpen} index={0} />;
+
+  const cell = (m: ContentMedia, i: number) => (
+    <button
+      key={m.url}
+      type="button"
+      className="relative bg-black/20 w-full h-full"
+      onClick={(e) => { e.stopPropagation(); onOpen?.(i); }}
+      data-no-nav
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={m.url} alt={m.alt ?? ''} className="w-full h-full object-cover" />
+    </button>
+  );
+
+  if (items.length === 2) {
+    return (
+      <div className="mt-3 grid grid-cols-2 gap-1 rounded-xl overflow-hidden border border-white/10 h-80">
+        {items.map((m, i) => cell(m, i))}
+      </div>
+    );
+  }
+
+  if (items.length === 3) {
+    const [a, b, c] = items;
+    return (
+      <div className="mt-3 grid grid-cols-2 gap-1 rounded-xl overflow-hidden border border-white/10">
+        <div className="relative col-span-1 row-span-2 bg-black/20 max-h-[70vh]">
+          {cell(a, 0)}
+        </div>
+        <div className="relative h-40">{cell(b, 1)}</div>
+        <div className="relative h-40">{cell(c, 2)}</div>
+      </div>
+    );
+  }
+
+  // 4 Items
+  return (
+    <div className="mt-3 grid grid-cols-2 gap-1 rounded-xl overflow-hidden border border-white/10">
+      {items.map((m, i) => (
+        <div key={m.url} className="relative bg-black/20 h-56">
+          {cell(m, i)}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Overlay-Grid 2x2 mit +N für >4 reine Bilder */
+function MediaMosaicOverflow({
+  items,
+  onOpen,
+}: {
+  items: ContentMedia[];
+  onOpen?: (startIndex: number) => void;
+}) {
+  const imageIndices = items.reduce<number[]>((acc, m, idx) => (m.kind !== 'video' ? (acc.push(idx), acc) : acc), []);
+  if (imageIndices.length !== items.length || imageIndices.length <= 4) return null;
+
+  const first4 = imageIndices.slice(0, 4);
+  const more = imageIndices.length - 4;
+
+  return (
+    <div className="mt-3 grid grid-cols-2 gap-1 rounded-xl overflow-hidden border border-white/10">
+      {first4.map((origIdx, i) => {
+        const m = items[origIdx];
+        return (
+          <button
+            key={m.url}
+            type="button"
+            className="relative bg-black/20 w-full h-56"
+            onClick={(e) => { e.stopPropagation(); onOpen?.(origIdx); }}
+            data-no-nav
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={m.url} alt={m.alt ?? ''} className="w-full h-full object-cover" />
+            {i === 3 && more > 0 && (
+              <div className="absolute inset-0 bg-black/60 grid place-items-center text-white text-xl font-semibold">
+                +{more}
+              </div>
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Carousel nur wenn Video enthalten ist */
+function MediaCarousel({
+  items,
+  onOpen,
+}: {
+  items: ContentMedia[];
+  onOpen?: (startIndex: number) => void;
+}) {
+  const hasVideo = items.some((m) => m.kind === 'video');
+  if (!hasVideo) return null;
+
+  return (
+    <figure className="mt-3 overflow-hidden rounded-xl border border-white/10 bg-black/20" data-no-nav>
+      <div className="relative">
+        <div className="flex overflow-x-auto snap-x snap-mandatory scroll-px-4 gap-1 p-1" style={{ scrollBehavior: 'smooth' }}>
+          {items.map((m, idx) => (
+            <div key={m.url} className="relative shrink-0 w-full snap-center">
+              {m.kind === 'video' ? (
+                <VideoPlayer src={m.url} className="w-full h-auto max-h-[65vh] sm:max-h-[70vh]" />
+              ) : (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={m.url}
+                  alt={m.alt ?? ''}
+                  className="block w-full h-auto object-contain max-h-[65vh] sm:max-h-[70vh] cursor-zoom-in"
+                  onClick={(e) => { e.stopPropagation(); onOpen?.(idx); }}
+                />
+              )}
+              <div className="absolute left-2 bottom-2 rounded-full bg-black/60 text-xs px-2 py-1">
+                {idx + 1}/{items.length}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </figure>
   );
 }
 
-/* ------------------- DM Share Overlay ------------------- */
+/* ---------------- Lightbox (Overlay mit vertikalem Scroll) ---------------- */
+function MediaLightbox({
+  items,
+  startIndex,
+  onClose,
+}: {
+  items: ContentMedia[];
+  startIndex: number;
+  onClose: () => void;
+}) {
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  const [idx, setIdx] = React.useState(startIndex);
+
+  React.useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const child = el.children[startIndex] as HTMLElement | undefined;
+    if (child) child.scrollIntoView({ block: 'center' });
+  }, [startIndex]);
+
+  // Keyboard navigation
+  React.useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+      if (e.key === 'ArrowDown' || e.key === 'ArrowRight') setIdx((i) => Math.min(items.length - 1, i + 1));
+      if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') setIdx((i) => Math.max(0, i - 1));
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [items.length, onClose]);
+
+  // keep current item centered when idx changes
+  React.useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const child = el.children[idx] as HTMLElement | undefined;
+    if (child) child.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }, [idx]);
+
+  React.useEffect(() => {
+    // Flag + Event setzen
+    document.body.dataset.overlayOpen = 'true';
+    try { window.dispatchEvent(new CustomEvent('ui:overlay-toggle', { detail: { open: true, source: 'media' } })); } catch {}
+    // Cleanup beim Schließen
+    return () => {
+      delete document.body.dataset.overlayOpen;
+      try { window.dispatchEvent(new CustomEvent('ui:overlay-toggle', { detail: { open: false, source: 'media' } })); } catch {}
+    };
+  }, []);
+
+  React.useEffect(() => {
+  // --- Body scroll lock (kein Doppel-Scrollbar, kein Hintergrund-Scroll) ---
+  const scrollY = window.scrollY || window.pageYOffset || 0;
+  const scrollbarW = window.innerWidth - document.documentElement.clientWidth;
+
+  // Flag + Event (du hast das schon – lassen wir drin)
+  document.body.dataset.overlayOpen = 'true';
+  try { window.dispatchEvent(new CustomEvent('ui:overlay-toggle', { detail: { open: true, source: 'media' } })); } catch {}
+
+  // Hard lock: Body fixieren + Padding kompensieren (kein Layout-Shift)
+  document.body.style.position = 'fixed';
+  document.body.style.top = `-${scrollY}px`;
+  document.body.style.left = '0';
+  document.body.style.right = '0';
+  document.body.style.width = '100%';
+  document.body.style.overflow = 'hidden';
+  if (scrollbarW > 0) document.body.style.paddingRight = `${scrollbarW}px`;
+
+  // Optional: html auch absichern (einige Browser scrollen sonst das <html>)
+  document.documentElement.style.overflow = 'hidden';
+
+  return () => {
+    // Lock zurücksetzen
+    const top = document.body.style.top;
+    document.body.style.position = '';
+    document.body.style.top = '';
+    document.body.style.left = '';
+    document.body.style.right = '';
+    document.body.style.width = '';
+    document.body.style.overflow = '';
+    document.body.style.paddingRight = '';
+    document.documentElement.style.overflow = '';
+
+    // an ursprüngliche Position zurückspringen
+    const y = top ? -parseInt(top, 10) : 0;
+    window.scrollTo(0, y);
+
+    delete document.body.dataset.overlayOpen;
+    try { window.dispatchEvent(new CustomEvent('ui:overlay-toggle', { detail: { open: false, source: 'media' } })); } catch {}
+  };
+}, []);
+
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[2147483603] bg-black/90 backdrop-blur-sm flex flex-col"
+      role="dialog"
+      aria-modal="true"
+      data-no-nav
+      onClick={onClose}
+      style={{ overscrollBehavior: 'none' }}
+    >
+      {/* Top bar */}
+      <div className="flex items-center justify-between px-4 py-3 text-white/90">
+        <div className="text-sm">{idx + 1} / {items.length}</div>
+        <button
+          type="button"
+          className="rounded-md px-3 py-1.5 bg-white/10 hover:bg-white/15"
+          onClick={(e) => { e.stopPropagation(); onClose(); }}
+        >
+          ✕
+        </button>
+      </div>
+
+      {/* Vertical scroll area */}
+      <div
+        ref={containerRef}
+        className="flex-1 overflow-y-auto snap-y snap-mandatory space-y-6 px-2 pb-6"
+        onClick={(e) => e.stopPropagation()}
+        style={{ overscrollBehaviorY: 'contain', WebkitOverflowScrolling: 'touch' }}
+      >
+        {items.map((m, i) => (
+          <div
+            key={m.url}
+            className="snap-start min-h-[88vh] grid place-items-center"
+            onMouseEnter={() => setIdx(i)}
+          >
+            {m.kind === 'video' ? (
+              <VideoPlayer src={m.url} className="max-h-[88vh] w-auto" />
+            ) : (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={m.url} alt={m.alt ?? ''} className="max-h-[88vh] w-auto object-contain" />
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Prev / Next controls */}
+      <div className="absolute left-2 bottom-3 flex gap-2">
+        <button
+          type="button"
+          className="rounded-lg px-3 py-1.5 bg-white/10 hover:bg-white/15 text-white/90"
+          onClick={(e) => { e.stopPropagation(); setIdx((i) => Math.max(0, i - 1)); }}
+          disabled={idx === 0}
+        >
+          ←
+        </button>
+        <button
+          type="button"
+          className="rounded-lg px-3 py-1.5 bg-white/10 hover:bg-white/15 text-white/90"
+          onClick={(e) => { e.stopPropagation(); setIdx((i) => Math.min(items.length - 1, i + 1)); }}
+          disabled={idx === items.length - 1}
+        >
+          →
+        </button>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+/* ------------------- DM Share Overlay (vollständig) ------------------- */
 function DMShareOverlay({
   open,
   onClose,
@@ -256,11 +600,13 @@ function DMShareOverlay({
 
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
-  const [items, setItems] = React.useState<Array<{
-    id: string;
-    other: { username: string; displayName: string; avatarUrl: string | null };
-    lastMessageAt: string;
-  }>>([]);
+  const [items, setItems] = React.useState<
+    Array<{
+      id: string;
+      other: { username: string; displayName: string; avatarUrl: string | null };
+      lastMessageAt: string;
+    }>
+  >([]);
 
   const [q, setQ] = React.useState('');
   const [selected, setSelected] = React.useState<Set<string>>(new Set());
@@ -288,9 +634,10 @@ function DMShareOverlay({
   }, [open]);
 
   const toggle = (id: string) => {
-    setSelected(prev => {
+    setSelected((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   };
@@ -299,11 +646,15 @@ function DMShareOverlay({
     const qq = q.trim().toLowerCase();
     const base = !qq
       ? items
-      : items.filter(i =>
-          i.other.displayName.toLowerCase().includes(qq) ||
-          i.other.username.toLowerCase().includes(qq)
+      : items.filter(
+          (i) =>
+            i.other.displayName.toLowerCase().includes(qq) ||
+            i.other.username.toLowerCase().includes(qq)
         );
-    return base.sort((a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime());
+    return base.sort(
+      (a, b) =>
+        new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime()
+    );
   }, [items, q]);
 
   const postUrl =
@@ -322,7 +673,12 @@ function DMShareOverlay({
           fetch('/api/chat/share-link', {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ conversationId, postId, url: postUrl, note: note.trim() || undefined }),
+            body: JSON.stringify({
+              conversationId,
+              postId,
+              url: postUrl,
+              note: note.trim() || undefined,
+            }),
           }).then(async (r) => {
             if (!r.ok) {
               const j = await r.json().catch(() => null);
@@ -354,7 +710,10 @@ function DMShareOverlay({
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-        onClick={(e) => { e.stopPropagation(); onClose(); }}
+        onClick={(e) => {
+          e.stopPropagation();
+          onClose();
+        }}
         onMouseDown={(e) => e.stopPropagation()}
       />
       {/* Panel */}
@@ -376,8 +735,14 @@ function DMShareOverlay({
         </div>
 
         <div className="mt-2 overflow-y-auto" style={{ maxHeight: '50vh' }}>
-          {loading && <div className="px-3 py-6 text-sm text-white/70">{tPost('share.loadingChats')}</div>}
-          {!loading && error && <div className="px-3 py-3 text-sm text-red-400">{error}</div>}
+          {loading && (
+            <div className="px-3 py-6 text-sm text-white/70">
+              {tPost('share.loadingChats')}
+            </div>
+          )}
+          {!loading && error && (
+            <div className="px-3 py-3 text-sm text-red-400">{error}</div>
+          )}
 
           {!loading && !error && filtered.length === 0 && (
             <div className="px-3 py-6 text-sm text-white/70">{tPost('share.empty')}</div>
@@ -408,13 +773,22 @@ function DMShareOverlay({
                     </div>
                     <span
                       className={`grid place-items-center rounded-full border ${
-                        checked ? 'bg-[var(--purple)] border-[var(--purple)]' : 'border-white/25'
+                        checked
+                          ? 'bg-[var(--purple)] border-[var(--purple)]'
+                          : 'border-white/25'
                       }`}
                       style={{ width: 22, height: 22 }}
                       aria-hidden
                     >
                       {checked ? (
-                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="white" strokeWidth="3">
+                        <svg
+                          viewBox="0 0 24 24"
+                          width="16"
+                          height="16"
+                          fill="none"
+                          stroke="white"
+                          strokeWidth="3"
+                        >
                           <path d="M5 12.5 10 17l9-10" />
                         </svg>
                       ) : null}
@@ -440,7 +814,10 @@ function DMShareOverlay({
         <div className="px-3 pb-2 pt-3 flex items-center justify-end gap-2">
           <button
             type="button"
-            onClick={(e) => { e.stopPropagation(); onClose(); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onClose();
+            }}
             className="px-3 py-2 rounded-lg border border-white/15 hover:bg-white/10"
             disabled={sending}
           >
@@ -448,7 +825,10 @@ function DMShareOverlay({
           </button>
           <button
             type="button"
-            onClick={(e) => { e.stopPropagation(); void send(); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              void send();
+            }}
             disabled={sending || selected.size === 0}
             className="px-4 py-2 rounded-lg bg-[var(--purple)] text-white hover:opacity-95 disabled:opacity-50"
           >
@@ -470,12 +850,21 @@ export default function PostCard({
   const params = useParams() as { locale: string; handle?: string };
   const { locale, handle } = params;
 
+  const [lightboxOpen, setLightboxOpen] = React.useState(false);
+  const [lightboxIndex, setLightboxIndex] = React.useState(0);
+  const openLightbox = (start: number) => { setLightboxIndex(start); setLightboxOpen(true); };
+
   const t = useTranslations('common');       // Root (common.json)
   const tPost = useTranslations('common.post');
-  const tTime = useTranslations('common');    // time.* liegen im Root
+  const tTime = useTranslations('common');   // time.* liegen im Root
 
   const c = post.content;
-  const uiRole = c.author.role === 'DOMME' ? 'domme' : c.author.role === 'SUBMISSIVE' ? 'submissive' : undefined;
+  const uiRole =
+    c.author.role === 'DOMME'
+      ? 'domme'
+      : c.author.role === 'SUBMISSIVE'
+      ? 'submissive'
+      : undefined;
 
   // STATE
   const [likes, setLikes] = React.useState<number>(post.stats?.likes ?? 0);
@@ -542,7 +931,9 @@ export default function PostCard({
     }
   }, [pinnedPostId, c.id]);
 
-  const onProfileOfAuthor = typeof handle === 'string' && handle.toLowerCase() === c.author.handle.toLowerCase();
+  const onProfileOfAuthor =
+    typeof handle === 'string' &&
+    handle.toLowerCase() === c.author.handle.toLowerCase();
 
   /* ---------- Actions ---------- */
 
@@ -571,8 +962,17 @@ export default function PostCard({
           aria-disabled={disabled || undefined}
           title={blockedByEither ? tPost('interactionBlocked') : undefined}
         >
-          <span className="inline-grid place-items-center" style={{ width: 'clamp(18px,1.8vw,26px)', height: 'clamp(18px,1.8vw,26px)' }} aria-hidden>
-            <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full" style={{ color: liked ? 'var(--purple)' : 'rgba(255,255,255,.95)' }}>
+          <span
+            className="inline-grid place-items-center"
+            style={{ width: 'clamp(18px,1.8vw,26px)', height: 'clamp(18px,1.8vw,26px)' }}
+            aria-hidden
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              className="w-full h-full"
+              style={{ color: liked ? 'var(--purple)' : 'rgba(255,255,255,.95)' }}
+            >
               <path d="M20.8 8.8a5.5 5.5 0 0 0-9.4-3.9l-.9.9-.9-.9a5.5 5.5 0 0 0-7.8 7.8l.9.9L10.5 21l8.7-7.4.9-.9a5.5 5.5 0 0 0 0-3.9z" />
             </svg>
           </span>
@@ -599,7 +999,11 @@ export default function PostCard({
         aria-disabled={disabled || undefined}
         title={disabled ? tPost('interactionBlocked') : undefined}
       >
-        <span className="inline-grid place-items-center" style={{ width: 'clamp(18px,1.8vw,26px)', height: 'clamp(18px,1.8vw,26px)' }} aria-hidden>
+        <span
+          className="inline-grid place-items-center"
+          style={{ width: 'clamp(18px,1.8vw,26px)', height: 'clamp(18px,1.8vw,26px)' }}
+          aria-hidden
+        >
           <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full" style={{ color: 'rgba(255,255,255,.95)' }}>
             <path d="M4 7a5 5 0 0 1 5-5h6a5 5 0 0 1 5 5v4a5 5 0 0 1-5 5H11l-4 3v-3H9a5 5 0 0 1-5-5V7Z" />
           </svg>
@@ -623,7 +1027,11 @@ export default function PostCard({
           aria-disabled={disabled || undefined}
           title={disabled ? tPost('interactionBlocked') : undefined}
         >
-          <span className="inline-grid place-items-center" style={{ width: 'clamp(18px,1.8vw,26px)', height: 'clamp(18px,1.8vw,26px)' }} aria-hidden>
+          <span
+            className="inline-grid place-items-center"
+            style={{ width: 'clamp(18px,1.8vw,26px)', height: 'clamp(18px,1.8vw,26px)' }}
+            aria-hidden
+          >
             <RepostBadgeIcon />
           </span>
           <Counter value={reposts} />
@@ -677,7 +1085,9 @@ export default function PostCard({
   }
 
   async function copyPostText() {
-    try { await navigator.clipboard.writeText(c.text ?? ''); } catch {}
+    try {
+      await navigator.clipboard.writeText(c.text ?? '');
+    } catch {}
   }
 
   function ShareButton() {
@@ -781,14 +1191,24 @@ export default function PostCard({
 
     return (
       <div className="relative" data-no-nav onClick={(e) => e.stopPropagation()}>
-        <button type="button" aria-label={tPost('more')} className="rounded p-1.5 hover:bg-white/5" onClick={() => setMoreOpen((v) => !v)}>
+        <button
+          type="button"
+          aria-label={tPost('more')}
+          className="rounded p-1.5 hover:bg-white/5"
+          onClick={() => setMoreOpen((v) => !v)}
+        >
           <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth={2}>
-            <circle cx="5" cy="12" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="19" cy="12" r="1.6" />
+            <circle cx="5" cy="12" r="1.6" />
+            <circle cx="12" cy="12" r="1.6" />
+            <circle cx="19" cy="12" r="1.6" />
           </svg>
         </button>
 
         {moreOpen && (
-          <div className="absolute right-0 z-30 mt-2 w-64 rounded-xl border border-white/10 bg-black/85 backdrop-blur shadow-lg p-1" role="menu">
+          <div
+            className="absolute right-0 z-30 mt-2 w-64 rounded-xl border border-white/10 bg-black/85 backdrop-blur shadow-lg p-1"
+            role="menu"
+          >
             {showPinControls && (
               <>
                 {!isPinned ? (
@@ -831,27 +1251,48 @@ export default function PostCard({
             <button
               type="button"
               className="flex w-full items-center justify-between px-3 py-2 rounded hover:bg-white/10"
-              onClick={() => { copyPostText(); setMoreOpen(false); }}
+              onClick={() => {
+                copyPostText();
+                setMoreOpen(false);
+              }}
             >
               <span>{tPost('copyText')}</span>
             </button>
 
             {!hasBlockedAuthor ? (
-              <form action={blockUserAction} onSubmit={() => { setHasBlockedAuthor(true); setMoreOpen(false); }}>
+              <form
+                action={blockUserAction}
+                onSubmit={() => {
+                  setHasBlockedAuthor(true);
+                  setMoreOpen(false);
+                }}
+              >
                 <input type="hidden" name="blockedHandle" value={c.author.handle} />
-                <button className="w-full text-left px-3 py-2 rounded hover:bg-white/10">{tPost('block')}</button>
+                <button className="w-full text-left px-3 py-2 rounded hover:bg-white/10">
+                  {tPost('block')}
+                </button>
               </form>
             ) : (
-              <form action={unblockUserAction} onSubmit={() => { setHasBlockedAuthor(false); setMoreOpen(false); }}>
+              <form
+                action={unblockUserAction}
+                onSubmit={() => {
+                  setHasBlockedAuthor(false);
+                  setMoreOpen(false);
+                }}
+              >
                 <input type="hidden" name="blockedHandle" value={c.author.handle} />
-                <button className="w-full text-left px-3 py-2 rounded hover:bg-white/10">{tPost('unblock')}</button>
+                <button className="w-full text-left px-3 py-2 rounded hover:bg-white/10">
+                  {tPost('unblock')}
+                </button>
               </form>
             )}
 
             <form action={reportPostAction} onSubmit={() => setMoreOpen(false)}>
               <input type="hidden" name="postId" value={c.id} />
               <input type="hidden" name="reason" value="OTHER" />
-              <button className="w-full text-left px-3 py-2 rounded hover:bg-white/10 text-red-300">{tPost('report')}</button>
+              <button className="w-full text-left px-3 py-2 rounded hover:bg-white/10 text-red-300">
+                {tPost('report')}
+              </button>
             </form>
           </div>
         )}
@@ -862,7 +1303,14 @@ export default function PostCard({
   const RoleBadge = ({ role }: { role?: 'domme' | 'submissive' }) => {
     if (!role) return null;
     return (
-      <span className="mt-1 text-[11px] leading-none px-2 py-1 rounded-full" style={{ color: 'var(--purple)', background: 'rgba(139,92,246,.15)', border: '1px solid rgba(139,92,246,.25)' }}>
+      <span
+        className="mt-1 text-[11px] leading-none px-2 py-1 rounded-full"
+        style={{
+          color: 'var(--purple)',
+          background: 'rgba(139,92,246,.15)',
+          border: '1px solid rgba(139,92,246,.25)',
+        }}
+      >
         {tPost(`role.${role}`)}
       </span>
     );
@@ -871,6 +1319,7 @@ export default function PostCard({
   function QuoteBox() {
     if (!c.quote) return null;
     const q = c.quote;
+    const qMedia = normalizeMediaFields(q);
 
     const goQuote = (e: React.MouseEvent | React.KeyboardEvent) => {
       e.stopPropagation();
@@ -900,10 +1349,7 @@ export default function PostCard({
           <div className="min-w-0 flex-1">
             <div className="text-sm flex items-center gap-2">
               <span data-no-nav>
-                <ProfileLink
-                  handle={q.author.handle}
-                  className="font-semibold truncate hover:underline"
-                >
+                <ProfileLink handle={q.author.handle} className="font-semibold truncate hover:underline">
                   {q.author.displayName}
                 </ProfileLink>
               </span>
@@ -911,12 +1357,23 @@ export default function PostCard({
               <span className="opacity-50">· {timeAgoShort(q.createdAt, tTime)}</span>
             </div>
             <div className="mt-1 text-[0.95rem] whitespace-pre-wrap break-words">{q.text}</div>
-            {q.mediaUrl && <MediaView url={q.mediaUrl} alt={q.mediaAlt ?? ''} />}
+
+            {/* Quote-Medien */}
+            {qMedia.length === 1 && <SingleMedia m={qMedia[0]} />}
+            {qMedia.length > 1 && (
+              <>
+                <MediaMosaic items={qMedia} />
+                <MediaMosaicOverflow items={qMedia} />
+                <MediaCarousel items={qMedia} />
+              </>
+            )}
           </div>
         </div>
       </div>
     );
   }
+
+  const mediaItems = normalizeMediaFields(c);
 
   return (
     <article
@@ -943,7 +1400,9 @@ export default function PostCard({
 
       {post.reposter && (
         <div className="mb-1 -mt-1 flex items-center gap-2 text-[12px] text-white/70">
-          <span className="inline-grid place-items-center w-4 h-4"><RepostBadgeIcon /></span>
+          <span className="inline-grid place-items-center w-4 h-4">
+            <RepostBadgeIcon />
+          </span>
           <span>{tPost('repostedBy', { name: post.reposter.displayName })}</span>
         </div>
       )}
@@ -956,9 +1415,19 @@ export default function PostCard({
         {/* Avatar + Rolle */}
         <div className="shrink-0 flex flex-col items-center w-[3.2em]">
           <div data-no-nav onClick={(e) => e.stopPropagation()}>
-            <ProfileLink handle={c.author.handle} className="block focus:outline-none focus:ring-2 focus:ring-[var(--purple)]/50 rounded-full">
+            <ProfileLink
+              handle={c.author.handle}
+              className="block focus:outline-none focus:ring-2 focus:ring-[var(--purple)]/50 rounded-full"
+            >
               <div className="size-[3.2em] rounded-full overflow-hidden grid place-items-center bg-white/10 relative hover:opacity-90 transition">
-                <Image src={avatarSrc} alt={`${c.author.displayName} avatar`} fill className="object-cover" sizes="3.2em" onError={() => setAvatarSrc(AVATAR_PH)} />
+                <Image
+                  src={avatarSrc}
+                  alt={`${c.author.displayName} avatar`}
+                  fill
+                  className="object-cover"
+                  sizes="3.2em"
+                  onError={() => setAvatarSrc(AVATAR_PH)}
+                />
               </div>
             </ProfileLink>
           </div>
@@ -969,14 +1438,20 @@ export default function PostCard({
         <div className="min-w-0 flex-1">
           <div className="flex items-center flex-wrap">
             <div data-no-nav onClick={(e) => e.stopPropagation()}>
-              <ProfileLink handle={c.author.handle} className="font-semibold leading-tight text-[0.95rem] md:text-[1rem] hover:underline">
+              <ProfileLink
+                handle={c.author.handle}
+                className="font-semibold leading-tight text-[0.95rem] md:text-[1rem] hover:underline"
+              >
                 {c.author.displayName}
               </ProfileLink>
             </div>
 
             <span aria-hidden style={{ display: 'inline-block', width: 8 }} />
             <div data-no-nav onClick={(e) => e.stopPropagation()}>
-              <ProfileLink handle={c.author.handle} className="text-muted truncate text-xs md:text-[11px] hover:underline">
+              <ProfileLink
+                handle={c.author.handle}
+                className="text-muted truncate text-xs md:text-[11px] hover:underline"
+              >
                 @{c.author.handle}
               </ProfileLink>
             </div>
@@ -992,8 +1467,14 @@ export default function PostCard({
               blockedByAuthor={!!initialBlockedByAuthor}
               tPost={tPost}
             />
-            <span className="text-muted mx-2 text-xs md:text-[13px]" aria-hidden>·</span>
-            <time className="text-muted whitespace-nowrap text-xs md:text-[13px]" dateTime={c.createdAt} title={c.createdAt}>
+            <span className="text-muted mx-2 text-xs md:text-[13px]" aria-hidden>
+              ·
+            </span>
+            <time
+              className="text-muted whitespace-nowrap text-xs md:text-[13px]"
+              dateTime={c.createdAt}
+              title={c.createdAt}
+            >
               {timeAgoShort(c.createdAt, tTime)}
             </time>
           </div>
@@ -1002,7 +1483,15 @@ export default function PostCard({
             <RichText text={c.text} locale={locale} validateMentions />
           </div>
 
-          {c.mediaUrl && <MediaView url={c.mediaUrl} alt={c.mediaAlt ?? ''} priority />}
+          {/* Medien */}
+          {mediaItems.length === 1 && <SingleMedia m={mediaItems[0]} priority onOpen={openLightbox} index={0} />}
+          {mediaItems.length > 1 && (
+            <>
+              <MediaMosaic items={mediaItems} onOpen={openLightbox} />
+              <MediaMosaicOverflow items={mediaItems} onOpen={openLightbox} />
+              <MediaCarousel items={mediaItems} onOpen={openLightbox} />
+            </>
+          )}
 
           <QuoteBox />
 
@@ -1047,10 +1536,23 @@ export default function PostCard({
             id: c.id,
             text: c.text,
             createdAt: c.createdAt,
-            author: { displayName: c.author.displayName, handle: c.author.handle, avatarUrl: c.author.avatarUrl ?? undefined },
-            mediaUrl: c.mediaUrl ?? undefined,
-            mediaAlt: c.mediaAlt ?? undefined,
+            author: {
+              displayName: c.author.displayName,
+              handle: c.author.handle,
+              avatarUrl: c.author.avatarUrl ?? undefined,
+            },
+            // fürs Quote-Overlay nehmen wir das erste Medium als Preview (falls vorhanden)
+            mediaUrl: mediaItems[0]?.url,
+            mediaAlt: mediaItems[0]?.alt,
           }}
+        />
+      )}
+
+      {lightboxOpen && (
+        <MediaLightbox
+          items={mediaItems}
+          startIndex={lightboxIndex}
+          onClose={() => setLightboxOpen(false)}
         />
       )}
 

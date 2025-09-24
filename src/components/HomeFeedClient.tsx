@@ -1,3 +1,4 @@
+// src/components/HomeFeedClient.tsx
 'use client';
 
 import * as React from 'react';
@@ -9,11 +10,13 @@ type Props = {
 };
 
 // Shape, das /api/feed liefert
+type ApiMedia = { url: string; alt?: string | null; kind: 'image' | 'video' | 'gif'; mime?: string | null };
 type ApiPost = {
   id: string;
   text: string | null;
-  mediaUrl: string | null;
-  mediaAlt: string | null;
+  mediaUrl: string | null;      // legacy
+  mediaAlt: string | null;      // legacy
+  uploaded?: ApiMedia[];        // neu
   createdAt: string;
   _count: { Like: number; Comment: number; reposts: number };
   author: {
@@ -23,7 +26,9 @@ type ApiPost = {
   };
   repostOf: null | {
     id: string; text: string;
-    mediaUrl: string | null; mediaAlt: string | null; createdAt: string;
+    mediaUrl: string | null; mediaAlt: string | null;
+    uploaded?: ApiMedia[];      // neu
+    createdAt: string;
     author: {
       id: string; handle: string; displayName: string;
       role: 'DOMME' | 'SUBMISSIVE' | null;
@@ -32,7 +37,9 @@ type ApiPost = {
   };
   quoteOf: null | {
     id: string; text: string;
-    mediaUrl: string | null; mediaAlt: string | null; createdAt: string;
+    mediaUrl: string | null; mediaAlt: string | null;
+    uploaded?: ApiMedia[];      // neu
+    createdAt: string;
     author: {
       id: string; handle: string; displayName: string;
       role: 'DOMME' | 'SUBMISSIVE' | null;
@@ -45,7 +52,6 @@ type ApiPost = {
     hasBlockedAuthor: boolean;
     blockedByAuthor: boolean;
   };
-  // ← NEU
   community?: { name: string; slug: string } | null;
 };
 
@@ -58,6 +64,7 @@ function mapApiPost(p: ApiPost): FeedPost {
         text: p.repostOf!.text,
         mediaUrl: p.repostOf!.mediaUrl,
         mediaAlt: p.repostOf!.mediaAlt,
+        uploaded: p.repostOf!.uploaded ?? [],
         createdAt: p.repostOf!.createdAt,
         author: {
           id: p.repostOf!.author.id,
@@ -66,7 +73,6 @@ function mapApiPost(p: ApiPost): FeedPost {
           role: p.repostOf!.author.role,
           avatarUrl: p.repostOf!.author.avatarUrl,
         },
-        // bei Repost gibt es kein content.quote
         quote: null,
       }
     : {
@@ -74,6 +80,7 @@ function mapApiPost(p: ApiPost): FeedPost {
         text: p.text ?? '',
         mediaUrl: p.mediaUrl,
         mediaAlt: p.mediaAlt,
+        uploaded: p.uploaded ?? [],
         createdAt: p.createdAt,
         author: {
           id: p.author.id,
@@ -82,13 +89,13 @@ function mapApiPost(p: ApiPost): FeedPost {
           role: p.author.role,
           avatarUrl: p.author.avatarUrl,
         },
-        // Quote-Box (optional)
         quote: p.quoteOf
           ? {
               id: p.quoteOf.id,
               text: p.quoteOf.text,
               mediaUrl: p.quoteOf.mediaUrl,
               mediaAlt: p.quoteOf.mediaAlt,
+              uploaded: p.quoteOf.uploaded ?? [],
               createdAt: p.quoteOf.createdAt,
               author: {
                 id: p.quoteOf.author.id,
@@ -105,7 +112,9 @@ function mapApiPost(p: ApiPost): FeedPost {
     id: p.id,
     createdAtISO: p.createdAt,
     content,
-    reposter: isRepost ? { id: p.author.id, handle: p.author.handle, displayName: p.author.displayName } : null,
+    reposter: isRepost
+      ? { id: p.author.id, handle: p.author.handle, displayName: p.author.displayName }
+      : null,
     stats: {
       comments: p._count.Comment ?? 0,
       reposts: p._count.reposts ?? 0,
@@ -113,7 +122,6 @@ function mapApiPost(p: ApiPost): FeedPost {
     },
     viewer: p.viewer,
     initiallyBookmarked: p.viewer.bookmarked,
-    // ← NEU
     community: p.community ?? null,
   };
 }
@@ -126,7 +134,6 @@ export default function HomeFeedClient({ initialItems }: Props) {
 
   const topSentinelRef = React.useRef<HTMLDivElement | null>(null);
 
-  // Headerhöhe + Button-Position
   const [headerHeight, setHeaderHeight] = React.useState(64);
   const [buttonTop, setButtonTop] = React.useState(12);
 
@@ -191,13 +198,8 @@ export default function HomeFeedClient({ initialItems }: Props) {
     };
   }, [latestISO]);
 
-  // Wenn oben & neue vorhanden → automatisch laden
-  React.useEffect(() => {
-    if (atTop && newCount > 0 && !loadingNew) void loadNewPosts();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [atTop, newCount]);
-
-  async function loadNewPosts() {
+  // Neue Posts laden – als useCallback, damit der Effekt unten eine stabile Referenz hat
+  const loadNewPosts = React.useCallback(async () => {
     setLoadingNew(true);
     try {
       const res = await fetch(`/api/feed?since=${encodeURIComponent(latestISO)}`, { cache: 'no-store' });
@@ -211,7 +213,12 @@ export default function HomeFeedClient({ initialItems }: Props) {
     } finally {
       setLoadingNew(false);
     }
-  }
+  }, [latestISO]);
+
+  // Wenn oben & neue vorhanden → automatisch laden
+  React.useEffect(() => {
+    if (atTop && newCount > 0 && !loadingNew) void loadNewPosts();
+  }, [atTop, newCount, loadingNew, loadNewPosts]);
 
   function handleClickNew() {
     window.scrollTo({ top: 0, behavior: 'smooth' });

@@ -17,6 +17,18 @@ function canSeeCommunity(policy: JoinPolicy, viewerRole: Role, isMember: boolean
   return false;
 }
 
+/** UploadedMedia -> UI-Shape (mit korrekt getypter kind-Union) */
+function mapUploaded(
+  rows: Array<{ url: string; alt: string | null; type: string | null }> | null | undefined
+): Array<{ url: string; alt: string | null; kind: 'image' | 'video' | 'gif'; mime: string | null }> {
+  return (rows ?? []).map((u) => {
+    const mime = u.type ?? null;
+    const kind: 'image' | 'video' | 'gif' =
+      mime === 'image/gif' ? 'gif' : mime && mime.startsWith('video/') ? 'video' : 'image';
+    return { url: u.url, alt: u.alt ?? null, kind, mime };
+  });
+}
+
 export default async function HomePage({ params }: { params: Promise<Params> }) {
   await params; // locale wird hier nicht benötigt
 
@@ -42,14 +54,16 @@ export default async function HomePage({ params }: { params: Promise<Params> }) 
             avatarUrl: true,
           },
         },
+        uploaded: true, // Multi-Media am Hauptpost
         repostOf: {
           select: {
             id: true,
             text: true,
-            mediaUrl: true,
-            mediaAlt: true,
+            mediaUrl: true,   // legacy
+            mediaAlt: true,   // legacy
+            uploaded: true,   // Multi-Media beim Original des Reposts
             createdAt: true,
-            communityId: true, // ← wichtig für Community-Badge bei Reposts
+            communityId: true, // für Community-Badge bei Reposts
             author: {
               select: {
                 id: true,
@@ -66,8 +80,9 @@ export default async function HomePage({ params }: { params: Promise<Params> }) 
           select: {
             id: true,
             text: true,
-            mediaUrl: true,
-            mediaAlt: true,
+            mediaUrl: true,   // legacy
+            mediaAlt: true,   // legacy
+            uploaded: true,   // Multi-Media in Quotes
             createdAt: true,
             author: {
               select: {
@@ -160,8 +175,9 @@ export default async function HomePage({ params }: { params: Promise<Params> }) 
       ? {
           id: p.repostOf!.id,
           text: p.repostOf!.text ?? '',
-          mediaUrl: p.repostOf!.mediaUrl,
-          mediaAlt: p.repostOf!.mediaAlt,
+          mediaUrl: p.repostOf!.mediaUrl,           // legacy
+          mediaAlt: p.repostOf!.mediaAlt,           // legacy
+          uploaded: mapUploaded(p.repostOf!.uploaded), // multi
           createdAt: p.repostOf!.createdAt.toISOString(),
           author: {
             id: p.repostOf!.author.id,
@@ -175,8 +191,9 @@ export default async function HomePage({ params }: { params: Promise<Params> }) 
       : {
           id: p.id,
           text: p.text ?? '',
-          mediaUrl: p.mediaUrl,
-          mediaAlt: p.mediaAlt,
+          mediaUrl: p.mediaUrl,                     // legacy
+          mediaAlt: p.mediaAlt,                     // legacy
+          uploaded: mapUploaded(p.uploaded),        // multi
           createdAt: p.createdAt.toISOString(),
           author: {
             id: p.author.id,
@@ -189,8 +206,9 @@ export default async function HomePage({ params }: { params: Promise<Params> }) 
             ? {
                 id: p.quoteOf!.id,
                 text: p.quoteOf!.text ?? '',
-                mediaUrl: p.quoteOf!.mediaUrl,
-                mediaAlt: p.quoteOf!.mediaAlt,
+                mediaUrl: p.quoteOf!.mediaUrl,            // legacy
+                mediaAlt: p.quoteOf!.mediaAlt,            // legacy
+                uploaded: mapUploaded(p.quoteOf!.uploaded), // multi
                 createdAt: p.quoteOf!.createdAt.toISOString(),
                 author: {
                   id: p.quoteOf!.author.id,
@@ -204,7 +222,7 @@ export default async function HomePage({ params }: { params: Promise<Params> }) 
         };
 
     const statSource = isRepost ? p.repostOf! : p;
-    const viewerTargetId = isRepost ? p.repostOf!.id : p.id;
+    const likeRefId = isRepost ? p.repostOf!.id : p.id; // Likes zählen auf Original bei Repost
     const cid = effectiveCommunityId(p);
     const community = cid ? commById.get(cid) ?? null : null;
 
@@ -219,12 +237,12 @@ export default async function HomePage({ params }: { params: Promise<Params> }) 
         likes: statSource._count.Like ?? 0,
       },
       viewer: {
-        liked: likedSet.has(viewerTargetId),
-        bookmarked: bookmarkedSet.has(viewerTargetId),
+        liked: likedSet.has(likeRefId),
+        bookmarked: bookmarkedSet.has(p.id), // Bookmark bezieht sich auf den sichtbaren Post
         hasBlockedAuthor: me ? hasBlockedSet.has(p.author.id) : false,
         blockedByAuthor: me ? blockedBySet.has(p.author.id) : false,
       },
-      initiallyBookmarked: bookmarkedSet.has(viewerTargetId),
+      initiallyBookmarked: bookmarkedSet.has(p.id),
       community: community ? { name: community.name, slug: community.slug } : null,
     } satisfies FeedPost;
   });

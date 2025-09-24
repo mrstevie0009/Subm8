@@ -1,4 +1,4 @@
-// src/components/ComposePostModal.tsx
+/* eslint-disable @next/next/no-img-element -- native <img> ist für lokale Blob-Previews in BlobImg nötig */
 'use client';
 
 import * as React from 'react';
@@ -9,10 +9,10 @@ import MentionSuggest from '@/components/MentionSuggest';
 import { useTranslations } from 'next-intl';
 
 type Props = { open: boolean; onClose: () => void };
-type MediaKind = 'image' | 'video' | null;
+type MediaKind = 'image' | 'video';
 
 /* ---------------- GIF Picker (Tenor) ---------------- */
-const TENOR_KEY = process.env.NEXT_PUBLIC_TENOR_API_KEY ?? 'LIVDSRZULELA'; // Demo-Key; produktiv via ENV ersetzen
+const TENOR_KEY = process.env.NEXT_PUBLIC_TENOR_API_KEY ?? 'LIVDSRZULELA';
 const TENOR_BASE = 'https://g.tenor.com/v1';
 
 type TenorMedia = {
@@ -45,35 +45,38 @@ function GifPickerModal({
     return m?.gif?.url || m?.mediumgif?.url || m?.tinygif?.url || m?.nanogif?.url || null;
   };
 
-  const run = React.useCallback(async (query?: string) => {
-    setErr(null);
-    setLoading(true);
-    try {
-      const endpoint =
-        query && query.trim()
-          ? `${TENOR_BASE}/search?q=${encodeURIComponent(query)}&key=${TENOR_KEY}&limit=24&media_filter=minimal`
-          : `${TENOR_BASE}/trending?key=${TENOR_KEY}&limit=24&media_filter=minimal`;
+  const run = React.useCallback(
+    async (query?: string) => {
+      setErr(null);
+      setLoading(true);
+      try {
+        const endpoint =
+          query && query.trim()
+            ? `${TENOR_BASE}/search?q=${encodeURIComponent(query)}&key=${TENOR_KEY}&limit=24&media_filter=minimal`
+            : `${TENOR_BASE}/trending?key=${TENOR_KEY}&limit=24&media_filter=minimal`;
 
-      const r = await fetch(endpoint);
-      const j = (await r.json()) as TenorResp;
-      const list =
-        (j.results ?? [])
-          .map((it) => {
-            const url = pickUrlFromItem(it);
-            return url ? { id: it.id ?? crypto.randomUUID(), url } : null;
-          })
-          .filter(Boolean) as { id: string; url: string }[];
+        const r = await fetch(endpoint);
+        const j = (await r.json()) as TenorResp;
+        const list =
+          (j.results ?? [])
+            .map((it) => {
+              const url = pickUrlFromItem(it);
+              return url ? { id: it.id ?? crypto.randomUUID(), url } : null;
+            })
+            .filter(Boolean) as { id: string; url: string }[];
 
-      setItems(list);
-    } catch {
-      setErr(t('states.loadError'));
-    } finally {
-      setLoading(false);
-    }
-  }, [t]);
+        setItems(list);
+      } catch {
+        setErr(t('states.loadError'));
+      } finally {
+        setLoading(false);
+      }
+    },
+    [t],
+  );
 
   React.useEffect(() => {
-    if (open) run();
+    if (open) void run();
   }, [open, run]);
 
   if (!open) return null;
@@ -87,14 +90,14 @@ function GifPickerModal({
             value={q}
             onChange={(e) => setQ(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') run(q);
+              if (e.key === 'Enter') void run(q);
             }}
             placeholder={t('fields.searchPlaceholder')}
             className="flex-1 h-10 rounded-xl bg-white/[.06] border border-white/10 px-3 outline-none"
           />
           <button
             type="button"
-            onClick={() => run(q)}
+            onClick={() => void run(q)}
             className="h-10 px-4 rounded-xl bg-[var(--purple)] text-white hover:opacity-95"
           >
             {t('actions.search')}
@@ -122,8 +125,16 @@ function GifPickerModal({
                   onClick={() => onPick(it.url)}
                   title={t('actions.pick')}
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={it.url} alt="" loading="lazy" decoding="async" className="block w-full h-44 object-cover" />
+                  <Image
+                    src={it.url}
+                    alt=""
+                    unoptimized
+                    width={480}
+                    height={176}
+                    className="block w-full h-44 object-cover"
+                    sizes="(max-width: 768px) 50vw, 25vw"
+                    style={{ imageOrientation: 'from-image' } as React.CSSProperties}
+                  />
                   <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity" />
                 </button>
               ))}
@@ -137,6 +148,67 @@ function GifPickerModal({
 }
 
 /* ---------------------- Compose Modal ---------------------- */
+type LocalMedia = {
+  id: string;
+  file: File;
+  preview: string;
+  kind: MediaKind;
+};
+
+/** Typ-Helfer für `imageOrientation` ohne `any` */
+type CSSWithImageOrientation = React.CSSProperties & { imageOrientation?: 'from-image' | 'none' };
+
+/** Robustes `<img>` für lokale Blob-Previews (mit Fallback) */
+function BlobImg({
+  src,
+  alt = '',
+  className,
+  style,
+  onErrorPlaceholder,
+}: {
+  src: string;
+  alt?: string;
+  className?: string;
+  style?: CSSWithImageOrientation;
+  onErrorPlaceholder?: React.ReactNode;
+}) {
+  const [err, setErr] = React.useState(false);
+  if (err) {
+    return (
+      <div className="grid place-items-center w-full h-full bg-black/40 text-white/70 text-xs">
+        {onErrorPlaceholder ?? 'Vorschau nicht verfügbar'}
+      </div>
+    );
+  }
+  return (
+    <img
+      src={src}
+      alt={alt}
+      loading="eager"
+      decoding="async"
+      onError={() => setErr(true)}
+      className={className}
+      style={{ imageOrientation: 'from-image', ...(style ?? {}) }}
+      draggable={false}
+    />
+  );
+}
+
+/** kleines Badge, wenn HEIC/HEIF erkannt wird */
+function HeicBadge() {
+  return (
+    <span className="absolute left-2 top-2 text-[10px] px-1.5 py-0.5 rounded bg-black/70 border border-white/20">
+      HEIC
+    </span>
+  );
+}
+
+function isHeicLike(file: File | undefined) {
+  const name = file?.name?.toLowerCase() ?? '';
+  const type = file?.type?.toLowerCase() ?? '';
+  return name.endsWith('.heic') || name.endsWith('.heif') || type.includes('heic') || type.includes('heif');
+}
+
 export default function ComposePostModal({ open, onClose }: Props) {
   const t = useTranslations('common.compose');
 
@@ -149,32 +221,38 @@ export default function ComposePostModal({ open, onClose }: Props) {
   const textareaRef = React.useRef<HTMLTextAreaElement | HTMLInputElement>(null);
   const anchorRef = React.useRef<HTMLElement | null>(null);
 
-  // File + Preview
-  const [mediaFile, setMediaFile] = React.useState<File | null>(null);
-  const [mediaPreview, setMediaPreview] = React.useState<string | null>(null);
-  const [mediaKind, setMediaKind] = React.useState<MediaKind>(null);
+  // NEU: mehrere Medien
+  const [media, setMedia] = React.useState<LocalMedia[]>([]);
 
   React.useEffect(() => {
+    // Kein revoke hier nötig: wir räumen beim Entfernen einzelner Medien auf.
+    // (Optional: beim Unmount alle bekannten Blob-URLs löschen)
     return () => {
-      if (mediaPreview?.startsWith('blob:')) URL.revokeObjectURL(mediaPreview);
+      // noop
     };
-  }, [mediaPreview]);
+  }, []);
 
-  const onPickMedia = (file?: File | null) => {
-    if (!file) return;
-    if (mediaPreview?.startsWith('blob:')) URL.revokeObjectURL(mediaPreview);
-    const url = URL.createObjectURL(file);
-    const kind: MediaKind = file.type?.startsWith('video') ? 'video' : 'image';
-    setMediaFile(file);
-    setMediaPreview(url);
-    setMediaKind(kind);
+  const onPickMedia = (files?: FileList | null, input?: HTMLInputElement | null) => {
+    if (!files || files.length === 0) return;
+    const list = Array.from(files);
+    setMedia((prev) => {
+      const next = [...prev];
+      for (const f of list) {
+        const kind: MediaKind = f.type?.startsWith('video') ? 'video' : 'image';
+        const preview = URL.createObjectURL(f);
+        next.push({ id: crypto.randomUUID(), file: f, preview, kind });
+      }
+      return next;
+    });
+    if (input) input.value = '';
   };
 
-  const clearMedia = () => {
-    if (mediaPreview?.startsWith('blob:')) URL.revokeObjectURL(mediaPreview);
-    setMediaFile(null);
-    setMediaPreview(null);
-    setMediaKind(null);
+  const removeMedia = (id: string) => {
+    setMedia((prev) => {
+      const m = prev.find((x) => x.id === id);
+      if (m?.preview?.startsWith('blob:')) URL.revokeObjectURL(m.preview);
+      return prev.filter((x) => x.id !== id);
+    });
   };
 
   // GIF handling
@@ -184,17 +262,13 @@ export default function ComposePostModal({ open, onClose }: Props) {
   async function pickGifByUrl(url: string) {
     try {
       setGifErr(null);
-      if (mediaPreview?.startsWith('blob:')) URL.revokeObjectURL(mediaPreview);
-
       const r = await fetch(url, { mode: 'cors' });
       const blob = await r.blob();
       const type = blob.type || 'image/gif';
       const file = new File([blob], `gif_${Date.now()}.gif`, { type });
 
       const local = URL.createObjectURL(blob);
-      setMediaFile(file);
-      setMediaPreview(local);
-      setMediaKind('image'); // GIF behandeln wie Bild
+      setMedia((prev) => [...prev, { id: crypto.randomUUID(), file, preview: local, kind: 'image' }]);
       setGifOpen(false);
     } catch {
       setGifErr(t('states.gifLoadError'));
@@ -231,7 +305,178 @@ export default function ComposePostModal({ open, onClose }: Props) {
     border: '1px solid rgba(255,255,255,0.10)',
     borderRadius: 20,
     overflow: 'hidden',
+    // NEU: Höhe begrenzen und Spaltenlayout
+    maxHeight: '90vh',
+    display: 'flex',
+    flexDirection: 'column',
   };
+
+  const hasAnyMedia = media.length > 0;
+
+  const submitAction = async (fd: FormData) => {
+    for (const m of media) {
+      fd.append('media', m.file);
+    }
+    // ts-expect-error — Client Action, React übergibt FormData
+    await createPost(fd);
+    onClose();
+  };
+
+  const RemoveBtn = ({ id, small = false }: { id: string; small?: boolean }) => (
+    <button
+      type="button"
+      onClick={() => removeMedia(id)}
+      className={`absolute top-2 right-2 rounded-md bg-black/70 border border-white/20 hover:bg-black/80 ${
+        small ? 'px-1.5 py-0.5 text-[12px]' : 'px-2 py-1 text-[13px]'
+      }`}
+      title={t('actions.removeImage')}
+    >
+      {t('actions.removeImage')}
+    </button>
+  );
+
+  const Mosaic = () => {
+    const imgs = media.filter((m) => m.kind === 'image');
+    const onlyImages = imgs.length === media.length;
+    if (!onlyImages || media.length === 0) return null;
+    if (media.length > 4) return null;
+
+    if (media.length === 1) {
+      const m = media[0];
+      return (
+        <figure className="relative overflow-hidden rounded-xl border border-white/10 bg-black/20">
+          <BlobImg
+            src={m.preview}
+            alt=""
+            className="block mx-auto max-w-full h-auto object-contain max-h-[48vh] sm:max-h-[60vh]"
+          />
+          {isHeicLike(m.file) && <HeicBadge />}
+          <RemoveBtn id={m.id} />
+        </figure>
+      );
+    }
+
+    if (media.length === 2) {
+      return (
+        <div className="grid grid-cols-2 gap-1 rounded-xl overflow-hidden border border-white/10">
+          {media.map((m) => (
+            <div key={m.id} className="relative bg-black/20 h-72">
+              <BlobImg src={m.preview} alt="" className="w-full h-full object-cover" />
+              {isHeicLike(m.file) && <HeicBadge />}
+              <RemoveBtn id={m.id} small />
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    if (media.length === 3) {
+      const [a, b, c] = media;
+      return (
+        <div className="grid grid-cols-2 gap-1 rounded-xl overflow-hidden border border-white/10">
+          <div className="relative col-span-1 row-span-2 bg-black/20 min-h-[40vh]">
+            <BlobImg src={a.preview} alt="" className="w-full h-full object-cover" />
+            {isHeicLike(a.file) && <HeicBadge />}
+            <RemoveBtn id={a.id} small />
+          </div>
+          <div className="relative bg-black/20 h-36">
+            <BlobImg src={b.preview} alt="" className="w-full h-full object-cover" />
+            {isHeicLike(b.file) && <HeicBadge />}
+            <RemoveBtn id={b.id} small />
+          </div>
+          <div className="relative bg-black/20 h-36">
+            <BlobImg src={c.preview} alt="" className="w-full h-full object-cover" />
+            {isHeicLike(c.file) && <HeicBadge />}
+            <RemoveBtn id={c.id} small />
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="grid grid-cols-2 gap-1 rounded-xl overflow-hidden border border-white/10">
+        {media.map((m) => (
+          <div key={m.id} className="relative bg-black/20 h-48">
+            <BlobImg src={m.preview} alt="" className="w-full h-full object-cover" />
+            {isHeicLike(m.file) && <HeicBadge />}
+            <RemoveBtn id={m.id} small />
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  const Carousel = () => {
+    const useCarousel = media.some((m) => m.kind === 'video') || media.length > 4;
+    if (!useCarousel) return null;
+
+    return (
+      <figure className="mt-1 overflow-hidden rounded-xl border border-white/10 bg-black/20" data-no-nav>
+        <div className="relative">
+          <div className="flex overflow-x-auto snap-x snap-mandatory scroll-px-4 gap-1 p-1" style={{ scrollBehavior: 'smooth' }}>
+            {media.map((m, idx) => (
+              <div key={m.id} className="relative shrink-0 snap-center w-full">
+                {m.kind === 'video' ? (
+                  <video
+                    src={m.preview}
+                    className="block w-full h-auto object-contain max-h-[48vh] sm:max-h-[60vh] bg-black"
+                    controls
+                    playsInline
+                    muted
+                  />
+                ) : (
+                  <BlobImg src={m.preview} alt="" className="block w-full h-auto object-contain max-h-[48vh] sm:max-h-[60vh]" />
+                )}
+                {isHeicLike(m.file) && <HeicBadge />}
+                <RemoveBtn id={m.id} />
+                <div className="absolute left-2 bottom-2 rounded-full bg-black/60 text-xs px-2 py-1">
+                  {idx + 1}/{media.length}
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="flex gap-1 px-1 pb-1 overflow-x-auto">
+            {media.map((m) => (
+              <div key={m.id} className="relative size-12 rounded-md overflow-hidden border border-white/15 bg-white/5">
+                {m.kind === 'video' ? (
+                  <div className="grid place-items-center w-full h-full text-white/80 text-[10px]">VID</div>
+                ) : (
+                  <BlobImg src={m.preview} alt="" className="w-full h-full object-cover" />
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </figure>
+    );
+  };
+
+  const TooManyOverlayMosaic = () => {
+    const onlyImages = media.every((m) => m.kind === 'image');
+    if (!onlyImages || media.length <= 4) return null;
+
+    const firstFour = media.slice(0, 4);
+    const rest = media.length - 4;
+
+    return (
+      <div className="grid grid-cols-2 gap-1 rounded-xl overflow-hidden border border-white/10">
+        {firstFour.map((m, i) => (
+          <div key={m.id} className="relative bg-black/20 h-48">
+            <BlobImg src={m.preview} alt="" className="w-full h-full object-cover" />
+            {i === 3 && rest > 0 && (
+              <div className="absolute inset-0 bg-black/60 grid place-items-center text-white text-xl font-semibold">
+                +{rest}
+              </div>
+            )}
+            {isHeicLike(m.file) && <HeicBadge />}
+            <RemoveBtn id={m.id} small />
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  const showGridMosaic = media.length > 0 && media.length <= 4 && media.every((m) => m.kind === 'image');
 
   const modal = (
     <div
@@ -244,6 +489,7 @@ export default function ComposePostModal({ open, onClose }: Props) {
       aria-label={t('aria.modalLabel')}
     >
       <div style={panelStyle} onMouseDown={(e) => e.stopPropagation()}>
+        {/* Header bleibt oben */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
           <div className="text-[18px] font-semibold">{t('header.newPost')}</div>
           <button type="button" onClick={onClose} className="px-3 py-1.5 rounded-lg hover:bg-white/5">
@@ -251,15 +497,14 @@ export default function ComposePostModal({ open, onClose }: Props) {
           </button>
         </div>
 
+        {/* Form als Column-Layout, Body scrollt */}
         <form
           // ts-expect-error — Client Action, React übergibt FormData
-          action={async (fd: FormData) => {
-            if (mediaFile) fd.set('media', mediaFile);
-            await createPost(fd);
-            onClose();
-          }}
+          action={submitAction}
+          className="flex min-h-0 flex-col"
         >
-          <div className="px-4 pt-4 pb-3 grid gap-3">
+          {/* BODY (scrollbar) */}
+          <div className="px-4 pt-4 pb-3 grid gap-3 flex-1 min-h-0 overflow-y-auto">
             {/* Anchor für MentionSuggest */}
             <div ref={anchorRef as React.RefObject<HTMLDivElement>} className="relative">
               <textarea
@@ -272,75 +517,33 @@ export default function ComposePostModal({ open, onClose }: Props) {
                 value={text}
                 onChange={(e) => setText(e.target.value)}
               />
-              <MentionSuggest
-                anchorRef={anchorRef as React.RefObject<HTMLElement>}
-                value={text}
-                onChange={setText}
-                limit={8}
-              />
+              <MentionSuggest anchorRef={anchorRef as React.RefObject<HTMLElement>} value={text} onChange={setText} limit={8} />
             </div>
 
-            {/* IMAGE PREVIEW (inkl. GIF) */}
-            {mediaPreview && mediaKind === 'image' && (
-              <figure className="relative overflow-hidden rounded-xl border border-white/10 bg-black/20">
-                <Image
-                  src={mediaPreview}
-                  alt=""
-                  width={1200}
-                  height={800}
-                  unoptimized
-                  sizes="100vw"
-                  className="block mx-auto max-w-full h-auto object-contain
-                            max-h-[48vh] sm:max-h-[60vh]"
-                />
-                <button
-                  type="button"
-                  onClick={clearMedia}
-                  className="absolute top-2 right-2 px-2 py-1 rounded-md bg-black/70 border border-white/20 hover:bg-black/80 text-[13px]"
-                  title={t('actions.removeImage')}
-                >
-                  {t('actions.removeImage')}
-                </button>
-              </figure>
+            {/* PREVIEWS */}
+            {hasAnyMedia && (
+              <>
+                {showGridMosaic ? <Mosaic /> : null}
+                {!showGridMosaic && media.every((m) => m.kind === 'image') && media.length > 4 ? <TooManyOverlayMosaic /> : null}
+                {!showGridMosaic && (media.some((m) => m.kind === 'video') || media.length > 4) ? <Carousel /> : null}
+              </>
             )}
+          </div>
 
-            {/* VIDEO PREVIEW */}
-            {mediaPreview && mediaKind === 'video' && (
-              <figure className="relative overflow-hidden rounded-xl border border-white/10 bg-black">
-                <video
-                  src={mediaPreview}
-                  className="block w-full h-auto object-contain max-h-[48vh] sm:max-h-[60vh]"
-                  controls
-                  playsInline
-                  muted
-                />
-                <button
-                  type="button"
-                  onClick={clearMedia}
-                  className="absolute top-2 right-2 px-2 py-1 rounded-md bg-black/70 border border-white/20 hover:bg-black/80 text-[13px]"
-                  title={t('actions.removeVideo')}
-                >
-                  {t('actions.removeVideo')}
-                </button>
-              </figure>
-            )}
-
+          {/* FOOTER bleibt sichtbar (Body scrollt) */}
+          <div className="px-4 py-3 border-t border-white/10 bg-[#0b0b0b]">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                {/* Media-Picker (Bild ODER Video) — Optik vereinheitlicht */}
+                {/* Medienauswahl */}
                 <label className="inline-flex items-center gap-2.5 px-3 py-1.5 rounded-lg border border-white/12 hover:bg-white/[.06] cursor-pointer">
                   <input
                     type="file"
                     accept="image/*,video/*"
+                    multiple
                     className="sr-only"
-                    onChange={(e) => onPickMedia(e.currentTarget.files?.[0] ?? null)}
+                    onChange={(e) => onPickMedia(e.currentTarget.files, e.currentTarget)}
                   />
-                  <span
-                    className="inline-grid place-items-center"
-                    style={{ width: 28, height: 28, color: 'var(--purple)' }}
-                    aria-hidden
-                  >
-                    {/* Bild/Video-Icon etwas größer */}
+                  <span className="inline-grid place-items-center" style={{ width: 28, height: 28, color: 'var(--purple)' }} aria-hidden>
                     <svg viewBox="0 0 24 24" width={22} height={22} fill="none" stroke="currentColor" strokeWidth="2">
                       <rect x="3.5" y="5.5" width="17" height="13" rx="2.2" />
                       <path d="M7.5 14.5 10.5 11l3 3 2.5-2.5 3 3" />
@@ -350,7 +553,7 @@ export default function ComposePostModal({ open, onClose }: Props) {
                   <span className="text-sm text-white/80">{t('fields.mediaLabel')}</span>
                 </label>
 
-                {/* GIF Button – gleiche Größe/Look, lila Icon */}
+                {/* GIF Button */}
                 <button
                   type="button"
                   onClick={() => setGifOpen(true)}
@@ -358,14 +561,9 @@ export default function ComposePostModal({ open, onClose }: Props) {
                   title={t('titles.gifSearch')}
                   aria-label={t('titles.gifSearch')}
                 >
-                  <span
-                    className="inline-grid place-items-center"
-                    style={{ width: 28, height: 28, color: 'var(--purple)' }}
-                    aria-hidden
-                  >
+                  <span className="inline-grid place-items-center" style={{ width: 28, height: 28, color: 'var(--purple)' }} aria-hidden>
                     <GifIcon size={22} />
                   </span>
-                  {/* optionaler Label-Text (klein), wirkt konsistent mit „Media“ */}
                   <span className="text-sm text-white/80">{t('fields.gifLabel')}</span>
                 </button>
               </div>
@@ -373,18 +571,17 @@ export default function ComposePostModal({ open, onClose }: Props) {
               <button
                 type="submit"
                 className="px-4 py-1.5 rounded-full bg-[var(--purple)] hover:opacity-95 text-white disabled:opacity-50"
-                disabled={text.trim().length === 0 && !mediaFile}
+                disabled={text.trim().length === 0 && media.length === 0}
               >
                 {t('actions.post')}
               </button>
             </div>
 
-            {gifErr && <div className="text-xs text-red-300">{gifErr}</div>}
+            {gifErr && <div className="text-xs text-red-300 mt-2">{gifErr}</div>}
           </div>
         </form>
       </div>
 
-      {/* GIF Picker Modal */}
       <GifPickerModal open={gifOpen} onClose={() => setGifOpen(false)} onPick={(url) => void pickGifByUrl(url)} />
     </div>
   );
@@ -394,19 +591,10 @@ export default function ComposePostModal({ open, onClose }: Props) {
 
 /* --------- Icon --------- */
 function GifIcon({ size = 28 }: { size?: number }) {
-  // quadratischer Badge mit „GIF“ – skaliert sauber, Farbe via currentColor (== var(--purple) im Wrapper)
   return (
     <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden>
       <rect x="1.75" y="1.75" width="20.5" height="20.5" rx="5" fill="none" stroke="currentColor" strokeWidth="2" />
-      <text
-        x="12"
-        y="15.6"
-        textAnchor="middle"
-        fontFamily="ui-sans-serif,system-ui"
-        fontWeight="700"
-        fontSize="11.5"
-        fill="currentColor"
-      >
+      <text x="12" y="15.6" textAnchor="middle" fontFamily="ui-sans-serif,system-ui" fontWeight="700" fontSize="11.5" fill="currentColor">
         GIF
       </text>
     </svg>

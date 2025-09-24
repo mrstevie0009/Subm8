@@ -455,42 +455,31 @@ export default function ChatComposer({
     resetPreview();
   }
 
-  /* --------- GIF: Modal + Preview + Versand --------- */
+  /* --------- GIF & Media: jetzt MULTI --------- */
   const [gifOpen, setGifOpen] = React.useState(false);
-  const [gifPreviewUrl, setGifPreviewUrl] = React.useState<string | null>(null);
-  const gifFileRef = React.useRef<File | null>(null);
+  const [gifPreviews, setGifPreviews] = React.useState<{ url: string; file: File }[]>([]);
   const [gifErr, setGifErr] = React.useState<string | null>(null);
 
-  // Medien-Vorschau (Bild/Video)
-  const [mediaPreview, setMediaPreview] = React.useState<{ url: string; file: File } | null>(null);
+  const [mediaPreviews, setMediaPreviews] = React.useState<{ url: string; file: File }[]>([]);
 
-  const resetMediaPreview = React.useCallback(() => {
-    if (mediaPreview?.url && mediaPreview.url.startsWith('blob:')) {
-      URL.revokeObjectURL(mediaPreview.url);
-    }
-    setMediaPreview(null);
-  }, [mediaPreview]);
+  const revoke = (u?: string) => { if (u && u.startsWith('blob:')) URL.revokeObjectURL(u); };
 
-  const resetGifPreview = React.useCallback(() => {
-    if (gifPreviewUrl?.startsWith('blob:')) URL.revokeObjectURL(gifPreviewUrl);
-    setGifPreviewUrl(null);
-    gifFileRef.current = null;
-    setGifErr(null);
-  }, [gifPreviewUrl]);
+  const clearAllPreviews = React.useCallback(() => {
+    mediaPreviews.forEach(p => revoke(p.url));
+    gifPreviews.forEach(p => revoke(p.url));
+    setMediaPreviews([]);
+    setGifPreviews([]);
+  }, [mediaPreviews, gifPreviews]);
 
   async function pickGifByUrl(url: string) {
     try {
       setGifErr(null);
-      resetMediaPreview();
-      resetPreview();
-
       const r = await fetch(url, { mode: 'cors' });
       const blob = await r.blob();
       const type = blob.type || 'image/gif';
       const file = new File([blob], `gif_${Date.now()}.gif`, { type });
-      gifFileRef.current = file;
       const local = URL.createObjectURL(blob);
-      setGifPreviewUrl(local);
+      setGifPreviews((arr) => [...arr, { url: local, file }]);
       setGifOpen(false);
       startTyping();
     } catch {
@@ -502,33 +491,31 @@ export default function ChatComposer({
     if (disabled) return;
     const tMsg = text.trim();
 
-    // 1) Bild/Video
-    if (mediaPreview && onUpload) {
-      await onUpload(mediaPreview.file, tMsg || undefined);
-      resetMediaPreview();
+    // Dateien senden (erst Medien, dann GIFs) – Caption nur bei der ersten Datei
+    if ((mediaPreviews.length > 0 || gifPreviews.length > 0) && onUpload) {
+      const all = [...mediaPreviews, ...gifPreviews];
+      for (let i = 0; i < all.length; i++) {
+        const { file } = all[i];
+        const cap = i === 0 ? (tMsg || undefined) : undefined;
+        // @eslint-disable-next-line no-await-in-loop
+        await onUpload(file, cap);
+      }
+      clearAllPreviews();
       setText('');
       stopTyping();
       requestAnimationFrame(() => autosize());
       return;
     }
 
-    // 2) GIF
-    if (gifFileRef.current && onUpload) {
-      await onUpload(gifFileRef.current, tMsg || undefined);
-      resetGifPreview();
-      setText('');
-      stopTyping();
-      requestAnimationFrame(() => autosize());
-      return;
-    }
-
-    // 3) Text
+    // reiner Text
     if (!tMsg) return;
     onSend(tMsg);
     setText('');
     stopTyping();
     requestAnimationFrame(() => autosize());
-  }, [disabled, text, onUpload, onSend, autosize, stopTyping, mediaPreview, resetMediaPreview, resetGifPreview]);
+  }, [disabled, text, onUpload, onSend, autosize, stopTyping, mediaPreviews, gifPreviews, clearAllPreviews]);
+
+  const hasAnyAttach = mediaPreviews.length > 0 || gifPreviews.length > 0;
 
   return (
     <div
@@ -562,48 +549,57 @@ export default function ChatComposer({
       )}
 
       <div className="rounded-3xl border border-white/10 bg-white/[.06] shadow-[0_2px_16px_rgba(0,0,0,.25)] px-3 py-2">
-        {/* GIF-Preview */}
-        {gifPreviewUrl && (
-          <div className="mb-2 flex items-center gap-3 pl-2">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={gifPreviewUrl} alt="" className="h-16 w-16 rounded-lg object-cover border border-white/10" />
-            <button
-              type="button"
-              onClick={() => { resetGifPreview(); if (!text.trim()) stopTyping(); }}
-              className="ml-auto h-8 px-3 rounded-lg border border-white/15 hover:bg-white/10"
-            >
-              {t('actions.remove')}
-            </button>
-          </div>
-        )}
-
-        {/* Medien-Vorschau */}
-        {mediaPreview && (
-          <div className="mb-2 flex items-center gap-3 pl-2">
-            {mediaPreview.file.type.startsWith('video/') ? (
-              <video
-                src={mediaPreview.url}
-                className="h-24 w-24 rounded-lg border border-white/10 object-cover bg-black"
-                controls
-                playsInline
-                preload="metadata"
-              />
-            ) : (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={mediaPreview.url}
-                alt=""
-                className="h-24 w-24 rounded-lg border border-white/10 object-cover"
-              />
-            )}
-
-            <button
-              type="button"
-              onClick={() => { resetMediaPreview(); if (!text.trim()) stopTyping(); }}
-              className="ml-auto h-8 px-3 rounded-lg border border-white/15 hover:bg-white/10"
-            >
-              {t('actions.remove')}
-            </button>
+        {/* VORSCHAUEN: Medien & GIFs als Grid */}
+        {(mediaPreviews.length > 0 || gifPreviews.length > 0) && (
+          <div className="mb-2 pl-2">
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
+              {[...mediaPreviews, ...gifPreviews].map(({ url, file }, idx) => {
+                const isVideo = file.type.startsWith('video/');
+                return (
+                  <div key={url} className="relative">
+                    {isVideo ? (
+                      <video
+                        src={url}
+                        className="h-24 w-full rounded-lg border border-white/10 object-cover bg-black"
+                        controls
+                        playsInline
+                        preload="metadata"
+                      />
+                    ) : (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={url} alt="" className="h-24 w-full rounded-lg border border-white/10 object-cover" />
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (idx < mediaPreviews.length) {
+                          const i = idx;
+                          setMediaPreviews((arr) => {
+                            const next = [...arr];
+                            revoke(next[i]?.url);
+                            next.splice(i, 1);
+                            return next;
+                          });
+                        } else {
+                          const i = idx - mediaPreviews.length;
+                          setGifPreviews((arr) => {
+                            const next = [...arr];
+                            revoke(next[i]?.url);
+                            next.splice(i, 1);
+                            return next;
+                          });
+                        }
+                        if (!text.trim() && (mediaPreviews.length + gifPreviews.length - 1) === 0) stopTyping();
+                      }}
+                      className="absolute -right-2 -top-2 h-7 w-7 grid place-items-center rounded-full bg-black/70 border border-white/20 hover:bg-black/85"
+                      title={t('actions.remove')}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
 
@@ -619,18 +615,18 @@ export default function ChatComposer({
                 const v = e.target.value;
                 setText(v);
                 autosize();
-                if (v.trim() || gifFileRef.current || mediaPreview) startTyping(); else stopTyping();
+                if (v.trim() || hasAnyAttach) startTyping(); else stopTyping();
               }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
                   void submit();
                 } else {
-                  if (text.trim() || gifFileRef.current || mediaPreview) startTyping();
+                  if (text.trim() || hasAnyAttach) startTyping();
                 }
               }}
               onBlur={() => {
-                if (!gifFileRef.current && !mediaPreview && !text.trim()) stopTyping();
+                if (!hasAnyAttach && !text.trim()) stopTyping();
               }}
               placeholder={disabled ? t('placeholders.closed') : t('placeholders.message')}
               className="w-full resize-none bg-transparent outline-none placeholder:text-muted
@@ -639,7 +635,7 @@ export default function ChatComposer({
             />
 
             <div className="mt-2 flex items-center gap-8 pl-2">
-              {/* Media picker */}
+              {/* Media picker (MULTI) */}
               <label
                 className={`${circle} border border-white/12 bg-transparent hover:bg-white/10 cursor-pointer`}
                 style={{ width: toolSize, height: toolSize }}
@@ -650,14 +646,15 @@ export default function ChatComposer({
                   type="file"
                   className="hidden"
                   accept="image/*,video/*"
+                  multiple
                   disabled={disabled}
                   onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) {
-                      if (gifFileRef.current) resetGifPreview();
-                      if (mediaPreview?.url?.startsWith('blob:')) URL.revokeObjectURL(mediaPreview.url);
-                      const local = URL.createObjectURL(f);
-                      setMediaPreview({ url: local, file: f });
+                    const files = Array.from(e.target.files || []);
+                    if (files.length) {
+                      setMediaPreviews((arr) => [
+                        ...arr,
+                        ...files.map((f) => ({ url: URL.createObjectURL(f), file: f })),
+                      ]);
                       startTyping();
                     }
                     e.currentTarget.value = '';
@@ -773,7 +770,7 @@ export default function ChatComposer({
           <button
             type="button"
             onClick={() => void submit()}
-            disabled={(!text.trim() && !gifFileRef.current && !mediaPreview) || disabled}
+            disabled={(!text.trim() && !hasAnyAttach) || disabled}
             className={`${circle} bg-[var(--purple)] text-white hover:opacity-95 disabled:opacity-50`}
             style={{ width: sendSize, height: sendSize }}
             aria-label={t('actions.sendMessageAria')}

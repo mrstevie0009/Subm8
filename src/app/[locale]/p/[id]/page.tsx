@@ -1,8 +1,21 @@
+// src/app/[locale]/p/[id]/page.tsx  (oder dein aktueller Pfad)
 import { prisma } from '@/lib/prisma';
 import { notFound } from 'next/navigation';
 import PostCard, { type FeedPost } from '@/components/PostCard';
 import PostDetailHeader from '@/components/PostDetailHeader';
 import CommentsThread from '@/components/comments/CommentsThread';
+
+/** Prisma UploadedMedia -> PostCard.ContentMedia */
+function mapUploaded(
+  rows: Array<{ url: string; alt: string | null; type: string | null }> | null | undefined
+) {
+  return (rows ?? []).map((u) => {
+    const mime = u.type ?? null;
+    const kind: 'image' | 'video' | 'gif' =
+      mime === 'image/gif' ? 'gif' : mime?.startsWith('video/') ? 'video' : 'image';
+    return { url: u.url, alt: u.alt ?? null, kind };
+  });
+}
 
 type Params = { locale: string; id: string };
 
@@ -12,12 +25,11 @@ export default async function PostDetailPage({ params }: { params: Promise<Param
   const p = await prisma.post.findUnique({
     where: { id },
     include: {
-      Community: {
-        select: { name: true, slug: true }
-      },
+      Community: { select: { name: true, slug: true } },
       author: {
-        select: { id: true, handle: true, displayName: true, role: true, avatarUrl: true }
+        select: { id: true, handle: true, displayName: true, role: true, avatarUrl: true },
       },
+      uploaded: true, // <— alle Medien des Hauptposts
       repostOf: {
         select: {
           id: true,
@@ -25,11 +37,12 @@ export default async function PostDetailPage({ params }: { params: Promise<Param
           mediaUrl: true,
           mediaAlt: true,
           createdAt: true,
+          uploaded: true, // <— alle Medien des Originals (bei Repost)
           author: {
-            select: { id: true, handle: true, displayName: true, role: true, avatarUrl: true }
+            select: { id: true, handle: true, displayName: true, role: true, avatarUrl: true },
           },
-          _count: { select: { Like: true, Comment: true, reposts: true } }
-        }
+          _count: { select: { Like: true, Comment: true, reposts: true } },
+        },
       },
       quoteOf: {
         select: {
@@ -38,13 +51,14 @@ export default async function PostDetailPage({ params }: { params: Promise<Param
           mediaUrl: true,
           mediaAlt: true,
           createdAt: true,
+          uploaded: true, // <— alle Medien der Quote
           author: {
-            select: { id: true, handle: true, displayName: true, role: true, avatarUrl: true }
-          }
-        }
+            select: { id: true, handle: true, displayName: true, role: true, avatarUrl: true },
+          },
+        },
       },
-      _count: { select: { Like: true, Comment: true, reposts: true } }
-    }
+      _count: { select: { Like: true, Comment: true, reposts: true } },
+    },
   });
 
   if (!p) notFound();
@@ -55,47 +69,50 @@ export default async function PostDetailPage({ params }: { params: Promise<Param
     ? {
         id: p.repostOf!.id,
         text: p.repostOf!.text ?? '',
-        mediaUrl: p.repostOf!.mediaUrl,
-        mediaAlt: p.repostOf!.mediaAlt,
+        mediaUrl: p.repostOf!.mediaUrl, // legacy
+        mediaAlt: p.repostOf!.mediaAlt, // legacy
+        uploaded: mapUploaded(p.repostOf!.uploaded), // ✅ alle Medien
         createdAt: p.repostOf!.createdAt.toISOString(),
         author: {
           id: p.repostOf!.author.id,
           handle: p.repostOf!.author.handle,
           displayName: p.repostOf!.author.displayName,
           role: p.repostOf!.author.role,
-          avatarUrl: p.repostOf!.author.avatarUrl
+          avatarUrl: p.repostOf!.author.avatarUrl,
         },
-        quote: null
+        quote: null,
       }
     : {
         id: p.id,
         text: p.text ?? '',
-        mediaUrl: p.mediaUrl,
-        mediaAlt: p.mediaAlt,
+        mediaUrl: p.mediaUrl, // legacy
+        mediaAlt: p.mediaAlt, // legacy
+        uploaded: mapUploaded(p.uploaded), // ✅ alle Medien
         createdAt: p.createdAt.toISOString(),
         author: {
           id: p.author.id,
           handle: p.author.handle,
           displayName: p.author.displayName,
           role: p.author.role,
-          avatarUrl: p.author.avatarUrl
+          avatarUrl: p.author.avatarUrl,
         },
         quote: p.quoteOf
           ? {
               id: p.quoteOf.id,
               text: p.quoteOf.text ?? '',
-              mediaUrl: p.quoteOf.mediaUrl,
-              mediaAlt: p.quoteOf.mediaAlt,
+              mediaUrl: p.quoteOf.mediaUrl, // legacy
+              mediaAlt: p.quoteOf.mediaAlt, // legacy
+              uploaded: mapUploaded(p.quoteOf.uploaded), // ✅ alle Medien der Quote
               createdAt: p.quoteOf.createdAt.toISOString(),
               author: {
                 id: p.quoteOf.author.id,
                 handle: p.quoteOf.author.handle,
                 displayName: p.quoteOf.author.displayName,
                 role: p.quoteOf.author.role,
-                avatarUrl: p.quoteOf.author.avatarUrl
-              }
+                avatarUrl: p.quoteOf.author.avatarUrl,
+              },
             }
-          : null
+          : null,
       };
 
   const statSource = isRepost ? p.repostOf! : p;
@@ -110,16 +127,16 @@ export default async function PostDetailPage({ params }: { params: Promise<Param
     stats: {
       comments: statSource._count.Comment ?? 0,
       reposts: statSource._count.reposts ?? 0,
-      likes: statSource._count.Like ?? 0
+      likes: statSource._count.Like ?? 0,
     },
     viewer: {
       liked: false,
       bookmarked: false,
       hasBlockedAuthor: false,
-      blockedByAuthor: false
+      blockedByAuthor: false,
     },
     initiallyBookmarked: false,
-    community: p.Community ? { name: p.Community.name, slug: p.Community.slug } : null
+    community: p.Community ? { name: p.Community.name, slug: p.Community.slug } : null,
   };
 
   return (

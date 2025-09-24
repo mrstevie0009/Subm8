@@ -203,6 +203,18 @@ model Bookmark {
   @@unique([userId, postId])
 }
 
+model UploadedMedia {
+  id        String   @id @default(cuid())
+  postId    String
+  url       String
+  alt       String?
+  type      String?   // "image/png", "video/mp4" usw.
+  createdAt DateTime  @default(now())
+  Post      Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@index([postId])
+}
+
 model Post {
   id          String     @id @default(cuid())
   authorId    String
@@ -225,6 +237,8 @@ model Post {
   quotes      Post[]     @relation("QuoteOf")
   repostOf    Post?      @relation("RepostOf", fields: [repostOfId], references: [id])
   reposts     Post[]     @relation("RepostOf")
+
+  uploaded    UploadedMedia[]
 
   // Gegenfeld zur "UserPinnedPost"-Relation
   pinnedBy    User?      @relation("UserPinnedPost")
