@@ -4,6 +4,140 @@
     "brand": { "name": "Subm8" },
     "time": { "now": "jetzt", "m": "{count}m", "h": "{count}h", "d": "{count}d" },
 
+    "compose": {
+    "aria": { "modalLabel": "Beitrag verfassen" },
+    "header": { "newPost": "Neuer Beitrag" },
+    "fields": {
+      "textPlaceholder": "Was gibt’s Neues?",
+      "mediaLabel": "Medien",
+      "gifLabel": "GIF"
+    },
+    "titles": { "gifSearch": "GIFs suchen" },
+    "actions": {
+      "close": "Schließen",
+      "post": "Posten",
+      "removeImage": "Bild entfernen",
+      "removeVideo": "Video entfernen"
+    },
+    "states": {
+      "gifLoadError": "GIF konnte nicht geladen werden."
+    }
+  },
+  "gifPicker": {
+    "fields": { "searchPlaceholder": "Nach GIFs suchen…" },
+    "actions": { "search": "Suchen", "close": "Schließen", "pick": "Auswählen" },
+    "states": { "loading": "Lade GIFs…", "loadError": "Konnte GIFs nicht laden." }
+  },
+
+    "offerViewer": {
+    "actions": {
+      "close": "Schließen"
+    },
+    "states": {
+      "loading": "Lade…",
+      "loadError": "Laden fehlgeschlagen."
+    },
+    "placeholders": {
+      "noTitle": "Kein Titel",
+      "noContent": "Kein Inhalt."
+    },
+    "aria": {
+      "modalLabel": "Angebot"
+    }
+  },
+
+    "editTabs": {
+    "tabs": {
+      "general": "Allgemein",
+      "ownership": "Ownership"
+    }
+  },
+  "ownershipTab": {
+    "header": {
+      "title": "Ownership-Profil",
+      "clearTitle": "Lokales Ownership-Profil löschen"
+    },
+    "actions": {
+      "reset": "Zurücksetzen",
+      "save": "Speichern",
+      "saving": "Speichere…",
+      "changeBanner": "Banner ändern",
+      "addAvatar": "Avatar hinzufügen"
+    },
+    "placeholders": {
+      "banner": "Ownership-Banner",
+      "avatar": "Avatar",
+      "bio": "Diese Bio wird bei akzeptierten Ownerships übernommen…"
+    },
+    "labels": {
+      "savedAt": "Gespeichert {ts}",
+      "bio": "Ownership-Bio",
+      "counter": "{n}/{max}"
+    },
+    "errors": {
+      "tooLarge": "Datei zu groß (max. 4 MB für lokale Vorschau).",
+      "readFile": "Datei konnte nicht gelesen werden.",
+      "readBanner": "Banner konnte nicht gelesen werden.",
+      "readAvatar": "Avatar konnte nicht gelesen werden.",
+      "save": "Konnte nicht speichern."
+    }
+  },
+
+    "editProfileForm": {
+    "header": { "title": "Profil bearbeiten" },
+    "actions": {
+      "save": "Speichern",
+      "changeBanner": "Banner ändern",
+      "changeAvatar": "Avatar ändern",
+      "editOfferMenu": "Offer-Menü bearbeiten"
+    },
+    "media": {
+      "bannerAlt": "Banner",
+      "avatarAlt": "Avatar"
+    },
+    "fields": {
+      "name": "Name",
+      "username": "Benutzername",
+      "bio": "Bio",
+      "location": "Ort",
+      "website": "Webseite / Link",
+      "role": "Rolle"
+    },
+    "roles": {
+      "domme": "Domme",
+      "submissive": "Submissive"
+    },
+    "placeholders": {
+      "website": "z. B. https://example.com"
+    },
+    "hints": {
+      "usernamePattern": "3–20 Zeichen, a–z, 0–9, _",
+      "maxChars": "Max. {count} Zeichen",
+      "roleFixed": "Rolle ist festgelegt"
+    }
+  },
+  "offerEditor": {
+    "controls": {
+      "font": "Schriftart",
+      "color": "Farbe",
+      "textColor": "Textfarbe",
+      "hex": "Hex",
+      "dim": "Abdunkeln"
+    },
+    "placeholders": {
+      "title": "Titel…",
+      "text": "Text…"
+    },
+    "actions": {
+      "addBg": "Hintergrund hinzufügen",
+      "changeBg": "Hintergrund ändern",
+      "remove": "Entfernen",
+      "cancel": "Abbrechen",
+      "save": "Speichern",
+      "saving": "Speichere…"
+    }
+  },
+
     "ownershipRequestAcceptModal": {
     "header": {
       "title": "Ownership-Anfrage akzeptieren"

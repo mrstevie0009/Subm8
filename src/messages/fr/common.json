@@ -4,6 +4,140 @@
     "brand": { "name": "Subm8" },
     "time": { "now": "maintenant", "m": "{count}m", "h": "{count}h", "d": "{count}j" },
 
+    "compose": {
+    "aria": { "modalLabel": "Rédiger une publication" },
+    "header": { "newPost": "Nouvelle publication" },
+    "fields": {
+      "textPlaceholder": "Quoi de neuf ?",
+      "mediaLabel": "Média",
+      "gifLabel": "GIF"
+    },
+    "titles": { "gifSearch": "Rechercher des GIFs" },
+    "actions": {
+      "close": "Fermer",
+      "post": "Publier",
+      "removeImage": "Retirer l’image",
+      "removeVideo": "Retirer la vidéo"
+    },
+    "states": {
+      "gifLoadError": "Impossible de charger le GIF."
+    }
+  },
+  "gifPicker": {
+    "fields": { "searchPlaceholder": "Rechercher des GIFs…" },
+    "actions": { "search": "Rechercher", "close": "Fermer", "pick": "Sélectionner" },
+    "states": { "loading": "Chargement des GIFs…", "loadError": "Impossible de charger les GIFs." }
+  },
+
+    "offerViewer": {
+    "actions": {
+      "close": "Fermer"
+    },
+    "states": {
+      "loading": "Chargement…",
+      "loadError": "Échec du chargement."
+    },
+    "placeholders": {
+      "noTitle": "Sans titre",
+      "noContent": "Aucun contenu."
+    },
+    "aria": {
+      "modalLabel": "Offre"
+    }
+  },
+
+    "editTabs": {
+    "tabs": {
+      "general": "Général",
+      "ownership": "Ownership"
+    }
+  },
+  "ownershipTab": {
+    "header": {
+      "title": "Profil d’ownership",
+      "clearTitle": "Effacer le profil d’ownership local"
+    },
+    "actions": {
+      "reset": "Réinitialiser",
+      "save": "Enregistrer",
+      "saving": "Enregistrement…",
+      "changeBanner": "Changer la bannière",
+      "addAvatar": "Ajouter un avatar"
+    },
+    "placeholders": {
+      "banner": "Bannière d’ownership",
+      "avatar": "Avatar",
+      "bio": "Cette bio sera appliquée aux ownerships acceptés…"
+    },
+    "labels": {
+      "savedAt": "Enregistré {ts}",
+      "bio": "Bio d’ownership",
+      "counter": "{n}/{max}"
+    },
+    "errors": {
+      "tooLarge": "Fichier trop volumineux (max 4 Mo pour l’aperçu local).",
+      "readFile": "Impossible de lire le fichier.",
+      "readBanner": "Impossible de lire la bannière.",
+      "readAvatar": "Impossible de lire l’avatar.",
+      "save": "Impossible d’enregistrer."
+    }
+  },
+
+    "editProfileForm": {
+    "header": { "title": "Modifier le profil" },
+    "actions": {
+      "save": "Enregistrer",
+      "changeBanner": "Changer la bannière",
+      "changeAvatar": "Changer l’avatar",
+      "editOfferMenu": "Modifier le menu d’offre"
+    },
+    "media": {
+      "bannerAlt": "Bannière",
+      "avatarAlt": "Avatar"
+    },
+    "fields": {
+      "name": "Nom",
+      "username": "Identifiant",
+      "bio": "Bio",
+      "location": "Lieu",
+      "website": "Site web / Lien",
+      "role": "Rôle"
+    },
+    "roles": {
+      "domme": "Domme",
+      "submissive": "Soumis(e)"
+    },
+    "placeholders": {
+      "website": "p. ex. https://example.com"
+    },
+    "hints": {
+      "usernamePattern": "3–20 caractères, a–z, 0–9, _",
+      "maxChars": "Max. {count} caractères",
+      "roleFixed": "Le rôle est fixe"
+    }
+  },
+  "offerEditor": {
+    "controls": {
+      "font": "Police",
+      "color": "Couleur",
+      "textColor": "Couleur du texte",
+      "hex": "Hexa",
+      "dim": "Assombrir"
+    },
+    "placeholders": {
+      "title": "Titre…",
+      "text": "Texte…"
+    },
+    "actions": {
+      "addBg": "Ajouter un fond",
+      "changeBg": "Changer le fond",
+      "remove": "Supprimer",
+      "cancel": "Annuler",
+      "save": "Enregistrer",
+      "saving": "Enregistrement…"
+    }
+  },
+
     "ownershipRequestAcceptModal": {
     "header": {
       "title": "Accepter la demande d’ownership"

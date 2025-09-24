@@ -2,6 +2,7 @@
 'use client';
 
 import * as React from 'react';
+import { useTranslations } from 'next-intl';
 import type { EditInitial } from '@/components/EditProfileForm';
 
 /** Props vom Server-Page-Loader */
@@ -17,7 +18,7 @@ type Props = {
   handle: string;
   isDomme: boolean;
   initial: EditInitial;
-  action: (data: FormData) => Promise<void>; // <-- ebenfalls Promise<void>
+  action: (data: FormData) => Promise<void>;
   EditFormComponent: React.ComponentType<EditFormProps>;
 };
 
@@ -54,10 +55,10 @@ function clearDraft(userId: string) {
 /* ---------- File -> DataURL ---------- */
 async function fileToDataUrl(file: File): Promise<string> {
   const MAX = 4 * 1024 * 1024; // 4 MB
-  if (file.size > MAX) throw new Error('File too large (max 4 MB for local storage preview).');
+  if (file.size > MAX) throw new Error('err.tooLarge'); // key wird später via t() gemappt
   return new Promise((res, rej) => {
     const r = new FileReader();
-    r.onerror = () => rej(new Error('Failed to read file'));
+    r.onerror = () => rej(new Error('err.readFile'));
     r.onload = () => res(String(r.result));
     r.readAsDataURL(file);
   });
@@ -65,6 +66,8 @@ async function fileToDataUrl(file: File): Promise<string> {
 
 /* ---------- Ownership Tab UI ---------- */
 function OwnershipTab({ userId, handle }: { userId: string; handle: string }) {
+  const t = useTranslations('common.ownershipTab');
+
   const [banner, setBanner] = React.useState<string | undefined>();
   const [avatar, setAvatar] = React.useState<string | undefined>();
   const [bio, setBio] = React.useState('');
@@ -89,7 +92,14 @@ function OwnershipTab({ userId, handle }: { userId: string; handle: string }) {
       const url = await fileToDataUrl(file);
       setBanner(url);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not read banner');
+      const msgKey = e instanceof Error ? e.message : 'err.generic';
+      setError(
+        msgKey === 'err.tooLarge'
+          ? t('errors.tooLarge')
+          : msgKey === 'err.readFile'
+          ? t('errors.readBanner')
+          : t('errors.readBanner')
+      );
     }
   }
   async function onPickAvatar(file?: File | null) {
@@ -99,7 +109,14 @@ function OwnershipTab({ userId, handle }: { userId: string; handle: string }) {
       const url = await fileToDataUrl(file);
       setAvatar(url);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not read avatar');
+      const msgKey = e instanceof Error ? e.message : 'err.generic';
+      setError(
+        msgKey === 'err.tooLarge'
+          ? t('errors.tooLarge')
+          : msgKey === 'err.readFile'
+          ? t('errors.readAvatar')
+          : t('errors.readAvatar')
+      );
     }
   }
 
@@ -114,8 +131,8 @@ function OwnershipTab({ userId, handle }: { userId: string; handle: string }) {
       };
       saveDraft(userId, draft);
       setSavedAt(draft.updatedAt);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not save');
+    } catch {
+      setError(t('errors.save'));
     } finally {
       setSaving(false);
     }
@@ -134,16 +151,16 @@ function OwnershipTab({ userId, handle }: { userId: string; handle: string }) {
     <section className="rounded-app border border-sub overflow-hidden shadow-app relative">
       {/* Header + Save */}
       <div className="flex items-center justify-between px-3 py-3 border-b border-white/10 bg-white/[.02]">
-        <h2 className="text-[18px] font-semibold">Ownership profile</h2>
+        <h2 className="text-[18px] font-semibold">{t('header.title')}</h2>
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={onReset}
             className="px-3 h-9 rounded-full border border-white/25 hover:bg-white/5"
             disabled={saving}
-            title="Clear local ownership profile"
+            title={t('header.clearTitle')}
           >
-            Reset
+            {t('actions.reset')}
           </button>
           <button
             type="button"
@@ -151,7 +168,7 @@ function OwnershipTab({ userId, handle }: { userId: string; handle: string }) {
             disabled={saving}
             className="px-4 h-9 rounded-full bg-[var(--purple)] text-white hover:opacity-95"
           >
-            {saving ? 'Saving…' : 'Save'}
+            {saving ? t('actions.saving') : t('actions.save')}
           </button>
         </div>
       </div>
@@ -163,7 +180,7 @@ function OwnershipTab({ userId, handle }: { userId: string; handle: string }) {
           <img src={banner} alt="" className="w-full h-full object-cover" />
         ) : (
           <div className="absolute inset-0 grid place-items-center text-white/60">
-            <span>Ownership banner</span>
+            <span>{t('placeholders.banner')}</span>
           </div>
         )}
         <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/35 pointer-events-none" />
@@ -172,9 +189,10 @@ function OwnershipTab({ userId, handle }: { userId: string; handle: string }) {
             type="file"
             accept="image/*"
             className="hidden"
+            aria-label={t('actions.changeBanner')}
             onChange={(e) => onPickBanner(e.target.files?.[0] ?? null)}
           />
-          <span>Change banner</span>
+          <span>{t('actions.changeBanner')}</span>
         </label>
       </div>
 
@@ -189,16 +207,19 @@ function OwnershipTab({ userId, handle }: { userId: string; handle: string }) {
               // eslint-disable-next-line @next/next/no-img-element
               <img src={avatar} alt="" className="w-full h-full object-cover" />
             ) : (
-              <div className="w-full h-full grid place-items-center text-white/60">Avatar</div>
+              <div className="w-full h-full grid place-items-center text-white/60">{t('placeholders.avatar')}</div>
             )}
-            <label className="absolute right-0 bottom-0 m-1 inline-flex items-center justify-center w-8 h-8 rounded-full bg-black/65 border border-white/20 cursor-pointer hover:bg-black/75">
+            <label
+              className="absolute right-0 bottom-0 m-1 inline-flex items-center justify-center w-8 h-8 rounded-full bg-black/65 border border-white/20 cursor-pointer hover:bg-black/75"
+              title={t('actions.addAvatar')}
+            >
               <input
                 type="file"
                 accept="image/*"
                 className="hidden"
                 onChange={(e) => onPickAvatar(e.target.files?.[0] ?? null)}
               />
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth={2}>
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden>
                 <path d="M12 5v14M5 12h14" />
               </svg>
             </label>
@@ -207,22 +228,24 @@ function OwnershipTab({ userId, handle }: { userId: string; handle: string }) {
           <div className="mb-2">
             <div className="text-white/70 text-sm">@{handle}</div>
             {savedAt && (
-              <div className="text-white/50 text-[12px]">Saved {new Date(savedAt).toLocaleString()}</div>
+              <div className="text-white/50 text-[12px]">
+                {t('labels.savedAt', { ts: new Date(savedAt).toLocaleString() })}
+              </div>
             )}
           </div>
         </div>
 
         <div className="mt-4">
-          <label className="block text-[12px] text-white/70 mb-1">Ownership Bio</label>
+          <label className="block text-[12px] text-white/70 mb-1">{t('labels.bio')}</label>
           <textarea
             value={bio}
             onChange={(e) => setBio(e.target.value)}
             rows={4}
             maxLength={280}
-            placeholder="This bio will be applied to accepted ownerships…"
+            placeholder={t('placeholders.bio')}
             className="w-full rounded-xl bg-white/[.03] border border-white/10 px-3 py-2 outline-none"
           />
-          <div className="mt-1 text-[12px] text-white/50">{bio.length}/280</div>
+          <div className="mt-1 text-[12px] text-white/50">{t('labels.counter', { n: bio.length, max: 280 })}</div>
         </div>
 
         {error && (
@@ -245,6 +268,7 @@ export default function EditProfileTabs({
   action,
   EditFormComponent,
 }: Props): React.ReactElement {
+  const tTabs = useTranslations('common.editTabs');
   const [tab, setTab] = React.useState<'general' | 'ownership'>('general');
 
   React.useEffect(() => {
@@ -266,7 +290,7 @@ export default function EditProfileTabs({
             }`}
             aria-current={tab === 'general' ? 'page' : undefined}
           >
-            General
+            {tTabs('tabs.general')}
           </button>
 
           {isDomme && (
@@ -280,7 +304,7 @@ export default function EditProfileTabs({
               }`}
               aria-current={tab === 'ownership' ? 'page' : undefined}
             >
-              Ownership
+              {tTabs('tabs.ownership')}
             </button>
           )}
         </div>

@@ -2,6 +2,8 @@
 "use client";
 
 import * as React from "react";
+import { useTranslations } from 'next-intl';
+
 
 type Props = { open: boolean; onClose: () => void; handle: string };
 
@@ -14,6 +16,7 @@ type OfferPayload =
   | { ok: false; error: string };
 
 export default function OfferViewerModal({ open, onClose, handle }: Props) {
+  const t = useTranslations('common.offerViewer');
   const [loading, setLoading] = React.useState(false);
   const [err, setErr] = React.useState<string | null>(null);
   const [data, setData] =
@@ -89,7 +92,7 @@ export default function OfferViewerModal({ open, onClose, handle }: Props) {
       onMouseDown={(e) => e.target === e.currentTarget && onClose()}
       role="dialog"
       aria-modal="true"
-      aria-label="Offer"
+      aria-label={t('aria.modalLabel')}
     >
       <div className="w-full max-w-md rounded-3xl border border-white/12 bg-[#202022] text-white shadow-2xl overflow-hidden">
         {/* Header */}
@@ -105,7 +108,7 @@ export default function OfferViewerModal({ open, onClose, handle }: Props) {
             className="px-4 py-1.5 rounded-full border border-white/15 hover:bg-white/5"
             onClick={onClose}
           >
-            Close
+            {t('actions.close')}
           </button>
         </div>
 
@@ -139,17 +142,17 @@ export default function OfferViewerModal({ open, onClose, handle }: Props) {
 
           {/* Content – scrollt, bleibt aber in fester Box */}
           <div className="relative z-20 h-full overflow-y-auto">
-            {loading && <div className="text-sm opacity-80">Loading…</div>}
+            {loading && <div className="text-sm opacity-80">{t('states.loading')}</div>}
             {!loading && err && (
-              <div className="text-sm text-red-300">{err}</div>
+              <div className="text-sm text-red-300">{t('states.loadError')}</div>
             )}
             {!loading && !err && data && (
               <div className="space-y-2 pr-1">
                 <div className="text-2xl sm:text-3xl font-bold leading-tight tracking-tight">
-                  {data.offer.title || "No title"}
+                  {data.offer.title || t('placeholders.noTitle')}
                 </div>
                 <div className="whitespace-pre-wrap opacity-95 text-[15px] sm:text-base">
-                  {data.offer.text || "No content."}
+                  {data.offer.text || t('placeholders.noContent')}
                 </div>
               </div>
             )}

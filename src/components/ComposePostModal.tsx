@@ -6,6 +6,7 @@ import { createPortal } from 'react-dom';
 import Image from 'next/image';
 import { createPost } from '@/app/actions/posts';
 import MentionSuggest from '@/components/MentionSuggest';
+import { useTranslations } from 'next-intl';
 
 type Props = { open: boolean; onClose: () => void };
 type MediaKind = 'image' | 'video' | null;
@@ -32,6 +33,8 @@ function GifPickerModal({
   onClose: () => void;
   onPick: (gifUrl: string) => void;
 }) {
+  const t = useTranslations('common.gifPicker');
+
   const [q, setQ] = React.useState('');
   const [loading, setLoading] = React.useState(false);
   const [err, setErr] = React.useState<string | null>(null);
@@ -40,7 +43,7 @@ function GifPickerModal({
   const pickUrlFromItem = (it: TenorItem): string | null => {
     const m = it.media?.[0];
     return m?.gif?.url || m?.mediumgif?.url || m?.tinygif?.url || m?.nanogif?.url || null;
-    };
+  };
 
   const run = React.useCallback(async (query?: string) => {
     setErr(null);
@@ -63,11 +66,11 @@ function GifPickerModal({
 
       setItems(list);
     } catch {
-      setErr('Konnte GIFs nicht laden.');
+      setErr(t('states.loadError'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   React.useEffect(() => {
     if (open) run();
@@ -86,7 +89,7 @@ function GifPickerModal({
             onKeyDown={(e) => {
               if (e.key === 'Enter') run(q);
             }}
-            placeholder="Nach GIFs suchen…"
+            placeholder={t('fields.searchPlaceholder')}
             className="flex-1 h-10 rounded-xl bg-white/[.06] border border-white/10 px-3 outline-none"
           />
           <button
@@ -94,21 +97,21 @@ function GifPickerModal({
             onClick={() => run(q)}
             className="h-10 px-4 rounded-xl bg-[var(--purple)] text-white hover:opacity-95"
           >
-            Suchen
+            {t('actions.search')}
           </button>
           <button
             type="button"
             onClick={onClose}
             className="h-10 px-3 rounded-xl border border-white/15 hover:bg-white/10"
           >
-            Schließen
+            {t('actions.close')}
           </button>
         </div>
 
         <div className="mt-3">
           {err && <div className="text-red-300 text-sm mb-2">{err}</div>}
           {loading ? (
-            <div className="text-sm text-white/80 py-8 text-center">Lade GIFs…</div>
+            <div className="text-sm text-white/80 py-8 text-center">{t('states.loading')}</div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 overflow-y-auto max-h-[65vh] pr-1">
               {items.map((it) => (
@@ -117,7 +120,7 @@ function GifPickerModal({
                   type="button"
                   className="relative group rounded-lg overflow-hidden border border-white/10 hover:border-white/25"
                   onClick={() => onPick(it.url)}
-                  title="Auswählen"
+                  title={t('actions.pick')}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={it.url} alt="" loading="lazy" decoding="async" className="block w-full h-44 object-cover" />
@@ -135,6 +138,8 @@ function GifPickerModal({
 
 /* ---------------------- Compose Modal ---------------------- */
 export default function ComposePostModal({ open, onClose }: Props) {
+  const t = useTranslations('common.compose');
+
   const [mounted, setMounted] = React.useState(false);
   React.useEffect(() => setMounted(true), []);
 
@@ -192,7 +197,7 @@ export default function ComposePostModal({ open, onClose }: Props) {
       setMediaKind('image'); // GIF behandeln wie Bild
       setGifOpen(false);
     } catch {
-      setGifErr('GIF konnte nicht geladen werden.');
+      setGifErr(t('states.gifLoadError'));
     }
   }
 
@@ -236,13 +241,13 @@ export default function ComposePostModal({ open, onClose }: Props) {
       }}
       role="dialog"
       aria-modal="true"
-      aria-label="Compose post"
+      aria-label={t('aria.modalLabel')}
     >
       <div style={panelStyle} onMouseDown={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
-          <div className="text-[18px] font-semibold">New post</div>
+          <div className="text-[18px] font-semibold">{t('header.newPost')}</div>
           <button type="button" onClick={onClose} className="px-3 py-1.5 rounded-lg hover:bg-white/5">
-            Close
+            {t('actions.close')}
           </button>
         </div>
 
@@ -261,7 +266,7 @@ export default function ComposePostModal({ open, onClose }: Props) {
                 ref={textareaRef as React.RefObject<HTMLTextAreaElement>}
                 name="text"
                 rows={3}
-                placeholder="What's happening?"
+                placeholder={t('fields.textPlaceholder')}
                 className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-[var(--purple)]/40"
                 maxLength={4000}
                 value={text}
@@ -292,9 +297,9 @@ export default function ComposePostModal({ open, onClose }: Props) {
                   type="button"
                   onClick={clearMedia}
                   className="absolute top-2 right-2 px-2 py-1 rounded-md bg-black/70 border border-white/20 hover:bg-black/80 text-[13px]"
-                  title="Remove image"
+                  title={t('actions.removeImage')}
                 >
-                  Remove
+                  {t('actions.removeImage')}
                 </button>
               </figure>
             )}
@@ -313,9 +318,9 @@ export default function ComposePostModal({ open, onClose }: Props) {
                   type="button"
                   onClick={clearMedia}
                   className="absolute top-2 right-2 px-2 py-1 rounded-md bg-black/70 border border-white/20 hover:bg-black/80 text-[13px]"
-                  title="Remove video"
+                  title={t('actions.removeVideo')}
                 >
-                  Remove
+                  {t('actions.removeVideo')}
                 </button>
               </figure>
             )}
@@ -342,7 +347,7 @@ export default function ComposePostModal({ open, onClose }: Props) {
                       <circle cx="9" cy="9" r="1.5" />
                     </svg>
                   </span>
-                  <span className="text-sm text-white/80">Media</span>
+                  <span className="text-sm text-white/80">{t('fields.mediaLabel')}</span>
                 </label>
 
                 {/* GIF Button – gleiche Größe/Look, lila Icon */}
@@ -350,8 +355,8 @@ export default function ComposePostModal({ open, onClose }: Props) {
                   type="button"
                   onClick={() => setGifOpen(true)}
                   className="inline-flex items-center gap-2.5 px-3 py-1.5 rounded-lg border border-white/12 hover:bg-white/[.06]"
-                  title="GIF suchen"
-                  aria-label="GIF suchen"
+                  title={t('titles.gifSearch')}
+                  aria-label={t('titles.gifSearch')}
                 >
                   <span
                     className="inline-grid place-items-center"
@@ -361,7 +366,7 @@ export default function ComposePostModal({ open, onClose }: Props) {
                     <GifIcon size={22} />
                   </span>
                   {/* optionaler Label-Text (klein), wirkt konsistent mit „Media“ */}
-                  <span className="text-sm text-white/80">GIF</span>
+                  <span className="text-sm text-white/80">{t('fields.gifLabel')}</span>
                 </button>
               </div>
 
@@ -370,7 +375,7 @@ export default function ComposePostModal({ open, onClose }: Props) {
                 className="px-4 py-1.5 rounded-full bg-[var(--purple)] hover:opacity-95 text-white disabled:opacity-50"
                 disabled={text.trim().length === 0 && !mediaFile}
               >
-                Post
+                {t('actions.post')}
               </button>
             </div>
 

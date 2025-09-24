@@ -4,6 +4,140 @@
     "brand": { "name": "Subm8" },
     "time": { "now": "now", "m": "{count}m", "h": "{count}h", "d": "{count}d" },
 
+    "compose": {
+    "aria": { "modalLabel": "Compose post" },
+    "header": { "newPost": "New post" },
+    "fields": {
+      "textPlaceholder": "What's happening?",
+      "mediaLabel": "Media",
+      "gifLabel": "GIF"
+    },
+    "titles": { "gifSearch": "Search GIFs" },
+    "actions": {
+      "close": "Close",
+      "post": "Post",
+      "removeImage": "Remove image",
+      "removeVideo": "Remove video"
+    },
+    "states": {
+      "gifLoadError": "Could not load GIF."
+    }
+  },
+  "gifPicker": {
+    "fields": { "searchPlaceholder": "Search GIFs…" },
+    "actions": { "search": "Search", "close": "Close", "pick": "Select" },
+    "states": { "loading": "Loading GIFs…", "loadError": "Could not load GIFs." }
+  },
+
+    "offerViewer": {
+    "actions": {
+      "close": "Close"
+    },
+    "states": {
+      "loading": "Loading…",
+      "loadError": "Failed to load."
+    },
+    "placeholders": {
+      "noTitle": "No title",
+      "noContent": "No content."
+    },
+    "aria": {
+      "modalLabel": "Offer"
+    }
+  },
+
+    "editTabs": {
+    "tabs": {
+      "general": "General",
+      "ownership": "Ownership"
+    }
+  },
+  "ownershipTab": {
+    "header": {
+      "title": "Ownership profile",
+      "clearTitle": "Clear local ownership profile"
+    },
+    "actions": {
+      "reset": "Reset",
+      "save": "Save",
+      "saving": "Saving…",
+      "changeBanner": "Change banner",
+      "addAvatar": "Add avatar"
+    },
+    "placeholders": {
+      "banner": "Ownership banner",
+      "avatar": "Avatar",
+      "bio": "This bio will be applied to accepted ownerships…"
+    },
+    "labels": {
+      "savedAt": "Saved {ts}",
+      "bio": "Ownership Bio",
+      "counter": "{n}/{max}"
+    },
+    "errors": {
+      "tooLarge": "File too large (max 4 MB for local preview).",
+      "readFile": "Failed to read file.",
+      "readBanner": "Could not read banner.",
+      "readAvatar": "Could not read avatar.",
+      "save": "Could not save."
+    }
+  },
+
+    "editProfileForm": {
+    "header": { "title": "Edit profile" },
+    "actions": {
+      "save": "Save",
+      "changeBanner": "Change banner",
+      "changeAvatar": "Change avatar",
+      "editOfferMenu": "Edit Offer Menu"
+    },
+    "media": {
+      "bannerAlt": "Banner",
+      "avatarAlt": "Avatar"
+    },
+    "fields": {
+      "name": "Name",
+      "username": "Username",
+      "bio": "Bio",
+      "location": "Location",
+      "website": "Website / Link",
+      "role": "Role"
+    },
+    "roles": {
+      "domme": "Domme",
+      "submissive": "Submissive"
+    },
+    "placeholders": {
+      "website": "e.g. https://example.com"
+    },
+    "hints": {
+      "usernamePattern": "3–20 chars, a–z, 0–9, _",
+      "maxChars": "Max. {count} characters",
+      "roleFixed": "Role is fixed"
+    }
+  },
+  "offerEditor": {
+    "controls": {
+      "font": "Font",
+      "color": "Color",
+      "textColor": "Text color",
+      "hex": "Hex",
+      "dim": "Dim"
+    },
+    "placeholders": {
+      "title": "Title…",
+      "text": "Text…"
+    },
+    "actions": {
+      "addBg": "Add background",
+      "changeBg": "Change background",
+      "remove": "Remove",
+      "cancel": "Cancel",
+      "save": "Save",
+      "saving": "Saving…"
+    }
+  },
+
     "ownershipRequestAcceptModal": {
     "header": {
       "title": "Accept ownership request"

@@ -3,6 +3,7 @@
 
 import * as React from 'react';
 import Image from 'next/image';
+import { useTranslations } from 'next-intl';
 import AvatarCropper from '@/components/AvatarCropper';
 import BannerCropper from '@/components/BannerCropper';
 import OfferBgCropper from '@/components/OfferBgCropper';
@@ -30,7 +31,7 @@ export type EditInitial = {
   nsfwDefault: boolean;
   avatarUrl?: string;
   bannerUrl?: string;
-  websiteUrl?: string; // ⇐ neu
+  websiteUrl?: string;
 };
 
 export default function EditProfileForm({
@@ -42,6 +43,9 @@ export default function EditProfileForm({
   initial: EditInitial;
   action: (formData: FormData) => Promise<void>;
 }) {
+  const t = useTranslations('common.editProfileForm');
+  const te = useTranslations('common.offerEditor');
+
   const [avatarPreview, setAvatarPreview] = React.useState<string>(initial.avatarUrl || AVATAR_PH);
   const [bannerPreview, setBannerPreview] = React.useState<string>(initial.bannerUrl || BANNER_PH);
 
@@ -96,9 +100,9 @@ export default function EditProfileForm({
     >
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
-        <div className="text-[18px] font-semibold">Edit profile</div>
+        <div className="text-[18px] font-semibold">{t('header.title')}</div>
         <button type="submit" className="px-3 py-1.5 rounded-full bg-[var(--purple)] text-white hover:opacity-95">
-          Save
+          {t('actions.save')}
         </button>
       </div>
 
@@ -107,39 +111,106 @@ export default function EditProfileForm({
         <div className="relative overflow-hidden" style={{ height: bannerH }}>
           <Image
             src={bannerPreview || BANNER_PH}
-            alt="Banner"
+            alt={t('media.bannerAlt')}
             fill
             className="object-cover"
             sizes="(min-width:768px) 720px, 100vw"
             priority
             unoptimized
           />
-          <label title="Change banner" style={{ position: 'absolute', inset: 0, display: 'block', cursor: 'pointer' }}>
-            <span aria-hidden style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.35)', border: '1px dashed rgba(255,255,255,.25)' }} />
-            <span aria-hidden style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', borderRadius: 9999, border: '1px solid rgba(255,255,255,.35)', background: 'rgba(0,0,0,.55)', padding: 14 }}>
+          <label
+            title={t('actions.changeBanner')}
+            style={{ position: 'absolute', inset: 0, display: 'block', cursor: 'pointer' }}
+          >
+            <span
+              aria-hidden
+              style={{
+                position: 'absolute',
+                inset: 0,
+                background: 'rgba(0,0,0,.35)',
+                border: '1px dashed rgba(255,255,255,.25)',
+              }}
+            />
+            <span
+              aria-hidden
+              style={{
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                borderRadius: 9999,
+                border: '1px solid rgba(255,255,255,.35)',
+                background: 'rgba(0,0,0,.55)',
+                padding: 14,
+              }}
+            >
               <CameraIcon size={44} />
             </span>
-            <input type="file" accept="image/*" name="banner" className="sr-only" onChange={(e) => onBannerChange(e.currentTarget.files?.[0])} />
+            <input
+              type="file"
+              accept="image/*"
+              name="banner"
+              className="sr-only"
+              aria-label={t('actions.changeBanner')}
+              onChange={(e) => onBannerChange(e.currentTarget.files?.[0])}
+            />
           </label>
         </div>
 
         <div className="absolute left-4 z-10" style={{ bottom: -(avatarSize * avatarOverlap) }}>
-          <div className="relative rounded-full overflow-hidden ring-2 ring-black/40 border border-black/60 bg-white/10" style={{ width: avatarSize, height: avatarSize }}>
+          <div
+            className="relative rounded-full overflow-hidden ring-2 ring-black/40 border border-black/60 bg-white/10"
+            style={{ width: avatarSize, height: avatarSize }}
+          >
             <Image
               src={avatarPreview || AVATAR_PH}
-              alt="Avatar"
+              alt={t('media.avatarAlt')}
               fill
               className="object-cover"
               sizes={`${avatarSize}px`}
               priority
               unoptimized
             />
-            <label title="Change avatar" style={{ position: 'absolute', inset: 0, display: 'block', cursor: 'pointer', borderRadius: 9999 }}>
-              <span aria-hidden style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.45)', borderRadius: '50%', border: '1px dashed rgba(255,255,255,.25)' }} />
-              <span aria-hidden style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', borderRadius: 9999, border: '1px solid rgba(255,255,255,.35)', background: 'rgba(0,0,0,.65)', padding: 10 }}>
+            <label
+              title={t('actions.changeAvatar')}
+              style={{ position: 'absolute', inset: 0, display: 'block', cursor: 'pointer', borderRadius: 9999 }}
+            >
+              <span
+                aria-hidden
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  background: 'rgba(0,0,0,.45)',
+                  borderRadius: '50%',
+                  border: '1px dashed rgba(255,255,255,.25)',
+                }}
+              />
+              <span
+                aria-hidden
+                style={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  borderRadius: 9999,
+                  border: '1px solid rgba(255,255,255,.35)',
+                  background: 'rgba(0,0,0,.65)',
+                  padding: 10,
+                }}
+              >
                 <CameraIcon size={36} />
               </span>
-              <input type="file" accept="image/*" className="sr-only" onChange={(e) => { const file = e.currentTarget.files?.[0]; onAvatarChange(file); e.currentTarget.value = ''; }} />
+              <input
+                type="file"
+                accept="image/*"
+                className="sr-only"
+                aria-label={t('actions.changeAvatar')}
+                onChange={(e) => {
+                  const file = e.currentTarget.files?.[0];
+                  onAvatarChange(file);
+                  e.currentTarget.value = '';
+                }}
+              />
             </label>
           </div>
         </div>
@@ -154,7 +225,7 @@ export default function EditProfileForm({
 
       {/* Fields */}
       <div className="p-4 grid gap-3">
-        <Field label="Name">
+        <Field label={t('fields.name')}>
           <input
             name="displayName"
             defaultValue={initial.displayName}
@@ -164,14 +235,14 @@ export default function EditProfileForm({
           />
         </Field>
 
-        <Field label="Username">
+        <Field label={t('fields.username')}>
           <div className="flex items-center bg-white/5 border border-white/10 rounded-lg px-3 h-10">
             <span className="opacity-70 mr-1">@</span>
             <input
               name="username"
               defaultValue={initial.username}
               pattern="^[a-z0-9_]{3,20}$"
-              title="3–20 Zeichen, a–z, 0–9, _"
+              title={t('hints.usernamePattern')}
               className="w-full bg-transparent outline-none"
               required
             />
@@ -183,12 +254,12 @@ export default function EditProfileForm({
               onClick={() => setOfferOpen(true)}
               className="px-3 py-1.5 rounded-full border border-white/15 hover:bg-white/5"
             >
-              Edit Offer Menu
+              {t('actions.editOfferMenu')}
             </button>
           </div>
         </Field>
 
-        <Field label="Bio">
+        <Field label={t('fields.bio')}>
           <textarea
             name="bio"
             defaultValue={initial.bio}
@@ -196,11 +267,13 @@ export default function EditProfileForm({
             maxLength={MAX_BIO_CHARS}
             className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-[var(--purple)]/40"
           />
-          <div className="mt-1 text-xs opacity-70">Max. {MAX_BIO_CHARS} Zeichen</div>
+          <div className="mt-1 text-xs opacity-70">
+            {t('hints.maxChars', { count: MAX_BIO_CHARS })}
+          </div>
         </Field>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <Field label="Location">
+          <Field label={t('fields.location')}>
             <input
               name="location"
               defaultValue={initial.location}
@@ -208,11 +281,11 @@ export default function EditProfileForm({
             />
           </Field>
 
-          <Field label="Website / Link">
+          <Field label={t('fields.website')}>
             <input
               name="websiteUrl"
               defaultValue={initial.websiteUrl ?? ''}
-              placeholder="z. B. https://example.com"
+              placeholder={t('placeholders.website')}
               maxLength={255}
               className="w-full bg-white/5 border border-white/10 rounded-lg px-3 h-10 outline-none focus:ring-2 focus:ring-[var(--purple)]/40"
             />
@@ -220,7 +293,7 @@ export default function EditProfileForm({
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <Field label="Role">
+          <Field label={t('fields.role')}>
             <select
               name="role"
               defaultValue={initial.role}
@@ -230,10 +303,10 @@ export default function EditProfileForm({
                         disabled:cursor-not-allowed appearance-none pr-3"
               style={{ opacity: 1, color: 'inherit', WebkitAppearance: 'none', MozAppearance: 'none', appearance: 'none', backgroundImage: 'none' }}
               aria-readonly="true"
-              title="Role is fixed"
+              title={t('hints.roleFixed')}
             >
               <option value={initial.role}>
-                {initial.role === 'domme' ? 'Domme' : 'Submissive'}
+                {initial.role === 'domme' ? t('roles.domme') : t('roles.submissive')}
               </option>
             </select>
             <input type="hidden" name="role" value={initial.role} />
@@ -294,6 +367,7 @@ export default function EditProfileForm({
         avatarPreview={avatarPreview || AVATAR_PH}
         displayName={initial.displayName}
         handle={initial.username}
+        teNS={te} // pass translations instance to child
       />
     </form>
   );
@@ -317,20 +391,24 @@ function CameraIcon({ size = 20 }: { size?: number }) {
   );
 }
 
-/* ---------- OfferEditorModal (unverändert außer Imports) ---------- */
+/* ---------- OfferEditorModal (mit i18n) ---------- */
 function OfferEditorModal({
   open,
   onClose,
   avatarPreview,
   displayName,
   handle,
+  teNS
 }: {
   open: boolean;
   onClose: () => void;
   avatarPreview: string;
   displayName: string;
   handle: string;
+  teNS: ReturnType<typeof useTranslations>;
 }) {
+  const te = teNS;
+
   const [loading, setLoading] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
 
@@ -431,7 +509,7 @@ function OfferEditorModal({
       aria-modal="true"
     >
       <div className="w-full max-w-md rounded-3xl border border-white/12 bg-[#202022] text-white shadow-2xl overflow-hidden">
-        {/* Kopf */}
+        {/* Header */}
         <div className="flex items-center gap-3 px-4 py-3 border-b border-[var(--purple)]/60">
           <div className="relative w-10 h-10 rounded-full overflow-hidden bg-white/10">
             <Image src={avatarPreview} alt="" fill className="absolute inset-0 w-full h-full object-cover" sizes="40px" unoptimized />
@@ -442,7 +520,7 @@ function OfferEditorModal({
           </div>
         </div>
 
-        {/* Inhalt */}
+        {/* Body */}
         <div className="relative p-4 isolate" style={{ fontFamily: fontStack, color: fontColor }}>
           {bgPreview && (
             <>
@@ -462,11 +540,11 @@ function OfferEditorModal({
           <div className="relative z-20 space-y-3">
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
-                <label className="text-xs opacity-75">Font</label>
+                <label className="text-xs opacity-75">{te('controls.font')}</label>
                 <select
                   value={fontKey}
                   onChange={(e) => setFontKey(e.target.value as FontKey)}
-                  className="appearance-none bg-[#2a2a2e] text-white border border-white/20 rounded-md px-2 py-1 text-sm outline-none"
+                  className="appearance:none bg-[#2a2a2e] text-white border border-white/20 rounded-md px-2 py-1 text-sm outline-none"
                   style={{ colorScheme: 'dark' }}
                 >
                   {FONT_OPTIONS.map((f) => (
@@ -476,33 +554,33 @@ function OfferEditorModal({
               </div>
 
               <div className="flex items-center gap-2">
-                <label className="text-xs opacity-75">Color</label>
+                <label className="text-xs opacity-75">{te('controls.color')}</label>
                 <input
                   type="color"
                   value={fontColor}
                   onChange={(e) => setFontColor(e.target.value)}
                   className="h-8 w-10 bg-transparent border border-white/20 rounded cursor-pointer"
-                  title="Text color"
+                  title={te('controls.textColor')}
                 />
                 <input
                   value={fontColor}
                   onChange={(e) => setFontColor(e.target.value)}
                   className="w-24 bg-[#2a2a2e] text-white border border-white/20 rounded px-2 py-1 text-sm outline-none"
-                  aria-label="Hex"
+                  aria-label={te('controls.hex')}
                 />
               </div>
             </div>
 
             <input
               type="text"
-              placeholder="Title…"
+              placeholder={te('placeholders.title')}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               maxLength={120}
               className="w-full rounded-2xl px-4 py-2 bg-white/10 border border-white/15 outline-none"
             />
             <textarea
-              placeholder="Text…"
+              placeholder={te('placeholders.text')}
               value={body}
               onChange={(e) => setBody(e.target.value)}
               rows={9}
@@ -517,7 +595,7 @@ function OfferEditorModal({
                   onClick={() => fileInputRef.current?.click()}
                   className="px-3 py-1.5 rounded-full border border-white/15 hover:bg-white/5"
                 >
-                  {bgPreview ? 'Change background' : 'Add background'}
+                  {bgPreview ? te('actions.changeBg') : te('actions.addBg')}
                 </button>
                 {bgPreview && (
                   <button
@@ -525,7 +603,7 @@ function OfferEditorModal({
                     onClick={removeBg}
                     className="px-3 py-1.5 rounded-full border border-white/15 hover:bg-white/5"
                   >
-                    Remove
+                    {te('actions.remove')}
                   </button>
                 )}
                 <input
@@ -538,8 +616,16 @@ function OfferEditorModal({
               </div>
 
               <div className="flex items-center gap-2">
-                <span className="text-xs opacity-75">Dim</span>
-                <input type="range" min={0} max={1} step={0.05} value={bgOpacity} onChange={(e) => setBgOpacity(Number(e.target.value))} />
+                <span className="text-xs opacity-75">{te('controls.dim')}</span>
+                <input
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.05}
+                  value={bgOpacity}
+                  onChange={(e) => setBgOpacity(Number(e.target.value))}
+                  aria-label={te('controls.dim')}
+                />
               </div>
             </div>
           </div>
@@ -547,11 +633,20 @@ function OfferEditorModal({
 
         {/* Footer */}
         <div className="flex items-center justify-between px-4 py-3 border-t border-[var(--purple)]/60">
-          <button type="button" onClick={onClose} className="px-3 py-1.5 rounded-full text-[var(--purple)] hover:bg-white/5">
-            Cancel
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-3 py-1.5 rounded-full text-[var(--purple)] hover:bg-white/5"
+          >
+            {te('actions.cancel')}
           </button>
-          <button type="button" disabled={saving || loading} onClick={save} className="px-3 py-1.5 rounded-full bg-[var(--purple)] text-white disabled:opacity-50">
-            {saving ? 'Saving…' : 'Save'}
+          <button
+            type="button"
+            disabled={saving || loading}
+            onClick={save}
+            className="px-3 py-1.5 rounded-full bg-[var(--purple)] text-white disabled:opacity-50"
+          >
+            {saving ? te('actions.saving') : te('actions.save')}
           </button>
         </div>
       </div>
