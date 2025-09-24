@@ -1188,6 +1188,9 @@
     },
 
     "profileSettings": {
+      "languageLabel": "Langue",
+      "languageHelp": "Choisissez votre langue d’interface préférée.",
+      "languageButton": "Changer",
       "ariaBack": "Retour",
       "headerTitle": "Gérer le profil & le compte",
       "notSignedInMessage": "Connecte-toi pour modifier les réglages.",
@@ -1304,6 +1307,12 @@
         "reset": "Réinitialiser les valeurs par défaut",
         "resetTitle": "Réinitialiser aux paramètres d’usine"
       }
+    },
+
+    "legalPage": {
+      "ariaBack": "Retour",
+      "title": "Mentions légales & confidentialité",
+      "subtitle": "Informations juridiques et politiques"
     },
 
     "legal": {

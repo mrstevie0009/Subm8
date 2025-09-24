@@ -1189,6 +1189,9 @@
     },
 
     "profileSettings": {
+      "languageLabel": "Idioma",
+      "languageHelp": "Selecciona tu idioma preferido de la interfaz.",
+      "languageButton": "Cambiar",
       "ariaBack": "Atrás",
       "headerTitle": "Gestionar perfil y cuenta",
       "notSignedInMessage": "Inicia sesión para cambiar los ajustes.",
@@ -1305,6 +1308,12 @@
         "reset": "Restablecer por defecto",
         "resetTitle": "Restablecer a valores de fábrica"
       }
+    },
+
+    "legalPage": {
+      "ariaBack": "Atrás",
+      "title": "Legal y privacidad",
+      "subtitle": "Información legal y políticas"
     },
 
     "legal": {

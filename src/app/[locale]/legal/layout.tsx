@@ -13,7 +13,7 @@ export default async function LegalLayout({
   params: Promise<Params>;
 }) {
   const { locale } = await params;
-  const t = await getTranslations("common");
+  const t = await getTranslations({ locale, namespace: "common"});
 
   const items = [
     { href: `/${locale}/legal/community-guidelines`, label: t("legal.guidelines.title") },
@@ -32,8 +32,8 @@ export default async function LegalLayout({
             <ChevronLeftIcon />
           </Link>
           <div>
-            <h1 className="text-lg font-semibold">Recht &amp; Datenschutz</h1>
-            <p className="text-sm text-white/60">Rechtliche Informationen und Richtlinien</p>
+            <h1 className="text-lg font-semibold">{t('legalPage.title')}</h1>
+            <p className="text-sm text-white/60">{t('legalPage.subtitle')}</p>
           </div>
         </div>
       </header>

@@ -10,7 +10,7 @@ export default async function MonetizationPage({ params }: { params: Params }) {
   const { locale } = params;
 
   // Serverseitig laden – vermeidet Hook/Hydration-Probleme
-  const t = await getTranslations("common.monetizationPage");
+  const t = await getTranslations({ locale, namespace: "common.monetizationPage" });
 
   // Helpers
   const list = (key: string): string[] => {

@@ -3,8 +3,11 @@ import { getTranslations } from 'next-intl/server';
 
 export const dynamic = 'force-static';
 
-export default async function GuidelinesPage() {
-  const t = await getTranslations('common.legal.guidelines');
+type Params = { locale: string };
+
+export default async function GuidelinesPage({ params }: { params: Params }) {
+  const { locale } = params;
+  const t = await getTranslations({ locale, namespace: 'common.legal.guidelines'});
 
   return (
     <LegalArticle

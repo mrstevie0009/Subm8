@@ -1189,6 +1189,9 @@
     },
 
     "profileSettings": {
+      "languageLabel": "Sprache",
+      "languageHelp": "Wähle deine bevorzugte Sprache für die Oberfläche.",
+      "languageButton": "Ändern",
       "ariaBack": "Zurück",
       "headerTitle": "Profil & Account verwalten",
       "notSignedInMessage": "Bitte melde dich an, um Einstellungen zu ändern.",
@@ -1307,6 +1310,12 @@
       }
     },
 
+    "legalPage": {
+      "ariaBack": "Zurück",
+      "title": "Recht & Datenschutz",
+      "subtitle": "Rechtliche Informationen und Richtlinien"
+    },
+    
     "legal": {
       "shared": {
         "updated": "Aktualisiert",

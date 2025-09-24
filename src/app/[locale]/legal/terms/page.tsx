@@ -3,8 +3,11 @@ import { getTranslations } from 'next-intl/server';
 
 export const dynamic = 'force-static';
 
-export default async function TermsPage() {
-  const t = await getTranslations('common.legal.terms');
+type Params = { locale: string };
+
+export default async function TermsPage({ params }: { params: Params }) {
+  const { locale } = params;
+  const t = await getTranslations({ locale, namespace: 'common.legal.terms'});
   const updated = new Intl.DateTimeFormat('de-DE', { dateStyle: 'medium' }).format(new Date());
 
   return (

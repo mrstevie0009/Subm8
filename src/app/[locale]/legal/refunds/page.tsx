@@ -3,8 +3,11 @@ import { getTranslations } from 'next-intl/server';
 
 export const dynamic = 'force-static';
 
-export default async function RefundPage() {
-  const t = await getTranslations('common.legal.refund');
+type Params = { locale: string };
+
+export default async function RefundPage({ params }: { params: Params }) {
+  const { locale } = params;
+  const t = await getTranslations({ locale, namespace: 'common.legal.refund'});
   const updated = new Intl.DateTimeFormat('de-DE', { dateStyle: 'medium' }).format(new Date());
 
   return (

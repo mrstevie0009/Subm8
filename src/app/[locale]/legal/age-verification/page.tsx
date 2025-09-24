@@ -3,8 +3,11 @@ import { getTranslations } from 'next-intl/server';
 
 export const dynamic = 'force-static';
 
-export default async function AgeVerificationPage() {
-  const t = await getTranslations('common.legal.age');
+type Params = { locale: string };
+
+export default async function AgeVerificationPage({ params }: { params: Params }) {
+  const { locale } = params;
+  const t = await getTranslations({ locale, namespace: 'common.legal.age'});
 
   return (
     <LegalArticle

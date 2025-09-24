@@ -1,4 +1,4 @@
-// src/app/[locale]/profile/page.tsx 
+// src/app/[locale]/profile/page.tsx
 import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
@@ -216,6 +216,18 @@ export async function logoutAction() {
 }
 
 /* =========================
+   Language change (Server Action)
+========================= */
+
+export async function changeLanguageAction(formData: FormData) {
+  'use server';
+  const requested = (formData.get('language') ?? '').toString();
+  const allowed = new Set(['en', 'de', 'es', 'fr']);
+  const next = allowed.has(requested) ? requested : 'en';
+  redirect(`/${next}/profile`);
+}
+
+/* =========================
    Page Component (Server)
 ========================= */
 
@@ -225,7 +237,8 @@ export default async function SettingsPage({ params }: { params: Params }) {
   // ⬅️ Locale für SSR setzen, damit getTranslations die richtige Sprache lädt
   setRequestLocale(locale);
 
-  const t = await getTranslations('common.profileSettings');
+  const t = await getTranslations({ locale, namespace: 'common.profileSettings' });
+
 
   const me = await getCurrentUser().catch(() => null);
   if (!me) {
@@ -306,6 +319,59 @@ export default async function SettingsPage({ params }: { params: Params }) {
         {/* Profile */}
         <section className="rounded-lg border border-white/10 p-4">
           <h2 className="text-base font-semibold mb-4">{t('profileSectionTitle')}</h2>
+
+          {/* Language picker (separates kleines Formular) */}
+          <form action={changeLanguageAction} className="space-y-2 mb-6">
+            <label className="block text-sm mb-1">{t('languageLabel')}</label>
+
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <select
+                  name="language"
+                  defaultValue={locale}
+                  aria-label={t('languageLabel')}
+                  className="peer w-full appearance-none pr-10 pl-3 py-2 rounded-md
+                            bg-[#1a1b1f] text-white placeholder-white/60
+                            border border-white/20
+                            outline-none focus:ring-2 focus:ring-[var(--purple)]/40 focus:border-[var(--purple)]/50
+                            transition"
+                  style={{
+                    WebkitAppearance: 'none',
+                    MozAppearance: 'none',
+                    colorScheme: 'dark'
+                  }}
+                >
+                  <option value="en">English</option>
+                  <option value="de">Deutsch</option>
+                  <option value="es">Español</option>
+                  <option value="fr">Français</option>
+                </select>
+
+                {/* Chevron */}
+                <span
+                  aria-hidden
+                  className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2
+                            inline-grid place-items-center text-white/70 peer-focus:text-white"
+                >
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </span>
+              </div>
+
+              <button
+                type="submit"
+                className="px-4 py-2 rounded-full bg-white/10 hover:bg-white/15 border border-white/15"
+                title={t('languageButton')}
+              >
+                {t('languageButton')}
+              </button>
+            </div>
+
+            <p className="text-xs text-white/50 mt-1">{t('languageHelp')}</p>
+          </form>
+
+          {/* Profil-Formular */}
           <form action={updateProfileAction} className="space-y-4">
             <div>
               <label className="block text-sm mb-1">{t('handleLabel')}</label>

@@ -1188,6 +1188,9 @@
     },
 
     "profileSettings": {
+      "languageLabel": "Language",
+      "languageHelp": "Select your preferred interface language.",
+      "languageButton": "Change",
       "ariaBack": "Back",
       "headerTitle": "Manage Profile & Account",
       "notSignedInMessage": "Please sign in to change settings.",
@@ -1304,6 +1307,12 @@
         "reset": "Reset to default",
         "resetTitle": "Reset to factory settings"
       }
+    },
+
+    "legalPage": {
+      "ariaBack": "Back",
+      "title": "Legal & Privacy",
+      "subtitle": "Legal information and policies"
     },
 
     "legal": {
