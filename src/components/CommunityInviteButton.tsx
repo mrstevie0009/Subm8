@@ -3,6 +3,7 @@
 
 import * as React from 'react';
 import InviteDialog from '@/components/InviteDialog';
+import { useTranslations } from 'next-intl';
 
 type JoinPolicy = 'OPEN' | 'INVITE_ONLY' | 'DOMME_ONLY' | 'SUB_ONLY';
 
@@ -21,6 +22,7 @@ type Props = {
 export default function CommunityInviteButton(props: Props) {
   // Nur die Props holen, die wir wirklich verwenden – so vermeiden wir no-unused-vars
   const { slug, joined } = props;
+  const t = useTranslations('common.communities.invite');
 
   // Hook MUSS vor jedem early return kommen (Rules of Hooks)
   const [open, setOpen] = React.useState(false);
@@ -33,7 +35,7 @@ export default function CommunityInviteButton(props: Props) {
         type="button"
         onClick={() => setOpen(true)}
         className="px-3 py-2 rounded-lg border border-white/15 hover:bg-white/10 inline-flex items-center gap-2"
-        title="Mitglieder einladen"
+        title={t('title')}
         aria-haspopup="dialog"
         aria-expanded={open || undefined}
       >
@@ -54,7 +56,7 @@ export default function CommunityInviteButton(props: Props) {
           <path d="M19 8v6" />
           <path d="M22 11h-6" />
         </svg>
-        <span className="hidden sm:inline">Einladen</span>
+        <span className="hidden sm:inline">{t('button')}</span>
       </button>
 
       <InviteDialog open={open} onClose={() => setOpen(false)} slug={slug} />

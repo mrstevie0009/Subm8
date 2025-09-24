@@ -1,9 +1,8 @@
-// src/app/[locale]/communities/page.tsx
 'use client';
 
 import * as React from 'react';
 import Link from 'next/link';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import CommunityJoinButton from '@/components/CommunityJoinButton';
 import CreateCommunityButton from '@/components/CreateCommunityButton';
 
@@ -23,16 +22,7 @@ type CommunityItem = {
   bannerUrl?: string | null;
 };
 
-// kleine Helfer für das Policy-Badge
-function policyLabel(p: JoinPolicy) {
-  switch (p) {
-    case 'OPEN': return 'Open';
-    case 'INVITE_ONLY': return 'Invite only';
-    case 'DOMME_ONLY': return 'Dommes only';
-    case 'SUB_ONLY': return 'Subs only';
-    default: return p;
-  }
-}
+// Policy-Badge Klassen (nur Styling)
 function policyClasses(p: JoinPolicy) {
   switch (p) {
     case 'OPEN':
@@ -49,7 +39,6 @@ function policyClasses(p: JoinPolicy) {
 }
 
 // Darf ich clientseitig "Join" anbieten?
-// INVITE_ONLY ist nur per Einladung möglich ⇒ hier deaktivieren
 function canJoinByRole(policy: JoinPolicy, role: Role): boolean {
   if (policy === 'INVITE_ONLY') return false;
   if (policy === 'DOMME_ONLY') return role === 'DOMME';
@@ -59,6 +48,21 @@ function canJoinByRole(policy: JoinPolicy, role: Role): boolean {
 
 export default function CommunitiesPage() {
   const locale = useLocale();
+  const t = useTranslations('common.communitiesPage');
+
+  // Policy-Label via i18n
+  const policyLabel = React.useCallback(
+    (p: JoinPolicy) =>
+      p === 'OPEN'
+        ? t('policy.open')
+        : p === 'INVITE_ONLY'
+        ? t('policy.inviteOnly')
+        : p === 'DOMME_ONLY'
+        ? t('policy.dommesOnly')
+        : t('policy.subsOnly'),
+    [t]
+  );
+
   const [tab, setTab] = React.useState<'discover' | 'yours'>('discover');
   const [discover, setDiscover] = React.useState<CommunityItem[]>([]);
   const [mine, setMine] = React.useState<CommunityItem[]>([]);
@@ -70,19 +74,20 @@ export default function CommunitiesPage() {
     let cancelled = false;
     (async () => {
       try {
-        // Best effort: /api/me (sollte { role: 'DOMME'|'SUBMISSIVE'|null } liefern)
         const r = await fetch('/api/me', { cache: 'no-store' });
         if (!r.ok) return;
         const j = await r.json().catch(() => null);
-        if (!cancelled && j && ('role' in j)) {
+        if (!cancelled && j && 'role' in j) {
           const v = j.role as Role;
           setViewerRole(v ?? null);
         }
       } catch {
-        // still ok – bleibt null
+        // ignore
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   React.useEffect(() => {
@@ -106,7 +111,9 @@ export default function CommunitiesPage() {
     }
 
     load();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [tab]);
 
   const list = tab === 'discover' ? discover : mine;
@@ -116,7 +123,7 @@ export default function CommunitiesPage() {
       {/* Header + Tabs */}
       <div className="sticky top-[calc(var(--header-h))] z-10 bg-black/80 backdrop-blur border-b border-white/10">
         <div className="px-4 py-3 flex items-center justify-between">
-          <div className="text-lg font-semibold">Communities</div>
+          <div className="text-lg font-semibold">{t('title')}</div>
           <CreateCommunityButton />
         </div>
         <div className="grid grid-cols-2">
@@ -128,7 +135,7 @@ export default function CommunitiesPage() {
                 onClick={() => setTab(k)}
                 className={`py-3 font-medium ${active ? 'text-white' : 'text-white/70'} relative`}
               >
-                {k === 'discover' ? 'Discover' : 'Your communities'}
+                {k === 'discover' ? t('tabs.discover') : t('tabs.yours')}
                 {active && <span className="absolute left-0 right-0 -bottom-px h-[2px] bg-[var(--purple)]" />}
               </button>
             );
@@ -138,99 +145,107 @@ export default function CommunitiesPage() {
 
       {/* Grid */}
       <div className="p-4 grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {loading && (
-          <div className="col-span-full text-center opacity-70 py-8">Lade…</div>
-        )}
+        {loading && <div className="col-span-full text-center opacity-70 py-8">{t('loading')}</div>}
 
         {!loading && list.length === 0 && (
           <div className="col-span-full text-center opacity-70 py-10">
-            {tab === 'discover' ? 'Noch keine Communities gefunden.' : 'Du bist noch keiner Community beigetreten.'}
+            {tab === 'discover' ? t('empty.discover') : t('empty.yours')}
           </div>
         )}
 
-        {!loading && list.map((c) => {
-          const blocked = !c.joined && !canJoinByRole(c.policy, viewerRole);
-          return (
-            <article
-              key={c.id}
-              className={`relative rounded-app border border-sub shadow-app overflow-hidden flex flex-col ${blocked ? 'opacity-60 saturate-50' : ''}`}
-              data-disabled={blocked ? true : undefined}
-            >
-              {/* Banner */}
-              <div className="relative h-28 bg-white/5">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={c.bannerUrl || BANNER_PH} alt="" className="object-cover w-full h-full" />
-                <div className="absolute inset-0 bg-gradient-to-b from-black/0 to-black/30" />
-              </div>
+        {!loading &&
+          list.map((c) => {
+            const blocked = !c.joined && !canJoinByRole(c.policy, viewerRole);
+            return (
+              <article
+                key={c.id}
+                className={`relative rounded-app border border-sub shadow-app overflow-hidden flex flex-col ${
+                  blocked ? 'opacity-60 saturate-50' : ''
+                }`}
+                data-disabled={blocked ? true : undefined}
+              >
+                {/* Banner */}
+                <div className="relative h-28 bg-white/5">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={c.bannerUrl || BANNER_PH} alt="" className="object-cover w-full h-full" />
+                  <div className="absolute inset-0 bg-gradient-to-b from-black/0 to-black/30" />
+                </div>
 
-              {/* Body */}
-              <div className="p-3 flex-1 flex flex-col">
-                <div className="flex items-start gap-3">
-                  {/* simple letter avatar */}
-                  <div className="shrink-0 size-10 rounded-full grid place-items-center bg-white/10 border border-white/20">
-                    <span className="font-semibold">{c.name.charAt(0).toUpperCase()}</span>
-                  </div>
-                  <div className="min-w-0">
-                    <div className="font-semibold truncate">{c.name}</div>
-                    <div className="text-sm opacity-70 truncate">@{c.slug}</div>
+                {/* Body */}
+                <div className="p-3 flex-1 flex flex-col">
+                  <div className="flex items-start gap-3">
+                    {/* simple letter avatar */}
+                    <div className="shrink-0 size-10 rounded-full grid place-items-center bg-white/10 border border-white/20">
+                      <span className="font-semibold">{c.name.charAt(0).toUpperCase()}</span>
+                    </div>
+                    <div className="min-w-0">
+                      <div className="font-semibold truncate">{c.name}</div>
+                      <div className="text-sm opacity-70 truncate">@{c.slug}</div>
 
-                    {/* Policy-Badge */}
-                    <div className="mt-1">
-                      <span className={`inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full border ${policyClasses(c.policy)}`}>
-                        {/* kleines Icon für Invite */}
-                        {c.policy === 'INVITE_ONLY' && (
-                          <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden fill="none" stroke="currentColor" strokeWidth="2">
-                            <rect x="4" y="10" width="16" height="10" rx="2" />
-                            <path d="M8 10V7a4 4 0 1 1 8 0v3" />
-                          </svg>
-                        )}
-                        {policyLabel(c.policy)}
-                      </span>
+                      {/* Policy-Badge */}
+                      <div className="mt-1">
+                        <span
+                          className={`inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full border ${policyClasses(
+                            c.policy
+                          )}`}
+                        >
+                          {/* kleines Icon für Invite */}
+                          {c.policy === 'INVITE_ONLY' && (
+                            <svg
+                              viewBox="0 0 24 24"
+                              width="12"
+                              height="12"
+                              aria-hidden
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                            >
+                              <rect x="4" y="10" width="16" height="10" rx="2" />
+                              <path d="M8 10V7a4 4 0 1 1 8 0v3" />
+                            </svg>
+                          )}
+                          {policyLabel(c.policy)}
+                        </span>
+                      </div>
                     </div>
                   </div>
+
+                  <p className="mt-2 text-sm opacity-90 line-clamp-2">{c.description}</p>
+
+                  <div className="mt-auto pt-3 flex items-center justify-between relative z-20">
+                    <span className="text-sm opacity-80">
+                      {t('members', { count: Intl.NumberFormat().format(c.members) })}
+                    </span>
+                    <CommunityJoinButton
+                      slug={c.slug}
+                      initialJoined={c.joined}
+                      initialMembers={c.members}
+                      policy={c.policy}
+                      viewerRole={viewerRole}
+                    />
+                  </div>
                 </div>
 
-                <p className="mt-2 text-sm opacity-90 line-clamp-2">{c.description}</p>
-
-                <div className="mt-auto pt-3 flex items-center justify-between relative z-20">
-                  <span className="text-sm opacity-80">{c.members.toLocaleString()} members</span>
-                  <CommunityJoinButton
-                    slug={c.slug}
-                    initialJoined={c.joined}
-                    initialMembers={c.members}
-                    // neu: optional übergeben, um Button (clientseitig) zu sperren
-                    policy={c.policy}
-                    viewerRole={viewerRole}
+                {/* Klick-Overlay */}
+                {blocked ? (
+                  <div
+                    className="absolute inset-0 z-10 cursor-not-allowed"
+                    aria-hidden
+                    tabIndex={-1}
+                    title={
+                      c.policy === 'INVITE_ONLY'
+                        ? t('blocked.inviteOnly')
+                        : c.policy === 'DOMME_ONLY'
+                        ? t('blocked.dommesOnly')
+                        : t('blocked.subsOnly')
+                    }
                   />
-                </div>
-              </div>
-
-              {/* Klick-Overlay (Navigation nur wenn erlaubt/beitreten) */}
-              {blocked ? (
-                // Blockiert: fängt Klicks ab, navigiert aber nicht
-                <div
-                  className="absolute inset-0 z-10 cursor-not-allowed"
-                  aria-hidden
-                  tabIndex={-1}
-                  title={
-                    c.policy === 'INVITE_ONLY'
-                      ? 'Invite only — requires an invite'
-                      : c.policy === 'DOMME_ONLY'
-                      ? 'Dommes only'
-                      : 'Subs only'
-                  }
-                />
-              ) : (
-                // Erlaubt: gesamte Karte klickbar
-                <Link
-                  href={`/${locale}/communities/${c.slug}`}
-                  className="absolute inset-0 z-10"
-                  aria-label={c.name}
-                />
-              )}
-            </article>
-          );
-        })}
+                ) : (
+                  <Link href={`/${locale}/communities/${c.slug}`} className="absolute inset-0 z-10" aria-label={c.name} />
+                )}
+              </article>
+            );
+          })}
       </div>
     </div>
   );

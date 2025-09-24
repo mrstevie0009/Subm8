@@ -1,4 +1,3 @@
-// src/app/[locale]/communities/[slug]/page.tsx
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/currentUser';
 import { notFound } from 'next/navigation';
@@ -10,13 +9,33 @@ import CommunityFeedClient from '@/components/CommunityFeedClient';
 import CommunityShareButton from '@/components/CommunityShareButton';
 import CommunityInviteButton from '@/components/CommunityInviteButton';
 import type { FeedPost as PostCardFeedPost } from '@/components/PostCard';
+import { getTranslations } from 'next-intl/server';
 
 type Params = { locale: string; slug: string };
+
+function policyKeyFromDb(value: string) {
+  switch (value) {
+    case 'OPEN':
+      return 'open';
+    case 'INVITE_ONLY':
+      return 'invite';
+    case 'DOMME_ONLY':
+      return 'dommeOnly';
+    case 'SUB_ONLY':
+      return 'subOnly';
+    default:
+      return 'open';
+  }
+}
 
 // gleiche Selektion wie im Home-Feed, damit die PostCard alles hat
 export default async function CommunityPage({ params }: { params: Promise<Params> }) {
   const { locale, slug } = await params;
-  const me = await getCurrentUser().catch(() => null);
+  const [me, tDetail, tPolicy] = await Promise.all([
+    getCurrentUser().catch(() => null),
+    getTranslations({ locale, namespace: 'common.communities.detail' }),
+    getTranslations({ locale, namespace: 'common.communities.page.policyBadge' })
+  ]);
 
   const community = await prisma.community.findUnique({
     where: { slug: slug.toLowerCase() },
@@ -199,11 +218,16 @@ export default async function CommunityPage({ params }: { params: Promise<Params
         blockedByAuthor: me ? blockedBySet.has(p.author.id) : false,
       },
       initiallyBookmarked: bookmarkedSet.has(viewerTargetId),
-
-      // ← NEU: Community-Label für die Karte
       community: { name: community.name, slug: community.slug },
     } satisfies PostCardFeedPost;
   });
+
+  const membersLabel = tDetail('members', {
+    count: community._count.CommunityMember.toLocaleString(locale)
+  });
+  const policyKey = policyKeyFromDb(community.joinPolicy);
+  const policyPrefix = tDetail('policyPrefix');
+  const policyLabel = tPolicy(policyKey);
 
   return (
     <section className="grid gap-4 max-w-2xl mx-auto">
@@ -225,15 +249,14 @@ export default async function CommunityPage({ params }: { params: Promise<Params
                 forceFallback
                 replaceOnFallback
               />
-
             </div>
 
             <div className="text-xl font-bold truncate">{community.name}</div>
             <div className="text-sm opacity-70 truncate">@{community.slug}</div>
             {community.description && <p className="mt-1 text-sm opacity-90">{community.description}</p>}
             <div className="mt-2 text-sm opacity-80">
-              {community._count.CommunityMember.toLocaleString()} members · Policy{' '}
-              <span className="uppercase">{community.joinPolicy}</span>
+              {membersLabel} · {policyPrefix}{' '}
+              <span className="uppercase">{policyLabel}</span>
             </div>
           </div>
 

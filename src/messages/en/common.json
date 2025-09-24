@@ -4,6 +4,222 @@
     "brand": { "name": "Subm8" },
     "time": { "now": "now", "m": "{count}m", "h": "{count}h", "d": "{count}d" },
 
+    "communities": {
+      "invite": {
+      "button": "Invite",
+      "title": "Invite members"
+    },
+      "share": {
+      "aria": {
+        "button": "Share",
+        "dm": "Share in direct message",
+        "copy": "Copy link",
+        "system": "Share via device"
+      },
+      "menu": {
+        "dm": "Send via Direct Message",
+        "copy": "Copy link",
+        "copied": "Copied!",
+        "system": "Share on device…"
+      },
+      "overlay": {
+        "title": "Send via Direct Message",
+        "search": "Search people or chats",
+        "loading": "Loading chats…",
+        "error": "Failed to load chats",
+        "empty": "No conversations found.",
+        "notePlaceholder": "Add a comment (optional)…",
+        "cancel": "Cancel",
+        "send": "Send",
+        "sending": "Sending…"
+      }
+    },
+      "detail": {
+      "members": "{count} members",
+      "policyPrefix": "Policy"
+    },
+    "page": {
+      "title": "Communities",
+      "tabs": {
+        "discover": "Discover",
+        "yours": "Your communities"
+      },
+      "loading": "Loading…",
+      "empty": {
+        "discover": "No communities found yet.",
+        "yours": "You haven't joined any communities yet."
+      },
+      "members": "{count} members",
+      "policyBadge": {
+        "open": "Open",
+        "invite": "Invite only",
+        "dommeOnly": "Dommes only",
+        "subOnly": "Subs only"
+      },
+      "blocked": {
+        "inviteOnly": "Invite only — requires an invite",
+        "dommeOnly": "Dommes only",
+        "subOnly": "Subs only"
+      }
+    },
+    "create": {
+      "button": "New Community",
+      "title": "Create community",
+      "aria": {
+        "close": "Close"
+      },
+      "fields": {
+        "name": {
+          "label": "Name",
+          "placeholder": "KinkyGroupFun"
+        },
+        "handle": {
+          "label": "Handle (optional)",
+          "placeholder": "e.g. eu-fetish-scene",
+          "helperPreview": "It will appear as: @{handle}",
+          "example": "your-handle"
+        },
+        "description": {
+          "label": "Description (optional)",
+          "placeholder": "Describe your community…"
+        },
+        "policy": {
+          "label": "Join policy",
+          "options": {
+            "open": "Open",
+            "invite": "Invite only",
+            "dommeOnly": "Dommes only",
+            "subOnly": "Subs only"
+          }
+        },
+        "banner": {
+          "label": "Banner (optional)",
+          "button": "Choose image",
+          "hint": "PNG/JPG/WebP/GIF, max ~10MB. Drag & drop supported.",
+          "previewAlt": "Banner preview",
+          "removeAria": "Remove image"
+        }
+      },
+      "errors": {
+        "generic": "Something went wrong. Please try again."
+      },
+      "actions": {
+        "cancel": "Cancel",
+        "create": "Create",
+        "creating": "Creating…"
+      }
+    },
+    "join": {
+      "actions": {
+        "join": "Join",
+        "leave": "Leave",
+        "loading": "…"
+      },
+      "hints": {
+        "inviteOnly": "Invite only",
+        "dommeOnly": "Dommes only",
+        "subOnly": "Subs only"
+      },
+      "members": "{count} members",
+      "errors": {
+        "inviteOnly": "This community is invite only.",
+        "roleNotAllowed": {
+          "generic": "You are not allowed to join this community.",
+          "dommeOnly": "Only Dommes can join this community.",
+          "subOnly": "Only Subs can join this community."
+        },
+        "joinFailed": "Join failed. Please try again later.",
+        "creatorCannotLeave": "The creator cannot leave their own community.",
+        "generic": "Something went wrong. Please try again."
+      }
+    }
+  },
+
+    "communitiesPage": {
+  "title": "Communities",
+  "tabs": {
+    "discover": "Discover",
+    "yours": "Your communities"
+  },
+  "loading": "Loading…",
+  "empty": {
+    "discover": "No communities found yet.",
+    "yours": "You haven't joined any communities yet."
+  },
+  "policy": {
+    "open": "Open",
+    "inviteOnly": "Invite only",
+    "dommesOnly": "Dommes only",
+    "subsOnly": "Subs only"
+  },
+  "members": "{count} members",
+  "blocked": {
+    "inviteOnly": "Invite only — requires an invite",
+    "dommesOnly": "Dommes only",
+    "subsOnly": "Subs only"
+  }
+},
+
+
+    "notificationsPage": {
+  "title": "Notifications",
+  "tabs": { "all": "All", "mentions": "Mentions", "comments": "Comments" },
+  "empty": {
+    "title": "All caught up",
+    "desc": "You have no notifications right now."
+  },
+  "actions": {
+    "view": "View",
+    "follow": "Follow",
+    "following": "Following"
+  },
+  "messages": {
+    "followedYou": "followed you",
+    "mentionedYou": "mentioned you:",
+    "likedYourPost": "liked your post:",
+    "commentedOnYourPost": "commented on your post:",
+    "repliedToYourComment": "replied to your comment:",
+    "likedYourComment": "liked your comment:",
+    "timeSep": "· {time}"
+  }
+},
+
+
+    "search": {
+      "placeholder": "Search Subm8",
+      "recent": {
+        "title": "Recent",
+        "remove": "Remove",
+        "removeAria": "Remove {query}"
+      },
+      "trending": {
+        "title": "Trending now",
+        "empty": "No trending topics right now.",
+        "topic": "Topic",
+        "posts": "posts"
+      },
+      "suggestions": {
+        "title": "People you might want to follow",
+        "empty": "No suggestions right now."
+      },
+      "tabs": {
+        "top": "Top",
+        "latest": "Latest",
+        "people": "People"
+      },
+      "loading": "Loading…",
+      "people": {
+        "title": "People",
+        "followers": "followers",
+        "empty": "No people found"
+      },
+      "posts": {
+        "title": "Posts",
+        "latestTitle": "Latest posts",
+        "empty": "No posts found"
+      }
+    },
+
     "auth": {
     "signin": {
       "title": "Sign in",

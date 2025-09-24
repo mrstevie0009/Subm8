@@ -3,6 +3,224 @@
     "nav": { "home": "Start", "search": "Suche", "communities": "Communities", "chat": "Chat" },
     "brand": { "name": "Subm8" },
     "time": { "now": "jetzt", "m": "{count}m", "h": "{count}h", "d": "{count}d" },
+
+    "communities": {
+      "invite": {
+      "button": "Einladen",
+      "title": "Mitglieder einladen"
+    },
+      "share": {
+      "aria": {
+        "button": "Teilen",
+        "dm": "In Direktnachricht teilen",
+        "copy": "Link kopieren",
+        "system": "Auf Gerät teilen"
+      },
+      "menu": {
+        "dm": "Per Direktnachricht senden",
+        "copy": "Link kopieren",
+        "copied": "Kopiert!",
+        "system": "Auf Gerät teilen…"
+      },
+      "overlay": {
+        "title": "Per Direktnachricht senden",
+        "search": "Nach Personen/Chats suchen",
+        "loading": "Lade Chats…",
+        "error": "Chats konnten nicht geladen werden",
+        "empty": "Keine Konversationen gefunden.",
+        "notePlaceholder": "Kommentar hinzufügen (optional)…",
+        "cancel": "Abbrechen",
+        "send": "Senden",
+        "sending": "Senden…"
+      }
+    },
+      "detail": {
+      "members": "{count} Mitglieder",
+      "policyPrefix": "Regel"
+    },
+    "page": {
+      "title": "Communities",
+      "tabs": {
+        "discover": "Entdecken",
+        "yours": "Deine Communities"
+      },
+      "loading": "Lade…",
+      "empty": {
+        "discover": "Noch keine Communities gefunden.",
+        "yours": "Du bist noch keiner Community beigetreten."
+      },
+      "members": "{count} Mitglieder",
+      "policyBadge": {
+        "open": "Offen",
+        "invite": "Nur mit Einladung",
+        "dommeOnly": "Nur Dommes",
+        "subOnly": "Nur Subs"
+      },
+      "blocked": {
+        "inviteOnly": "Nur mit Einladung — erfordert eine Einladung",
+        "dommeOnly": "Nur Dommes",
+        "subOnly": "Nur Subs"
+      }
+    },
+    "create": {
+      "button": "Neue Community",
+      "title": "Community erstellen",
+      "aria": {
+        "close": "Schließen"
+      },
+      "fields": {
+        "name": {
+          "label": "Name",
+          "placeholder": "KinkyGroupFun"
+        },
+        "handle": {
+          "label": "Handle (optional)",
+          "placeholder": "z. B. eu-fetish-scene",
+          "helperPreview": "So erscheint es: @{handle}",
+          "example": "your-handle"
+        },
+        "description": {
+          "label": "Beschreibung (optional)",
+          "placeholder": "Beschreibe deine Community…"
+        },
+        "policy": {
+          "label": "Beitrittsregel",
+          "options": {
+            "open": "Offen",
+            "invite": "Nur mit Einladung",
+            "dommeOnly": "Nur Dommes",
+            "subOnly": "Nur Subs"
+          }
+        },
+        "banner": {
+          "label": "Banner (optional)",
+          "button": "Bild auswählen",
+          "hint": "PNG/JPG/WebP/GIF, max. ~10 MB. Drag & Drop wird unterstützt.",
+          "previewAlt": "Banner-Vorschau",
+          "removeAria": "Bild entfernen"
+        }
+      },
+      "errors": {
+        "generic": "Etwas ist schiefgelaufen. Bitte versuche es erneut."
+      },
+      "actions": {
+        "cancel": "Abbrechen",
+        "create": "Erstellen",
+        "creating": "Erstelle…"
+      }
+    },
+    "join": {
+      "actions": {
+        "join": "Beitreten",
+        "leave": "Verlassen",
+        "loading": "…"
+      },
+      "hints": {
+        "inviteOnly": "Nur mit Einladung",
+        "dommeOnly": "Nur Dommes",
+        "subOnly": "Nur Subs"
+      },
+      "members": "{count} Mitglieder",
+      "errors": {
+        "inviteOnly": "Diese Community ist nur mit Einladung zugänglich.",
+        "roleNotAllowed": {
+          "generic": "Du darfst dieser Community nicht beitreten.",
+          "dommeOnly": "Nur Dommes können dieser Community beitreten.",
+          "subOnly": "Nur Subs können dieser Community beitreten."
+        },
+        "joinFailed": "Beitritt fehlgeschlagen. Bitte versuche es später erneut.",
+        "creatorCannotLeave": "Der/die Ersteller:in kann die eigene Community nicht verlassen.",
+        "generic": "Etwas ist schiefgelaufen. Bitte versuche es erneut."
+      }
+    }
+  },
+
+    "communitiesPage": {
+  "title": "Communities",
+  "tabs": {
+    "discover": "Entdecken",
+    "yours": "Deine Communities"
+  },
+  "loading": "Lade…",
+  "empty": {
+    "discover": "Noch keine Communities gefunden.",
+    "yours": "Du bist noch keiner Community beigetreten."
+  },
+  "policy": {
+    "open": "Offen",
+    "inviteOnly": "Nur mit Einladung",
+    "dommesOnly": "Nur Dommes",
+    "subsOnly": "Nur Subs"
+  },
+  "members": "{count} Mitglieder",
+  "blocked": {
+    "inviteOnly": "Nur mit Einladung — Einladung erforderlich",
+    "dommesOnly": "Nur Dommes",
+    "subsOnly": "Nur Subs"
+  }
+},
+
+
+    "notificationsPage": {
+  "title": "Benachrichtigungen",
+  "tabs": { "all": "Alle", "mentions": "Erwähnungen", "comments": "Kommentare" },
+  "empty": {
+    "title": "Alles erledigt",
+    "desc": "Du hast derzeit keine Benachrichtigungen."
+  },
+  "actions": {
+    "view": "Ansehen",
+    "follow": "Folgen",
+    "following": "Folgt"
+  },
+  "messages": {
+    "followedYou": "folgt dir",
+    "mentionedYou": "hat dich erwähnt:",
+    "likedYourPost": "hat deinen Beitrag geliked:",
+    "commentedOnYourPost": "hat deinen Beitrag kommentiert:",
+    "repliedToYourComment": "hat auf deinen Kommentar geantwortet:",
+    "likedYourComment": "hat deinen Kommentar geliked:",
+    "timeSep": "· {time}"
+  }
+},
+
+
+    "search": {
+  "placeholder": "Suche Subm8",
+  "recent": {
+    "title": "Zuletzt",
+    "remove": "Entfernen",
+    "removeAria": "{query} entfernen"
+  },
+  "trending": {
+    "title": "Gerade im Trend",
+    "empty": "Zurzeit keine Trends.",
+    "topic": "Thema",
+    "posts": "Beiträge"
+  },
+  "suggestions": {
+    "title": "Leute, denen du folgen könntest",
+    "empty": "Keine Vorschläge im Moment."
+  },
+  "tabs": {
+    "top": "Top",
+    "latest": "Neueste",
+    "people": "Personen"
+  },
+  "loading": "Lade…",
+  "people": {
+    "title": "Personen",
+    "followers": "Follower",
+    "empty": "Keine Personen gefunden"
+  },
+  "posts": {
+    "title": "Beiträge",
+    "latestTitle": "Neueste Beiträge",
+    "empty": "Keine Beiträge gefunden"
+  }
+}
+,
+
     "auth": {
         "signin": {
           "title": "Anmelden",

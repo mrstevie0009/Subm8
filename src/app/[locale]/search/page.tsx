@@ -1,9 +1,9 @@
-// src/app/[locale]/search/page.tsx
 'use client';
 
 import * as React from 'react';
 import Image from 'next/image';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { followAction, unfollowAction } from '@/app/actions/follow';
 
 type PostCounts = { likes: number; comments: number; bookmarks: number };
@@ -37,6 +37,7 @@ export default function SearchPage() {
   const router = useRouter();
   const sp = useSearchParams();
   const { locale } = useParams() as { locale: string };
+  const t = useTranslations('common.search');
 
   // Query & Tab aus URL
   const qParam = sp.get('q') || '';
@@ -69,7 +70,7 @@ export default function SearchPage() {
     } catch {}
   }, []);
 
-  // Suggestions laden (gefiltert: keine, denen der Viewer schon folgt)
+  // Suggestions laden
   React.useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -91,7 +92,7 @@ export default function SearchPage() {
     };
   }, []);
 
-  // Trending für Startansicht laden (Fallback)
+  // Trending laden
   React.useEffect(() => {
     (async () => {
       try {
@@ -102,12 +103,7 @@ export default function SearchPage() {
           return;
         }
       } catch {}
-      setTrending([
-        { tag: 'Findom', posts: 14700 },
-        { tag: 'NSFW', posts: 89200 },
-        { tag: 'BDSM', posts: 41300 },
-        { tag: 'aftercare', posts: 3201 },
-      ]);
+      setTrending([]);
     })();
   }, []);
 
@@ -121,14 +117,13 @@ export default function SearchPage() {
     saveRecent(recent.filter((x) => x !== r));
   }
 
-  // ---- Ergebnis-States (wenn q gesetzt ist)
+  // ---- Ergebnis-States
   const [topUsers, setTopUsers] = React.useState<SearchUser[]>([]);
   const [topPosts, setTopPosts] = React.useState<PostItem[]>([]);
   const [latestPosts, setLatestPosts] = React.useState<PostItem[]>([]);
   const [people, setPeople] = React.useState<SearchUser[]>([]);
   const [loading, setLoading] = React.useState(false);
 
-  // Enter → URL updaten
   function goToQuery(nextTab?: 'top' | 'latest' | 'people') {
     const tab = nextTab || tabParam || 'top';
     const url = `/${locale}/search?q=${encodeURIComponent(q)}&tab=${tab}`;
@@ -141,7 +136,7 @@ export default function SearchPage() {
     }
   }
 
-  // Daten für aktive Tab-Kombination laden
+  // Daten laden für Tabs
   React.useEffect(() => {
     const query = sp.get('q') || '';
     const tab = (sp.get('tab') || 'top') as 'top' | 'latest' | 'people';
@@ -188,7 +183,6 @@ export default function SearchPage() {
     })();
   }, [sp]);
 
-  // Tab-UI
   function TabLink({ id, label }: { id: 'top' | 'latest' | 'people'; label: string }) {
     const active = tabParam === id;
     const href = `/${locale}/search?q=${encodeURIComponent(qParam)}&tab=${id}`;
@@ -206,7 +200,7 @@ export default function SearchPage() {
 
   return (
     <div className="max-w-3xl mx-auto">
-      {/* Sticky Suchleiste */}
+      {/* Search bar */}
       <div className="sticky top-[calc(var(--header-h))] z-10 bg-black/80 rounded-2xl backdrop-blur border-b border-white/10">
         <div className="px-4 py-3">
           <label className="relative block">
@@ -218,20 +212,20 @@ export default function SearchPage() {
               value={q}
               onChange={(e) => setQ(e.target.value)}
               onKeyDown={onKeyDown}
-              placeholder="Search Subm8"
+              placeholder={t('placeholder')}
               className="w-full pl-10 pr-3 h-11 rounded-full bg-white/5 border border-white/10 outline-none focus:ring-2 focus:ring-[var(--purple)]/40"
             />
           </label>
         </div>
       </div>
 
-      {/* STARTANSICHT */}
+      {/* Start view */}
       {!qParam ? (
         <div className="p-4 grid gap-6">
           {/* Recent */}
           {recent.length > 0 && (
             <section className="rounded-app border border-sub shadow-app">
-              <header className="px-4 py-3 border-b border-white/10 font-semibold">Recent</header>
+              <header className="px-4 py-3 border-b border-white/10 font-semibold">{t('recent.title')}</header>
               <ul>
                 {recent.map((r) => (
                   <li key={r} className="flex items-center justify-between px-4 py-3 hover:bg-white/5">
@@ -245,8 +239,8 @@ export default function SearchPage() {
                     <button
                       className="text-muted hover:text-white/90"
                       onClick={() => removeRecent(r)}
-                      aria-label={`Remove ${r}`}
-                      title="Remove"
+                      aria-label={t('recent.removeAria', { query: r })}
+                      title={t('recent.remove')}
                     >
                       <CloseIcon />
                     </button>
@@ -258,22 +252,27 @@ export default function SearchPage() {
 
           {/* Trending */}
           <section className="rounded-app border border-sub shadow-app">
-            <header className="px-4 py-3 border-b border-white/10 font-semibold">Trending now</header>
-            <ul>
-              {trending.slice(0, 4).map((t, i) => (
-                <li key={t.tag} className="px-4 py-3 hover:bg-white/5">
-                  <div className="text-sm opacity-70">#{i + 1} · Topic</div>
-                  <div className="font-medium">{t.tag}</div>
-                  <div className="text-sm opacity-70">{Intl.NumberFormat().format(t.posts)} posts</div>
-                </li>
-              ))}
-            </ul>
+            <header className="px-4 py-3 border-b border-white/10 font-semibold">{t('trending.title')}</header>
+
+            {trending.length === 0 ? (
+              <div className="px-4 py-6 text-sm opacity-70">{t('trending.empty')}</div>
+            ) : (
+              <ul>
+                {trending.slice(0, 4).map((tItem, i) => (
+                  <li key={tItem.tag} className="px-4 py-3 hover:bg-white/5">
+                    <div className="text-sm opacity-70">#{i + 1} · {t('trending.topic')}</div>
+                    <div className="font-medium">{tItem.tag}</div>
+                    <div className="text-sm opacity-70">{Intl.NumberFormat().format(tItem.posts)} {t('trending.posts')}</div>
+                  </li>
+                ))}
+              </ul>
+            )}
           </section>
 
-          {/* People you might want to follow */}
+          {/* Suggestions */}
           <section className="px-4 pt-4">
             <div className="rounded-app border border-sub shadow-app p-3">
-              <div className="px-1 pb-2 font-semibold">People you might want to follow</div>
+              <div className="px-1 pb-2 font-semibold">{t('suggestions.title')}</div>
 
               {loadingSug && (
                 <ul className="divide-y divide-white/10">
@@ -304,7 +303,7 @@ export default function SearchPage() {
                     />
                   ))}
                   {suggestions.length === 0 && (
-                    <li className="px-1 py-4 text-sm opacity-70">No suggestions right now.</li>
+                    <li className="px-1 py-4 text-sm opacity-70">{t('suggestions.empty')}</li>
                   )}
                 </ul>
               )}
@@ -312,23 +311,23 @@ export default function SearchPage() {
           </section>
         </div>
       ) : (
-        // SUCHERGEBNISSE (Tabs)
+        // Results view
         <>
           <div className="px-4 pt-3 flex gap-2 border-b border-white/10">
-            <TabLink id="top" label="Top" />
-            <TabLink id="latest" label="Neueste" />
-            <TabLink id="people" label="Personen" />
+            <TabLink id="top" label={t('tabs.top')} />
+            <TabLink id="latest" label={t('tabs.latest')} />
+            <TabLink id="people" label={t('tabs.people')} />
           </div>
 
           <div className="p-4 grid gap-6">
-            {loading && <div className="opacity-70">Lade…</div>}
+            {loading && <div className="opacity-70">{t('loading')}</div>}
 
             {tabParam === 'top' && !loading && (
               <>
-                {/* Personen */}
+                {/* Users */}
                 {topUsers.length > 0 && (
                   <section className="rounded-app border border-sub shadow-app">
-                    <header className="px-4 py-3 border-b border-white/10 font-semibold">Personen</header>
+                    <header className="px-4 py-3 border-b border-white/10 font-semibold">{t('people.title')}</header>
                     <ul className="divide-y divide-white/10">
                       {topUsers.map((u) => {
                         const followers = u.followersCount ?? u.followers;
@@ -349,12 +348,11 @@ export default function SearchPage() {
                                 <div className="text-sm opacity-70 truncate">@{u.handle}</div>
                                 {typeof followers === 'number' && (
                                   <div className="text-xs opacity-60">
-                                    {Intl.NumberFormat().format(followers)} followers
+                                    {Intl.NumberFormat().format(followers)} {t('people.followers')}
                                   </div>
                                 )}
                               </div>
                             </div>
-                            {/* In Ergebnissen entfernen wir nicht automatisch */}
                             <FollowForm userId={u.id} handle={u.handle} initialFollowing={!!u.viewerFollows} />
                           </li>
                         );
@@ -365,13 +363,13 @@ export default function SearchPage() {
 
                 {/* Posts */}
                 <section className="rounded-app border border-sub shadow-app">
-                  <header className="px-4 py-3 border-b border-white/10 font-semibold">Posts</header>
+                  <header className="px-4 py-3 border-b border-white/10 font-semibold">{t('posts.title')}</header>
                   <ul className="divide-y divide-white/10">
                     {topPosts.map((p) => (
                       <PostRow key={p.id} post={p} />
                     ))}
                     {topPosts.length === 0 && (
-                      <li className="px-4 py-6 text-sm opacity-70">Keine Posts gefunden</li>
+                      <li className="px-4 py-6 text-sm opacity-70">{t('posts.empty')}</li>
                     )}
                   </ul>
                 </section>
@@ -380,13 +378,13 @@ export default function SearchPage() {
 
             {tabParam === 'latest' && !loading && (
               <section className="rounded-app border border-sub shadow-app">
-                <header className="px-4 py-3 border-b border-white/10 font-semibold">Neueste Posts</header>
+                <header className="px-4 py-3 border-b border-white/10 font-semibold">{t('posts.latestTitle')}</header>
                 <ul className="divide-y divide-white/10">
                   {latestPosts.map((p) => (
                     <PostRow key={p.id} post={p} />
                   ))}
                   {latestPosts.length === 0 && (
-                    <li className="px-4 py-6 text-sm opacity-70">Keine Posts gefunden</li>
+                    <li className="px-4 py-6 text-sm opacity-70">{t('posts.empty')}</li>
                   )}
                 </ul>
               </section>
@@ -394,7 +392,7 @@ export default function SearchPage() {
 
             {tabParam === 'people' && !loading && (
               <section className="rounded-app border border-sub shadow-app">
-                <header className="px-4 py-3 border-b border-white/10 font-semibold">Personen</header>
+                <header className="px-4 py-3 border-b border-white/10 font-semibold">{t('people.title')}</header>
                 <ul className="divide-y divide-white/10">
                   {people.map((u) => {
                     const avatar = u.avatarUrl ?? u.avatar ?? AVATAR_PH;
@@ -414,13 +412,12 @@ export default function SearchPage() {
                             <div className="text-sm opacity-70 truncate">@{u.handle}</div>
                           </div>
                         </div>
-                        {/* In Ergebnissen entfernen wir nicht automatisch */}
                         <FollowForm userId={u.id} handle={u.handle} initialFollowing={!!u.viewerFollows} />
                       </li>
                     );
                   })}
                   {people.length === 0 && (
-                    <li className="px-4 py-6 text-sm opacity-70">Keine Personen gefunden</li>
+                    <li className="px-4 py-6 text-sm opacity-70">{t('people.empty')}</li>
                   )}
                 </ul>
               </section>
@@ -432,7 +429,7 @@ export default function SearchPage() {
   );
 }
 
-/* ---------- Suggestion item mit Delay + Fade-Removal ---------- */
+/* ---------- Suggestion item ---------- */
 function SuggestionItem({
   user,
   onRemove,
@@ -445,23 +442,19 @@ function SuggestionItem({
   const removeTimerRef = React.useRef<number | null>(null);
   const fadeTimerRef = React.useRef<number | null>(null);
 
-  // Button-Klassen
   const btnCls = following
     ? 'px-4 py-1.5 rounded-full border border-white/25 hover:bg-white/5'
     : 'px-4 py-1.5 rounded-full bg-[var(--purple)] text-white hover:opacity-95';
 
-  // Wenn gefolgt wird, kurzen Delay, dann fade & remove
   const scheduleFadeAndRemove = React.useCallback(() => {
-    // 900ms warten, dann 300ms fade → remove
     removeTimerRef.current = window.setTimeout(() => {
       setFading(true);
       fadeTimerRef.current = window.setTimeout(() => {
         onRemove();
-      }, 320); // Fade-Dauer
-    }, 900); // Sichtfenster zum „Unfollow“ klicken
+      }, 320);
+    }, 900);
   }, [onRemove]);
 
-  // Timer aufräumen (z.B. wenn User schnell wieder entfolgt)
   const clearTimers = React.useCallback(() => {
     if (removeTimerRef.current) {
       window.clearTimeout(removeTimerRef.current);
@@ -499,15 +492,12 @@ function SuggestionItem({
         action={following ? unfollowAction : followAction}
         onSubmit={() => {
           const next = !following;
-          // Toggle Zustand optimistisch
           setFollowing(next);
 
           if (next) {
-            // Follow → verzögert ausblenden & entfernen
             clearTimers();
             scheduleFadeAndRemove();
           } else {
-            // Unfollow (falls im Sichtfenster geklickt) → Entfernung abbrechen
             clearTimers();
             setFading(false);
           }
@@ -523,7 +513,7 @@ function SuggestionItem({
   );
 }
 
-/* ---------- Follow/Unfollow (ohne Removal; für Ergebnislisten) ---------- */
+/* ---------- FollowForm ---------- */
 function FollowForm({
   userId,
   handle,

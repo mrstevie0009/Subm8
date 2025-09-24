@@ -4,6 +4,222 @@
     "brand": { "name": "Subm8" },
     "time": { "now": "maintenant", "m": "{count}m", "h": "{count}h", "d": "{count}j" },
 
+    "communities": {
+      "invite": {
+      "button": "Inviter",
+      "title": "Inviter des membres"
+    },
+      "share": {
+      "aria": {
+        "button": "Partager",
+        "dm": "Partager par message direct",
+        "copy": "Copier le lien",
+        "system": "Partager via l’appareil"
+      },
+      "menu": {
+        "dm": "Envoyer par message direct",
+        "copy": "Copier le lien",
+        "copied": "Copié !",
+        "system": "Partager sur l’appareil…"
+      },
+      "overlay": {
+        "title": "Envoyer par message direct",
+        "search": "Rechercher des personnes ou des discussions",
+        "loading": "Chargement des discussions…",
+        "error": "Impossible de charger les discussions",
+        "empty": "Aucune conversation trouvée.",
+        "notePlaceholder": "Ajouter un commentaire (optionnel)…",
+        "cancel": "Annuler",
+        "send": "Envoyer",
+        "sending": "Envoi…"
+      }
+    },
+      "detail": {
+      "members": "{count} membres",
+      "policyPrefix": "Règle"
+    },
+    "page": {
+      "title": "Communautés",
+      "tabs": {
+        "discover": "Découvrir",
+        "yours": "Vos communautés"
+      },
+      "loading": "Chargement…",
+      "empty": {
+        "discover": "Aucune communauté pour le moment.",
+        "yours": "Vous n’avez encore rejoint aucune communauté."
+      },
+      "members": "{count} membres",
+      "policyBadge": {
+        "open": "Ouverte",
+        "invite": "Sur invitation",
+        "dommeOnly": "Dommes uniquement",
+        "subOnly": "Subs uniquement"
+      },
+      "blocked": {
+        "inviteOnly": "Sur invitation — nécessite une invitation",
+        "dommeOnly": "Dommes uniquement",
+        "subOnly": "Subs uniquement"
+      }
+    },
+    "create": {
+      "button": "Nouvelle communauté",
+      "title": "Créer une communauté",
+      "aria": {
+        "close": "Fermer"
+      },
+      "fields": {
+        "name": {
+          "label": "Nom",
+          "placeholder": "KinkyGroupFun"
+        },
+        "handle": {
+          "label": "Handle (facultatif)",
+          "placeholder": "ex. eu-fetish-scene",
+          "helperPreview": "Il apparaîtra comme : @{handle}",
+          "example": "your-handle"
+        },
+        "description": {
+          "label": "Description (facultatif)",
+          "placeholder": "Décrivez votre communauté…"
+        },
+        "policy": {
+          "label": "Règle d’adhésion",
+          "options": {
+            "open": "Ouverte",
+            "invite": "Sur invitation",
+            "dommeOnly": "Dommes uniquement",
+            "subOnly": "Subs uniquement"
+          }
+        },
+        "banner": {
+          "label": "Bannière (facultatif)",
+          "button": "Choisir une image",
+          "hint": "PNG/JPG/WebP/GIF, ~10 Mo max. Glisser-déposer pris en charge.",
+          "previewAlt": "Aperçu de la bannière",
+          "removeAria": "Supprimer l’image"
+        }
+      },
+      "errors": {
+        "generic": "Une erreur s’est produite. Veuillez réessayer."
+      },
+      "actions": {
+        "cancel": "Annuler",
+        "create": "Créer",
+        "creating": "Création…"
+      }
+    },
+    "join": {
+      "actions": {
+        "join": "Rejoindre",
+        "leave": "Quitter",
+        "loading": "…"
+      },
+      "hints": {
+        "inviteOnly": "Sur invitation",
+        "dommeOnly": "Dommes uniquement",
+        "subOnly": "Subs uniquement"
+      },
+      "members": "{count} membres",
+      "errors": {
+        "inviteOnly": "Cette communauté est accessible sur invitation.",
+        "roleNotAllowed": {
+          "generic": "Vous n’êtes pas autorisé(e) à rejoindre cette communauté.",
+          "dommeOnly": "Seules les Dommes peuvent rejoindre cette communauté.",
+          "subOnly": "Seuls les Subs peuvent rejoindre cette communauté."
+        },
+        "joinFailed": "Échec de l’adhésion. Réessayez plus tard.",
+        "creatorCannotLeave": "Le créateur ne peut pas quitter sa propre communauté.",
+        "generic": "Un problème est survenu. Veuillez réessayer."
+      }
+    }
+  },
+
+    "communitiesPage": {
+  "title": "Communautés",
+  "tabs": {
+    "discover": "Découvrir",
+    "yours": "Vos communautés"
+  },
+  "loading": "Chargement…",
+  "empty": {
+    "discover": "Aucune communauté trouvée pour le moment.",
+    "yours": "Vous n’avez rejoint aucune communauté pour l’instant."
+  },
+  "policy": {
+    "open": "Ouvert",
+    "inviteOnly": "Sur invitation",
+    "dommesOnly": "Dommes uniquement",
+    "subsOnly": "Subs uniquement"
+  },
+  "members": "{count} membres",
+  "blocked": {
+    "inviteOnly": "Sur invitation — nécessite une invitation",
+    "dommesOnly": "Dommes uniquement",
+    "subsOnly": "Subs uniquement"
+  }
+},
+
+
+    "notificationsPage": {
+  "title": "Notifications",
+  "tabs": { "all": "Tout", "mentions": "Mentions", "comments": "Commentaires" },
+  "empty": {
+    "title": "À jour",
+    "desc": "Vous n’avez aucune notification pour le moment."
+  },
+  "actions": {
+    "view": "Voir",
+    "follow": "Suivre",
+    "following": "Abonné·e"
+  },
+  "messages": {
+    "followedYou": "vous a suivi",
+    "mentionedYou": "vous a mentionné·e :",
+    "likedYourPost": "a aimé votre publication :",
+    "commentedOnYourPost": "a commenté votre publication :",
+    "repliedToYourComment": "a répondu à votre commentaire :",
+    "likedYourComment": "a aimé votre commentaire :",
+    "timeSep": "· {time}"
+  }
+},
+
+
+    "search": {
+  "placeholder": "Rechercher sur Subm8",
+  "recent": {
+    "title": "Récent",
+    "remove": "Supprimer",
+    "removeAria": "Supprimer {query}"
+  },
+  "trending": {
+    "title": "Tendance actuelle",
+    "empty": "Aucune tendance pour le moment.",
+    "topic": "Sujet",
+    "posts": "publications"
+  },
+  "suggestions": {
+    "title": "Personnes à suivre",
+    "empty": "Aucune suggestion pour l’instant."
+  },
+  "tabs": {
+    "top": "Top",
+    "latest": "Derniers",
+    "people": "Personnes"
+  },
+  "loading": "Chargement…",
+  "people": {
+    "title": "Personnes",
+    "followers": "abonnés",
+    "empty": "Aucune personne trouvée"
+  },
+  "posts": {
+    "title": "Publications",
+    "latestTitle": "Dernières publications",
+    "empty": "Aucune publication trouvée"
+  }
+},
+
     "auth": {
     "signin": {
       "title": "Se connecter",

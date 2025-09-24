@@ -1,10 +1,10 @@
-// src/app/[locale]/notifications/page.tsx
 'use client';
 
 import * as React from 'react';
 import Image from 'next/image';
 import { followAction, unfollowAction } from '@/app/actions/follow';
 import { useParams, useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 
 // ---------- Types returned by /api/notifications ----------
 type ApiUser = {
@@ -26,7 +26,7 @@ type ApiNoti = ApiFollow | ApiLike | ApiMention | ApiComment | ApiReply | ApiCom
 // ---------- UI Types ----------
 type NotiBase = {
   id: string;
-  time: string; // relative
+  time: string; // relative, already localized short form
   user: { id?: string; handle: string; name?: string; avatar?: string; viewerFollows?: boolean };
   postId?: string;
   text?: string;
@@ -41,18 +41,20 @@ type Noti =
   | (NotiBase & { kind: 'comment_like' });
 
 // ---------- Helpers ----------
-function timeAgo(date: Date): string {
-  const s = Math.floor((Date.now() - date.getTime()) / 1000);
-  if (s < 60) return `${s}s`;
-  const m = Math.floor(s / 60);
-  if (m < 60) return `${m}m`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h`;
-  const d = Math.floor(h / 24);
-  return `${d}d`;
-}
 function cn(...classes: Array<string | false | undefined>) {
   return classes.filter(Boolean).join(' ');
+}
+
+// Relatives times using i18n keys from common.time
+function timeAgoIntl(date: Date, tTime: (key: string, values?: Record<string, unknown>) => string): string {
+  const s = Math.floor((Date.now() - date.getTime()) / 1000);
+  if (s < 60) return tTime('now');
+  const m = Math.floor(s / 60);
+  if (m < 60) return tTime('m', { count: m });
+  const h = Math.floor(m / 60);
+  if (h < 24) return tTime('h', { count: h });
+  const d = Math.floor(h / 24);
+  return tTime('d', { count: d });
 }
 
 // ---------- Small Server-Action Follow Form ----------
@@ -60,10 +62,12 @@ function FollowForm({
   userId,
   handle,
   initialFollowing,
+  labels,
 }: {
   userId?: string;
   handle: string;
   initialFollowing: boolean;
+  labels: { follow: string; following: string };
 }) {
   const [following, setFollowing] = React.useState<boolean>(!!initialFollowing);
   const [pending, startTransition] = React.useTransition();
@@ -81,7 +85,7 @@ function FollowForm({
       {userId ? <input type="hidden" name="userId" value={userId} /> : null}
       <input type="hidden" name="handle" value={handle} />
       <button type="submit" disabled={pending} className={cls}>
-        {following ? 'Following' : 'Follow'}
+        {following ? labels.following : labels.follow}
       </button>
     </form>
   );
@@ -96,6 +100,9 @@ export default function NotificationsPage() {
   const router = useRouter();
   const { locale } = useParams() as { locale: string };
 
+  const t = useTranslations('common.notificationsPage');
+  const tTime = useTranslations('common.time');
+
   // Notifications laden
   React.useEffect(() => {
     let cancelled = false;
@@ -106,7 +113,7 @@ export default function NotificationsPage() {
         const j: { ok: boolean; items?: ApiNoti[] } = await res.json();
         if (!cancelled && j?.ok && Array.isArray(j.items)) {
           const mapped: Noti[] = j.items.map((n) => {
-            const rel = timeAgo(new Date(n.time));
+            const rel = timeAgoIntl(new Date(n.time), (key) => tTime(key));
             const base: NotiBase = {
               id: n.id,
               time: rel,
@@ -117,7 +124,6 @@ export default function NotificationsPage() {
                 avatar: n.user.avatarUrl ?? undefined,
                 viewerFollows: n.user.viewerFollows,
               },
-              // optional on some kinds:
               postId: 'postId' in n ? n.postId : undefined,
               text: 'text' in n ? n.text : undefined,
             };
@@ -134,14 +140,14 @@ export default function NotificationsPage() {
     return () => {
       cancelled = true;
     };
-  }, [tab]);
+  }, [tab, tTime]);
 
   return (
     <div className="max-w-2xl mx-auto">
       {/* Header */}
       <div className="sticky top-[calc(var(--header-h))] z-10 border-b border-white/10 bg-black/70 backdrop-blur">
         <div className="px-4 pt-3 pb-2">
-          <h1 className="text-xl md:text-2xl font-bold tracking-tight">Notifications</h1>
+          <h1 className="text-xl md:text-2xl font-bold tracking-tight">{t('title')}</h1>
         </div>
 
         {/* Segmented Tabs */}
@@ -158,7 +164,7 @@ export default function NotificationsPage() {
                     active ? 'bg-[var(--purple)] text-white' : 'text-white/80 hover:bg-white/10'
                   )}
                 >
-                  {k === 'all' ? 'All' : k === 'mentions' ? 'Mentions' : 'Comments'}
+                  {k === 'all' ? t('tabs.all') : k === 'mentions' ? t('tabs.mentions') : t('tabs.comments')}
                 </button>
               );
             })}
@@ -182,8 +188,8 @@ export default function NotificationsPage() {
               <div className="grid place-items-center size-12 rounded-full bg-white/5 border border-white/10">
                 <BellIcon tone="purple" />
               </div>
-              <div className="text-base font-medium">All caught up</div>
-              <div className="text-sm opacity-70">You have no notifications right now.</div>
+              <div className="text-base font-medium">{t('empty.title')}</div>
+              <div className="text-sm opacity-70">{t('empty.desc')}</div>
             </div>
           </li>
         )}
@@ -206,48 +212,48 @@ export default function NotificationsPage() {
               <div className="flex-1 min-w-0 leading-tight">
                 {n.kind === 'follow' && (
                   <div>
-                    <b>@{n.user.handle}</b> followed you{' '}
-                    <span className="text-xs opacity-60">· {n.time}</span>
+                    <b>@{n.user.handle}</b> {t('messages.followedYou')}{' '}
+                    <span className="text-xs opacity-60">{t('messages.timeSep', { time: n.time })}</span>
                   </div>
                 )}
 
                 {n.kind === 'mention' && (
                   <div>
-                    <b>@{n.user.handle}</b> mentioned you:{' '}
+                    <b>@{n.user.handle}</b> {t('messages.mentionedYou')}{' '}
                     <span className="opacity-90">{n.text}</span>{' '}
-                    <span className="text-xs opacity-60">· {n.time}</span>
+                    <span className="text-xs opacity-60">{t('messages.timeSep', { time: n.time })}</span>
                   </div>
                 )}
 
                 {n.kind === 'like' && (
                   <div>
-                    <b>@{n.user.handle}</b> liked your post:{' '}
+                    <b>@{n.user.handle}</b> {t('messages.likedYourPost')}{' '}
                     <span className="opacity-90">{n.text}</span>{' '}
-                    <span className="text-xs opacity-60">· {n.time}</span>
+                    <span className="text-xs opacity-60">{t('messages.timeSep', { time: n.time })}</span>
                   </div>
                 )}
 
                 {n.kind === 'comment' && (
                   <div>
-                    <b>@{n.user.handle}</b> commented on your post:{' '}
+                    <b>@{n.user.handle}</b> {t('messages.commentedOnYourPost')}{' '}
                     <span className="opacity-90">{n.text}</span>{' '}
-                    <span className="text-xs opacity-60">· {n.time}</span>
+                    <span className="text-xs opacity-60">{t('messages.timeSep', { time: n.time })}</span>
                   </div>
                 )}
 
                 {n.kind === 'reply' && (
                   <div>
-                    <b>@{n.user.handle}</b> replied to your comment:{' '}
+                    <b>@{n.user.handle}</b> {t('messages.repliedToYourComment')}{' '}
                     <span className="opacity-90">{n.text}</span>{' '}
-                    <span className="text-xs opacity-60">· {n.time}</span>
+                    <span className="text-xs opacity-60">{t('messages.timeSep', { time: n.time })}</span>
                   </div>
                 )}
 
                 {n.kind === 'comment_like' && (
                   <div>
-                    <b>@{n.user.handle}</b> liked your comment:{' '}
+                    <b>@{n.user.handle}</b> {t('messages.likedYourComment')}{' '}
                     <span className="opacity-90">{n.text}</span>{' '}
-                    <span className="text-xs opacity-60">· {n.time}</span>
+                    <span className="text-xs opacity-60">{t('messages.timeSep', { time: n.time })}</span>
                   </div>
                 )}
               </div>
@@ -258,13 +264,14 @@ export default function NotificationsPage() {
                   userId={n.user.id}
                   handle={n.user.handle}
                   initialFollowing={!!n.user.viewerFollows}
+                  labels={{ follow: t('actions.follow'), following: t('actions.following') }}
                 />
               ) : (
                 <button
                   className="px-3 py-1.5 rounded-full border border-white/20 hover:bg-white/5"
                   onClick={() => n.postId && router.push(`/${locale}/p/${n.postId}`)}
                 >
-                  View
+                  {t('actions.view')}
                 </button>
               )}
             </div>

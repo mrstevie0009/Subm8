@@ -4,6 +4,223 @@
     "brand": { "name": "Subm8" },
     "time": { "now": "ahora", "m": "{count}m", "h": "{count}h", "d": "{count}d" },
 
+    "communities": {
+      "invite": {
+      "button": "Invitar",
+      "title": "Invitar miembros"
+    },
+      "share": {
+      "aria": {
+        "button": "Compartir",
+        "dm": "Compartir por mensaje directo",
+        "copy": "Copiar enlace",
+        "system": "Compartir en el dispositivo"
+      },
+      "menu": {
+        "dm": "Enviar por mensaje directo",
+        "copy": "Copiar enlace",
+        "copied": "¡Copiado!",
+        "system": "Compartir en el dispositivo…"
+      },
+      "overlay": {
+        "title": "Enviar por mensaje directo",
+        "search": "Buscar personas o chats",
+        "loading": "Cargando chats…",
+        "error": "Error al cargar los chats",
+        "empty": "No se encontraron conversaciones.",
+        "notePlaceholder": "Añadir un comentario (opcional)…",
+        "cancel": "Cancelar",
+        "send": "Enviar",
+        "sending": "Enviando…"
+      }
+    },
+      "detail": {
+      "members": "{count} miembros",
+      "policyPrefix": "Política"
+    },
+    "page": {
+      "title": "Comunidades",
+      "tabs": {
+        "discover": "Descubrir",
+        "yours": "Tus comunidades"
+      },
+      "loading": "Cargando…",
+      "empty": {
+        "discover": "Aún no se han encontrado comunidades.",
+        "yours": "Todavía no te has unido a ninguna comunidad."
+      },
+      "members": "{count} miembros",
+      "policyBadge": {
+        "open": "Abierta",
+        "invite": "Solo con invitación",
+        "dommeOnly": "Solo Dommes",
+        "subOnly": "Solo Subs"
+      },
+      "blocked": {
+        "inviteOnly": "Solo con invitación — requiere invitación",
+        "dommeOnly": "Solo Dommes",
+        "subOnly": "Solo Subs"
+      }
+    },
+    "create": {
+      "button": "Nueva comunidad",
+      "title": "Crear comunidad",
+      "aria": {
+        "close": "Cerrar"
+      },
+      "fields": {
+        "name": {
+          "label": "Nombre",
+          "placeholder": "KinkyGroupFun"
+        },
+        "handle": {
+          "label": "Handle (opcional)",
+          "placeholder": "p. ej., eu-fetish-scene",
+          "helperPreview": "Aparecerá como: @{handle}",
+          "example": "your-handle"
+        },
+        "description": {
+          "label": "Descripción (opcional)",
+          "placeholder": "Describe tu comunidad…"
+        },
+        "policy": {
+          "label": "Política de ingreso",
+          "options": {
+            "open": "Abierta",
+            "invite": "Solo con invitación",
+            "dommeOnly": "Solo Dommes",
+            "subOnly": "Solo Subs"
+          }
+        },
+        "banner": {
+          "label": "Banner (opcional)",
+          "button": "Elegir imagen",
+          "hint": "PNG/JPG/WebP/GIF, máx. ~10 MB. Arrastrar y soltar permitido.",
+          "previewAlt": "Vista previa del banner",
+          "removeAria": "Eliminar imagen"
+        }
+      },
+      "errors": {
+        "generic": "Algo salió mal. Inténtalo de nuevo."
+      },
+      "actions": {
+        "cancel": "Cancelar",
+        "create": "Crear",
+        "creating": "Creando…"
+      }
+    },
+    "join": {
+      "actions": {
+        "join": "Unirse",
+        "leave": "Salir",
+        "loading": "…"
+      },
+      "hints": {
+        "inviteOnly": "Solo con invitación",
+        "dommeOnly": "Solo Dommes",
+        "subOnly": "Solo Subs"
+      },
+      "members": "{count} miembros",
+      "errors": {
+        "inviteOnly": "Esta comunidad es solo por invitación.",
+        "roleNotAllowed": {
+          "generic": "No tienes permiso para unirte a esta comunidad.",
+          "dommeOnly": "Solo las Dommes pueden unirse a esta comunidad.",
+          "subOnly": "Solo los Subs pueden unirse a esta comunidad."
+        },
+        "joinFailed": "No se pudo unir. Inténtalo de nuevo más tarde.",
+        "creatorCannotLeave": "El creador no puede abandonar su propia comunidad.",
+        "generic": "Algo salió mal. Inténtalo de nuevo."
+      }
+    }
+  },
+
+    "communitiesPage": {
+  "title": "Comunidades",
+  "tabs": {
+    "discover": "Descubrir",
+    "yours": "Tus comunidades"
+  },
+  "loading": "Cargando…",
+  "empty": {
+    "discover": "Aún no se encontraron comunidades.",
+    "yours": "Todavía no te has unido a ninguna comunidad."
+  },
+  "policy": {
+    "open": "Abierta",
+    "inviteOnly": "Solo por invitación",
+    "dommesOnly": "Solo Dommes",
+    "subsOnly": "Solo Subs"
+  },
+  "members": "{count} miembros",
+  "blocked": {
+    "inviteOnly": "Solo por invitación — requiere invitación",
+    "dommesOnly": "Solo Dommes",
+    "subsOnly": "Solo Subs"
+  }
+},
+
+
+    "notificationsPage": {
+  "title": "Notificaciones",
+  "tabs": { "all": "Todas", "mentions": "Menciones", "comments": "Comentarios" },
+  "empty": {
+    "title": "Todo al día",
+    "desc": "Ahora no tienes notificaciones."
+  },
+  "actions": {
+    "view": "Ver",
+    "follow": "Seguir",
+    "following": "Siguiendo"
+  },
+  "messages": {
+    "followedYou": "te ha seguido",
+    "mentionedYou": "te ha mencionado:",
+    "likedYourPost": "le gustó tu publicación:",
+    "commentedOnYourPost": "comentó tu publicación:",
+    "repliedToYourComment": "respondió a tu comentario:",
+    "likedYourComment": "le gustó tu comentario:",
+    "timeSep": "· {time}"
+  }
+},
+
+
+    "search": {
+  "placeholder": "Buscar en Subm8",
+  "recent": {
+    "title": "Recientes",
+    "remove": "Eliminar",
+    "removeAria": "Eliminar {query}"
+  },
+  "trending": {
+    "title": "Tendencias actuales",
+    "empty": "No hay temas en tendencia ahora.",
+    "topic": "Tema",
+    "posts": "publicaciones"
+  },
+  "suggestions": {
+    "title": "Personas que podrías seguir",
+    "empty": "Sin sugerencias por ahora."
+  },
+  "tabs": {
+    "top": "Top",
+    "latest": "Últimos",
+    "people": "Personas"
+  },
+  "loading": "Cargando…",
+  "people": {
+    "title": "Personas",
+    "followers": "seguidores",
+    "empty": "No se encontraron personas"
+  },
+  "posts": {
+    "title": "Publicaciones",
+    "latestTitle": "Últimas publicaciones",
+    "empty": "No se encontraron publicaciones"
+  }
+},
+
+
     "auth": {
     "signin": {
       "title": "Iniciar sesión",

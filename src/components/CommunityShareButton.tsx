@@ -4,6 +4,7 @@
 import * as React from 'react';
 import Image from 'next/image';
 import { createPortal } from 'react-dom';
+import { useTranslations} from 'next-intl';
 
 const AVATAR_PH = '/images/avatar-placeholder.png';
 
@@ -64,6 +65,7 @@ function DMShareOverlayLink({
   onClose: () => void;
   url: string;
 }) {
+  const t = useTranslations('common.communities.share');
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [items, setItems] = React.useState<Array<{
@@ -87,14 +89,14 @@ function DMShareOverlayLink({
         const j = await res.json();
         if (!res.ok || !j?.ok) throw new Error(j?.error || `HTTP ${res.status}`);
         if (!cancelled) setItems(j.items || []);
-      } catch (e) {
-        if (!cancelled) setError(e instanceof Error ? e.message : 'Failed to load chats');
+      } catch {
+        if (!cancelled) setError(t('overlay.error'));
       } finally {
         if (!cancelled) setLoading(false);
       }
     })();
     return () => { cancelled = true; };
-  }, [open]);
+  }, [open, t]);
 
   const toggle = (id: string) => {
     setSelected(prev => {
@@ -136,8 +138,8 @@ function DMShareOverlayLink({
         )
       );
       onClose();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to send');
+    } catch {
+      setError(t('overlay.error'));
     } finally {
       setSending(false);
     }
@@ -168,23 +170,23 @@ function DMShareOverlayLink({
         onMouseDown={(e) => e.stopPropagation()}
       >
         <div className="px-2 py-2 border-b border-white/10">
-          <div className="text-[18px] font-semibold">Per Direktnachricht senden</div>
+          <div className="text-[18px] font-semibold">{t('overlay.title')}</div>
           <div className="mt-2">
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Nach Personen/Chats suchen"
+              placeholder={t('overlay.search')}
               className="w-full rounded-xl bg-white/[.06] border border-white/10 px-3 py-2 outline-none"
             />
           </div>
         </div>
 
         <div className="mt-2 overflow-y-auto" style={{ maxHeight: '50vh' }}>
-          {loading && <div className="px-3 py-6 text-sm text-white/70">Lade Chats…</div>}
+          {loading && <div className="px-3 py-6 text-sm text-white/70">{t('overlay.loading')}</div>}
           {!loading && error && <div className="px-3 py-3 text-sm text-red-400">{error}</div>}
 
           {!loading && !error && filtered.length === 0 && (
-            <div className="px-3 py-6 text-sm text-white/70">Keine Konversationen gefunden.</div>
+            <div className="px-3 py-6 text-sm text-white/70">{t('overlay.empty')}</div>
           )}
 
           <ul className="divide-y divide-white/10">
@@ -236,7 +238,7 @@ function DMShareOverlayLink({
             onChange={(e) => setNote(e.target.value)}
             rows={2}
             maxLength={200}
-            placeholder="Kommentar hinzufügen (optional)…"
+            placeholder={t('overlay.notePlaceholder')}
             className="w-full rounded-xl bg-white/[.06] border border-white/10 px-3 py-2 outline-none"
           />
         </div>
@@ -248,7 +250,7 @@ function DMShareOverlayLink({
             className="px-3 py-2 rounded-lg border border-white/15 hover:bg-white/10"
             disabled={sending}
           >
-            Abbrechen
+            {t('overlay.cancel')}
           </button>
           <button
             type="button"
@@ -256,7 +258,7 @@ function DMShareOverlayLink({
             disabled={sending || selected.size === 0}
             className="px-4 py-2 rounded-lg bg-[var(--purple)] text-white hover:opacity-95 disabled:opacity-50"
           >
-            {sending ? 'Senden…' : 'Senden'}
+            {sending ? t('overlay.sending') : t('overlay.send')}
           </button>
         </div>
       </div>
@@ -276,6 +278,9 @@ export default function CommunityShareButton({
   slug: string;
   name: string;
 }) {
+  const t = useTranslations('common.communities.share');
+  const tBrand = useTranslations('common.brand');
+  const brand = tBrand('name');
   const [shareOpen, setShareOpen] = React.useState(false);
   const [shareMenuOpen, setShareMenuOpen] = React.useState(false);
   const [copied, setCopied] = React.useState(false);
@@ -291,8 +296,7 @@ export default function CommunityShareButton({
     try {
       if ('share' in navigator) {
         await (navigator as Navigator & { share?: (data: ShareData) => Promise<void> }).share?.({
-          title: `${name} on Subm8`,
-          text: `Schau dir die Community „${name}“ an`,
+          title: `${name} – ${brand}`,
           url: communityUrl,
         });
         setShareMenuOpen(false);
@@ -316,9 +320,9 @@ export default function CommunityShareButton({
   React.useEffect(() => {
     if (!shareMenuOpen) return;
     const onDocDown = (e: MouseEvent | PointerEvent) => {
-      const t = e.target as Node | null;
-      const insideBtn = !!(btnRef.current && t && btnRef.current.contains(t));
-      const insideMenu = !!(menuRef.current && t && menuRef.current.contains(t));
+      const tnode = e.target as Node | null;
+      const insideBtn = !!(btnRef.current && tnode && btnRef.current.contains(tnode));
+      const insideMenu = !!(menuRef.current && tnode && menuRef.current.contains(tnode));
       if (insideBtn || insideMenu) return;
       setShareMenuOpen(false);
     };
@@ -338,8 +342,8 @@ export default function CommunityShareButton({
         type="button"
         className="rounded px-2 py-1.5 hover:bg-white/10"
         onClick={() => setShareMenuOpen((v) => !v)}
-        aria-label="Teilen"
-        title="Teilen"
+        aria-label={t('aria.button')}
+        title={t('aria.button')}
       >
         <span
           className="inline-grid place-items-center"
@@ -367,9 +371,9 @@ export default function CommunityShareButton({
               setShareMenuOpen(false);
               setShareOpen(true);
             }}
-            title="In Direktnachricht teilen"
+            title={t('aria.dm')}
           >
-            Per Direktnachricht senden
+            {t('menu.dm')}
             <span className="opacity-70 text-xs">→</span>
           </button>
 
@@ -377,18 +381,18 @@ export default function CommunityShareButton({
             type="button"
             className="w-full text-left px-3 py-2 rounded hover:bg-white/10"
             onClick={copyLink}
-            title="Link kopieren"
+            title={t('aria.copy')}
           >
-            {copied ? 'Kopiert!' : 'Link kopieren'}
+            {copied ? t('menu.copied') : t('menu.copy')}
           </button>
 
           <button
             type="button"
             className="w-full text-left px-3 py-2 rounded hover:bg-white/10"
             onClick={systemShare}
-            title="System-Share"
+            title={t('aria.system')}
           >
-            Auf Gerät teilen…
+            {t('menu.system')}
           </button>
         </div>,
         document.body
