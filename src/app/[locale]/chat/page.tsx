@@ -5,7 +5,7 @@ import * as React from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 
 import { reportUserAction } from '@/app/actions/reports';
@@ -60,16 +60,14 @@ function classifyAppLink(raw: string): LinkKind | null {
 
   let u: URL;
   try {
-    // erlaubt absolute und relative Links
     const base = typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
     u = new URL(s, base);
   } catch {
     return null;
   }
 
-  const seg = u.pathname.split('/').filter(Boolean); // z.B. ['en','p','abc'] oder ['p','abc']
+  const seg = u.pathname.split('/').filter(Boolean);
 
-  // Pfad kann '/p/:id' oder '/:locale/p/:id' (bzw. /u/:handle) sein
   const typeIdx =
     seg[0] === 'p' || seg[0] === 'u' ? 0
     : seg.length >= 2 && (seg[1] === 'p' || seg[1] === 'u') ? 1
@@ -89,75 +87,6 @@ function truncateMid(s: string, max = 80) {
   const t = s.trim().replace(/\s+/g, ' ');
   if (t.length <= max) return t;
   return t.slice(0, max - 1) + '…';
-}
-
-/* ---------- Snippet-Logik (inkl. Link-Abkürzungen) ---------- */
-function prettySnippet(raw: string): string {
-  if (!raw) return '';
-
-  // System-Messages zuerst
-  if (raw.startsWith(OWNACC_PREFIX)) return 'Ownership accepted';
-
-  if (raw.startsWith(OWNREQ_PREFIX)) {
-    try {
-      const p = JSON.parse(raw.slice(OWNREQ_PREFIX.length)) as OwnershipReqSnippet;
-      const parts: string[] = [];
-      if (p.avatar || p.avatarUrl || p.avatarDataUrl) parts.push('Avatar');
-      if (p.banner || p.bannerUrl || p.bannerDataUrl) parts.push('Banner');
-      if (p.bio && p.bio.trim()) parts.push('Bio');
-      return parts.length ? `Ownership request: ${parts.join(', ')}` : 'Ownership request';
-    } catch {
-      return 'Ownership request';
-    }
-  }
-
-  if (raw.startsWith(TIPREQ_PREFIX)) {
-    try {
-      const body = JSON.parse(raw.slice(TIPREQ_PREFIX.length)) as { amountCents?: number; currency?: string };
-      if (typeof body?.amountCents === 'number')
-        return `Tip request: ${fmtCurrency(body.amountCents, body?.currency || 'EUR')}`;
-    } catch {}
-  }
-
-  if (raw.startsWith(TIPPAID_PREFIX)) {
-    try {
-      const body = JSON.parse(raw.slice(TIPPAID_PREFIX.length)) as { amountCents?: number; currency?: string };
-      if (typeof body?.amountCents === 'number')
-        return `Tip paid: ${fmtCurrency(body.amountCents, body?.currency || 'EUR')}`;
-    } catch {}
-  }
-
-  // --- Wenn die Nachricht (erste Zeile) ein Link ist, schöner labeln
-  const lines = raw.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-  const first = lines[0] ?? '';
-  const note  = lines.slice(1).join(' ').trim();
-
-  const link = classifyAppLink(first);
-  if (link) {
-    const label =
-      link.kind === 'post'
-        ? 'Shared a post'
-        : link.kind === 'profile'
-        ? `Shared profile @${link.handle}`
-        : 'Shared a link';
-    return note ? `${label} — ${truncateMid(note, 80)}` : label;
-  }
-
-  // Fallback: normalen Text säubern
-  return raw.replace(/\s+/g, ' ').trim();
-}
-
-function timeAgoShort(iso: string) {
-  const now = Date.now();
-  const then = new Date(iso).getTime();
-  const diff = Math.max(0, now - then);
-  const m = Math.floor(diff / 60000);
-  if (m < 1) return 'now';
-  if (m < 60) return `${m}m`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h`;
-  const d = Math.floor(h / 24);
-  return `${d}d`;
 }
 
 type Item = {
@@ -290,6 +219,81 @@ function ChatRow({
   onDeleted: (id: string) => void;
   onMutedChange: (id: string, muted: boolean) => void;
 }) {
+  const t = useTranslations('common.chat');
+  const tTime = useTranslations('common.time');
+
+  // i18n-Variante des Snippet-Formatters
+  const prettySnippetI18n = React.useCallback((raw: string): string => {
+    if (!raw) return '';
+
+    if (raw.startsWith(OWNACC_PREFIX)) return t('system.ownershipAccepted');
+
+    if (raw.startsWith(OWNREQ_PREFIX)) {
+      try {
+        const p = JSON.parse(raw.slice(OWNREQ_PREFIX.length)) as OwnershipReqSnippet;
+        const parts: string[] = [];
+        if (p.avatar || p.avatarUrl || p.avatarDataUrl) parts.push(t('system.part.avatar'));
+        if (p.banner || p.bannerUrl || p.bannerDataUrl) parts.push(t('system.part.banner'));
+        if (p.bio && p.bio.trim()) parts.push(t('system.part.bio'));
+        return parts.length
+          ? t('system.ownershipRequestWithParts', { parts: parts.join(', ') })
+          : t('system.ownershipRequest');
+      } catch {
+        return t('system.ownershipRequest');
+      }
+    }
+
+    if (raw.startsWith(TIPREQ_PREFIX)) {
+      try {
+        const body = JSON.parse(raw.slice(TIPREQ_PREFIX.length)) as { amountCents?: number; currency?: string };
+        if (typeof body?.amountCents === 'number') {
+          const amount = fmtCurrency(body.amountCents, body?.currency || 'EUR');
+          return t('system.tipRequest', { amount });
+        }
+      } catch {}
+    }
+
+    if (raw.startsWith(TIPPAID_PREFIX)) {
+      try {
+        const body = JSON.parse(raw.slice(TIPPAID_PREFIX.length)) as { amountCents?: number; currency?: string };
+        if (typeof body?.amountCents === 'number') {
+          const amount = fmtCurrency(body.amountCents, body?.currency || 'EUR');
+          return t('system.tipPaid', { amount });
+        }
+      } catch {}
+    }
+
+    const lines = raw.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    const first = lines[0] ?? '';
+    const note  = lines.slice(1).join(' ').trim();
+
+    const link = classifyAppLink(first);
+    if (link) {
+      const label =
+        link.kind === 'post'
+          ? t('system.shared.post')
+          : link.kind === 'profile'
+          ? t('system.shared.profile', { handle: link.handle })
+          : t('system.shared.link');
+      return note ? `${label} — ${truncateMid(note, 80)}` : label;
+    }
+
+    return raw.replace(/\s+/g, ' ').trim();
+  }, [t]);
+
+  const timeAgoShort = React.useCallback((iso: string) => {
+    const now = Date.now();
+    const then = new Date(iso).getTime();
+    const diff = Math.max(0, now - then);
+    const m = Math.floor(diff / 60000);
+    if (m < 1) return tTime('now');
+    if (m < 60) return tTime('m', { count: m });
+    const h = Math.floor(m / 60);
+    if (h < 24) return tTime('h', { count: h });
+    const d = Math.floor(h / 24);
+    return tTime('d', { count: d });
+  }, [tTime]);
+
   const router = useRouter();
   const rowRef = React.useRef<HTMLDivElement>(null);
   const [menuOpen, setMenuOpen] = React.useState(false);
@@ -357,7 +361,7 @@ function ChatRow({
       await fetch(`/api/chat/${c.id}`, { method: 'DELETE' });
       onDeleted(c.id);
     } catch {
-      // optional: Toast
+      // optional toast
     } finally {
       setMenuOpen(false);
     }
@@ -368,7 +372,7 @@ function ChatRow({
   }
 
   const profileHref = `/${locale}/u/${c.other.username}`;
-  const snippet = React.useMemo(() => prettySnippet(c.lastSnippet), [c.lastSnippet]);
+  const snippet = React.useMemo(() => prettySnippetI18n(c.lastSnippet), [c.lastSnippet, prettySnippetI18n]);
 
   return (
     <div
@@ -414,10 +418,14 @@ function ChatRow({
             @{c.other.username}
           </Link>
 
-          {c.muted && <span className="ml-1 text-[10px] px-1.5 py-[1px] rounded-full bg-white/10 text-white/70">muted</span>}
+          {c.muted && (
+            <span className="ml-1 text-[10px] px-1.5 py-[1px] rounded-full bg-white/10 text-white/70">
+              {t('row.badges.muted')}
+            </span>
+          )}
           {isPinned && (
             <span className="ml-1 text-[10px] px-1.5 py-[1px] rounded-full bg-[var(--purple)]/15 text-[var(--purple)]">
-              pinned
+              {t('row.badges.pinned')}
             </span>
           )}
         </div>
@@ -434,30 +442,34 @@ function ChatRow({
       {menuOpen && anchor && (
         <ActionMenu anchorRect={anchor} onClose={() => setMenuOpen(false)}>
           <button type="button" className="w-full text-left px-3 py-2 rounded-lg hover:bg-white/10" onClick={togglePin}>
-            {isPinned ? 'Unpin chat' : 'Pin chat'}
+            {isPinned ? t('row.menu.unpin') : t('row.menu.pin')}
           </button>
 
           <div className="h-px my-1 bg-white/10" />
 
           <button type="button" className="w-full text-left px-3 py-2 rounded-lg hover:bg-white/10" onClick={toggleMute}>
-            {c.muted ? 'Unmute chat' : 'Mute chat'}
+            {c.muted ? t('row.menu.unmute') : t('row.menu.mute')}
           </button>
 
           <form action={reportUserAction} onSubmit={() => setMenuOpen(false)} className="contents">
             <input type="hidden" name="handle" value={c.other.username} />
             <input type="hidden" name="reason" value="OTHER" />
-            <button className="w-full text-left px-3 py-2 rounded-lg hover:bg-white/10 text-red-300">Report user</button>
+            <button className="w-full text-left px-3 py-2 rounded-lg hover:bg-white/10 text-red-300">
+              {t('row.menu.report')}
+            </button>
           </form>
 
           <form action={blockUserAction} onSubmit={() => setMenuOpen(false)} className="contents">
             <input type="hidden" name="blockedHandle" value={c.other.username} />
-            <button className="w-full text-left px-3 py-2 rounded-lg hover:bg-white/10 text-red-300">Block user</button>
+            <button className="w-full text-left px-3 py-2 rounded-lg hover:bg-white/10 text-red-300">
+              {t('row.menu.block')}
+            </button>
           </form>
 
           <div className="h-px my-1 bg-white/10" />
 
           <button type="button" className="w-full text-left px-3 py-2 rounded-lg hover:bg-white/10 text-red-400" onClick={deleteChat}>
-            Delete chat
+            {t('row.menu.delete')}
           </button>
         </ActionMenu>
       )}
@@ -467,6 +479,7 @@ function ChatRow({
 
 /* ------------ Seite ------------ */
 export default function ChatListPage() {
+  const t = useTranslations('common.chat');
   const locale = useLocale();
   const router = useRouter();
   const pathname = usePathname();
@@ -479,7 +492,6 @@ export default function ChatListPage() {
 
   const [pinned, setPinned] = React.useState<Set<string>>(new Set());
 
-  // UI-Verbesserung: kleiner Filter (All/Unread/Pinned)
   type Filter = 'all' | 'unread' | 'pinned';
   const [filter, setFilter] = React.useState<Filter>('all');
 
@@ -509,7 +521,7 @@ export default function ChatListPage() {
         if (!json?.ok) throw new Error(json?.error || 'Unknown error');
         if (!cancelled) setItems(json.items as Item[]);
       } catch (e) {
-        const msg = e instanceof Error ? e.message : 'Failed to load chats';
+        const msg = e instanceof Error ? e.message : t('loadingError');
         if (!cancelled) setError(msg);
       } finally {
         if (!cancelled) setLoading(false);
@@ -518,7 +530,7 @@ export default function ChatListPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [t]);
 
   React.useEffect(() => {
     if (items.length === 0) return;
@@ -547,14 +559,12 @@ export default function ChatListPage() {
     persistPins(next);
   };
 
-  // Zahlen für Header
   const totalConversations = items.length;
   const unreadConversations = React.useMemo(
     () => items.filter((i) => i.unread > 0).length,
     [items]
   );
 
-  // Suche + Filter + Sortierung
   const filtered = React.useMemo(() => {
     const qq = q.trim().toLowerCase();
 
@@ -576,7 +586,6 @@ export default function ChatListPage() {
     const byTimeDesc = (a: Item, b: Item) =>
       new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime();
 
-    // In "All": Pinned oben, sonst normale Sortierung
     if (filter === 'all') {
       const pinnedItems = base.filter((i) => pinned.has(i.id)).sort(byTimeDesc);
       const normalItems = base.filter((i) => !pinned.has(i.id)).sort(byTimeDesc);
@@ -586,7 +595,6 @@ export default function ChatListPage() {
     }
   }, [items, q, filter, pinned]);
 
-  // Settings-Overlay über der Chatliste öffnen (auf derselben Seite bleiben)
   const openSettings = () => {
     const href = withQuery(pathname, searchParams, { settings: '1' });
     router.push(href, { scroll: false });
@@ -599,10 +607,10 @@ export default function ChatListPage() {
         <div className="flex items-end justify-between gap-3">
           <div>
             <h1 className="text-[clamp(20px,4.2vw,28px)] font-extrabold tracking-tight">
-              Messages
+              {t('header.title')}
             </h1>
             <div className="mt-0.5 text-[12px] text-white/60">
-              {totalConversations} conversations • {unreadConversations} unread
+              {t('header.subtitle', { total: totalConversations, unread: unreadConversations })}
             </div>
           </div>
         </div>
@@ -625,7 +633,7 @@ export default function ChatListPage() {
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Search messages…"
+              placeholder={t('toolbar.searchPlaceholder')}
               className="w-full rounded-xl bg-white/[.06] border border-white/10 pl-9 pr-3 py-2 outline-none focus:ring-2 focus:ring-[var(--purple)]/30"
             />
           </div>
@@ -635,7 +643,7 @@ export default function ChatListPage() {
             type="button"
             onClick={openSettings}
             className="p-2 rounded-lg hover:bg-white/5 inline-grid place-items-center"
-            aria-label="Settings"
+            aria-label={t('toolbar.settingsAria')}
             style={{ width: 'clamp(28px, 3.6vw, 36px)', height: 'clamp(28px, 3.6vw, 36px)' }}
           >
             <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className="pointer-events-none"
@@ -659,7 +667,7 @@ export default function ChatListPage() {
                   filter === key ? 'bg-[var(--purple)]/20 text-[var(--purple)]' : 'text-white/85 hover:bg-white/10'
                 }`}
               >
-                {key === 'all' ? 'All' : key === 'unread' ? 'Unread' : 'Pinned'}
+                {key === 'all' ? t('toolbar.filters.all') : key === 'unread' ? t('toolbar.filters.unread') : t('toolbar.filters.pinned')}
               </button>
             ))}
           </div>
@@ -669,12 +677,12 @@ export default function ChatListPage() {
       {error && <div className="my-2 text-sm text-red-500">{error}</div>}
 
       {loading ? (
-        <div className="py-8 text-sm text-muted">Loading…</div>
+        <div className="py-8 text-sm text-muted">{t('loading')}</div>
       ) : filtered.length === 0 ? (
         <div className="flex items-center justify-center" style={{ minHeight: '50vh' }}>
           <div className="text-center">
-            <div className="text-2xl md:text-3xl font-semibold">No conversations</div>
-            <p className="mt-2 text-sm text-muted">Start a new chat from a profile.</p>
+            <div className="text-2xl md:text-3xl font-semibold">{t('empty.title')}</div>
+            <p className="mt-2 text-sm text-muted">{t('empty.subtitle')}</p>
           </div>
         </div>
       ) : (

@@ -1,20 +1,18 @@
+// src/components/ChatHeader.tsx
 'use client';
 
 import * as React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import type { ChatUser } from '@/types/chat';
 import { blockUserAction, unblockUserAction } from '@/app/actions/blocks';
 import { reportUserAction } from '@/app/actions/reports';
 
 type Props = {
   other: ChatUser & { role: 'domme' | 'submissive' | 'DOMME' | 'SUBMISSIVE' };
-  /** ob ICH die/den andere:n blockiert habe (Initialwert) */
   viewerHasBlocked?: boolean;
-  /** ob die/der andere MICH blockiert (Initialwert) */
   isBlockedByOther?: boolean;
-  /** optional: Parent informieren (z.B. um Composer zu sperren) */
   onBlockStateChange?: (blockedEither: boolean) => void;
 };
 
@@ -25,6 +23,7 @@ export default function ChatHeader({
   onBlockStateChange,
 }: Props) {
   const locale = useLocale();
+  const t = useTranslations('common.chatHeader');
 
   // Responsive Größen
   const iconSize = 'clamp(28px, 3.6vw, 34px)';
@@ -32,7 +31,7 @@ export default function ChatHeader({
   const titleSz  = 'clamp(17px, 2.1vw, 19px)';
   const metaSz   = 'clamp(12px, 1.6vw, 13px)';
 
-  // Höhe als CSS-Variable setzen, damit die Seite korrekt top-padding berechnet
+  // Höhe als CSS-Variable setzen
   const headerH = `max(${avatar}, calc(${titleSz} + ${metaSz} + 10px))`;
   React.useLayoutEffect(() => {
     const root = document.documentElement;
@@ -42,7 +41,7 @@ export default function ChatHeader({
   }, [headerH]);
 
   const isDomme = String(other.role).toUpperCase() === 'DOMME';
-  const roleLabel = isDomme ? 'Domme' : 'Sub';
+  const roleLabel = isDomme ? t('role.domme') : t('role.sub');
 
   // Block-UI-State
   const [iBlocked, setIBlocked] = React.useState<boolean>(!!viewerHasBlocked);
@@ -50,7 +49,6 @@ export default function ChatHeader({
 
   React.useEffect(() => {
     onBlockStateChange?.(blockedEither);
-    // als Fallback zusätzlich ein CustomEvent dispatchen (falls Parent das nutzt)
     try {
       window.dispatchEvent(new CustomEvent('chat:block-change', { detail: { blocked: blockedEither } }));
     } catch {}
@@ -78,7 +76,7 @@ export default function ChatHeader({
           {/* Back */}
           <Link
             href={`/${locale}/chat`}
-            aria-label="Back"
+            aria-label={t('aria.back')}
             className="inline-grid place-items-center rounded hover:bg-white/5"
             style={{ width: iconSize, height: iconSize }}
           >
@@ -92,7 +90,7 @@ export default function ChatHeader({
           <Link
             href={profileHref}
             prefetch={false}
-            aria-label={`${other.displayName} profile`}
+            aria-label={t('aria.profile', { name: other.displayName })}
             className="relative overflow-hidden rounded-full border border-white/15 bg-white/10 block"
             style={{ width: avatar, height: avatar }}
           >
@@ -134,10 +132,10 @@ export default function ChatHeader({
 
               {/* Block-Badges */}
               {isBlockedByOther && (
-                <Badge tone="danger">Blocked you</Badge>
+                <Badge tone="danger">{t('badges.blockedYou')}</Badge>
               )}
               {!isBlockedByOther && iBlocked && (
-                <Badge tone="danger">You blocked</Badge>
+                <Badge tone="danger">{t('badges.youBlocked')}</Badge>
               )}
             </div>
 
@@ -157,7 +155,7 @@ export default function ChatHeader({
           {/* More */}
           <div className="relative" ref={menuRef}>
             <button
-              aria-label="More"
+              aria-label={t('aria.more')}
               className="inline-grid place-items-center rounded hover:bg-white/5"
               style={{ width: iconSize, height: iconSize }}
               onClick={() => setMenuOpen(v => !v)}
@@ -180,7 +178,7 @@ export default function ChatHeader({
                   className="block px-3 py-2 rounded hover:bg-white/10"
                   onClick={() => setMenuOpen(false)}
                 >
-                  View profile
+                  {t('menu.viewProfile')}
                 </Link>
 
                 {/* Mute (Stub) */}
@@ -189,10 +187,10 @@ export default function ChatHeader({
                   className="w-full text-left px-3 py-2 rounded hover:bg-white/10"
                   onClick={() => {
                     setMenuOpen(false);
-                    alert('Mute conversation – coming soon');
+                    alert(t('menu.muteSoon'));
                   }}
                 >
-                  Mute conversation
+                  {t('menu.mute')}
                 </button>
 
                 {/* Block/Unblock */}
@@ -204,11 +202,10 @@ export default function ChatHeader({
                       setMenuOpen(false);
                     }}
                   >
-                    {/* akzeptiert in unseren Actions sowohl blockedHandle als auch handle */}
                     <input type="hidden" name="blockedHandle" value={other.username} />
                     <input type="hidden" name="handle" value={other.username} />
                     <button className="w-full text-left px-3 py-2 rounded hover:bg-white/10  text-red-300">
-                      Block user
+                      {t('menu.block')}
                     </button>
                   </form>
                 ) : (
@@ -222,7 +219,7 @@ export default function ChatHeader({
                     <input type="hidden" name="blockedHandle" value={other.username} />
                     <input type="hidden" name="handle" value={other.username} />
                     <button className="w-full text-left px-3 py-2 rounded hover:bg-white/10  text-red-300">
-                      Unblock user
+                      {t('menu.unblock')}
                     </button>
                   </form>
                 )}
@@ -235,7 +232,7 @@ export default function ChatHeader({
                   <input type="hidden" name="handle" value={other.username} />
                   <input type="hidden" name="reason" value="DM_ABUSE" />
                   <button className="w-full text-left px-3 py-2 rounded hover:bg-white/10 text-red-300">
-                    Report Conversation
+                    {t('menu.reportConversation')}
                   </button>
                 </form>
               </div>

@@ -4,6 +4,144 @@
     "brand": { "name": "Subm8" },
     "time": { "now": "jetzt", "m": "{count}m", "h": "{count}h", "d": "{count}d" },
 
+    "chatComposer": {
+    "disabled": {
+      "default": "Diese Unterhaltung ist blockiert."
+    },
+    "errors": {
+      "voice": {
+        "unsupported": "Sprachnachrichten werden von diesem Browser nicht unterstützt.",
+        "denied": "Kein Mikrofonzugriff (abgelehnt oder blockiert)."
+      },
+      "gif": {
+        "loadList": "Konnte GIFs nicht laden.",
+        "loadOne": "GIF konnte nicht geladen werden."
+      }
+    },
+    "recording": {
+      "inProgress": "Aufnahme läuft"
+    },
+    "gif": {
+      "search": {
+        "placeholder": "Nach GIFs suchen…",
+        "button": "Suchen"
+      },
+      "close": "Schließen",
+      "loading": "Lade GIFs…",
+      "selectTitle": "Auswählen"
+    },
+    "actions": {
+      "remove": "Entfernen",
+      "upload": "Medien hochladen",
+      "gif": "GIFs suchen",
+      "tip": "Trinkgeld senden",
+      "openActions": "Aktionen öffnen",
+      "actions": "Aktionen",
+      "voice": {
+        "holdAria": "Sprachnachricht (halten zum Aufnehmen)",
+        "holdTitle": "Sprachnachricht (halten)"
+      },
+      "sendMessageAria": "Nachricht senden",
+      "send": "Senden"
+    },
+    "menu": {
+      "tipRequest": "Trinkgeld-Anfrage",
+      "autodrainRequest": "Autodrain-Anfrage",
+      "ownershipRequest": "Ownership-Anfrage"
+    },
+    "placeholders": {
+      "closed": "DMs sind geschlossen",
+      "message": "Nachricht…"
+    },
+    "voice": {
+      "preview": {
+        "send": "Senden",
+        "discard": "Verwerfen"
+      }
+    },
+    "protocol": {
+      "tipRequestLabel": "Trinkgeld-Anfrage"
+    }
+  },
+
+    "chatHeader": {
+    "aria": {
+      "back": "Zurück",
+      "more": "Mehr",
+      "profile": "Profil von {name}"
+    },
+    "role": {
+      "domme": "Domme",
+      "sub": "Sub"
+    },
+    "badges": {
+      "blockedYou": "Hat dich blockiert",
+      "youBlocked": "Von dir blockiert"
+    },
+    "menu": {
+      "viewProfile": "Profil ansehen",
+      "mute": "Unterhaltung stummschalten",
+      "muteSoon": "Unterhaltung stummschalten — bald verfügbar",
+      "block": "Nutzer blockieren",
+      "unblock": "Blockierung aufheben",
+      "reportConversation": "Unterhaltung melden"
+    }
+  },
+
+    "chat": {
+    "header": {
+      "title": "Nachrichten",
+      "subtitle": "{total} Unterhaltungen • {unread} ungelesen"
+    },
+    "toolbar": {
+      "searchPlaceholder": "Nachrichten durchsuchen…",
+      "settingsAria": "Einstellungen",
+      "filters": {
+        "all": "Alle",
+        "unread": "Ungelesen",
+        "pinned": "Angeheftet"
+      }
+    },
+    "row": {
+      "badges": {
+        "muted": "Stumm",
+        "pinned": "Angeheftet"
+      },
+      "menu": {
+        "pin": "Chat anheften",
+        "unpin": "Chat lösen",
+        "mute": "Chat stummschalten",
+        "unmute": "Stummschaltung aufheben",
+        "report": "Nutzer melden",
+        "block": "Nutzer blockieren",
+        "delete": "Chat löschen"
+      }
+    },
+    "loading": "Lade…",
+    "empty": {
+      "title": "Keine Unterhaltungen",
+      "subtitle": "Starte einen neuen Chat über ein Profil."
+    },
+    "loadingError": "Chats konnten nicht geladen werden",
+    "system": {
+      "ownershipAccepted": "Ownership bestätigt",
+      "ownershipRequest": "Ownership-Anfrage",
+      "ownershipRequestWithParts": "Ownership-Anfrage: {parts}",
+      "part": {
+        "avatar": "Avatar",
+        "banner": "Banner",
+        "bio": "Bio"
+      },
+      "tipRequest": "Trinkgeld-Anfrage: {amount}",
+      "tipPaid": "Trinkgeld bezahlt: {amount}",
+      "shared": {
+        "post": "Beitrag geteilt",
+        "profile": "Profil @{handle} geteilt",
+        "link": "Link geteilt"
+      }
+    }
+  },
+
     "communities": {
       "invite": {
       "button": "Einladen",

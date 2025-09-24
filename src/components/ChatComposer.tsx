@@ -3,6 +3,7 @@
 
 import * as React from 'react';
 import { createPortal } from 'react-dom';
+import { useTranslations } from 'next-intl';
 import MentionSuggestChat from '@/components/MentionSuggestChat';
 import TipRequestCreateModal from '@/components/TipRequestCreateModal';
 import OwnershipRequestCreateModal, {
@@ -20,18 +21,13 @@ type Props = {
   disabled?: boolean;
   disabledNotice?: string;
   viewerRole: RoleLike;
-  /** eigene User-ID des Viewers (für Ownership-Draft LocalStorage) */
   selfUserId: string;
-  /** Anzeige im Ownership-Modal (@handle des Subs) */
   targetHandle: string;
   onSend: (text: string) => void;
   onTip: () => void;
-  /** erweitert: optional Caption beim Upload */
-  onUpload?: (file: File, caption?: string) => void; // Bild/Video/Audio/GIF
+  onUpload?: (file: File, caption?: string) => void;
   onCreateTipRequest?: (payload: TipRequestPayload) => void;
-  /** Neu: Autodrain Request direkt im Parent verarbeiten (optional) */
   onCreateAutoDrainRequest?: (payload: AutoDrainRequestPayload) => void;
-  /** Ping zum Server, dass gerade getippt/aufgenommen wird */
   onTypingPing?: (active: boolean) => void;
 };
 
@@ -127,7 +123,7 @@ function ActionMenu({
 }
 
 /* ---------------- GIF Picker (Tenor) ---------------- */
-const TENOR_KEY = process.env.NEXT_PUBLIC_TENOR_API_KEY ?? 'LIVDSRZULELA'; // Demo-Key; produktiv per ENV ersetzen
+const TENOR_KEY = process.env.NEXT_PUBLIC_TENOR_API_KEY ?? 'LIVDSRZULELA';
 const TENOR_BASE = 'https://g.tenor.com/v1';
 
 type TenorMedia = {
@@ -148,6 +144,7 @@ function GifPickerModal({
   onClose: () => void;
   onPick: (gifUrl: string) => void;
 }) {
+  const t = useTranslations('common.chatComposer');
   const [q, setQ] = React.useState('');
   const [loading, setLoading] = React.useState(false);
   const [err, setErr] = React.useState<string | null>(null);
@@ -179,11 +176,11 @@ function GifPickerModal({
 
       setItems(list);
     } catch {
-      setErr('Konnte GIFs nicht laden.');
+      setErr(t('errors.gif.loadList'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   React.useEffect(() => {
     if (open) run();
@@ -200,7 +197,7 @@ function GifPickerModal({
             value={q}
             onChange={(e) => setQ(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') run(q); }}
-            placeholder="Nach GIFs suchen…"
+            placeholder={t('gif.search.placeholder')}
             className="flex-1 h-10 rounded-xl bg-white/[.06] border border-white/10 px-3 outline-none"
           />
           <button
@@ -208,21 +205,21 @@ function GifPickerModal({
             onClick={() => run(q)}
             className="h-10 px-4 rounded-xl bg-[var(--purple)] text-white hover:opacity-95"
           >
-            Suchen
+            {t('gif.search.button')}
           </button>
           <button
             type="button"
             onClick={onClose}
             className="h-10 px-3 rounded-xl border border-white/15 hover:bg-white/10"
           >
-            Schließen
+            {t('gif.close')}
           </button>
         </div>
 
         <div className="mt-3">
           {err && <div className="text-red-300 text-sm mb-2">{err}</div>}
           {loading ? (
-            <div className="text-sm text-white/80 py-8 text-center">Lade GIFs…</div>
+            <div className="text-sm text-white/80 py-8 text-center">{t('gif.loading')}</div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 overflow-y-auto max-h-[65vh] pr-1">
               {items.map((it) => (
@@ -231,7 +228,7 @@ function GifPickerModal({
                   type="button"
                   className="relative group rounded-lg overflow-hidden border border-white/10 hover:border-white/25"
                   onClick={() => onPick(it.url)}
-                  title="Auswählen"
+                  title={t('gif.selectTitle')}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
@@ -267,6 +264,8 @@ export default function ChatComposer({
   onCreateAutoDrainRequest,
   onTypingPing,
 }: Props) {
+  const t = useTranslations('common.chatComposer');
+
   const [text, setText] = React.useState('');
   const taRef = React.useRef<HTMLTextAreaElement | null>(null);
   const suggestAnchorRef = React.useRef<HTMLDivElement>(null);
@@ -321,7 +320,7 @@ export default function ChatComposer({
   const [audioPreviewUrl, setAudioPreviewUrl] = React.useState<string | null>(null);
   const audioBlobRef = React.useRef<Blob | null>(null);
 
-  // 🔔 Typing loop (alle 3s) solange aktiv
+  // 🔔 Typing loop
   const typingActiveRef = React.useRef(false);
   const typingTimerRef = React.useRef<number | null>(null);
 
@@ -387,8 +386,8 @@ export default function ChatComposer({
       'audio/mpeg',
     ];
     const supported = getIsTypeSupported();
-    for (const t of candidates) {
-      if (!supported || supported(t)) return t;
+    for (const tCand of candidates) {
+      if (!supported || supported(tCand)) return tCand;
     }
     return undefined;
   };
@@ -398,7 +397,7 @@ export default function ChatComposer({
     setRecError(null);
 
     if (!canRecord()) {
-      setRecError('Sprachnachrichten werden von diesem Browser nicht unterstützt.');
+      setRecError(t('errors.voice.unsupported'));
       return;
     }
     try {
@@ -421,7 +420,7 @@ export default function ChatComposer({
         const url = URL.createObjectURL(blob);
         setAudioPreviewUrl(url);
         clearStream();
-        stopTyping(); // Voice zu Ende -> tippen aus
+        stopTyping();
       });
 
       mr.start();
@@ -430,9 +429,9 @@ export default function ChatComposer({
       clearTimer();
       recTimerRef.current = window.setInterval(() => setRecordSecs((s) => s + 1), 1000);
 
-      startTyping(); // Voice start -> "tippt…" anzeigen
+      startTyping();
     } catch {
-      setRecError('Kein Zugriff aufs Mikrofon (abgelehnt oder blockiert).');
+      setRecError(t('errors.voice.denied'));
     }
   }
 
@@ -456,13 +455,13 @@ export default function ChatComposer({
     resetPreview();
   }
 
-  /* --------- GIF: Modal + Preview (im Composer) + Versand über Send --------- */
+  /* --------- GIF: Modal + Preview + Versand --------- */
   const [gifOpen, setGifOpen] = React.useState(false);
   const [gifPreviewUrl, setGifPreviewUrl] = React.useState<string | null>(null);
   const gifFileRef = React.useRef<File | null>(null);
   const [gifErr, setGifErr] = React.useState<string | null>(null);
 
-  // Medien-Vorschau (Bild/Video) vor dem Senden
+  // Medien-Vorschau (Bild/Video)
   const [mediaPreview, setMediaPreview] = React.useState<{ url: string; file: File } | null>(null);
 
   const resetMediaPreview = React.useCallback(() => {
@@ -482,9 +481,7 @@ export default function ChatComposer({
   async function pickGifByUrl(url: string) {
     try {
       setGifErr(null);
-      // falls schon ein Bild/Video ausgewählt war -> zurücksetzen (nur eins gleichzeitig)
       resetMediaPreview();
-      // ggf. laufende Voice-Vorschau schließen
       resetPreview();
 
       const r = await fetch(url, { mode: 'cors' });
@@ -497,17 +494,17 @@ export default function ChatComposer({
       setGifOpen(false);
       startTyping();
     } catch {
-      setGifErr('GIF konnte nicht geladen werden.');
+      setGifErr(t('errors.gif.loadOne'));
     }
   }
 
   const submit = React.useCallback(async () => {
     if (disabled) return;
-    const t = text.trim();
+    const tMsg = text.trim();
 
-    // 1) Bild/Video im Composer vorhanden → senden (mit optionaler Caption)
+    // 1) Bild/Video
     if (mediaPreview && onUpload) {
-      await onUpload(mediaPreview.file, t || undefined);
+      await onUpload(mediaPreview.file, tMsg || undefined);
       resetMediaPreview();
       setText('');
       stopTyping();
@@ -515,9 +512,9 @@ export default function ChatComposer({
       return;
     }
 
-    // 2) GIF ausgewählt → senden (mit optionaler Caption)
+    // 2) GIF
     if (gifFileRef.current && onUpload) {
-      await onUpload(gifFileRef.current, t || undefined);
+      await onUpload(gifFileRef.current, tMsg || undefined);
       resetGifPreview();
       setText('');
       stopTyping();
@@ -525,15 +522,13 @@ export default function ChatComposer({
       return;
     }
 
-    // 3) sonst reiner Text
-    if (!t) return;
-    onSend(t);
+    // 3) Text
+    if (!tMsg) return;
+    onSend(tMsg);
     setText('');
     stopTyping();
     requestAnimationFrame(() => autosize());
   }, [disabled, text, onUpload, onSend, autosize, stopTyping, mediaPreview, resetMediaPreview, resetGifPreview]);
-
-  /* --------------- UI --------------- */
 
   return (
     <div
@@ -542,9 +537,9 @@ export default function ChatComposer({
                  px-3 pb-2 pt-2"
       style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 8px)' }}
     >
-      {disabled && disabledNotice && (
+      {disabled && (
         <div className="mb-2 text-center text-[13px] text-white/80">
-          {disabledNotice} Diese Konversation wurde Blockiert.
+          {disabledNotice ?? t('disabled.default')}
         </div>
       )}
 
@@ -560,14 +555,14 @@ export default function ChatComposer({
         <div className="mx-auto mb-2 max-w-[760px]">
           <div className="inline-flex items-center gap-2 rounded-full bg-[var(--purple)]/25 border border-[var(--purple)]/40 px-3 py-1 text-[13px]">
             <MicWavesIcon />
-            <span>Aufnahme läuft</span>
+            <span>{t('recording.inProgress')}</span>
             <span className="opacity-80">{recordSecs}s</span>
           </div>
         </div>
       )}
 
       <div className="rounded-3xl border border-white/10 bg-white/[.06] shadow-[0_2px_16px_rgba(0,0,0,.25)] px-3 py-2">
-        {/* GIF-Preview IM Composer (oberhalb des Textfelds) */}
+        {/* GIF-Preview */}
         {gifPreviewUrl && (
           <div className="mb-2 flex items-center gap-3 pl-2">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -577,12 +572,12 @@ export default function ChatComposer({
               onClick={() => { resetGifPreview(); if (!text.trim()) stopTyping(); }}
               className="ml-auto h-8 px-3 rounded-lg border border-white/15 hover:bg-white/10"
             >
-              Entfernen
+              {t('actions.remove')}
             </button>
           </div>
         )}
 
-        {/* Medien-Vorschau (Bild/Video) */}
+        {/* Medien-Vorschau */}
         {mediaPreview && (
           <div className="mb-2 flex items-center gap-3 pl-2">
             {mediaPreview.file.type.startsWith('video/') ? (
@@ -607,7 +602,7 @@ export default function ChatComposer({
               onClick={() => { resetMediaPreview(); if (!text.trim()) stopTyping(); }}
               className="ml-auto h-8 px-3 rounded-lg border border-white/15 hover:bg-white/10"
             >
-              Entfernen
+              {t('actions.remove')}
             </button>
           </div>
         )}
@@ -635,22 +630,21 @@ export default function ChatComposer({
                 }
               }}
               onBlur={() => {
-                // nur stoppen, wenn gar nichts zum Senden bereitsteht
                 if (!gifFileRef.current && !mediaPreview && !text.trim()) stopTyping();
               }}
-              placeholder={disabled ? 'DMs geschlossen' : 'Message…'}
+              placeholder={disabled ? t('placeholders.closed') : t('placeholders.message')}
               className="w-full resize-none bg-transparent outline-none placeholder:text-muted
                          text-[14px] leading-5 px-3 pt-1 pb-1 rounded-2xl"
               style={{ minHeight: 40, overflow: 'hidden' }}
             />
 
             <div className="mt-2 flex items-center gap-8 pl-2">
-              {/* Media picker (image/video) */}
+              {/* Media picker */}
               <label
                 className={`${circle} border border-white/12 bg-transparent hover:bg-white/10 cursor-pointer`}
                 style={{ width: toolSize, height: toolSize }}
-                aria-label="Upload media"
-                title="Upload media"
+                aria-label={t('actions.upload')}
+                title={t('actions.upload')}
               >
                 <input
                   type="file"
@@ -660,15 +654,13 @@ export default function ChatComposer({
                   onChange={(e) => {
                     const f = e.target.files?.[0];
                     if (f) {
-                      // Nur eine Quelle aktiv halten: wenn GIF gewählt war -> löschen
                       if (gifFileRef.current) resetGifPreview();
-                      // evtl. alte Vorschau freigeben
                       if (mediaPreview?.url?.startsWith('blob:')) URL.revokeObjectURL(mediaPreview.url);
                       const local = URL.createObjectURL(f);
                       setMediaPreview({ url: local, file: f });
                       startTyping();
                     }
-                    e.currentTarget.value = ''; // gleiche Datei erneut wählbar
+                    e.currentTarget.value = '';
                   }}
                 />
                 <PhotoIcon />
@@ -681,8 +673,8 @@ export default function ChatComposer({
                 disabled={disabled}
                 className="grid place-items-center rounded-md hover:bg-white/10 disabled:opacity-50"
                 style={{ width: toolSize, height: toolSize }}
-                aria-label="GIF suchen"
-                title="GIF suchen"
+                aria-label={t('actions.gif')}
+                title={t('actions.gif')}
               >
                 <GifIcon />
               </button>
@@ -695,8 +687,8 @@ export default function ChatComposer({
                   disabled={disabled}
                   className={`${circle} border border-white/12 bg-transparent hover:bg-white/10 disabled:opacity-50`}
                   style={{ width: toolSize, height: toolSize }}
-                  aria-label="Send tip"
-                  title="Send tip"
+                  aria-label={t('actions.tip')}
+                  title={t('actions.tip')}
                 >
                   <DollarIcon />
                 </button>
@@ -709,8 +701,8 @@ export default function ChatComposer({
                     disabled={disabled}
                     className={`${circle} border border-white/12 bg-transparent hover:bg-white/10 disabled:opacity-50`}
                     style={{ width: toolSize, height: toolSize }}
-                    aria-label="Open actions"
-                    title="Actions"
+                    aria-label={t('actions.openActions')}
+                    title={t('actions.actions')}
                   >
                     <PlusIcon />
                   </button>
@@ -725,7 +717,7 @@ export default function ChatComposer({
                           setTipReqOpen(true);
                         }}
                       >
-                        Tip request
+                        {t('menu.tipRequest')}
                       </button>
                       <button
                         type="button"
@@ -735,7 +727,7 @@ export default function ChatComposer({
                           setAdReqOpen(true);
                         }}
                       >
-                        Autodrain request
+                        {t('menu.autodrainRequest')}
                       </button>
                       <button
                         type="button"
@@ -745,7 +737,7 @@ export default function ChatComposer({
                           setOwnReqOpen(true);
                         }}
                       >
-                        Ownership request
+                        {t('menu.ownershipRequest')}
                       </button>
                     </ActionMenu>
                   )}
@@ -754,14 +746,14 @@ export default function ChatComposer({
             </div>
           </div>
 
-          {/* Mic – gleiche Größe wie Send, links daneben */}
+          {/* Mic */}
           <button
             type="button"
             disabled={disabled}
             className={`${circle} border border-white/12 bg-transparent hover:bg-white/10 disabled:opacity-50`}
             style={{ width: sendSize, height: sendSize }}
-            aria-label="Sprachnachricht (halten zum Aufnehmen)"
-            title="Sprachnachricht (halten)"
+            aria-label={t('actions.voice.holdAria')}
+            title={t('actions.voice.holdTitle')}
             onPointerDown={(e) => {
               e.preventDefault();
               startRecording();
@@ -777,22 +769,22 @@ export default function ChatComposer({
             <MicIcon />
           </button>
 
-          {/* Send – aktiv wenn Text ODER GIF ODER Medien-Vorschau vorhanden */}
+          {/* Send */}
           <button
             type="button"
             onClick={() => void submit()}
             disabled={(!text.trim() && !gifFileRef.current && !mediaPreview) || disabled}
             className={`${circle} bg-[var(--purple)] text-white hover:opacity-95 disabled:opacity-50`}
             style={{ width: sendSize, height: sendSize }}
-            aria-label="Send message"
-            title="Send"
+            aria-label={t('actions.sendMessageAria')}
+            title={t('actions.send')}
           >
             <SendIcon />
           </button>
         </div>
       </div>
 
-      {/* Voice preview bar (bleibt separat) */}
+      {/* Voice preview bar */}
       {audioPreviewUrl && (
         <div className="mx-auto mt-2 max-w-[760px] rounded-2xl border border-white/12 bg-white/[.06] p-2 flex items-center gap-3">
           <audio src={audioPreviewUrl} controls className="flex-1" />
@@ -801,14 +793,14 @@ export default function ChatComposer({
             onClick={sendVoice}
             className="h-9 px-4 rounded-lg bg-[var(--purple)] text-white hover:opacity-95"
           >
-            Senden
+            {t('voice.preview.send')}
           </button>
           <button
             type="button"
             onClick={() => { resetPreview(); stopTyping(); }}
             className="h-9 px-3 rounded-lg border border-white/15 hover:bg-white/10"
           >
-            Verwerfen
+            {t('voice.preview.discard')}
           </button>
         </div>
       )}
@@ -833,7 +825,7 @@ export default function ChatComposer({
           const amountStr = new Intl.NumberFormat(undefined, { style: 'currency', currency }).format(
             payload.amountCents / 100,
           );
-          const msg = `🧾 Tip request: ${amountStr}${payload.note ? `\n${payload.note}` : ''}`;
+          const msg = `🧾 ${t('protocol.tipRequestLabel')}: ${amountStr}${payload.note ? `\n${payload.note}` : ''}`;
           onSend(msg);
         }}
       />
@@ -849,7 +841,6 @@ export default function ChatComposer({
         }}
       />
 
-      {/* NEW: Autodrain Request Create Modal */}
       <AutoDrainRequestCreateModal
         open={adReqOpen}
         onClose={() => setAdReqOpen(false)}
@@ -865,7 +856,6 @@ export default function ChatComposer({
         }}
       />
 
-      {/* GIF Picker Modal */}
       <GifPickerModal
         open={gifOpen}
         onClose={() => setGifOpen(false)}
@@ -937,30 +927,11 @@ function MicWavesIcon() {
     </svg>
   );
 }
-/** Quadratisches GIF-Icon (ohne runden Button) */
 function GifIcon({ size = 28 }: { size?: number }) {
-  // größerer „GIF“-Badge, damit er die 40×40 Tool-Fläche gut ausfüllt
   return (
     <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden>
-      <rect
-        x="1.5"
-        y="1.5"
-        width="21"
-        height="21"
-        rx="5"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1"
-      />
-      <text
-        x="12"
-        y="15.6"
-        textAnchor="middle"
-        fontFamily="ui-sans-serif,system-ui"
-        fontWeight="700"
-        fontSize="9"
-        fill="currentColor"
-      >
+      <rect x="1.5" y="1.5" width="21" height="21" rx="5" fill="none" stroke="currentColor" strokeWidth="1" />
+      <text x="12" y="15.6" textAnchor="middle" fontFamily="ui-sans-serif,system-ui" fontWeight="700" fontSize="9" fill="currentColor">
         GIF
       </text>
     </svg>

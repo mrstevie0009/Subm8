@@ -4,6 +4,144 @@
     "brand": { "name": "Subm8" },
     "time": { "now": "maintenant", "m": "{count}m", "h": "{count}h", "d": "{count}j" },
 
+    "chatComposer": {
+    "disabled": {
+      "default": "Cette conversation est bloquée."
+    },
+    "errors": {
+      "voice": {
+        "unsupported": "Les messages vocaux ne sont pas pris en charge par ce navigateur.",
+        "denied": "Pas d’accès au micro (refusé ou bloqué)."
+      },
+      "gif": {
+        "loadList": "Impossible de charger les GIFs.",
+        "loadOne": "Impossible de charger le GIF."
+      }
+    },
+    "recording": {
+      "inProgress": "Enregistrement…"
+    },
+    "gif": {
+      "search": {
+        "placeholder": "Rechercher des GIFs…",
+        "button": "Rechercher"
+      },
+      "close": "Fermer",
+      "loading": "Chargement des GIFs…",
+      "selectTitle": "Sélectionner"
+    },
+    "actions": {
+      "remove": "Supprimer",
+      "upload": "Téléverser un média",
+      "gif": "Rechercher des GIFs",
+      "tip": "Envoyer un pourboire",
+      "openActions": "Ouvrir les actions",
+      "actions": "Actions",
+      "voice": {
+        "holdAria": "Message vocal (maintenir pour enregistrer)",
+        "holdTitle": "Message vocal (maintenir)"
+      },
+      "sendMessageAria": "Envoyer le message",
+      "send": "Envoyer"
+    },
+    "menu": {
+      "tipRequest": "Demande de pourboire",
+      "autodrainRequest": "Demande d’autodrain",
+      "ownershipRequest": "Demande d’ownership"
+    },
+    "placeholders": {
+      "closed": "Les MP sont fermés",
+      "message": "Message…"
+    },
+    "voice": {
+      "preview": {
+        "send": "Envoyer",
+        "discard": "Annuler"
+      }
+    },
+    "protocol": {
+      "tipRequestLabel": "Demande de pourboire"
+    }
+  },
+
+    "chatHeader": {
+    "aria": {
+      "back": "Retour",
+      "more": "Plus",
+      "profile": "Profil de {name}"
+    },
+    "role": {
+      "domme": "Domme",
+      "sub": "Sub"
+    },
+    "badges": {
+      "blockedYou": "Vous a bloqué",
+      "youBlocked": "Vous avez bloqué"
+    },
+    "menu": {
+      "viewProfile": "Voir le profil",
+      "mute": "Mettre la conversation en sourdine",
+      "muteSoon": "Sourdine de la conversation — bientôt disponible",
+      "block": "Bloquer l’utilisateur",
+      "unblock": "Débloquer l’utilisateur",
+      "reportConversation": "Signaler la conversation"
+    }
+  },
+
+    "chat": {
+    "header": {
+      "title": "Messages",
+      "subtitle": "{total} conversations • {unread} non lues"
+    },
+    "toolbar": {
+      "searchPlaceholder": "Rechercher des messages…",
+      "settingsAria": "Paramètres",
+      "filters": {
+        "all": "Toutes",
+        "unread": "Non lues",
+        "pinned": "Épinglées"
+      }
+    },
+    "row": {
+      "badges": {
+        "muted": "Muet",
+        "pinned": "Épinglé"
+      },
+      "menu": {
+        "pin": "Épingler la discussion",
+        "unpin": "Désépingler la discussion",
+        "mute": "Mettre en sourdine",
+        "unmute": "Retirer la sourdine",
+        "report": "Signaler l’utilisateur",
+        "block": "Bloquer l’utilisateur",
+        "delete": "Supprimer la discussion"
+      }
+    },
+    "loading": "Chargement…",
+    "empty": {
+      "title": "Aucune conversation",
+      "subtitle": "Démarrez une nouvelle discussion depuis un profil."
+    },
+    "loadingError": "Impossible de charger les discussions",
+    "system": {
+      "ownershipAccepted": "Ownership accepté",
+      "ownershipRequest": "Demande d’ownership",
+      "ownershipRequestWithParts": "Demande d’ownership : {parts}",
+      "part": {
+        "avatar": "Avatar",
+        "banner": "Bannière",
+        "bio": "Bio"
+      },
+      "tipRequest": "Demande de pourboire : {amount}",
+      "tipPaid": "Pourboire payé : {amount}",
+      "shared": {
+        "post": "A partagé une publication",
+        "profile": "A partagé le profil @{handle}",
+        "link": "A partagé un lien"
+      }
+    }
+  },
+
     "communities": {
       "invite": {
       "button": "Inviter",

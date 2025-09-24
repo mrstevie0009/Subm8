@@ -4,6 +4,144 @@
     "brand": { "name": "Subm8" },
     "time": { "now": "now", "m": "{count}m", "h": "{count}h", "d": "{count}d" },
 
+"chatComposer": {
+    "disabled": {
+      "default": "This conversation is blocked."
+    },
+    "errors": {
+      "voice": {
+        "unsupported": "Voice messages are not supported in this browser.",
+        "denied": "No microphone access (denied or blocked)."
+      },
+      "gif": {
+        "loadList": "Couldn't load GIFs.",
+        "loadOne": "Couldn't load the GIF."
+      }
+    },
+    "recording": {
+      "inProgress": "Recording…"
+    },
+    "gif": {
+      "search": {
+        "placeholder": "Search GIFs…",
+        "button": "Search"
+      },
+      "close": "Close",
+      "loading": "Loading GIFs…",
+      "selectTitle": "Select"
+    },
+    "actions": {
+      "remove": "Remove",
+      "upload": "Upload media",
+      "gif": "Search GIFs",
+      "tip": "Send tip",
+      "openActions": "Open actions",
+      "actions": "Actions",
+      "voice": {
+        "holdAria": "Voice message (hold to record)",
+        "holdTitle": "Voice message (hold)"
+      },
+      "sendMessageAria": "Send message",
+      "send": "Send"
+    },
+    "menu": {
+      "tipRequest": "Tip request",
+      "autodrainRequest": "Autodrain request",
+      "ownershipRequest": "Ownership request"
+    },
+    "placeholders": {
+      "closed": "DMs are closed",
+      "message": "Message…"
+    },
+    "voice": {
+      "preview": {
+        "send": "Send",
+        "discard": "Discard"
+      }
+    },
+    "protocol": {
+      "tipRequestLabel": "Tip request"
+    }
+  },
+
+    "chatHeader": {
+    "aria": {
+      "back": "Back",
+      "more": "More",
+      "profile": "{name} profile"
+    },
+    "role": {
+      "domme": "Domme",
+      "sub": "Sub"
+    },
+    "badges": {
+      "blockedYou": "Blocked you",
+      "youBlocked": "You blocked"
+    },
+    "menu": {
+      "viewProfile": "View profile",
+      "mute": "Mute conversation",
+      "muteSoon": "Mute conversation — coming soon",
+      "block": "Block user",
+      "unblock": "Unblock user",
+      "reportConversation": "Report conversation"
+    }
+  },
+
+    "chat": {
+    "header": {
+      "title": "Messages",
+      "subtitle": "{total} conversations • {unread} unread"
+    },
+    "toolbar": {
+      "searchPlaceholder": "Search messages…",
+      "settingsAria": "Settings",
+      "filters": {
+        "all": "All",
+        "unread": "Unread",
+        "pinned": "Pinned"
+      }
+    },
+    "row": {
+      "badges": {
+        "muted": "Muted",
+        "pinned": "Pinned"
+      },
+      "menu": {
+        "pin": "Pin chat",
+        "unpin": "Unpin chat",
+        "mute": "Mute chat",
+        "unmute": "Unmute chat",
+        "report": "Report user",
+        "block": "Block user",
+        "delete": "Delete chat"
+      }
+    },
+    "loading": "Loading…",
+    "empty": {
+      "title": "No conversations",
+      "subtitle": "Start a new chat from a profile."
+    },
+    "loadingError": "Failed to load chats",
+    "system": {
+      "ownershipAccepted": "Ownership accepted",
+      "ownershipRequest": "Ownership request",
+      "ownershipRequestWithParts": "Ownership request: {parts}",
+      "part": {
+        "avatar": "Avatar",
+        "banner": "Banner",
+        "bio": "Bio"
+      },
+      "tipRequest": "Tip request: {amount}",
+      "tipPaid": "Tip paid: {amount}",
+      "shared": {
+        "post": "Shared a post",
+        "profile": "Shared profile @{handle}",
+        "link": "Shared a link"
+      }
+    }
+  },
+
     "communities": {
       "invite": {
       "button": "Invite",

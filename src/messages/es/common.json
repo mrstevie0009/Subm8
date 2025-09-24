@@ -4,6 +4,144 @@
     "brand": { "name": "Subm8" },
     "time": { "now": "ahora", "m": "{count}m", "h": "{count}h", "d": "{count}d" },
 
+    "chatComposer": {
+    "disabled": {
+      "default": "Esta conversación está bloqueada."
+    },
+    "errors": {
+      "voice": {
+        "unsupported": "Los mensajes de voz no son compatibles en este navegador.",
+        "denied": "Sin acceso al micrófono (denegado o bloqueado)."
+      },
+      "gif": {
+        "loadList": "No se pudieron cargar los GIFs.",
+        "loadOne": "No se pudo cargar el GIF."
+      }
+    },
+    "recording": {
+      "inProgress": "Grabando…"
+    },
+    "gif": {
+      "search": {
+        "placeholder": "Buscar GIFs…",
+        "button": "Buscar"
+      },
+      "close": "Cerrar",
+      "loading": "Cargando GIFs…",
+      "selectTitle": "Seleccionar"
+    },
+    "actions": {
+      "remove": "Eliminar",
+      "upload": "Subir medios",
+      "gif": "Buscar GIFs",
+      "tip": "Enviar propina",
+      "openActions": "Abrir acciones",
+      "actions": "Acciones",
+      "voice": {
+        "holdAria": "Mensaje de voz (mantén para grabar)",
+        "holdTitle": "Mensaje de voz (mantener)"
+      },
+      "sendMessageAria": "Enviar mensaje",
+      "send": "Enviar"
+    },
+    "menu": {
+      "tipRequest": "Solicitud de propina",
+      "autodrainRequest": "Solicitud de autodrain",
+      "ownershipRequest": "Solicitud de ownership"
+    },
+    "placeholders": {
+      "closed": "Los MD están cerrados",
+      "message": "Mensaje…"
+    },
+    "voice": {
+      "preview": {
+        "send": "Enviar",
+        "discard": "Descartar"
+      }
+    },
+    "protocol": {
+      "tipRequestLabel": "Solicitud de propina"
+    }
+  },
+
+    "chatHeader": {
+    "aria": {
+      "back": "Atrás",
+      "more": "Más",
+      "profile": "Perfil de {name}"
+    },
+    "role": {
+      "domme": "Domme",
+      "sub": "Sub"
+    },
+    "badges": {
+      "blockedYou": "Te ha bloqueado",
+      "youBlocked": "Has bloqueado"
+    },
+    "menu": {
+      "viewProfile": "Ver perfil",
+      "mute": "Silenciar conversación",
+      "muteSoon": "Silenciar conversación — próximamente",
+      "block": "Bloquear usuario",
+      "unblock": "Desbloquear usuario",
+      "reportConversation": "Denunciar conversación"
+    }
+  },
+
+    "chat": {
+    "header": {
+      "title": "Mensajes",
+      "subtitle": "{total} conversaciones • {unread} sin leer"
+    },
+    "toolbar": {
+      "searchPlaceholder": "Buscar mensajes…",
+      "settingsAria": "Ajustes",
+      "filters": {
+        "all": "Todas",
+        "unread": "Sin leer",
+        "pinned": "Fijadas"
+      }
+    },
+    "row": {
+      "badges": {
+        "muted": "Silenciado",
+        "pinned": "Fijado"
+      },
+      "menu": {
+        "pin": "Fijar chat",
+        "unpin": "Quitar fijación",
+        "mute": "Silenciar chat",
+        "unmute": "Quitar silencio",
+        "report": "Reportar usuario",
+        "block": "Bloquear usuario",
+        "delete": "Eliminar chat"
+      }
+    },
+    "loading": "Cargando…",
+    "empty": {
+      "title": "Sin conversaciones",
+      "subtitle": "Inicia un chat desde un perfil."
+    },
+    "loadingError": "No se pudieron cargar los chats",
+    "system": {
+      "ownershipAccepted": "Ownership aceptado",
+      "ownershipRequest": "Solicitud de ownership",
+      "ownershipRequestWithParts": "Solicitud de ownership: {parts}",
+      "part": {
+        "avatar": "Avatar",
+        "banner": "Banner",
+        "bio": "Bio"
+      },
+      "tipRequest": "Solicitud de propina: {amount}",
+      "tipPaid": "Propina pagada: {amount}",
+      "shared": {
+        "post": "Compartió una publicación",
+        "profile": "Compartió el perfil @{handle}",
+        "link": "Compartió un enlace"
+      }
+    }
+  },
+
     "communities": {
       "invite": {
       "button": "Invitar",
