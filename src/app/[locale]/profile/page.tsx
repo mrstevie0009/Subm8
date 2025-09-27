@@ -13,6 +13,11 @@ import { getTranslations, setRequestLocale } from 'next-intl/server';
 
 import BackButton from '@/components/BackButtonStandard';
 
+// ⬇️ Neu hinzugefügt (für Deaktivieren/ Löschen / Cookies):
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import { ACTIVE_COOKIE_NAME, buildActiveUserCookieValue } from '@/lib/activeUserCookie';
+
 type Params = { locale: string };
 
 export const dynamic = 'force-dynamic';
@@ -169,8 +174,22 @@ export async function changePasswordAction(formData: FormData) {
   revalidatePath('/[locale]/profile', 'page');
 }
 
+/**
+ * Deaktivieren mit Auto-Switch:
+ * - Wenn deaktivierter Account ein verknüpfter Alt ist → zurück auf Owner (active_user_id löschen) & HomeFeed
+ * - Wenn deaktivierter Account der Owner ist:
+ *   - Falls es verknüpfte Accounts gibt → active_user_id auf den ersten Link setzen & HomeFeed
+ *   - Sonst komplette Abmeldung → /signin
+ * - Deaktivierter Account wird entkoppelt
+ */
 export async function deactivateAccountAction() {
   'use server';
+
+  // Owner der Session ermitteln
+  const session = await getServerSession(authOptions).catch(() => null);
+  const ownerId = session?.user?.id ?? null;
+
+  // Aktuell "aktiven" User ermitteln (Owner ODER verknüpfter)
   const { user } = await requireUser();
   const { hasIsDeactivated } = await getUserColumnFlags();
 
@@ -180,20 +199,174 @@ export async function deactivateAccountAction() {
     );
   }
 
+  // 1) User deaktivieren
   await prisma.user.update({
     where: { id: user.id },
     data: { isDeactivated: true },
   });
 
-  await prisma.session.deleteMany({ where: { userId: user.id } }).catch(() => {});
+  // 2) Entkoppeln, falls verknüpft
+  if (ownerId) {
+    await prisma.accountLink.deleteMany({
+      where: { ownerId, linkedUserId: user.id },
+    });
+  }
 
   const jar = await cookies();
-  const expire = { expires: new Date(0), httpOnly: true, path: '/' as const };
-  jar.set('sessionToken', '', expire);
-  jar.set('next-auth.session-token', '', expire);
-  jar.set('__Secure-next-auth.session-token', '', expire);
 
-  redirect('/');
+  async function setActiveUserCookie(nextUserId: string | null) {
+    if (!nextUserId) {
+      jar.delete(ACTIVE_COOKIE_NAME);
+      return;
+    }
+    const value = await buildActiveUserCookieValue(nextUserId);
+    if (value) {
+      jar.set(ACTIVE_COOKIE_NAME, value, {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 60 * 60 * 24 * 7,
+      });
+    }
+  }
+
+  // A) Deaktivierter Account ist ein verknüpfter Alt (NICHT Owner der Session)
+  if (ownerId && user.id !== ownerId) {
+    await setActiveUserCookie(null);
+    await prisma.session.deleteMany({ where: { userId: user.id } }).catch(() => {});
+    redirect('/'); // HomeFeed
+  }
+
+  // B) Deaktivierter Account IST der Owner der Session
+  if (ownerId && user.id === ownerId) {
+    const links = await prisma.accountLink.findMany({
+      where: { ownerId },
+      select: { linkedUserId: true },
+      orderBy: { createdAt: 'asc' },
+      take: 1,
+    });
+
+    const fallbackLinked = links[0]?.linkedUserId ?? null;
+
+    if (fallbackLinked) {
+      await setActiveUserCookie(fallbackLinked);
+      redirect('/'); // HomeFeed
+    }
+
+    await prisma.session.deleteMany({ where: { userId: user.id } }).catch(() => {});
+    const expire = { expires: new Date(0), httpOnly: true, path: '/' as const };
+    const jarExpire = cookies();
+    (await jarExpire).set('sessionToken', '', expire);
+    (await jarExpire).set('next-auth.session-token', '', expire);
+    (await jarExpire).set('__Secure-next-auth.session-token', '', expire);
+    (await jarExpire).delete(ACTIVE_COOKIE_NAME);
+
+    redirect('/signin');
+  }
+
+  // C) Kein Owner in der Session → abmelden
+  await prisma.session.deleteMany({ where: { userId: user.id } }).catch(() => {});
+  const expire = { expires: new Date(0), httpOnly: true, path: '/' as const };
+  const jar2 = await cookies();
+  jar2.set('sessionToken', '', expire);
+  jar2.set('next-auth.session-token', '', expire);
+  jar2.set('__Secure-next-auth.session-token', '', expire);
+  jar2.delete(ACTIVE_COOKIE_NAME);
+  redirect('/signin');
+}
+
+/**
+ * Vollständiges Löschen des aktuell aktiven Accounts.
+ * Verhalten:
+ * - Wenn gelöschter Account verknüpfter Alt ist → entkoppeln, Sessions löschen, active_user_id löschen, redirect('/')
+ * - Wenn gelöschter Account Owner ist:
+ *    - Wenn verknüpfte Accounts existieren: (Session des Owners ist ungültig) → vollständiges Logout und redirect('/signin')
+ *      (Ein automatischer Wechsel ohne Re-Login ist nach Owner-Delete nicht möglich.)
+ *    - Wenn keine verknüpften Accounts: vollständiges Logout → '/signin'
+ */
+export async function deleteAccountAction() {
+  'use server';
+
+  const session = await getServerSession(authOptions).catch(() => null);
+  const ownerId = session?.user?.id ?? null;
+
+  const { user } = await requireUser();
+
+  const jar = await cookies();
+
+  async function clearSessionAndCookies() {
+    // Sessiontoken aus DB löschen (alle Sessions des Users)
+    await prisma.session.deleteMany({ where: { userId: user.id } }).catch(() => {});
+    // Cookies KLIENT-seitig invalidieren
+    const expire = { expires: new Date(0), httpOnly: true, path: '/' as const };
+    jar.set('sessionToken', '', expire);
+    jar.set('next-auth.session-token', '', expire);
+    jar.set('__Secure-next-auth.session-token', '', expire);
+    jar.delete(ACTIVE_COOKIE_NAME);
+  }
+
+  async function setActiveUserCookie(nextUserId: string | null) {
+    if (!nextUserId) {
+      jar.delete(ACTIVE_COOKIE_NAME);
+      return;
+    }
+    const value = await buildActiveUserCookieValue(nextUserId);
+    if (value) {
+      jar.set(ACTIVE_COOKIE_NAME, value, {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 60 * 60 * 24 * 7,
+      });
+    }
+  }
+
+  // 1) Entkoppeln beidseitig (Owner <-> Linked), Follows/Blocks etc. optional aufräumen
+  await prisma.$transaction([
+    prisma.accountLink.deleteMany({ where: { ownerId: user.id } }), // falls der zu löschende selbst Owner war
+    prisma.accountLink.deleteMany({ where: { linkedUserId: user.id } }), // falls der zu löschende ein Alt war
+    // Optional: Weitere Entitäten löschen/neutralisieren (abhängig vom Schema):
+    // prisma.message.deleteMany({ where: { authorId: user.id } }),
+    // prisma.conversation.deleteMany({ where: { OR: [{ dommeId: user.id }, { subId: user.id }] } }),
+    // prisma.follow.deleteMany({ where: { OR: [{ followerId: user.id }, { followingId: user.id }] } }),
+    // prisma.block.deleteMany({ where: { OR: [{ blockerId: user.id }, { blockedId: user.id }] } }),
+    // prisma.bookmark.deleteMany({ where: { userId: user.id } }),
+  ]);
+
+  // 2) Sessions des Users löschen
+  await prisma.session.deleteMany({ where: { userId: user.id } }).catch(() => {});
+
+  // 3) User löschen
+  await prisma.user.delete({ where: { id: user.id } }).catch((e) => {
+    // Falls FK-Constraints existieren: vorher Child-Datensätze löschen (siehe oben)
+    throw e;
+  });
+
+  // ========== Redirect-Logik wie vereinbart ==========
+
+  // A) Gelöschter Account war ein verknüpfter Alt (nicht Owner)
+  if (ownerId && user.id !== ownerId) {
+    // Zurück auf Owner (active_user_id leeren) & Home
+    await setActiveUserCookie(null);
+    redirect('/');
+  }
+
+  // B) Gelöschter Account war der Owner
+  if (ownerId && user.id === ownerId) {
+    // Owner-Session ist nicht mehr gültig → vollständiges Logout
+    await clearSessionAndCookies();
+
+    // Falls es verknüpfte Accounts gab, können wir ohne Re-Login NICHT automatisch wechseln.
+    // (Session gehört zum gelöschten User und ist entfernt.)
+    // → Zur Signin-Seite
+    redirect('/signin');
+  }
+
+  // C) Kein Owner in der Session (sollte selten passieren) → Logout zur Sicherheit
+  await clearSessionAndCookies();
+  redirect('/signin');
 }
 
 export async function logoutAction() {
@@ -240,7 +413,6 @@ export default async function SettingsPage({ params }: { params: Params }) {
   setRequestLocale(locale);
 
   const t = await getTranslations({ locale, namespace: 'common.profileSettings' });
-
 
   const me = await getCurrentUser().catch(() => null);
   if (!me) {
@@ -308,13 +480,13 @@ export default async function SettingsPage({ params }: { params: Params }) {
       <header className="px-4 pt-3 pb-4 border-b border-white/10">
         <div className="flex items-center gap-2">
           <BackButton
-                    fallbackHref={`/${locale}`}
-                    ariaLabel={t('bookmarksPage.ariaBack')}
-                    className="inline-flex items-center justify-center p-1 hover:opacity-85 focus:outline-none focus:ring-2 focus:ring-[var(--purple)]/40"
-                    style={{ color: 'var(--purple)' }}
-                  >
-                    <ChevronLeftIcon />
-                  </BackButton>
+            fallbackHref={`/${locale}`}
+            ariaLabel={t('bookmarksPage.ariaBack')}
+            className="inline-flex items-center justify-center p-1 hover:opacity-85 focus:outline-none focus:ring-2 focus:ring-[var(--purple)]/40"
+            style={{ color: 'var(--purple)' }}
+          >
+            <ChevronLeftIcon />
+          </BackButton>
           <div className="ml-2 sm:ml-3">
             <h1 className="text-lg font-semibold">{t('headerTitle')}</h1>
             <p className="text-sm text-white/60">@{user.handle}</p>
@@ -327,7 +499,7 @@ export default async function SettingsPage({ params }: { params: Params }) {
         <section className="rounded-lg border border-white/10 p-4">
           <h2 className="text-base font-semibold mb-4">{t('profileSectionTitle')}</h2>
 
-          {/* Language picker (separates kleines Formular) */}
+          {/* Language picker */}
           <form action={changeLanguageAction} className="space-y-2 mb-6">
             <label className="block text-sm mb-1">{t('languageLabel')}</label>
 
@@ -500,26 +672,45 @@ export default async function SettingsPage({ params }: { params: Params }) {
         <section className="rounded-lg border border-red-400/30 p-4 bg-red-500/5">
           <h2 className="text-base font-semibold mb-3 text-red-300">{t('dangerZoneTitle')}</h2>
           <p className="text-sm text-white/70 mb-4">{t('dangerZoneDesc')}</p>
-          <form action={deactivateAccountAction}>
-            <button
-              type="submit"
-              className="px-4 py-2 rounded-full bg-red-500/90 hover:bg-red-500 text-white"
-              disabled={!hasIsDeactivated || !!user.isDeactivated}
-              title={
-                !hasIsDeactivated
+
+          <div className="flex flex-col sm:flex-row gap-3">
+            {/* Deactivate */}
+            <form action={deactivateAccountAction}>
+              <button
+                type="submit"
+                className="px-4 py-2 rounded-full bg-red-500/90 hover:bg-red-500 text-white"
+                disabled={!hasIsDeactivated || !!user.isDeactivated}
+                title={
+                  !hasIsDeactivated
+                    ? t('deactivateNotAvailable')
+                    : user.isDeactivated
+                    ? t('alreadyDeactivated')
+                    : t('deactivateButton')
+                }
+              >
+                {!hasIsDeactivated
                   ? t('deactivateNotAvailable')
                   : user.isDeactivated
                   ? t('alreadyDeactivated')
-                  : t('deactivateButton')
-              }
-            >
-              {!hasIsDeactivated
-                ? t('deactivateNotAvailable')
-                : user.isDeactivated
-                ? t('alreadyDeactivated')
-                : t('deactivateButton')}
-            </button>
-          </form>
+                  : t('deactivateButton')}
+              </button>
+            </form>
+
+            {/* Delete permanently */}
+            <form action={deleteAccountAction}>
+              <button
+                type="submit"
+                className="px-4 py-2 rounded-full bg-red-700/90 hover:bg-red-700 text-white border border-red-300/30"
+                title={t('deleteButtonTitle')}
+              >
+                {t('deleteButton')}
+              </button>
+            </form>
+          </div>
+
+          <p className="text-xs text-white/60 mt-2">
+            {t('deleteHint')}
+          </p>
         </section>
       </div>
     </section>

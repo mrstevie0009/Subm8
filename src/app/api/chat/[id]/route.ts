@@ -44,27 +44,70 @@ function hasAvatarField(u: unknown): u is { avatarUrl?: string | null } {
   return typeof u === 'object' && u !== null && 'avatarUrl' in (u as Record<string, unknown>);
 }
 
-/* ---------- Typing table (idempotent) ---------- */
+/* ---------- Typing table (idempotent & prozessweit einmalig) ---------- */
 /** Neuer Tabellenname, um Konflikte mit vorhandenem TYPE "ConversationTyping" zu vermeiden */
 const TYPING_TABLE = `"ConversationTypingState"`;
 
-async function ensureTypingTable() {
-  await prisma.$executeRawUnsafe(`
-    CREATE TABLE IF NOT EXISTS ${TYPING_TABLE} (
-      "conversationId" TEXT NOT NULL,
-      "userId" TEXT NOT NULL,
-      "updatedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      PRIMARY KEY ("conversationId","userId")
-    );
-  `);
-  await prisma.$executeRawUnsafe(`
-    CREATE INDEX IF NOT EXISTS "ConversationTypingState_updated_idx"
-    ON ${TYPING_TABLE} ("updatedAt");
-  `);
+/** Minimaler Typ für das Prisma-Fehlerobjekt, um ESLint/TS zufriedenzustellen */
+type PrismaKnownErrorLike = {
+  code?: string;
+  meta?: { code?: string; message?: string };
+  message?: string;
+};
+
+/** Einige PG/Prisma-Fehler sind beim parallelen DDL-Lauf ungefährlich (z.B. typname duplicate) */
+function isIgnorablePgTypeRaceError(e: unknown): boolean {
+  const err = e as PrismaKnownErrorLike;
+  const msg = String(err?.message || '');
+  // PrismaKnownRequestError: code 'P2010', meta.code '23505' (unique_violation),
+  // häufig mit Meldung rund um (typname, typnamespace)
+  return (
+    (err?.code === 'P2010' &&
+      (err?.meta?.code === '23505' ||
+        String(err?.meta?.message || '').includes('typname'))) ||
+    msg.includes('(typname, typnamespace)') ||
+    msg.includes('already exists')
+  );
+}
+
+async function initTypingDDL() {
+  try {
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS ${TYPING_TABLE} (
+        "conversationId" TEXT NOT NULL,
+        "userId" TEXT NOT NULL,
+        "updatedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY ("conversationId","userId")
+      );
+    `);
+    await prisma.$executeRawUnsafe(`
+      CREATE INDEX IF NOT EXISTS "ConversationTypingState_updated_idx"
+      ON ${TYPING_TABLE} ("updatedAt");
+    `);
+  } catch (e) {
+    // Bei parallelem CREATE kann Postgres einen pg_type-Race melden – hier sicher ignorieren.
+    if (!isIgnorablePgTypeRaceError(e)) throw e;
+  }
+}
+
+/** globales Promise-Lock, damit DDL nur einmal pro Prozess läuft */
+declare global {
+  // keine eslint-disable Kommentare nötig, wir deklarieren nur
+  // eslint erkennt hier kein Problem
+  var __typing_ddl__: Promise<void> | undefined;
+}
+
+async function ensureTypingTableOnce() {
+  // typ-sicherer Zugriff auf das globale Objekt
+  const g = globalThis as unknown as { __typing_ddl__?: Promise<void> };
+  if (!g.__typing_ddl__) {
+    g.__typing_ddl__ = initTypingDDL();
+  }
+  return g.__typing_ddl__;
 }
 
 async function pingTyping(conversationId: string, userId: string) {
-  await ensureTypingTable();
+  // DDL wurde beim ersten Request sichergestellt
   await prisma.$executeRawUnsafe(
     `INSERT INTO ${TYPING_TABLE} ("conversationId","userId","updatedAt")
      VALUES ($1,$2,NOW())
@@ -76,7 +119,6 @@ async function pingTyping(conversationId: string, userId: string) {
 }
 
 async function clearTyping(conversationId: string, userId: string) {
-  await ensureTypingTable();
   await prisma.$executeRawUnsafe(
     `DELETE FROM ${TYPING_TABLE} WHERE "conversationId" = $1 AND "userId" = $2;`,
     conversationId,
@@ -88,6 +130,8 @@ async function clearTyping(conversationId: string, userId: string) {
 
 export async function GET(_req: Request, { params }: Ctx) {
   try {
+    await ensureTypingTableOnce();
+
     const { id } = await params;
     const me = await getCurrentUser();
     if (!me) return Response.json({ ok: false, error: 'Not authenticated' }, { status: 401 });
@@ -153,7 +197,6 @@ export async function GET(_req: Request, { params }: Ctx) {
     }
 
     // otherTyping (letzte 8s)
-    await ensureTypingTable();
     const typingRow = await prisma.$queryRawUnsafe<{ exists: boolean }[]>(
       `SELECT EXISTS (
          SELECT 1 FROM ${TYPING_TABLE}
@@ -193,6 +236,8 @@ export async function GET(_req: Request, { params }: Ctx) {
 
 export async function POST(req: Request, { params }: Ctx) {
   try {
+    await ensureTypingTableOnce();
+
     const { id } = await params;
     const me = await getCurrentUser();
     if (!me) return Response.json({ ok: false, error: 'Not authenticated' }, { status: 401 });

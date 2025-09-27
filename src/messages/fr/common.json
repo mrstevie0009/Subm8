@@ -4,6 +4,22 @@
     "brand": { "name": "Subm8" },
     "time": { "now": "maintenant", "m": "{count}m", "h": "{count}h", "d": "{count}j" },
 
+    "accountSheet": {
+      "title": "Ajouter un compte",
+      "close": "Fermer",
+      "tabExisting": "Lier un compte existant",
+      "tabNew": "Créer un nouveau",
+      "phIdentifier": "E-mail ou @handle",
+      "phPassword": "Mot de passe",
+      "btnConnect": "Lier et changer",
+      "phEmail": "E-mail",
+      "phHandle": "handle",
+      "roleSub": "Sub",
+      "roleDomme": "Domme",
+      "phPwMin": "Mot de passe (min. {min})",
+      "btnCreate": "Créer et changer"
+    },
+
     "compose": {
     "aria": { "modalLabel": "Rédiger une publication" },
     "header": { "newPost": "Nouvelle publication" },
@@ -1130,6 +1146,8 @@
     },
 
     "settings": {
+      "switchToHandle": "Cambiar a @{handle}",
+      "switchToName": "Cambiar a {name}",
       "aria": "Réglages",
       "guest": "Invité",
       "roleDomme": "Domme",
@@ -1188,6 +1206,9 @@
     },
 
     "profileSettings": {
+      "deleteButton": "Supprimer le compte définitivement",
+      "deleteButtonTitle": "Supprimer le compte définitivement",
+      "deleteHint": "Supprime ton compte et ses données. S'il existe des comptes liés, retour au fil d'accueil ; sinon, redirection vers la page de connexion.",
       "languageLabel": "Langue",
       "languageHelp": "Choisissez votre langue d’interface préférée.",
       "languageButton": "Changer",

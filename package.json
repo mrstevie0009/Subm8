@@ -5,7 +5,9 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
-    "start": "next start",
+    "start": "next start -p $PORT",
+    "postinstall": "prisma generate",
+    "migrate:deploy": "prisma migrate deploy",
     "lint": "next lint"
   },
   "dependencies": {

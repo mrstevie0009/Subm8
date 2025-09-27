@@ -4,6 +4,22 @@
     "brand": { "name": "Subm8" },
     "time": { "now": "now", "m": "{count}m", "h": "{count}h", "d": "{count}d" },
 
+    "accountSheet": {
+      "title": "Add account",
+      "close": "Close",
+      "tabExisting": "Link existing",
+      "tabNew": "Create new",
+      "phIdentifier": "Email or @handle",
+      "phPassword": "Password",
+      "btnConnect": "Link & switch",
+      "phEmail": "Email",
+      "phHandle": "handle",
+      "roleSub": "Sub",
+      "roleDomme": "Domme",
+      "phPwMin": "Password (min. {min})",
+      "btnCreate": "Create & switch"
+    },
+
     "compose": {
     "aria": { "modalLabel": "Compose post" },
     "header": { "newPost": "New post" },
@@ -1130,6 +1146,8 @@
     },
 
     "settings": {
+      "switchToHandle": "Switch to @{handle}",
+      "switchToName": "Switch to {name}",
       "aria": "Settings",
       "guest": "Guest",
       "roleDomme": "Domme",
@@ -1188,6 +1206,9 @@
     },
 
     "profileSettings": {
+      "deleteButton": "Delete account permanently",
+      "deleteButtonTitle": "Delete account permanently",
+      "deleteHint": "Deletes your account and its data. If you have linked accounts, you'll be taken to the Home feed; otherwise you'll be redirected to the sign-in page.",
       "languageLabel": "Language",
       "languageHelp": "Select your preferred interface language.",
       "languageButton": "Change",

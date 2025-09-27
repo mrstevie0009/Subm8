@@ -1,3 +1,4 @@
+//src/components/SettingsDrawer.tsx
 'use client';
 
 import * as React from 'react';
@@ -29,15 +30,47 @@ type MeBasic = {
   role: 'DOMME' | 'SUBMISSIVE';
 };
 
+type LinkedMini = {
+  id: string;
+  handle: string;
+  displayName: string;
+  avatarUrl: string | null;
+  role: 'DOMME' | 'SUBMISSIVE';
+};
+
 export default function SettingsDrawer({ open, onClose }: Props) {
   const { data: session } = useSession();
   const locale = useLocale();
   const pathname = usePathname();
   const search = useSearchParams();
-
   const t = useTranslations('common.settings');
 
   const isAuth = Boolean(session?.user);
+
+  // --- move ALL hooks to top-level (no conditional calls)
+  const [mounted, setMounted] = React.useState(false);
+  const [show, setShow] = React.useState(false);
+
+  React.useEffect(() => setMounted(true), []);
+  React.useEffect(() => {
+    if (!open) return setShow(false);
+    const id = requestAnimationFrame(() => setShow(true));
+    return () => cancelAnimationFrame(id);
+  }, [open]);
+  React.useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, onClose]);
+  React.useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [open]);
 
   const callbackUrl = React.useMemo(() => {
     const qs = search.toString();
@@ -73,11 +106,9 @@ export default function SettingsDrawer({ open, onClose }: Props) {
   const image = meBasic?.avatarUrl ?? u.image ?? AVATAR_PH;
   const roleRaw = (meBasic?.role ?? (u.role ?? '')).toString().toUpperCase();
   const roleLabel =
-    roleRaw === 'DOMME'
-      ? t('roleDomme')
-      : roleRaw === 'SUBMISSIVE'
-      ? t('roleSub')
-      : t('noHandle');
+    roleRaw === 'DOMME' ? t('roleDomme')
+    : roleRaw === 'SUBMISSIVE' ? t('roleSub')
+    : t('noHandle');
 
   const [followers, setFollowers] = React.useState<number>(0);
   const [following, setFollowing] = React.useState<number>(0);
@@ -107,6 +138,7 @@ export default function SettingsDrawer({ open, onClose }: Props) {
     };
   }, [open, isAuth, t]);
 
+  // --- Vorschläge ---
   const [headline, setHeadline] = React.useState<string>(t('loading'));
   const [sugs, setSugs] = React.useState<Suggestion[]>([]);
   const [suggErr, setSuggErr] = React.useState<string | null>(null);
@@ -158,28 +190,35 @@ export default function SettingsDrawer({ open, onClose }: Props) {
     [sugs]
   );
 
-  const [mounted, setMounted] = React.useState(false);
-  const [show, setShow] = React.useState(false);
-  React.useEffect(() => setMounted(true), []);
+  // --- Multi-Account ---
+  const [accounts, setAccounts] = React.useState<LinkedMini[]>([]);
+  const [canAddMore, setCanAddMore] = React.useState<boolean>(false);
+  const [sheetOpen, setSheetOpen] = React.useState<boolean>(false);
+  const [connecting, setConnecting] = React.useState<boolean>(false);
+  const [connErr, setConnErr] = React.useState<string | null>(null);
+
+  const loadAccounts = React.useCallback(async () => {
+    if (!isAuth) return;
+    const r = await fetch('/api/account-links', { cache: 'no-store' });
+    const j = await r.json().catch(() => null);
+    if (j?.ok) {
+      setAccounts((j.items || []) as LinkedMini[]);
+      setCanAddMore(Boolean(j.canAddMore));
+    }
+  }, [isAuth]);
+
   React.useEffect(() => {
-    if (!open) return setShow(false);
-    const id = requestAnimationFrame(() => setShow(true));
-    return () => cancelAnimationFrame(id);
-  }, [open]);
-  React.useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [open, onClose]);
-  React.useEffect(() => {
-    if (!open) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, [open]);
+    if (open && isAuth) void loadAccounts();
+  }, [open, isAuth, loadAccounts]);
+
+  async function switchTo(userId: string) {
+    await fetch('/api/account-links?action=switch', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ userId }),
+    });
+    if (typeof window !== 'undefined') window.location.reload();
+  }
 
   const hrefs = React.useMemo(
     () => ({
@@ -220,6 +259,28 @@ export default function SettingsDrawer({ open, onClose }: Props) {
     paddingBottom: 'calc(env(safe-area-inset-bottom) + 16px)',
     overflowY: 'auto'
   };
+
+async function smartSignOut() {
+  try {
+    const r = await fetch('/api/account-links?action=signout-active', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' }
+    });
+    const j = await r.json().catch(() => null);
+
+    if (!r.ok || !j?.ok) {
+      await signOut({ callbackUrl: `/${locale}` });
+      return;
+    }
+    if (j.fullSignOut) {
+      await signOut({ callbackUrl: `/${locale}` });
+    } else {
+      if (typeof window !== 'undefined') window.location.reload();
+    }
+  } catch {
+    await signOut({ callbackUrl: `/${locale}` });
+  }
+}
 
   const root = (
     <div
@@ -273,9 +334,39 @@ export default function SettingsDrawer({ open, onClose }: Props) {
               </span>
             </div>
 
-            <div style={{ lineHeight: 1.1, marginTop: 10, display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <div style={{ lineHeight: 1.1, marginTop: 10, display: 'flex', flexDirection: 'column', gap: 2, flex: 1 }}>
               <div style={{ fontWeight: 600 }}>{displayName}</div>
               <div style={{ opacity: 0.7, fontSize: 14 }}>{handle ? `@${handle}` : t('noHandle')}</div>
+            </div>
+
+            {/* Rechts: Avatare + Plus */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {accounts
+                // nur Accounts anzeigen, die NICHT der aktuell aktive sind
+                .filter((a) => a.handle !== handle)
+                .map((a) => (
+                  <button
+                    key={a.id}
+                    title={t('switchToHandle', { handle: a.handle })}
+                    onClick={() => switchTo(a.id)}
+                    className="relative h-8 w-8 rounded-full overflow-hidden border border-white/20 hover:opacity-90"
+                    aria-label={t('switchToName', { name: a.displayName })}
+                  >
+                    <Image src={a.avatarUrl || AVATAR_PH} alt="" fill sizes="32px" className="object-cover" />
+                  </button>
+                ))}
+              {isAuth && canAddMore && (
+                <button
+                  onClick={() => { setConnErr(null); setSheetOpen(true); }}
+                  title={t('addAccount') as string}
+                  className="grid place-items-center h-8 w-8 rounded-full border border-white/20 hover:bg-white/10"
+                  aria-label={t('addAccount') as string}
+                >
+                  <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" strokeWidth="2" fill="none" aria-hidden="true">
+                    <path d="M12 5v14M5 12h14" />
+                  </svg>
+                </button>
+              )}
             </div>
           </div>
 
@@ -318,7 +409,7 @@ export default function SettingsDrawer({ open, onClose }: Props) {
         {isAuth ? (
           <button
             type="button"
-            onClick={() => signOut({ callbackUrl: `/${locale}` })}
+            onClick={() => void smartSignOut()}
             className="w-full text-left px-4 py-3 rounded-lg hover:bg-white/[.06]"
             style={{ color: 'rgba(255,255,255,0.85)' }}
           >
@@ -335,11 +426,205 @@ export default function SettingsDrawer({ open, onClose }: Props) {
           </Link>
         )}
       </aside>
+
+      {/* Bottom-Sheet */}
+      {sheetOpen &&
+        createPortal(
+          <AccountSheet
+            onClose={() => setSheetOpen(false)}
+            onConnected={() => {
+              setSheetOpen(false);
+              void loadAccounts();
+              if (typeof window !== 'undefined') window.location.reload();
+            }}
+            busy={connecting}
+            setBusy={setConnecting}
+            err={connErr}
+            setErr={setConnErr}
+          />,
+          document.body
+        )}
     </div>
   );
 
   return createPortal(root, document.body);
 }
+
+function AccountSheet({
+  onClose,
+  onConnected,
+  busy,
+  setBusy,
+  err,
+  setErr
+}: {
+  onClose: () => void;
+  onConnected: () => void;
+  busy: boolean;
+  setBusy: (b: boolean) => void;
+  err: string | null;
+  setErr: (e: string | null) => void;
+}) {
+  const tA = useTranslations('common.accountSheet');
+  const [tab, setTab] = React.useState<'existing' | 'new'>('existing');
+
+  // existing
+  const [identifier, setIdentifier] = React.useState('');
+  const [password, setPassword] = React.useState('');
+
+  // new
+  const [email, setEmail] = React.useState('');
+  const [handle, setHandle] = React.useState('');
+  const [pw, setPw] = React.useState('');
+  const [role, setRole] = React.useState<'SUBMISSIVE' | 'DOMME'>('SUBMISSIVE');
+
+  async function connectExisting() {
+    setErr(null);
+    setBusy(true);
+    const r = await fetch('/api/account-links?action=connect-existing', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ identifier, password })
+    });
+    const j = await r.json().catch(() => null);
+    setBusy(false);
+    if (!r.ok || !j?.ok) {
+      setErr(j?.error || `HTTP ${r.status}`);
+      return;
+    }
+    onConnected();
+  }
+
+  async function createNew() {
+    setErr(null);
+    setBusy(true);
+    const r = await fetch('/api/account-links?action=create-new', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        email,
+        handle: handle.toLowerCase().replace(/[^a-z0-9_]/g, ''),
+        password: pw,
+        role
+      })
+    });
+    const j = await r.json().catch(() => null);
+    setBusy(false);
+    if (!r.ok || !j?.ok) {
+      setErr(j?.error || `HTTP ${r.status}`);
+      return;
+    }
+    onConnected();
+  }
+
+  return (
+    <div className="fixed inset-0 z-[2147483603]" onClick={onClose} aria-modal="true" role="dialog">
+      <div className="absolute inset-0 bg-black/55 backdrop-blur" />
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[min(560px,95vw)]
+                   rounded-2xl border border-white/12 bg-[#0b0b0d] p-4 shadow-2xl"
+      >
+        <div className="flex items-center justify-between">
+          <div className="font-semibold text-lg">{tA('title')}</div>
+          <button onClick={onClose} className="px-2 py-1 rounded-md hover:bg-white/10">
+            {tA('close')}
+          </button>
+        </div>
+
+        <div className="mt-3 flex gap-2">
+          <button
+            className={`px-3 py-1.5 rounded-lg border ${tab === 'existing' ? 'bg-white/10' : 'border-white/15 hover:bg-white/5'}`}
+            onClick={() => setTab('existing')}
+          >
+            {tA('tabExisting')}
+          </button>
+          <button
+            className={`px-3 py-1.5 rounded-lg border ${tab === 'new' ? 'bg-white/10' : 'border-white/15 hover:bg-white/5'}`}
+            onClick={() => setTab('new')}
+          >
+            {tA('tabNew')}
+          </button>
+        </div>
+
+        {tab === 'existing' ? (
+          <div className="mt-3 grid gap-2">
+            <input
+              className="h-10 rounded-lg bg-white/[.06] border border-white/12 px-3 outline-none"
+              placeholder={tA('phIdentifier')}
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
+            />
+            <input
+              type="password"
+              className="h-10 rounded-lg bg-white/[.06] border border-white/12 px-3 outline-none"
+              placeholder={tA('phPassword')}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+            {err && <div className="text-sm text-red-300">{err}</div>}
+            <button
+              disabled={busy || !identifier || !password}
+              onClick={() => void connectExisting()}
+              className="h-10 rounded-lg bg-[var(--purple)] text-white disabled:opacity-50"
+            >
+              {tA('btnConnect')}
+            </button>
+          </div>
+        ) : (
+          <div className="mt-3 grid gap-2">
+            <input
+              className="h-10 rounded-lg bg-white/[.06] border border-white/12 px-3 outline-none"
+              placeholder={tA('phEmail')}
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 opacity-60">@</span>
+                <input
+                  className="h-10 w-full rounded-lg bg-white/[.06] border border-white/12 pl-8 px-3 outline-none lowercase"
+                  placeholder={tA('phHandle')}
+                  value={handle}
+                  onChange={(e) => setHandle(e.target.value)}
+                />
+              </div>
+              <select
+                className="h-10 rounded-lg bg-[#151518] text-white border border-white/12 px-2 focus:outline-none [color-scheme:dark]"
+                value={role}
+                onChange={(e) => setRole(e.target.value as 'SUBMISSIVE' | 'DOMME')}
+              >
+                <option className="bg-[#151518] text-white" value="SUBMISSIVE">
+                  {tA('roleSub')}
+                </option>
+                <option className="bg-[#151518] text-white" value="DOMME">
+                  {tA('roleDomme')}
+                </option>
+              </select>
+            </div>
+            <input
+              type="password"
+              className="h-10 rounded-lg bg-white/[.06] border border-white/12 px-3 outline-none"
+              placeholder={tA('phPwMin', { min: 8 })}
+              value={pw}
+              onChange={(e) => setPw(e.target.value)}
+            />
+            {err && <div className="text-sm text-red-300">{err}</div>}
+            <button
+              disabled={busy || !email || !handle || pw.length < 8}
+              onClick={() => void createNew()}
+              className="h-10 rounded-lg bg-[var(--purple)] text-white disabled:opacity-50"
+            >
+              {tA('btnCreate')}
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+
 
 function SuggestionsSection({
   headline,

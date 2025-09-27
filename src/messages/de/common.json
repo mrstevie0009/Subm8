@@ -4,6 +4,22 @@
     "brand": { "name": "Subm8" },
     "time": { "now": "jetzt", "m": "{count}m", "h": "{count}h", "d": "{count}d" },
 
+    "accountSheet": {
+      "title": "Account hinzufügen",
+      "close": "Schließen",
+      "tabExisting": "Bestehend verbinden",
+      "tabNew": "Neu erstellen",
+      "phIdentifier": "E-Mail oder @handle",
+      "phPassword": "Passwort",
+      "btnConnect": "Verbinden & wechseln",
+      "phEmail": "E-Mail",
+      "phHandle": "handle",
+      "roleSub": "Sub",
+      "roleDomme": "Domme",
+      "phPwMin": "Passwort (min. {min})",
+      "btnCreate": "Neu erstellen & wechseln"
+    },
+
     "compose": {
     "aria": { "modalLabel": "Beitrag verfassen" },
     "header": { "newPost": "Neuer Beitrag" },
@@ -1131,6 +1147,8 @@
     },
 
     "settings": {
+      "switchToHandle": "Wechseln zu @{handle}",
+      "switchToName": "Zu {name} wechseln",
       "aria": "Einstellungen",
       "guest": "Gast",
       "roleDomme": "Domina",
@@ -1189,6 +1207,9 @@
     },
 
     "profileSettings": {
+      "deleteButton": "Account endgültig löschen",
+      "deleteButtonTitle": "Account endgültig löschen",
+      "deleteHint": "Löscht deinen Account und die zugehörigen Daten. Falls verknüpfte Accounts existieren, wechselst du zum Home-Feed; sonst geht es zur Anmeldeseite.",
       "languageLabel": "Sprache",
       "languageHelp": "Wähle deine bevorzugte Sprache für die Oberfläche.",
       "languageButton": "Ändern",
