@@ -54,9 +54,19 @@ type LinkKind =
   | { kind: 'profile'; handle: string }
   | { kind: 'link' };
 
+/**
+ * Strenger Link-Classifier:
+ * - Nur behandeln, wenn der Text klar wie ein Link aussieht:
+ *   beginnt mit http(s):// ODER ist ein absoluter Pfad (/...)
+ * - Dadurch werden normale Texte NICHT mehr als „Link geteilt“ angezeigt.
+ */
 function classifyAppLink(raw: string): LinkKind | null {
   const s = raw.trim();
   if (!s) return null;
+
+  // Nur echte Links berücksichtigen (http/https) oder App-interne absolute Pfade
+  const looksLikeUrl = /^(https?:\/\/|\/)/i.test(s);
+  if (!looksLikeUrl) return null;
 
   let u: URL;
   try {
@@ -68,17 +78,8 @@ function classifyAppLink(raw: string): LinkKind | null {
 
   const seg = u.pathname.split('/').filter(Boolean);
 
-  const typeIdx =
-    seg[0] === 'p' || seg[0] === 'u' ? 0
-    : seg.length >= 2 && (seg[1] === 'p' || seg[1] === 'u') ? 1
-    : -1;
-
-  if (typeIdx === -1) return { kind: 'link' };
-
-  const type = seg[typeIdx];
-  const next = seg[typeIdx + 1];
-  if (type === 'p' && next) return { kind: 'post' };
-  if (type === 'u' && next) return { kind: 'profile', handle: next };
+  if (seg[0] === 'p' && seg[1]) return { kind: 'post' };
+  if (seg[0] === 'u' && seg[1]) return { kind: 'profile', handle: seg[1] };
 
   return { kind: 'link' };
 }
@@ -226,6 +227,7 @@ function ChatRow({
   const prettySnippetI18n = React.useCallback((raw: string): string => {
     if (!raw) return '';
 
+    // 1) Systemereignisse zuerst
     if (raw.startsWith(OWNACC_PREFIX)) return t('system.ownershipAccepted');
 
     if (raw.startsWith(OWNREQ_PREFIX)) {
@@ -263,6 +265,7 @@ function ChatRow({
       } catch {}
     }
 
+    // 2) Freitext / ggf. geteilte Links
     const lines = raw.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
     const first = lines[0] ?? '';
     const note  = lines.slice(1).join(' ').trim();
@@ -278,6 +281,7 @@ function ChatRow({
       return note ? `${label} — ${truncateMid(note, 80)}` : label;
     }
 
+    // 3) Normale Nachricht (fix: kein generisches „Link geteilt“ mehr)
     return raw.replace(/\s+/g, ' ').trim();
   }, [t]);
 

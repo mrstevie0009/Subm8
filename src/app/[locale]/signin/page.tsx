@@ -6,12 +6,20 @@ import { signIn } from 'next-auth/react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import Link from 'next/link';
+import Image from 'next/image';
+
+// shadcn/ui
+import { Input } from '@/components/ui/input';
+import { Card, CardContent } from '@/components/ui/card';
 
 export default function SignInPage() {
   const sp = useSearchParams();
   const router = useRouter();
   const locale = useLocale();
+
+  // i18n
   const t = useTranslations('common.auth.signin');
+  const tc = useTranslations('common');
 
   // sowohl ?email= als auch ?handle= als Vorausfüllung unterstützen
   const preset =
@@ -46,13 +54,11 @@ export default function SignInPage() {
       });
 
       if (res?.error) {
-        // Fehler lokal anzeigen und Felder rot markieren
         setInvalid(true);
         setInlineError(t('errors.invalidCredentials'));
         return;
       }
 
-      // Erfolg: zur Ziel-URL wechseln (Session-Cookie ist gesetzt)
       const url = res?.url ?? `/${locale}`;
       router.replace(url);
     } finally {
@@ -60,102 +66,156 @@ export default function SignInPage() {
     }
   }
 
+  const baseInput =
+    'bg-black/30 border-white/20 text-white placeholder:text-white/50 focus:border-white/40 focus:ring-white/20';
+
   return (
-    <div className="mx-auto max-w-sm p-6 space-y-6">
-      <h1 className="text-xl font-semibold">{t('title')}</h1>
+    <div
+      className="relative grid min-h-[90svh] place-items-center p-4
+                 bg-[#0b0b0c] overflow-hidden rounded-2xl
+                 [background-image:radial-gradient(00%_40%_at_50%_0%,rgba(255,255,255,.08),transparent_60%)]"
+    >
+      {/* weiche Blur-Blobs – wie auf den Signup-Seiten */}
+      <div className="pointer-events-none absolute -top-24 -left-24 h-72 w-72 rounded-full bg-purple-500/20 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-24 -right-24 h-80 w-80 rounded-full bg-purple-500/20 blur-[90px]" />
 
-      {(registered || topErrorMsg) && (
-        <div
-          className={`rounded-md border p-3 text-sm ${
-            registered
-              ? 'border-blue-200 bg-blue-50 text-blue-800'
-              : 'border-red-200 bg-red-50 text-red-800'
-          }`}
-        >
-          {registered ? t('alerts.registered') : topErrorMsg}
-        </div>
-      )}
+      <div className="w-full max-w-md">
+        <Card className="rounded-2xl bg-white/5 backdrop-blur-xl ring-1 ring-white/50 shadow-[0_8px_30px_rgba(0,0,0,.35)] overflow-hidden">
+          <CardContent className="p-8 bg-[rgba(162,89,255,0.45)]">
+            {/* Header – im Stil der Signup-Seiten + Logo */}
+            <div className="text-center mb-8">
+              <div className="flex justify-center mb-3">
+                <Image
+                  src="/logo.png"
+                  alt={`${tc('brand.name')} logo`}
+                  width={160}
+                  height={48}
+                  priority
+                  className="h-10 w-auto drop-shadow-md"
+                />
+              </div>
+              <p className="text-white/80 mb-2">
+                {t('welcome', { brand: tc('brand.name') })}
+              </p>
+              <Link
+                href={`/${locale}`}
+                prefetch={false}
+                className="text-white text-4xl mb-2 inline-block font-extrabold"
+              >
+                {tc('brand.name')}
+              </Link>
+              <p className="text-white/70">{t('title')}</p>
+            </div>
 
-      <form onSubmit={handleCredentials} className="space-y-3" noValidate>
-        <div className="space-y-1">
-          <label htmlFor="identifier" className="block text-sm">
-            {t('fields.identifier.label')}
-          </label>
-          <input
-            id="identifier"
-            value={identifier}
-            onChange={(e) => {
-              setIdentifier(e.target.value);
-              if (invalid) { setInvalid(false); setInlineError(null); }
-            }}
-            type="text" // kein "email", damit @handle erlaubt ist
-            autoComplete="username"
-            required
-            placeholder={t('fields.identifier.placeholder')}
-            aria-invalid={invalid || undefined}
-            aria-describedby={invalid ? 'identifier-error' : undefined}
-            className={`w-full rounded-md border px-3 py-2 outline-none
-              ${invalid ? 'border-red-400 focus:ring-2 focus:ring-red-500/40' : 'border-white/10 focus:ring-2 focus:ring-[var(--purple)]/40'}
-            `}
-          />
-          {invalid && (
-            <p id="identifier-error" className="text-xs text-red-400">
-              {inlineError}
-            </p>
-          )}
-        </div>
+            {/* Alerts (registered / topError) */}
+            {(registered || topErrorMsg) && (
+              <div
+                className={`mb-4 rounded-xl border p-3 text-sm
+                  ${registered
+                    ? 'border-blue-300/40 bg-blue-300/15 text-blue-100'
+                    : 'border-red-400/40 bg-red-400/15 text-red-100'
+                  }`}
+              >
+                {registered ? t('alerts.registered') : topErrorMsg}
+              </div>
+            )}
 
-        <div className="space-y-1">
-          <label htmlFor="password" className="block text-sm">
-            {t('fields.password.label')}
-          </label>
-          <input
-            id="password"
-            value={password}
-            onChange={(e) => {
-              setPassword(e.target.value);
-              if (invalid) { setInvalid(false); setInlineError(null); }
-            }}
-            type="password"
-            autoComplete="current-password"
-            required
-            aria-invalid={invalid || undefined}
-            aria-describedby={invalid ? 'password-error' : undefined}
-            className={`w-full rounded-md border px-3 py-2 outline-none
-              ${invalid ? 'border-red-400 focus:ring-2 focus:ring-red-500/40' : 'border-white/10 focus:ring-2 focus:ring-[var(--purple)]/40'}
-            `}
-          />
-          {invalid && (
-            <p id="password-error" className="text-xs text-red-400">
-              {inlineError}
-            </p>
-          )}
-        </div>
+            {/* Formular */}
+            <form onSubmit={handleCredentials} className="space-y-5" noValidate>
+              {/* Identifier */}
+              <div>
+                <label htmlFor="identifier" className="block text-sm font-medium mb-1 text-white/90">
+                  {t('fields.identifier.label')}
+                </label>
+                <Input
+                  id="identifier"
+                  value={identifier}
+                  onChange={(e) => {
+                    setIdentifier(e.target.value);
+                    if (invalid) { setInvalid(false); setInlineError(null); }
+                  }}
+                  type="text" // kein "email", damit @handle erlaubt ist
+                  autoComplete="username"
+                  required
+                  placeholder={t('fields.identifier.placeholder')}
+                  aria-invalid={invalid || undefined}
+                  aria-describedby={invalid ? 'identifier-error' : undefined}
+                  className={`${baseInput} ${invalid ? 'border-red-400/70 focus:ring-red-400/30' : ''}`}
+                />
+                {invalid && (
+                  <p id="identifier-error" className="mt-1 text-[12px] text-red-300">
+                    {inlineError}
+                  </p>
+                )}
+              </div>
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full rounded-md bg-black py-2 text-white disabled:opacity-60"
-        >
-          {loading ? t('buttons.submitLoading') : t('buttons.submit')}
-        </button>
-      </form>
+              {/* Password */}
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium mb-1 text-white/90">
+                  {t('fields.password.label')}
+                </label>
+                <Input
+                  id="password"
+                  value={password}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    if (invalid) { setInvalid(false); setInlineError(null); }
+                  }}
+                  type="password"
+                  autoComplete="current-password"
+                  required
+                  aria-invalid={invalid || undefined}
+                  aria-describedby={invalid ? 'password-error' : undefined}
+                  className={`${baseInput} ${invalid ? 'border-red-400/70 focus:ring-red-400/30' : ''}`}
+                />
+                {invalid && (
+                  <p id="password-error" className="mt-1 text-[12px] text-red-300">
+                    {inlineError}
+                  </p>
+                )}
+              </div>
 
-      <div className="text-center text-xs text-muted-foreground">{t('or')}</div>
+              {/* Primary Action */}
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full rounded-full py-3 font-semibold
+                           bg-[var(--purple)]/80 hover:bg-[var(--purple)]
+                           disabled:opacity-50 disabled:cursor-not-allowed
+                           transition-colors"
+              >
+                {loading ? t('buttons.submitLoading') : t('buttons.submit')}
+              </button>
 
-      <button
-        onClick={() => signIn('google', { callbackUrl: `/${locale}` })}
-        className="w-full rounded-md border py-2"
-      >
-        {t('buttons.google')}
-      </button>
+              {/* OR Divider */}
+              <div className="text-center text-xs text-white/60">{t('or')}</div>
 
-      <p className="text-sm">
-        {t('signup.cta')}{' '}
-        <Link href={`/${locale}/signup`} className="text-[var(--purple)] hover:underline">
-          {t('signup.link')}
-        </Link>
-      </p>
+              {/* Google */}
+              <button
+                type="button"
+                onClick={() => signIn('google', { callbackUrl: `/${locale}` })}
+                className="w-full rounded-full py-2.5 text-sm font-medium
+                           border border-white/20 bg-black/20 hover:bg-black/30
+                           transition-colors"
+              >
+                {t('buttons.google')}
+              </button>
+            </form>
+
+            {/* Footer Links */}
+            <div className="mt-6 text-center text-sm text-white/80">
+              {t('signup.cta')}{' '}
+              <Link
+                href={`/${locale}/signup`}
+                className="text-purple-200 hover:text-purple-100 underline"
+                prefetch={false}
+              >
+                {t('signup.link')}
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

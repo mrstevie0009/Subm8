@@ -760,6 +760,7 @@
 
     "auth": {
         "signin": {
+          "welcome": "Willkommen zurück bei {brand}",
           "title": "Anmelden",
           "alerts": {
             "registered": "Registrierung erfolgreich. Bitte anmelden."

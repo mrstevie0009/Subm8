@@ -3,6 +3,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 
@@ -42,9 +43,7 @@ function AccountTypeCard({
 }: AccountTypeCardProps) {
   return (
     <Card
-      className={`cursor-pointer transition-all duration-200 bg-black/20 border-white/10 hover:bg-black/30 ${
-        isSelected ? 'ring-2 ring-white/50 bg-black/30' : ''
-      }`}
+      className={`cursor-pointer transition-all duration-200 bg-black/20 border-white/10 hover:bg-black/30 ${isSelected ? 'ring-2 ring-white/50 bg-black/30' : ''}`}
       onClick={onSelect}
       role="button"
       tabIndex={0}
@@ -256,8 +255,18 @@ export default function SignupStartPage() {
       <div className="w-full max-w-md">
         <Card className="rounded-2xl bg-white/5 backdrop-blur-xl ring-1 ring-white/50 shadow-[0_8px_30px_rgba(0,0,0,.35)] overflow-hidden">
           <CardContent className="p-8 bg-[rgba(162,89,255,0.45)]">
-            {/* Header */}
+            {/* Header + Logo */}
             <div className="text-center mb-8">
+              <div className="flex justify-center mb-3">
+                <Image
+                  src="/logo.png"
+                  alt={`${tc('brand.name')} logo`}
+                  width={160}
+                  height={48}
+                  priority
+                  className="h-10 w-auto drop-shadow-md"
+                />
+              </div>
               <p className="text-white/80 mb-2">
                 {t('welcome', { brand: tc('brand.name') })}
               </p>
@@ -293,9 +302,7 @@ export default function SignupStartPage() {
                     spellCheck={false}
                     disabled={busy}
                     aria-invalid={showFormatError || showTakenError ? true : undefined}
-                    className={`pl-8 bg-black/30 border-white/20 text-white placeholder:text-white/50 focus:border-white/40 focus:ring-white/20 lowercase ${
-                      showFormatError || showTakenError ? 'border-red-400/70 focus:ring-red-400/30' : ''
-                    }`}
+                    className={`pl-8 bg-black/30 border-white/20 text-white placeholder:text-white/50 focus:border-white/40 focus:ring-white/20 lowercase ${showFormatError || showTakenError ? 'border-red-400/70 focus:ring-red-400/30' : ''}`}
                   />
                 </div>
 

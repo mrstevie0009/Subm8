@@ -1,3 +1,4 @@
+//src/app/[locale]/legal/privacy/page.tsx
 import { LegalArticle, Callout } from '@/components/legal/LegalArticle';
 import { getTranslations } from 'next-intl/server';
 
