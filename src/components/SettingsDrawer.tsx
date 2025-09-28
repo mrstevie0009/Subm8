@@ -468,16 +468,118 @@ function AccountSheet({
   const tA = useTranslations('common.accountSheet');
   const [tab, setTab] = React.useState<'existing' | 'new'>('existing');
 
-  // existing
+  // --- existing
   const [identifier, setIdentifier] = React.useState('');
   const [password, setPassword] = React.useState('');
 
-  // new
+  // --- new
   const [email, setEmail] = React.useState('');
   const [handle, setHandle] = React.useState('');
   const [pw, setPw] = React.useState('');
+  const [pw2, setPw2] = React.useState('');
   const [role, setRole] = React.useState<'SUBMISSIVE' | 'DOMME'>('SUBMISSIVE');
 
+  // --- validation helpers
+  const baseInput =
+    'h-11 w-full rounded-xl bg-black/30 border border-white/20 text-white placeholder:text-white/60 focus:border-white/40 focus:ring-2 focus:ring-white/20 outline-none px-3 transition';
+  const tabBtn =
+    'px-4 py-1.5 rounded-full text-sm transition border border-white/15';
+  const primaryBtn =
+    'h-11 w-full rounded-full font-semibold bg-[var(--purple)]/85 hover:bg-[var(--purple)] text-white transition disabled:opacity-50 disabled:cursor-not-allowed';
+  const ghostBtn =
+    'px-2.5 py-1.5 rounded-md hover:bg-white/10 transition text-white/90';
+
+  const isValidEmail = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+  const sanitizeHandle = (v: string) => v.toLowerCase().replace(/[^a-z0-9_]/g, '');
+  const validHandle = (v: string) => /^[a-z0-9_]{3,20}$/.test(v);
+  const okPw = pw.length >= 8;
+  const pwMatch = pw && pw2 && pw === pw2;
+
+  // --- availability state machines
+  type CheckState = 'idle' | 'checking' | 'ok' | 'taken' | 'error';
+  const [handleState, setHandleState] = React.useState<CheckState>('idle');
+  const [emailState, setEmailState] = React.useState<CheckState>('idle');
+
+  const [handleMsg, setHandleMsg] = React.useState<string>('');
+  const [emailMsg, setEmailMsg] = React.useState<string>('');
+
+  const handleDebRef = React.useRef<number | null>(null);
+  const emailDebRef = React.useRef<number | null>(null);
+
+  // --- effects: Esc to close
+  React.useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  // --- API: check handle availability
+  const checkHandleAvailability = React.useCallback(async (h: string): Promise<CheckState> => {
+    if (!validHandle(h)) return 'idle';
+    setHandleState('checking');
+    setHandleMsg('');
+    try {
+      const res = await fetch(`/api/signup/handle-available?handle=${encodeURIComponent(h)}`, {
+        method: 'GET',
+        headers: { accept: 'application/json' },
+      });
+      if (res.status === 404) { setHandleState('idle'); return 'idle'; }
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const j = await res.json().catch(() => ({}));
+      const available = typeof j?.available === 'boolean' ? j.available : false;
+      if (available) {
+        setHandleState('ok'); setHandleMsg(''); return 'ok';
+      } else {
+        setHandleState('taken'); setHandleMsg('Username is already taken.'); return 'taken';
+      }
+    } catch {
+      setHandleState('error'); setHandleMsg('Check failed. Try again.'); return 'error';
+    }
+  }, []);
+
+  // --- API: check email availability
+  const checkEmailAvailability = React.useCallback(async (e: string): Promise<CheckState> => {
+    if (!isValidEmail(e)) return 'idle';
+    setEmailState('checking');
+    setEmailMsg('');
+    try {
+      const res = await fetch(`/api/signup/email-available?email=${encodeURIComponent(e)}`, {
+        method: 'GET',
+        headers: { accept: 'application/json' },
+      });
+      if (res.status === 404) { setEmailState('idle'); return 'idle'; }
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const j = await res.json().catch(() => ({}));
+      const available = typeof j?.available === 'boolean' ? j.available : false;
+      if (available) {
+        setEmailState('ok'); setEmailMsg(''); return 'ok';
+      } else {
+        setEmailState('taken'); setEmailMsg('Email already in use.'); return 'taken';
+      }
+    } catch {
+      setEmailState('error'); setEmailMsg('Check failed. Try again.'); return 'error';
+    }
+  }, []);
+
+  // --- debounce: handle
+  React.useEffect(() => {
+    if (handleDebRef.current) window.clearTimeout(handleDebRef.current);
+    if (!handle) { setHandleState('idle'); setHandleMsg(''); return; }
+    if (!validHandle(handle)) { setHandleState('idle'); return; }
+    handleDebRef.current = window.setTimeout(() => { void checkHandleAvailability(handle); }, 350) as unknown as number;
+    return () => { if (handleDebRef.current) window.clearTimeout(handleDebRef.current); };
+  }, [handle, checkHandleAvailability]);
+
+  // --- debounce: email
+  React.useEffect(() => {
+    if (emailDebRef.current) window.clearTimeout(emailDebRef.current);
+    if (!email) { setEmailState('idle'); setEmailMsg(''); return; }
+    if (!isValidEmail(email)) { setEmailState('idle'); return; }
+    emailDebRef.current = window.setTimeout(() => { void checkEmailAvailability(email); }, 350) as unknown as number;
+    return () => { if (emailDebRef.current) window.clearTimeout(emailDebRef.current); };
+  }, [email, checkEmailAvailability]);
+
+  // --- actions
   async function connectExisting() {
     setErr(null);
     setBusy(true);
@@ -496,6 +598,11 @@ function AccountSheet({
   }
 
   async function createNew() {
+    // Frontend guard (zusätzlich zur Servervalidierung)
+    if (!isValidEmail(email) || emailState === 'taken') return;
+    if (!validHandle(handle) || handleState === 'taken') return;
+    if (!okPw || !pwMatch) return;
+
     setErr(null);
     setBusy(true);
     const r = await fetch('/api/account-links?action=create-new', {
@@ -503,7 +610,7 @@ function AccountSheet({
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         email,
-        handle: handle.toLowerCase().replace(/[^a-z0-9_]/g, ''),
+        handle: sanitizeHandle(handle),
         password: pw,
         role
       })
@@ -517,112 +624,241 @@ function AccountSheet({
     onConnected();
   }
 
+  const createDisabled =
+    busy ||
+    !isValidEmail(email) ||
+    emailState === 'taken' ||
+    !validHandle(handle) ||
+    handleState === 'taken' ||
+    !okPw ||
+    !pwMatch;
+
   return (
-    <div className="fixed inset-0 z-[2147483603]" onClick={onClose} aria-modal="true" role="dialog">
-      <div className="absolute inset-0 bg-black/55 backdrop-blur" />
+    <div
+      className="fixed inset-0 z-[2147483603] grid place-items-center p-4"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label={tA('title')}
+    >
+      {/* Overlay */}
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+
+      {/* Sheet/Card */}
       <div
         onClick={(e) => e.stopPropagation()}
-        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[min(560px,95vw)]
-                   rounded-2xl border border-white/12 bg-[#0b0b0d] p-4 shadow-2xl"
+        className="relative w-[min(640px,95vw)] rounded-2xl bg-white/5 backdrop-blur-xl ring-1 ring-white/40 shadow-[0_10px_50px_rgba(0,0,0,.6)] overflow-hidden"
       >
-        <div className="flex items-center justify-between">
-          <div className="font-semibold text-lg">{tA('title')}</div>
-          <button onClick={onClose} className="px-2 py-1 rounded-md hover:bg-white/10">
+        {/* Header */}
+        <div className="bg-[rgba(162,89,255,0.45)] px-6 pt-5 pb-4">
+          <div className="flex items-start justify-between">
+            <div>
+              <div className="text-white text-lg font-semibold">{tA('title')}</div>
+              <div className="mt-2 inline-flex rounded-full bg-black/25 p-1 ring-1 ring-white/10">
+                <button
+                  type="button"
+                  onClick={() => setTab('existing')}
+                  className={`${tabBtn} ${tab === 'existing' ? 'bg-white/20 text-white' : 'text-white/80 hover:text-white'}`}
+                >
+                  {tA('tabExisting')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTab('new')}
+                  className={`${tabBtn} ${tab === 'new' ? 'bg-white/20 text-white' : 'text-white/80 hover:text-white'}`}
+                >
+                  {tA('tabNew')}
+                </button>
+              </div>
+            </div>
+            <button onClick={onClose} className={ghostBtn} aria-label={tA('close')}>✕</button>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div className="px-6 py-5">
+          {tab === 'existing' ? (
+            <div className="grid gap-4">
+              <div>
+                <label className="block text-sm text-white/90 mb-1">{tA('phIdentifier')}</label>
+                <input
+                  className={baseInput}
+                  placeholder={tA('phIdentifier')}
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
+                  autoComplete="username email"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm text-white/90 mb-1">{tA('phPassword')}</label>
+                <input
+                  type="password"
+                  className={baseInput}
+                  placeholder={tA('phPassword')}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="current-password"
+                />
+              </div>
+
+              {err && <div className="text-sm text-red-300 -mt-1">{err}</div>}
+
+              <button
+                disabled={busy || !identifier || !password}
+                onClick={() => void connectExisting()}
+                className={primaryBtn}
+              >
+                {tA('btnConnect')}
+              </button>
+            </div>
+          ) : (
+            <div className="grid gap-4">
+              {/* Email */}
+              <div>
+                <label className="block text-sm text-white/90 mb-1">{tA('phEmail')}</label>
+                <input
+                  className={`${baseInput} ${email && !isValidEmail(email) ? 'border-red-400/70 focus:ring-red-400/30' : ''}`}
+                  placeholder={tA('phEmail')}
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  autoComplete="email"
+                  inputMode="email"
+                />
+                {/* helper row */}
+                <div className="mt-1 text-[12px]">
+                  {email && !isValidEmail(email) && (
+                    <span className="text-red-300">Invalid email format.</span>
+                  )}
+                  {isValidEmail(email) && emailState === 'checking' && (
+                    <span className="text-white/70">Checking availability…</span>
+                  )}
+                  {isValidEmail(email) && emailState === 'taken' && (
+                    <span className="text-red-300">{emailMsg || 'Email already in use.'}</span>
+                  )}
+                  {isValidEmail(email) && emailState === 'error' && (
+                    <span className="text-yellow-200">{emailMsg || 'Check failed.'}</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Handle + Role */}
+              <div className="grid grid-cols-[1fr_auto] gap-3">
+                <div>
+                  <label className="block text-sm text-white/90 mb-1">@{tA('phHandle')}</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/60 select-none pointer-events-none">@</span>
+                    <input
+                      className={`${baseInput} pl-8 lowercase ${handle && !validHandle(handle) ? 'border-red-400/70 focus:ring-red-400/30' : ''}`}
+                      placeholder={tA('phHandle')}
+                      value={handle}
+                      onChange={(e) => setHandle(sanitizeHandle(e.target.value))}
+                      autoCapitalize="none"
+                      spellCheck={false}
+                    />
+                  </div>
+                  {/* helper row */}
+                  <div className="mt-1 text-[12px]">
+                    {handle && !validHandle(handle) && (
+                      <span className="text-red-300">3–20 chars, a–z, 0–9, _</span>
+                    )}
+                    {validHandle(handle) && handleState === 'checking' && (
+                      <span className="text-white/70">Checking availability…</span>
+                    )}
+                    {validHandle(handle) && handleState === 'taken' && (
+                      <span className="text-red-300">{handleMsg || 'Username is already taken.'}</span>
+                    )}
+                    {validHandle(handle) && handleState === 'error' && (
+                      <span className="text-yellow-200">{handleMsg || 'Check failed.'}</span>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm text-white/90 mb-1">
+                    {tA('roleSub')} / {tA('roleDomme')}
+                  </label>
+                  <div className="flex gap-1.5">
+                    <button
+                      type="button"
+                      className={`px-3 h-11 rounded-xl border ${role === 'SUBMISSIVE' ? 'bg-white/15 text-white border-white/30' : 'border-white/15 text-white/80 hover:text-white'}`}
+                      onClick={() => setRole('SUBMISSIVE')}
+                      title={tA('roleSub')}
+                    >
+                      😊 {tA('roleSub')}
+                    </button>
+                    <button
+                      type="button"
+                      className={`px-3 h-11 rounded-xl border ${role === 'DOMME' ? 'bg-white/15 text-white border-white/30' : 'border-white/15 text-white/80 hover:text-white'}`}
+                      onClick={() => setRole('DOMME')}
+                      title={tA('roleDomme')}
+                    >
+                      👑 {tA('roleDomme')}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Password + Repeat */}
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm text-white/90 mb-1">
+                    {tA('phPwMin', { min: 8 })}
+                  </label>
+                  <input
+                    type="password"
+                    className={`${baseInput} ${pw && !okPw ? 'border-red-400/70 focus:ring-red-400/30' : ''}`}
+                    placeholder={tA('phPwMin', { min: 8 })}
+                    value={pw}
+                    onChange={(e) => setPw(e.target.value)}
+                    autoComplete="new-password"
+                    minLength={8}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-white/90 mb-1">
+                    {tA('phPwMin', { min: 8 })} — repeat
+                  </label>
+                  <input
+                    type="password"
+                    className={`${baseInput} ${pw2 && !pwMatch ? 'border-red-400/70 focus:ring-red-400/30' : ''}`}
+                    placeholder="repeat password"
+                    value={pw2}
+                    onChange={(e) => setPw2(e.target.value)}
+                    autoComplete="new-password"
+                    minLength={8}
+                  />
+                  {pw2 && !pwMatch && (
+                    <div className="mt-1 text-[12px] text-red-300">Passwords do not match.</div>
+                  )}
+                </div>
+              </div>
+
+              {err && <div className="text-sm text-red-300 -mt-1">{err}</div>}
+
+              <button
+                disabled={createDisabled}
+                onClick={() => void createNew()}
+                className={primaryBtn}
+              >
+                {tA('btnCreate')}
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-end gap-2 px-6 pb-5">
+          <button type="button" onClick={onClose} className={ghostBtn}>
             {tA('close')}
           </button>
         </div>
-
-        <div className="mt-3 flex gap-2">
-          <button
-            className={`px-3 py-1.5 rounded-lg border ${tab === 'existing' ? 'bg-white/10' : 'border-white/15 hover:bg-white/5'}`}
-            onClick={() => setTab('existing')}
-          >
-            {tA('tabExisting')}
-          </button>
-          <button
-            className={`px-3 py-1.5 rounded-lg border ${tab === 'new' ? 'bg-white/10' : 'border-white/15 hover:bg-white/5'}`}
-            onClick={() => setTab('new')}
-          >
-            {tA('tabNew')}
-          </button>
-        </div>
-
-        {tab === 'existing' ? (
-          <div className="mt-3 grid gap-2">
-            <input
-              className="h-10 rounded-lg bg-white/[.06] border border-white/12 px-3 outline-none"
-              placeholder={tA('phIdentifier')}
-              value={identifier}
-              onChange={(e) => setIdentifier(e.target.value)}
-            />
-            <input
-              type="password"
-              className="h-10 rounded-lg bg-white/[.06] border border-white/12 px-3 outline-none"
-              placeholder={tA('phPassword')}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-            {err && <div className="text-sm text-red-300">{err}</div>}
-            <button
-              disabled={busy || !identifier || !password}
-              onClick={() => void connectExisting()}
-              className="h-10 rounded-lg bg-[var(--purple)] text-white disabled:opacity-50"
-            >
-              {tA('btnConnect')}
-            </button>
-          </div>
-        ) : (
-          <div className="mt-3 grid gap-2">
-            <input
-              className="h-10 rounded-lg bg-white/[.06] border border-white/12 px-3 outline-none"
-              placeholder={tA('phEmail')}
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 opacity-60">@</span>
-                <input
-                  className="h-10 w-full rounded-lg bg-white/[.06] border border-white/12 pl-8 px-3 outline-none lowercase"
-                  placeholder={tA('phHandle')}
-                  value={handle}
-                  onChange={(e) => setHandle(e.target.value)}
-                />
-              </div>
-              <select
-                className="h-10 rounded-lg bg-[#151518] text-white border border-white/12 px-2 focus:outline-none [color-scheme:dark]"
-                value={role}
-                onChange={(e) => setRole(e.target.value as 'SUBMISSIVE' | 'DOMME')}
-              >
-                <option className="bg-[#151518] text-white" value="SUBMISSIVE">
-                  {tA('roleSub')}
-                </option>
-                <option className="bg-[#151518] text-white" value="DOMME">
-                  {tA('roleDomme')}
-                </option>
-              </select>
-            </div>
-            <input
-              type="password"
-              className="h-10 rounded-lg bg-white/[.06] border border-white/12 px-3 outline-none"
-              placeholder={tA('phPwMin', { min: 8 })}
-              value={pw}
-              onChange={(e) => setPw(e.target.value)}
-            />
-            {err && <div className="text-sm text-red-300">{err}</div>}
-            <button
-              disabled={busy || !email || !handle || pw.length < 8}
-              onClick={() => void createNew()}
-              className="h-10 rounded-lg bg-[var(--purple)] text-white disabled:opacity-50"
-            >
-              {tA('btnCreate')}
-            </button>
-          </div>
-        )}
       </div>
     </div>
   );
 }
+
+
 
 
 

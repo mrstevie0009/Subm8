@@ -34,6 +34,13 @@ export type EditInitial = {
   websiteUrl?: string;
 };
 
+type CheckState = 'idle' | 'checking' | 'ok' | 'taken' | 'error';
+
+function isAvailableRes(x: unknown): x is { available: boolean } {
+  return typeof x === 'object' && x !== null && 'available' in x &&
+    typeof (x as { available: unknown }).available === 'boolean';
+}
+
 export default function EditProfileForm({
   locale,
   initial,
@@ -58,6 +65,106 @@ export default function EditProfileForm({
   const [bannerCropOpen, setBannerCropOpen] = React.useState(false);
   const [bannerCropSrc, setBannerCropSrc] = React.useState<string | null>(null);
   const [bannerCroppedDataUrl, setBannerCroppedDataUrl] = React.useState<string>('');
+
+  // --- neue: kontrollierte Felder + Availability-Checks
+  const [displayName, setDisplayName] = React.useState<string>(initial.displayName);
+  const [username, setUsername] = React.useState<string>(initial.username);
+
+  const [displayState, setDisplayState] = React.useState<CheckState>('idle');
+  const [handleState, setHandleState] = React.useState<CheckState>('idle');
+
+  const [displayMsg, setDisplayMsg] = React.useState<string>('');
+  const [handleMsg, setHandleMsg] = React.useState<string>('');
+
+  const displayDebRef = React.useRef<number | null>(null);
+  const handleDebRef = React.useRef<number | null>(null);
+
+  // helpers
+  const sanitizeHandle = (v: string) => v.toLowerCase().replace(/[^a-z0-9_]/g, '');
+  const validHandle = (v: string) => /^[a-z0-9_]{3,20}$/.test(v);
+  const validDisplay = (v: string) => v.trim().length >= 2 && v.trim().length <= 40;
+
+  // skip check if unchanged (own current values)
+  const unchangedHandle = username === initial.username;
+  const unchangedDisplay = displayName.trim() === initial.displayName.trim();
+
+  // API checkers
+  const checkHandleAvailability = React.useCallback(async (h: string): Promise<CheckState> => {
+    if (!validHandle(h)) return 'idle';
+    if (unchangedHandle) return 'ok';
+    setHandleState('checking'); setHandleMsg('');
+    try {
+      const res = await fetch(`/api/signup/handle-available?handle=${encodeURIComponent(h)}`, {
+        method: 'GET',
+        headers: { accept: 'application/json' }
+      });
+      if (res.status === 404) { setHandleState('idle'); return 'idle'; }
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const j: unknown = await res.json().catch(() => ({}));
+      const available = isAvailableRes(j) ? j.available : false;
+      if (available) { setHandleState('ok'); return 'ok'; }
+      setHandleState('taken'); setHandleMsg(t('hints.usernamePattern'));
+      return 'taken';
+    } catch {
+      setHandleState('error'); setHandleMsg('Check failed. Try again.');
+      return 'error';
+    }
+  }, [unchangedHandle, t]);
+
+  const checkDisplayNameAvailability = React.useCallback(async (name: string): Promise<CheckState> => {
+    const n = name.trim();
+    if (!validDisplay(n)) return 'idle';
+    if (unchangedDisplay) return 'ok';
+    setDisplayState('checking'); setDisplayMsg('');
+    try {
+      const res = await fetch(`/api/profile/displayname-available?name=${encodeURIComponent(n)}`, {
+        method: 'GET',
+        headers: { accept: 'application/json' }
+      });
+      if (res.status === 404) { setDisplayState('idle'); return 'idle'; }
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const j: unknown = await res.json().catch(() => ({}));
+      const available = isAvailableRes(j) ? j.available : false;
+      if (available) { setDisplayState('ok'); return 'ok'; }
+      setDisplayState('taken'); setDisplayMsg('Display name is already in use.');
+      return 'taken';
+    } catch {
+      setDisplayState('error'); setDisplayMsg('Check failed. Try again.');
+      return 'error';
+    }
+  }, [unchangedDisplay]);
+
+  // debounce effects
+  React.useEffect(() => {
+    if (displayDebRef.current) window.clearTimeout(displayDebRef.current);
+    const val = displayName.trim();
+    if (!val) { setDisplayState('idle'); setDisplayMsg(''); return; }
+    if (!validDisplay(val)) { setDisplayState('idle'); return; }
+    displayDebRef.current = window.setTimeout(() => { void checkDisplayNameAvailability(val); }, 350) as unknown as number;
+    return () => { if (displayDebRef.current) window.clearTimeout(displayDebRef.current); };
+  }, [displayName, checkDisplayNameAvailability]);
+
+  React.useEffect(() => {
+    if (handleDebRef.current) window.clearTimeout(handleDebRef.current);
+    const val = username;
+    if (!val) { setHandleState('idle'); setHandleMsg(''); return; }
+    if (!validHandle(val)) { setHandleState('idle'); return; }
+    handleDebRef.current = window.setTimeout(() => { void checkHandleAvailability(val); }, 350) as unknown as number;
+    return () => { if (handleDebRef.current) window.clearTimeout(handleDebRef.current); };
+  }, [username, checkHandleAvailability]);
+
+  // submit guard
+  const canSubmit =
+    validDisplay(displayName) &&
+    (unchangedDisplay || displayState === 'ok' || displayState === 'idle') &&
+    validHandle(username) &&
+    (unchangedHandle || handleState === 'ok' || handleState === 'idle');
+
+  const onSubmitGuard = (e: React.FormEvent) => {
+    if (!canSubmit) {
+      e.preventDefault();
+    }
+  };
 
   const revoke = (url?: string | null) => {
     if (url && url.startsWith('blob:')) URL.revokeObjectURL(url);
@@ -84,8 +191,7 @@ export default function EditProfileForm({
       revoke(cropSrc);
       revoke(bannerCropSrc);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [avatarPreview, bannerPreview, cropSrc, bannerCropSrc]);
 
   const bannerH = 'clamp(160px, 26vw, 260px)';
   const avatarSize = 96;
@@ -97,11 +203,17 @@ export default function EditProfileForm({
       method="post"
       encType="multipart/form-data"
       className="relative rounded-app border border-sub overflow-hidden shadow-app"
+      onSubmit={onSubmitGuard}
     >
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
         <div className="text-[18px] font-semibold">{t('header.title')}</div>
-        <button type="submit" className="px-3 py-1.5 rounded-full bg-[var(--purple)] text-white hover:opacity-95">
+        <button
+          type="submit"
+          disabled={!canSubmit}
+          className="px-3 py-1.5 rounded-full bg-[var(--purple)] text-white hover:opacity-95 disabled:opacity-50 disabled:cursor-not-allowed"
+          title={!canSubmit ? 'Please fix issues before saving' : undefined}
+        >
           {t('actions.save')}
         </button>
       </div>
@@ -226,36 +338,76 @@ export default function EditProfileForm({
       {/* Fields */}
       <div className="p-4 grid gap-3">
         <Field label={t('fields.name')}>
-          <input
-            name="displayName"
-            defaultValue={initial.displayName}
-            className="w-full bg-white/5 border border-white/10 rounded-lg px-3 h-10 outline-none focus:ring-2 focus:ring-[var(--purple)]/40"
-            maxLength={40}
-            required
-          />
+          <div>
+            <input
+              name="displayName"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              className={`w-full bg-white/5 border rounded-lg px-3 h-10 outline-none focus:ring-2 focus:ring-[var(--purple)]/40 ${
+                displayName && !validDisplay(displayName) ? 'border-red-400/70' : 'border-white/10'
+              }`}
+              maxLength={40}
+              required
+            />
+            {/* Helper Row */}
+            <div className="mt-1 text-xs">
+              {displayName && !validDisplay(displayName) && (
+                <span className="text-red-300">2–40 characters required.</span>
+              )}
+              {validDisplay(displayName) && !unchangedDisplay && displayState === 'checking' && (
+                <span className="text-white/70">Checking availability…</span>
+              )}
+              {validDisplay(displayName) && !unchangedDisplay && displayState === 'taken' && (
+                <span className="text-red-300">{displayMsg || 'Display name already in use.'}</span>
+              )}
+              {validDisplay(displayName) && !unchangedDisplay && displayState === 'error' && (
+                <span className="text-yellow-200">{displayMsg || 'Check failed.'}</span>
+              )}
+            </div>
+          </div>
         </Field>
 
         <Field label={t('fields.username')}>
-          <div className="flex items-center bg-white/5 border border-white/10 rounded-lg px-3 h-10">
-            <span className="opacity-70 mr-1">@</span>
-            <input
-              name="username"
-              defaultValue={initial.username}
-              pattern="^[a-z0-9_]{3,20}$"
-              title={t('hints.usernamePattern')}
-              className="w-full bg-transparent outline-none"
-              required
-            />
-          </div>
+          <div>
+            <div className={`flex items-center bg-white/5 border rounded-lg px-3 h-10 ${username && !validHandle(username) ? 'border-red-400/70' : 'border-white/10'}`}>
+              <span className="opacity-70 mr-1">@</span>
+              <input
+                name="username"
+                value={username}
+                onChange={(e) => setUsername(sanitizeHandle(e.target.value))}
+                pattern="^[a-z0-9_]{3,20}$"
+                title={t('hints.usernamePattern')}
+                className="w-full bg-transparent outline-none lowercase"
+                required
+                autoCapitalize="none"
+                spellCheck={false}
+              />
+            </div>
+            {/* Helper Row */}
+            <div className="mt-1 text-xs">
+              {username && !validHandle(username) && (
+                <span className="text-red-300">{t('hints.usernamePattern')}</span>
+              )}
+              {validHandle(username) && !unchangedHandle && handleState === 'checking' && (
+                <span className="text-white/70">Checking availability…</span>
+              )}
+              {validHandle(username) && !unchangedHandle && handleState === 'taken' && (
+                <span className="text-red-300">{handleMsg || 'Username is already taken.'}</span>
+              )}
+              {validHandle(username) && !unchangedHandle && handleState === 'error' && (
+                <span className="text-yellow-200">{handleMsg || 'Check failed.'}</span>
+              )}
+            </div>
 
-          <div className="mt-2">
-            <button
-              type="button"
-              onClick={() => setOfferOpen(true)}
-              className="px-3 py-1.5 rounded-full border border-white/15 hover:bg-white/5"
-            >
-              {t('actions.editOfferMenu')}
-            </button>
+            <div className="mt-2">
+              <button
+                type="button"
+                onClick={() => setOfferOpen(true)}
+                className="px-3 py-1.5 rounded-full border border-white/15 hover:bg-white/5"
+              >
+                {t('actions.editOfferMenu')}
+              </button>
+            </div>
           </div>
         </Field>
 
@@ -312,6 +464,10 @@ export default function EditProfileForm({
             <input type="hidden" name="role" value={initial.role} />
           </Field>
         </div>
+
+        {/* Hidden actual values for controlled inputs (server action reads these) */}
+        <input type="hidden" name="displayName_controlled" value={displayName} />
+        <input type="hidden" name="username_controlled" value={username} />
       </div>
 
       {/* Avatar Cropper */}
@@ -365,9 +521,9 @@ export default function EditProfileForm({
         open={offerOpen}
         onClose={() => setOfferOpen(false)}
         avatarPreview={avatarPreview || AVATAR_PH}
-        displayName={initial.displayName}
-        handle={initial.username}
-        teNS={te} // pass translations instance to child
+        displayName={displayName}
+        handle={username}
+        teNS={te}
       />
     </form>
   );
@@ -449,16 +605,14 @@ function OfferEditorModal({
           setBgFile(null);
         }
         const storedFont = window.localStorage.getItem(LS_FONT_KEY) as FontKey | null;
-        if (storedFont) setFontKey(storedFont);
+        if (!cancelled && storedFont) setFontKey(storedFont);
         const storedColor = window.localStorage.getItem(LS_COLOR_KEY);
-        if (storedColor) setFontColor(storedColor);
+        if (!cancelled && storedColor) setFontColor(storedColor);
       } finally {
         if (!cancelled) setLoading(false);
       }
     })();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [open, handle, LS_FONT_KEY, LS_COLOR_KEY]);
 
   const onPickFile = (file?: File | null) => {
