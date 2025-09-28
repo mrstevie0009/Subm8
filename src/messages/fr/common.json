@@ -758,12 +758,36 @@
 },
 
     "auth": {
+    "resetPage": {
+          "title": "Réinitialiser le mot de passe",
+          "fields": { "newPw": "Nouveau mot de passe", "repeatPw": "Répéter le mot de passe" },
+          "buttons": { "save": "Enregistrer", "saving": "Enregistrement…" },
+          "errors": { "mismatch": "Les mots de passe ne correspondent pas.", "failed": "Échec de la réinitialisation." }
+        },
     "signin": {
+      "forgot": {
+        "link": "Mot de passe oublié ?",
+        "emailLabel": "Votre e-mail",
+        "emailPlaceholder": "vous@exemple.com",
+        "submit": "Envoyer le lien",
+        "submitLoading": "Envoi…",
+        "back": "Retour à la connexion",
+        "success": "Si un compte existe, nous avons envoyé un lien de réinitialisation à votre e-mail."
+      },
+      "alerts": {
+        "registered": "Inscription réussie. Veuillez vous connecter.",
+        "resetSuccess": "Mot de passe mis à jour. Vous pouvez vous connecter maintenant."
+      },
+      "reset": {
+            "link": "Mot de passe oublié ?",
+            "emailLabel": "Votre e-mail",
+            "submit": "Envoyer le lien",
+            "cancel": "Annuler",
+            "sent": "Si un compte existe, nous vous avons envoyé un e-mail.",
+            "errors": { "failed": "Échec de la demande de réinitialisation." }
+          },
       "welcome": "Bienvenue de retour sur {brand}",
       "title": "Se connecter",
-      "alerts": {
-        "registered": "Inscription réussie. Veuillez vous connecter."
-      },
       "fields": {
         "identifier": {
           "label": "E-mail ou identifiant",

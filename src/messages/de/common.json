@@ -759,12 +759,36 @@
 ,
 
     "auth": {
+        "resetPage": {
+          "title": "Passwort zurücksetzen",
+          "fields": { "newPw": "Neues Passwort", "repeatPw": "Passwort wiederholen" },
+          "buttons": { "save": "Passwort speichern", "saving": "Speichern…" },
+          "errors": { "mismatch": "Passwörter stimmen nicht überein.", "failed": "Zurücksetzen fehlgeschlagen." }
+        },
         "signin": {
+          "forgot": {
+            "link": "Passwort vergessen?",
+            "emailLabel": "Deine E-Mail",
+            "emailPlaceholder": "du@example.com",
+            "submit": "Link zusenden",
+            "submitLoading": "Sende…",
+            "back": "Zurück zur Anmeldung",
+            "success": "Falls ein Konto existiert, haben wir einen Link an deine E-Mail gesendet."
+          },
+          "alerts": {
+            "registered": "Registrierung erfolgreich. Bitte anmelden.",
+            "resetSuccess": "Passwort gespeichert. Du kannst dich jetzt anmelden."
+          },
+          "reset": {
+            "link": "Passwort vergessen?",
+            "emailLabel": "Deine E-Mail",
+            "submit": "Link zusenden",
+            "cancel": "Abbrechen",
+            "sent": "Falls ein Konto existiert, haben wir dir eine Mail gesendet.",
+            "errors": { "failed": "Zurücksetzen konnte nicht angefordert werden." }
+          },
           "welcome": "Willkommen zurück bei {brand}",
           "title": "Anmelden",
-          "alerts": {
-            "registered": "Registrierung erfolgreich. Bitte anmelden."
-          },
           "fields": {
             "identifier": {
               "label": "E-Mail oder Handle",

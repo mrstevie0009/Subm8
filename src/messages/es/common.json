@@ -759,12 +759,36 @@
 
 
     "auth": {
+    "resetPage": {
+          "title": "Restablecer contraseña",
+          "fields": { "newPw": "Nueva contraseña", "repeatPw": "Repite la contraseña" },
+          "buttons": { "save": "Guardar nueva contraseña", "saving": "Guardando…" },
+          "errors": { "mismatch": "Las contraseñas no coinciden.", "failed": "Error al restablecer." }
+        },
     "signin": {
+      "forgot": {
+        "link": "¿Olvidaste tu contraseña?",
+        "emailLabel": "Tu correo",
+        "emailPlaceholder": "tu@ejemplo.com",
+        "submit": "Enviar enlace",
+        "submitLoading": "Enviando…",
+        "back": "Volver a iniciar sesión",
+        "success": "Si existe una cuenta, hemos enviado un enlace de restablecimiento a tu correo."
+      },
+      "alerts": {
+        "registered": "Registro exitoso. Inicia sesión.",
+        "resetSuccess": "Contraseña actualizada. Ahora puedes iniciar sesión."
+      },
+      "reset": {
+            "link": "¿Olvidaste tu contraseña?",
+            "emailLabel": "Tu correo",
+            "submit": "Enviar enlace",
+            "cancel": "Cancelar",
+            "sent": "Si existe una cuenta, te hemos enviado un correo.",
+            "errors": { "failed": "No se pudo solicitar el restablecimiento." }
+          },
       "welcome": "Bienvenido de nuevo a {brand}",
       "title": "Iniciar sesión",
-      "alerts": {
-        "registered": "Registro exitoso. Inicia sesión."
-      },
       "fields": {
         "identifier": {
           "label": "Correo o usuario",

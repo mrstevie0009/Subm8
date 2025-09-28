@@ -758,12 +758,36 @@
     },
 
     "auth": {
+    "resetPage": {
+          "title": "Reset your password",
+          "fields": { "newPw": "New password", "repeatPw": "Repeat password" },
+          "buttons": { "save": "Save new password", "saving": "Saving…" },
+          "errors": { "mismatch": "Passwords do not match.", "failed": "Reset failed." }
+    },
     "signin": {
+      "forgot": {
+        "link": "Forgot password?",
+        "emailLabel": "Your email",
+        "emailPlaceholder": "you@example.com",
+        "submit": "Send reset link",
+        "submitLoading": "Sending…",
+        "back": "Back to sign in",
+        "success": "If an account exists, we have sent a reset link to your email."
+      },
+      "alerts": {
+        "registered": "Registration successful. Please sign in.",
+        "resetSuccess": "Password updated. You can sign in now."
+      },
+      "reset": {
+            "link": "Forgot password?",
+            "emailLabel": "Your email",
+            "submit": "Send reset link",
+            "cancel": "Cancel",
+            "sent": "If an account exists, we have sent you an email.",
+            "errors": { "failed": "Reset could not be requested." }
+      },
       "welcome": "Welcome back to {brand}",
       "title": "Sign in",
-      "alerts": {
-        "registered": "Registration successful. Please sign in."
-      },
       "fields": {
         "identifier": {
           "label": "Email or handle",

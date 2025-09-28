@@ -37,11 +37,12 @@ model User {
   autoDrainsAsDomme AutoDrainSubscription[] @relation("AutoDrainDomme")
   autoDrainsAsSub   AutoDrainSubscription[] @relation("AutoDrainSub")
 
-  twoFactorEnabled        Boolean @default(false)
+  twoFactorEnabled        Boolean              @default(false)
   twoFactorType           String?
   twoFactorSecret         String?
   twoFactorTempSecret     String?
-  passwordResetProtection Boolean @default(false)
+  passwordResetProtection Boolean              @default(false)
+  passwordResetTokens     PasswordResetToken[] @relation("UserPasswordResetTokens")
 
   accounts                      Account[]
   Bookmark                      Bookmark[]
@@ -65,8 +66,8 @@ model User {
   Wallet                        Wallet?
 
   // 🔗 Multi-Account Verknüpfungen (Gegenfelder zu AccountLink)
-  ownerLinks   AccountLink[] @relation("OwnerLinks")
-  linkedAsAlt  AccountLink[] @relation("LinkedAsAlt")
+  ownerLinks  AccountLink[] @relation("OwnerLinks")
+  linkedAsAlt AccountLink[] @relation("LinkedAsAlt")
 
   notificationSettings UserNotificationSettings?
   reportsMade          ContentReport[]
@@ -88,6 +89,16 @@ model User {
   receivedInvites CommunityInvite[] @relation("InviteTarget")
 }
 
+model PasswordResetToken {
+  token     String   @id @db.VarChar(128)
+  userId    String
+  user      User     @relation("UserPasswordResetTokens", fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
 model AccountLink {
   id           String   @id @default(cuid())
   ownerId      String
@@ -95,8 +106,8 @@ model AccountLink {
   createdAt    DateTime @default(now())
 
   // Benannte Relationen – passen zu den obigen Feldern im User
-  owner  User @relation("OwnerLinks",   fields: [ownerId],      references: [id], onDelete: Cascade)
-  linked User @relation("LinkedAsAlt",  fields: [linkedUserId], references: [id], onDelete: Cascade)
+  owner  User @relation("OwnerLinks", fields: [ownerId], references: [id], onDelete: Cascade)
+  linked User @relation("LinkedAsAlt", fields: [linkedUserId], references: [id], onDelete: Cascade)
 
   @@unique([ownerId, linkedUserId])
   @@index([ownerId])
@@ -227,9 +238,9 @@ model UploadedMedia {
   postId    String
   url       String
   alt       String?
-  type      String?   // "image/png", "video/mp4" usw.
-  createdAt DateTime  @default(now())
-  Post      Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  type      String? // "image/png", "video/mp4" usw.
+  createdAt DateTime @default(now())
+  Post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
 
   @@index([postId])
 }
@@ -240,7 +251,7 @@ model Post {
   text        String
   mediaUrl    String?
   mediaAlt    String?
-  mediaType   String?    // z.B. "image/png" oder "video/mp4"
+  mediaType   String? // z.B. "image/png" oder "video/mp4"
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
   communityId String?
@@ -257,10 +268,10 @@ model Post {
   repostOf    Post?      @relation("RepostOf", fields: [repostOfId], references: [id])
   reposts     Post[]     @relation("RepostOf")
 
-  uploaded    UploadedMedia[]
+  uploaded UploadedMedia[]
 
   // Gegenfeld zur "UserPinnedPost"-Relation
-  pinnedBy    User?      @relation("UserPinnedPost")
+  pinnedBy User? @relation("UserPinnedPost")
 
   @@index([authorId, createdAt])
   @@index([communityId, createdAt])
@@ -290,8 +301,8 @@ model Comment {
 
   likes CommentLike[]
 
-  mediaUrl  String?
-  mediaAlt  String?
+  mediaUrl String?
+  mediaAlt String?
 
   @@index([postId, createdAt])
   @@index([userId, createdAt])
@@ -327,7 +338,7 @@ model Community {
   User            User                @relation(fields: [createdById], references: [id], onDelete: Cascade)
   CommunityMember CommunityMember[]
   Post            Post[]
-  invites CommunityInvite[]
+  invites         CommunityInvite[]
 }
 
 model CommunityMember {
@@ -342,31 +353,31 @@ model CommunityMember {
 }
 
 model CommunityInvite {
-  id           String      @id @default(cuid())
+  id String @id @default(cuid())
 
   // Beziehungen
-  communityId  String
-  community    Community   @relation(fields: [communityId], references: [id])
+  communityId String
+  community   Community @relation(fields: [communityId], references: [id])
 
-  createdById  String
-  createdBy    User        @relation("InviteCreatedBy", fields: [createdById], references: [id])
+  createdById String
+  createdBy   User   @relation("InviteCreatedBy", fields: [createdById], references: [id])
 
   // Für DIRECT-Einladungen (nur dieser/diese User darf annehmen)
   targetUserId String?
-  targetUser   User?       @relation("InviteTarget", fields: [targetUserId], references: [id])
+  targetUser   User?   @relation("InviteTarget", fields: [targetUserId], references: [id])
 
   // Meta
-  type         InviteType
-  token        String      @unique
-  note         String?
+  type  InviteType
+  token String     @unique
+  note  String?
 
-  maxUses      Int?
-  usedCount    Int         @default(0)
-  expiresAt    DateTime?
-  revokedAt    DateTime?
+  maxUses   Int?
+  usedCount Int       @default(0)
+  expiresAt DateTime?
+  revokedAt DateTime?
 
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([communityId])
   @@index([targetUserId])
@@ -597,25 +608,25 @@ model AutoDrainSubscription {
   createdAt    DateTime         @default(now())
   updatedAt    DateTime         @updatedAt
 
-  domme        User             @relation("AutoDrainDomme", fields: [dommeId], references: [id], onDelete: Cascade)
-  sub          User             @relation("AutoDrainSub",   fields: [subId],   references: [id], onDelete: Cascade)
-  charges      AutoDrainCharge[]
+  domme   User              @relation("AutoDrainDomme", fields: [dommeId], references: [id], onDelete: Cascade)
+  sub     User              @relation("AutoDrainSub", fields: [subId], references: [id], onDelete: Cascade)
+  charges AutoDrainCharge[]
 
   @@index([subId, active, nextChargeAt])
   @@index([dommeId, subId, active])
 }
 
 model AutoDrainCharge {
-  id             String                 @id @default(cuid())
+  id             String                @id @default(cuid())
   subscriptionId String
-  at             DateTime               @default(now())
+  at             DateTime              @default(now())
   amountCents    Int
-  currency       String                 @db.VarChar(8)
-  status         AutoDrainChargeStatus  @default(PENDING)
+  currency       String                @db.VarChar(8)
+  status         AutoDrainChargeStatus @default(PENDING)
   receiptId      String?
   error          String?
 
-  subscription   AutoDrainSubscription  @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  subscription AutoDrainSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
 
   @@index([subscriptionId, at])
 }
