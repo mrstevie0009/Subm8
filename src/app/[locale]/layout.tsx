@@ -1,3 +1,4 @@
+//src/app/[locale]/layout.tsx
 import '../globals.css';
 import { NextIntlClientProvider } from 'next-intl';
 import { notFound } from 'next/navigation';

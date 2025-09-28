@@ -11,6 +11,8 @@ const nextConfig = {
       { protocol: 'https', hostname: 'tenor.com' },
       { protocol: 'https', hostname: 'i.giphy.com' },
       { protocol: 'https', hostname: 'media.giphy.com' },
+      // Google Profile Avatars (Next/Image Fehler fixen)
+      { protocol: 'https', hostname: 'lh3.googleusercontent.com' },
     ],
   },
   turbopack: {},
