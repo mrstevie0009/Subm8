@@ -3,7 +3,7 @@
     "nav": { "home": "Home", "search": "Search", "communities": "Communities", "chat": "Chat" },
     "brand": { "name": "Subm8" },
     "time": { "now": "now", "m": "{count}m", "h": "{count}h", "d": "{count}d" },
-
+    "actions": {"cancel": "Cancel"},
     "accountSheet": {
       "title": "Add account",
       "close": "Close",
@@ -30,7 +30,6 @@
     },
     "titles": { "gifSearch": "Search GIFs" },
     "actions": {
-      "close": "Close",
       "post": "Post",
       "removeImage": "Remove image",
       "removeVideo": "Remove video"
@@ -708,7 +707,8 @@
   "actions": {
     "view": "View",
     "follow": "Follow",
-    "following": "Following"
+    "following": "Following",
+    "cancel": "Cancel"
   },
   "messages": {
     "followedYou": "followed you",
@@ -758,6 +758,35 @@
     },
 
     "auth": {
+      "signin2fa": {
+        "title": "Second step required",
+        "subtitle": "Please confirm your login.",
+        "chooseMethod": "Choose a method:",
+        "passkeyButton": "Passkey",
+        "smsButton": "SMS code",
+        "passkeyIntro": "A system dialog will open to confirm with your passkey.",
+        "confirmPasskey": "Confirm with passkey",
+        "verifying": "Verifying…",
+        "sendSms": "Send SMS code",
+        "smsCodeLabel": "SMS code",
+        "smsCodePlaceholder": "123456",
+        "verifySms": "Verify",
+        "resendSms": "Resend"
+      },
+      "signinPasskey": {
+        "title": "Verify with Passkey",
+        "subtitle": "Second step",
+        "hint": "Confirm the sign-in using your device or security key.",
+        "buttons": {
+          "usePasskey": "Use Passkey",
+          "verifying": "Verifying…"
+        },
+        "backToPassword": "Back to password sign-in",
+        "errors": {
+          "prefix": "Error:",
+          "generic": "Could not verify."
+        }
+      },
     "resetPage": {
           "title": "Reset your password",
           "fields": { "newPw": "New password", "repeatPw": "Repeat password" },
@@ -1268,38 +1297,66 @@
       "deactivateNotAvailable": "Deactivation not available",
       "alreadyDeactivated": "Account is deactivated"
     },
-
+    "links": {
+      "settings": "Settings"
+    },
     "securityPage": {
       "ariaBack": "Back",
-      "title": "Security & access",
+      "title": "Security & Access",
       "notSignedInMessage": "Please sign in to manage security options.",
-
+      "status": {
+        "active": "Active",
+        "ready": "Ready",
+        "notSetup": "Not set up"
+      },
       "twofa": {
-        "title": "Two-factor authentication",
-        "intro": "Protect your account with a second sign-in step. You can use an app (TOTP), SMS (if a phone number is on file) or, later, security keys/passkeys.",
-        "totpTitle": "Authenticator app (TOTP)",
-        "disable": "Disable",
-        "setup": "Set up",
+        "title": "Two-Factor Authentication",
+        "intro": "Protect your account with a second login step. Use an authenticator app (TOTP), SMS, or passkeys.",
+        "passkeysTitle": "Security Keys / Passkeys",
+        "passkeyActiveMsg": "Passkey is enabled. You can use it at login.",
+        "passkeysActiveNote": "A passkey is set up and stored for two-step sign-in.",
+        "passkeysNote": "Set up a passkey for faster and more secure sign-in.",
+        "passkeysRemoveAllTitle": "Remove all passkeys",
+        "passkeysDisable": "Disable passkeys",
+        "totpTitle": "Authenticator App (TOTP)",
         "active": "Active: app-based 2FA is on.",
-        "scanIntro": "Scan the QR code with your authenticator app and then enter the 6-digit code.",
+        "scanIntro": "Scan the QR code with your authenticator app, then enter the 6-digit code.",
+        "qrAlt": "TOTP QR code",
         "tokenPlaceholder": "123456",
+        "tokenAria": "6-digit verification code",
         "confirm": "Confirm",
-        "smsTitle": "SMS codes",
-        "soon": "Soon",
-        "smsNote": "Available when a phone number is on file and SMS delivery is configured.",
-        "passkeysTitle": "Security keys / Passkeys",
-        "passkeysNote": "Support for WebAuthn/Passkeys is coming."
+        "resend": "Resend",
+        "resendTitle": "Resend code",
+        "setup": "Set up",
+        "disable": "Disable",
+        "smsTitle": "SMS Codes",
+        "smsActiveMsg": "Two-factor via SMS is enabled.",
+        "smsPhoneReady": "A phone number is on file. You can set up SMS codes now.",
+        "smsChangeNumber": "Change number",
+        "smsAddPhoneFirst": "Add a phone number in your profile settings first.",
+        "smsAddPhoneHintStart": "Open your",
+        "smsAddPhoneHintEnd": "and add a phone number.",
+        "sms": {
+          "request": "Request SMS code",
+          "disable2faTitle": "Disable SMS 2FA (phone number stays saved)",
+          "disable2fa": "Disable SMS 2FA",
+          "removeNumberTitle": "Remove phone number",
+          "removeNumber": "Remove number",
+          "loginSendsToPrefix": "At login we’ll send a code to"
+        }
       },
-
       "extraPassword": {
-        "title": "Additional password protection",
-        "desc": "When resetting the password, email or phone number must also be confirmed.",
-        "toggle": { "title": "Toggle password reset protection", "enable": "Enable protection", "disable": "Disable protection" }
+        "title": "Extra password protection",
+        "desc": "Resetting your password requires additional email or phone confirmation.",
+        "toggle": {
+          "title": "Toggle password reset protection",
+          "enable": "Enable protection",
+          "disable": "Disable protection"
+        }
       },
-
       "sessions": {
         "title": "End sessions",
-        "desc": "Ends all active sessions on all devices and signs you out here.",
+        "desc": "Ends all active sessions on all devices and signs you out.",
         "endAll": "End all sessions"
       }
     },

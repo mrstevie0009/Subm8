@@ -6,7 +6,7 @@ export const dynamic = 'force-static';
 type Params = { locale: string };
 
 export default async function AgeVerificationPage({ params }: { params: Params }) {
-  const { locale } = params;
+  const { locale } = await params;
   const t = await getTranslations({ locale, namespace: 'common.legal.age'});
 
   return (

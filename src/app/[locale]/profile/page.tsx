@@ -407,7 +407,7 @@ export async function changeLanguageAction(formData: FormData) {
 ========================= */
 
 export default async function SettingsPage({ params }: { params: Params }) {
-  const { locale } = params;
+  const { locale } = await params;
 
   // ⬅️ Locale für SSR setzen, damit getTranslations die richtige Sprache lädt
   setRequestLocale(locale);
@@ -481,7 +481,7 @@ export default async function SettingsPage({ params }: { params: Params }) {
         <div className="flex items-center gap-2">
           <BackButton
             fallbackHref={`/${locale}`}
-            ariaLabel={t('bookmarksPage.ariaBack')}
+            ariaLabel={"back to feed"}
             className="inline-flex items-center justify-center p-1 hover:opacity-85 focus:outline-none focus:ring-2 focus:ring-[var(--purple)]/40"
             style={{ color: 'var(--purple)' }}
           >

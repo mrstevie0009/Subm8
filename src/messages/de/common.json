@@ -3,6 +3,57 @@
     "nav": { "home": "Start", "search": "Suche", "communities": "Communities", "chat": "Chat" },
     "brand": { "name": "Subm8" },
     "time": { "now": "jetzt", "m": "{count}m", "h": "{count}h", "d": "{count}d" },
+    "actions": {"cancel": "Abbrechen"},
+      "twofa": {
+        "title": "Zwei-Faktor-Authentifizierung",
+        "intro": "Schütze deinen Account mit einer zweiten Anmeldestufe. Nutze App (TOTP), SMS oder Passkeys.",
+        "passkeysTitle": "Sicherheitsschlüssel / Passkeys",
+        "passkeyActiveMsg": "Passkey ist aktiviert. Du kannst ihn beim Login verwenden.",
+        "passkeysActiveNote": "Passkey ist eingerichtet und für die 2-Stufen-Anmeldung gespeichert.",
+        "passkeysNote": "Richte einen Passkey ein, um dich schneller und sicherer anzumelden.",
+        "passkeysRemoveAllTitle": "Alle Passkeys entfernen",
+        "passkeysDisable": "Passkeys deaktivieren",
+        "totpTitle": "Authenticator-App (TOTP)",
+        "active": "Aktiv: App-basierte 2FA ist eingeschaltet.",
+        "scanIntro": "Scanne den QR-Code mit deiner Authenticator-App und gib anschließend den 6-stelligen Code ein.",
+        "qrAlt": "TOTP-QR-Code",
+        "tokenPlaceholder": "123456",
+        "tokenAria": "6-stelliger Bestätigungscode",
+        "confirm": "Bestätigen",
+        "resend": "Neu senden",
+        "resendTitle": "Code erneut senden",
+        "setup": "Einrichten",
+        "disable": "Deaktivieren",
+        "smsTitle": "SMS-Codes",
+        "smsActiveMsg": "Zwei-Faktor-Anmeldung per SMS ist aktiviert.",
+        "smsPhoneReady": "Telefonnummer ist hinterlegt. Du kannst SMS-Codes jetzt einrichten.",
+        "smsChangeNumber": "Nummer ändern",
+        "smsAddPhoneFirst": "Hinterlege zuerst eine Telefonnummer in deinen Profileinstellungen.",
+        "smsAddPhoneHintStart": "Öffne deine",
+        "smsAddPhoneHintEnd": "und füge eine Telefonnummer hinzu.",
+        "sms": {
+          "request": "SMS-Code anfordern",
+          "disable2faTitle": "SMS-2FA deaktivieren (Telefonnummer bleibt gespeichert)",
+          "disable2fa": "SMS-2FA deaktivieren",
+          "removeNumberTitle": "Telefonnummer entfernen",
+          "removeNumber": "Nummer entfernen",
+          "loginSendsToPrefix": "Beim Login senden wir einen Code an"
+        },
+      "extraPassword": {
+        "title": "Zusätzlicher Passwortschutz",
+        "desc": "Beim Zurücksetzen des Passworts muss zusätzlich E-Mail oder Telefonnummer bestätigt werden.",
+        "toggle": {
+          "title": "Passwort-Zurücksetzungsschutz umschalten",
+          "enable": "Schutz aktivieren",
+          "disable": "Schutz deaktivieren"
+        }
+      },
+      "sessions": {
+        "title": "Sitzungen beenden",
+        "desc": "Beendet alle aktiven Sitzungen auf allen Geräten und meldet dich ab.",
+        "endAll": "Alle Sitzungen beenden"
+      }
+    },
 
     "accountSheet": {
       "title": "Account hinzufügen",
@@ -759,6 +810,35 @@
 ,
 
     "auth": {
+      "signin2fa": {
+        "title": "Zweite Stufe erforderlich",
+        "subtitle": "Bitte bestätige deine Anmeldung.",
+        "chooseMethod": "Methode wählen:",
+        "passkeyButton": "Passkey",
+        "smsButton": "SMS-Code",
+        "passkeyIntro": "Es öffnet sich ein Systemdialog zur Bestätigung mit deinem Passkey.",
+        "confirmPasskey": "Mit Passkey bestätigen",
+        "verifying": "Prüfe…",
+        "sendSms": "SMS-Code senden",
+        "smsCodeLabel": "SMS-Code",
+        "smsCodePlaceholder": "123456",
+        "verifySms": "Bestätigen",
+        "resendSms": "Neu senden"
+      },
+        "signinPasskey": {
+        "title": "Mit Passkey verifizieren",
+        "subtitle": "Zweiter Schritt",
+        "hint": "Bestätige die Anmeldung mit deinem Gerät oder Sicherheitsschlüssel.",
+        "buttons": {
+          "usePasskey": "Passkey verwenden",
+          "verifying": "Wird überprüft…"
+        },
+        "backToPassword": "Zur Anmeldung mit Passwort",
+        "errors": {
+          "prefix": "Fehler:",
+          "generic": "Konnte nicht verifizieren."
+        }
+      },
         "resetPage": {
           "title": "Passwort zurücksetzen",
           "fields": { "newPw": "Neues Passwort", "repeatPw": "Passwort wiederholen" },
@@ -1269,38 +1349,66 @@
       "deactivateNotAvailable": "Deaktivieren nicht verfügbar",
       "alreadyDeactivated": "Account ist deaktiviert"
     },
-
+    "links": {
+      "settings": "Einstellungen"
+    },
     "securityPage": {
       "ariaBack": "Zurück",
       "title": "Sicherheit & Zugriff",
       "notSignedInMessage": "Bitte melde dich an, um Sicherheitsoptionen zu verwalten.",
-
+      "status": {
+        "active": "Aktiv",
+        "ready": "Bereit",
+        "notSetup": "Nicht eingerichtet"
+      },
       "twofa": {
         "title": "Zwei-Faktor-Authentifizierung",
-        "intro": "Schütze deinen Account mit einer zweiten Anmeldestufe. Nutze eine App (TOTP), SMS (wenn eine Telefonnummer hinterlegt ist) oder später Sicherheitsschlüssel/Passkeys.",
+        "intro": "Schütze deinen Account mit einer zweiten Anmeldestufe. Nutze App (TOTP), SMS oder Passkeys.",
+        "passkeysTitle": "Sicherheitsschlüssel / Passkeys",
+        "passkeyActiveMsg": "Passkey ist aktiviert. Du kannst ihn beim Login verwenden.",
+        "passkeysActiveNote": "Passkey ist eingerichtet und für die 2-Stufen-Anmeldung gespeichert.",
+        "passkeysNote": "Richte einen Passkey ein, um dich schneller und sicherer anzumelden.",
+        "passkeysRemoveAllTitle": "Alle Passkeys entfernen",
+        "passkeysDisable": "Passkeys deaktivieren",
         "totpTitle": "Authenticator-App (TOTP)",
-        "disable": "Deaktivieren",
-        "setup": "Einrichten",
         "active": "Aktiv: App-basierte 2FA ist eingeschaltet.",
         "scanIntro": "Scanne den QR-Code mit deiner Authenticator-App und gib anschließend den 6-stelligen Code ein.",
+        "qrAlt": "TOTP-QR-Code",
         "tokenPlaceholder": "123456",
+        "tokenAria": "6-stelliger Bestätigungscode",
         "confirm": "Bestätigen",
+        "resend": "Neu senden",
+        "resendTitle": "Code erneut senden",
+        "setup": "Einrichten",
+        "disable": "Deaktivieren",
         "smsTitle": "SMS-Codes",
-        "soon": "Bald",
-        "smsNote": "Verfügbar, wenn eine Telefonnummer hinterlegt ist und SMS-Versand konfiguriert wurde.",
-        "passkeysTitle": "Sicherheitsschlüssel / Passkeys",
-        "passkeysNote": "Unterstützung für WebAuthn/Passkeys folgt."
+        "smsActiveMsg": "Zwei-Faktor-Anmeldung per SMS ist aktiviert.",
+        "smsPhoneReady": "Telefonnummer ist hinterlegt. Du kannst SMS-Codes jetzt einrichten.",
+        "smsChangeNumber": "Nummer ändern",
+        "smsAddPhoneFirst": "Hinterlege zuerst eine Telefonnummer in deinen Profileinstellungen.",
+        "smsAddPhoneHintStart": "Öffne deine",
+        "smsAddPhoneHintEnd": "und füge eine Telefonnummer hinzu.",
+        "sms": {
+          "request": "SMS-Code anfordern",
+          "disable2faTitle": "SMS-2FA deaktivieren (Telefonnummer bleibt gespeichert)",
+          "disable2fa": "SMS-2FA deaktivieren",
+          "removeNumberTitle": "Telefonnummer entfernen",
+          "removeNumber": "Nummer entfernen",
+          "loginSendsToPrefix": "Beim Login senden wir einen Code an"
+        }
       },
-
       "extraPassword": {
         "title": "Zusätzlicher Passwortschutz",
         "desc": "Beim Zurücksetzen des Passworts muss zusätzlich E-Mail oder Telefonnummer bestätigt werden.",
-        "toggle": { "title": "Passwort-Zurücksetzungsschutz umschalten", "enable": "Schutz aktivieren", "disable": "Schutz deaktivieren" }
+        "toggle": {
+          "title": "Passwort-Zurücksetzungsschutz umschalten",
+          "enable": "Schutz aktivieren",
+          "disable": "Schutz deaktivieren"
+        }
       },
-
       "sessions": {
         "title": "Sitzungen beenden",
-        "desc": "Beendet alle aktiven Sitzungen auf allen Geräten und meldet dich hier ab.",
+        "desc": "Beendet alle aktiven Sitzungen auf allen Geräten und meldet dich ab.",
         "endAll": "Alle Sitzungen beenden"
       }
     },
@@ -1350,6 +1458,7 @@
       },
 
       "actions": {
+        "cancel": "Abbrechen",
         "save": "Einstellungen speichern",
         "reset": "Auf Standard zurücksetzen",
         "resetTitle": "Auf Werkseinstellungen zurücksetzen"

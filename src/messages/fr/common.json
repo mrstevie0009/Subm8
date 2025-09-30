@@ -3,7 +3,7 @@
     "nav": { "home": "Accueil", "search": "Recherche", "communities": "Communautés", "chat": "Chat" },
     "brand": { "name": "Subm8" },
     "time": { "now": "maintenant", "m": "{count}m", "h": "{count}h", "d": "{count}j" },
-
+    "actions": {"cancel": "Annuler"},
     "accountSheet": {
       "title": "Ajouter un compte",
       "close": "Fermer",
@@ -758,6 +758,35 @@
 },
 
     "auth": {
+      "signin2fa": {
+        "title": "Deuxième étape requise",
+        "subtitle": "Veuillez confirmer votre connexion.",
+        "chooseMethod": "Choisissez une méthode :",
+        "passkeyButton": "Passkey",
+        "smsButton": "Code SMS",
+        "passkeyIntro": "Une boîte de dialogue système s’ouvrira pour confirmer avec votre passkey.",
+        "confirmPasskey": "Confirmer avec le passkey",
+        "verifying": "Vérification…",
+        "sendSms": "Envoyer le code SMS",
+        "smsCodeLabel": "Code SMS",
+        "smsCodePlaceholder": "123456",
+        "verifySms": "Vérifier",
+        "resendSms": "Renvoyer"
+      },
+      "signinPasskey": {
+        "title": "Vérifier avec une clé d’accès",
+        "subtitle": "Deuxième étape",
+        "hint": "Confirmez la connexion avec votre appareil ou une clé de sécurité.",
+        "buttons": {
+          "usePasskey": "Utiliser la clé d’accès",
+          "verifying": "Vérification…"
+        },
+        "backToPassword": "Retour à la connexion par mot de passe",
+        "errors": {
+          "prefix": "Erreur :",
+          "generic": "Vérification impossible."
+        }
+      },
     "resetPage": {
           "title": "Réinitialiser le mot de passe",
           "fields": { "newPw": "Nouveau mot de passe", "repeatPw": "Répéter le mot de passe" },
@@ -1269,37 +1298,66 @@
       "alreadyDeactivated": "Le compte est désactivé"
     },
 
+    "links": {
+      "settings": "Paramètres"
+    },
     "securityPage": {
       "ariaBack": "Retour",
-      "title": "Sécurité & accès",
-      "notSignedInMessage": "Connecte-toi pour gérer les options de sécurité.",
-
+      "title": "Sécurité et accès",
+      "notSignedInMessage": "Connectez-vous pour gérer les options de sécurité.",
+      "status": {
+        "active": "Actif",
+        "ready": "Prêt",
+        "notSetup": "Non configuré"
+      },
       "twofa": {
         "title": "Authentification à deux facteurs",
-        "intro": "Protège ton compte avec une seconde étape de connexion. Tu peux utiliser une application (TOTP), des SMS (si un numéro est enregistré) ou, plus tard, des clés/passkeys.",
-        "totpTitle": "Application d’authentification (TOTP)",
-        "disable": "Désactiver",
-        "setup": "Configurer",
-        "active": "Actif : la 2FA basée sur une application est activée.",
-        "scanIntro": "Scanne le QR code avec ton application puis saisis le code à 6 chiffres.",
-        "tokenPlaceholder": "123456",
-        "confirm": "Confirmer",
-        "smsTitle": "Codes par SMS",
-        "soon": "Bientôt",
-        "smsNote": "Disponible si un numéro est enregistré et si l’envoi de SMS est configuré.",
+        "intro": "Protégez votre compte avec une seconde étape. Utilisez une app (TOTP), SMS ou passkeys.",
         "passkeysTitle": "Clés de sécurité / Passkeys",
-        "passkeysNote": "Prise en charge de WebAuthn/Passkeys à venir."
+        "passkeyActiveMsg": "Le passkey est activé. Vous pouvez l’utiliser à la connexion.",
+        "passkeysActiveNote": "Un passkey est configuré et enregistré pour la connexion en deux étapes.",
+        "passkeysNote": "Configurez un passkey pour une connexion plus rapide et plus sûre.",
+        "passkeysRemoveAllTitle": "Supprimer tous les passkeys",
+        "passkeysDisable": "Désactiver les passkeys",
+        "totpTitle": "Application d’authentification (TOTP)",
+        "active": "Actif : 2FA via application activée.",
+        "scanIntro": "Scannez le QR code avec votre application puis saisissez le code à 6 chiffres.",
+        "qrAlt": "QR code TOTP",
+        "tokenPlaceholder": "123456",
+        "tokenAria": "Code de vérification à 6 chiffres",
+        "confirm": "Confirmer",
+        "resend": "Renvoyer",
+        "resendTitle": "Renvoyer le code",
+        "setup": "Configurer",
+        "disable": "Désactiver",
+        "smsTitle": "Codes SMS",
+        "smsActiveMsg": "La double authentification par SMS est activée.",
+        "smsPhoneReady": "Un numéro de téléphone est enregistré. Vous pouvez configurer les SMS maintenant.",
+        "smsChangeNumber": "Modifier le numéro",
+        "smsAddPhoneFirst": "Ajoutez d’abord un numéro de téléphone dans les paramètres du profil.",
+        "smsAddPhoneHintStart": "Ouvrez vos",
+        "smsAddPhoneHintEnd": "et ajoutez un numéro de téléphone.",
+        "sms": {
+          "request": "Demander un code SMS",
+          "disable2faTitle": "Désactiver la 2FA par SMS (le numéro reste enregistré)",
+          "disable2fa": "Désactiver la 2FA par SMS",
+          "removeNumberTitle": "Supprimer le numéro de téléphone",
+          "removeNumber": "Supprimer le numéro",
+          "loginSendsToPrefix": "À la connexion, nous enverrons un code à"
+        }
       },
-
       "extraPassword": {
         "title": "Protection supplémentaire du mot de passe",
-        "desc": "Lors de la réinitialisation, l’e-mail ou le numéro de téléphone doit également être confirmé.",
-        "toggle": { "title": "Basculer la protection de réinitialisation", "enable": "Activer la protection", "disable": "Désactiver la protection" }
+        "desc": "La réinitialisation du mot de passe nécessite une confirmation par e-mail ou téléphone.",
+        "toggle": {
+          "title": "Basculer la protection de réinitialisation",
+          "enable": "Activer la protection",
+          "disable": "Désactiver la protection"
+        }
       },
-
       "sessions": {
         "title": "Terminer les sessions",
-        "desc": "Met fin à toutes les sessions actives sur tous les appareils et te déconnecte ici.",
+        "desc": "Met fin à toutes les sessions actives sur tous les appareils et vous déconnecte.",
         "endAll": "Terminer toutes les sessions"
       }
     },
@@ -1349,6 +1407,7 @@
       },
 
       "actions": {
+        "cancel": "Annuler",
         "save": "Enregistrer les paramètres",
         "reset": "Réinitialiser les valeurs par défaut",
         "resetTitle": "Réinitialiser aux paramètres d’usine"

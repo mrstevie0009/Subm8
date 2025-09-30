@@ -7,7 +7,7 @@ export const dynamic = 'force-static';
 type Params = { locale: string };
 
 export default async function TermsPage({ params }: { params: Params }) {
-  const { locale } = params;
+  const { locale } = await params;
   const t = await getTranslations({ locale, namespace: 'common.legal.terms'});
   const updated = new Intl.DateTimeFormat('de-DE', { dateStyle: 'medium' }).format(new Date());
 

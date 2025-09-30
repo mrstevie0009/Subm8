@@ -69,7 +69,7 @@ export default async function MonetizationPage({ params }: { params: Params }) {
       <div className="p-4 md:p-6 grid gap-6">
         {/* 1. Tips */}
         <MethodCard
-          number={str("methods.tips.number", "1")}
+          number={str("Direct tips (tributes)", "1")}
           title={str("methods.tips.title")}
           badge={str("methods.tips.badge")}
           icon={<LightningIcon className="w-5 h-5" />}
@@ -82,7 +82,7 @@ export default async function MonetizationPage({ params }: { params: Params }) {
 
         {/* 2. Pay-per-View */}
         <MethodCard
-          number={str("methods.ppv.number", "2")}
+          number={str("Pay-per-view (optional)", "2")}
           title={str("methods.ppv.title")}
           badge={str("methods.ppv.badge")}
           icon={<EyeIcon className="w-5 h-5" />}
@@ -92,7 +92,7 @@ export default async function MonetizationPage({ params }: { params: Params }) {
 
         {/* 3. Custom Tributes */}
         <MethodCard
-          number={str("methods.customTributes.number", "3")}
+          number={str("Custom tributes (drainer / tribute timer)", "3")}
           title={str("methods.customTributes.title")}
           badge={str("methods.customTributes.badge")}
           icon={<RepeatIcon className="w-5 h-5" />}
@@ -102,7 +102,7 @@ export default async function MonetizationPage({ params }: { params: Params }) {
 
         {/* 4. Paid Communities */}
         <MethodCard
-          number={str("methods.paidCommunities.number", "4")}
+          number={str("Community contributions (paid communities)", "4")}
           title={str("methods.paidCommunities.title")}
           badge={str("methods.paidCommunities.badge")}
           icon={<UsersIcon className="w-5 h-5" />}
@@ -126,7 +126,7 @@ export default async function MonetizationPage({ params }: { params: Params }) {
 
         {/* 6. Leaderboard */}
         <MethodCard
-          number={str("methods.leaderboardBadges.number", "6")}
+          number={str("Leaderboard & badges (gamification)", "6")}
           title={str("methods.leaderboardBadges.title")}
           badge={str("methods.leaderboardBadges.badge")}
           icon={<TrophyIcon className="w-5 h-5" />}

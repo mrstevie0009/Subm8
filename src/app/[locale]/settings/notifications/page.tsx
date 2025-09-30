@@ -218,7 +218,7 @@ export default async function NotificationsPage({
 }: {
   params: Params;
 }) {
-  const { locale } = params;
+  const { locale } = await params;
   const me = await getCurrentUser().catch(() => null);
   const t = await getTranslations({ locale, namespace: 'common' });
 

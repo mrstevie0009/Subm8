@@ -85,8 +85,49 @@ model User {
   pinnedPostId String? @unique
   pinnedPost   Post?   @relation("UserPinnedPost", fields: [pinnedPostId], references: [id], onDelete: SetNull)
 
-  createdInvites  CommunityInvite[] @relation("InviteCreatedBy")
-  receivedInvites CommunityInvite[] @relation("InviteTarget")
+  createdInvites     CommunityInvite[]    @relation("InviteCreatedBy")
+  receivedInvites    CommunityInvite[]    @relation("InviteTarget")
+  SmsCode            SmsCode[]
+  WebAuthnCredential WebAuthnCredential[]
+
+  smsChallenges SmsChallenge[]
+}
+
+model SmsChallenge {
+  id         String              @id @default(cuid())
+  userId     String
+  user       User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  purpose    SmsChallengePurpose
+  codeHash   String              // hash(6-stelliger Code)
+  expiresAt  DateTime
+  attempts   Int                 @default(0)
+  createdAt  DateTime            @default(now())
+}
+
+model SmsCode {
+  id        String   @id @default(cuid())
+  userId    String
+  code      String // 6 digits
+  purpose   String // e.g. "2FA_SETUP", "LOGIN"
+  expiresAt DateTime
+  attempts  Int      @default(0)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model WebAuthnCredential {
+  id           String   @id @default(cuid())
+  userId       String
+  credentialId String   @unique // base64url
+  publicKey    String // base64url
+  counter      Int      @default(0)
+  transports   String? // JSON-Array als String
+  createdAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model PasswordResetToken {
@@ -634,6 +675,17 @@ model AutoDrainCharge {
 /**
  * ------------------------------ Enums -------------------------------------
  */
+
+enum SmsChallengePurpose {
+  SETUP   // Eigentumsnachweis beim Einrichten
+  LOGIN   // Code beim Anmelden
+}
+
+enum TwoFactorType {
+  TOTP
+  WEBAUTHN
+  SMS
+}
 
 enum Role {
   DOMME

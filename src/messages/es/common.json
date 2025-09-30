@@ -3,7 +3,7 @@
     "nav": { "home": "Inicio", "search": "Buscar", "communities": "Comunidades", "chat": "Chat" },
     "brand": { "name": "Subm8" },
     "time": { "now": "ahora", "m": "{count}m", "h": "{count}h", "d": "{count}d" },
-
+    "actions": {"cancel": "Cancelar"},
     "accountSheet": {
       "title": "Añadir cuenta",
       "close": "Cerrar",
@@ -759,6 +759,35 @@
 
 
     "auth": {
+      "signin2fa": {
+        "title": "Se requiere un segundo paso",
+        "subtitle": "Por favor confirma tu inicio de sesión.",
+        "chooseMethod": "Elige un método:",
+        "passkeyButton": "Passkey",
+        "smsButton": "Código SMS",
+        "passkeyIntro": "Se abrirá un diálogo del sistema para confirmar con tu passkey.",
+        "confirmPasskey": "Confirmar con passkey",
+        "verifying": "Verificando…",
+        "sendSms": "Enviar código SMS",
+        "smsCodeLabel": "Código SMS",
+        "smsCodePlaceholder": "123456",
+        "verifySms": "Verificar",
+        "resendSms": "Reenviar"
+      },
+      "signinPasskey": {
+        "title": "Verificar con passkey",
+        "subtitle": "Segundo paso",
+        "hint": "Confirma el inicio de sesión con tu dispositivo o clave de seguridad.",
+        "buttons": {
+          "usePasskey": "Usar passkey",
+          "verifying": "Verificando…"
+        },
+        "backToPassword": "Volver al inicio de sesión con contraseña",
+        "errors": {
+          "prefix": "Error:",
+          "generic": "No se pudo verificar."
+        }
+      },
     "resetPage": {
           "title": "Restablecer contraseña",
           "fields": { "newPw": "Nueva contraseña", "repeatPw": "Repite la contraseña" },
@@ -1269,38 +1298,66 @@
       "deactivateNotAvailable": "Desactivación no disponible",
       "alreadyDeactivated": "La cuenta está desactivada"
     },
-
+    "links": {
+      "settings": "Ajustes"
+    },
     "securityPage": {
       "ariaBack": "Atrás",
       "title": "Seguridad y acceso",
       "notSignedInMessage": "Inicia sesión para gestionar las opciones de seguridad.",
-
+      "status": {
+        "active": "Activo",
+        "ready": "Listo",
+        "notSetup": "No configurado"
+      },
       "twofa": {
         "title": "Autenticación en dos pasos",
-        "intro": "Protege tu cuenta con un segundo paso de inicio de sesión. Puedes usar una app (TOTP), SMS (si hay número de teléfono) o, más adelante, llaves/passkeys.",
-        "totpTitle": "App autenticadora (TOTP)",
-        "disable": "Desactivar",
-        "setup": "Configurar",
-        "active": "Activo: 2FA basada en app está encendida.",
-        "scanIntro": "Escanea el código QR con tu app y luego introduce el código de 6 dígitos.",
-        "tokenPlaceholder": "123456",
-        "confirm": "Confirmar",
-        "smsTitle": "Códigos por SMS",
-        "soon": "Próximamente",
-        "smsNote": "Disponible cuando haya un número de teléfono y esté configurado el envío de SMS.",
+        "intro": "Protege tu cuenta con un segundo paso. Usa app (TOTP), SMS o passkeys.",
         "passkeysTitle": "Llaves de seguridad / Passkeys",
-        "passkeysNote": "Compatibilidad con WebAuthn/Passkeys próximamente."
+        "passkeyActiveMsg": "El passkey está activado. Puedes usarlo al iniciar sesión.",
+        "passkeysActiveNote": "Hay un passkey configurado y guardado para el inicio de sesión en dos pasos.",
+        "passkeysNote": "Configura un passkey para un acceso más rápido y seguro.",
+        "passkeysRemoveAllTitle": "Eliminar todos los passkeys",
+        "passkeysDisable": "Desactivar passkeys",
+        "totpTitle": "App autenticadora (TOTP)",
+        "active": "Activo: la 2FA con app está habilitada.",
+        "scanIntro": "Escanea el código QR con tu app y luego introduce el código de 6 dígitos.",
+        "qrAlt": "Código QR TOTP",
+        "tokenPlaceholder": "123456",
+        "tokenAria": "Código de verificación de 6 dígitos",
+        "confirm": "Confirmar",
+        "resend": "Reenviar",
+        "resendTitle": "Reenviar código",
+        "setup": "Configurar",
+        "disable": "Desactivar",
+        "smsTitle": "Códigos por SMS",
+        "smsActiveMsg": "La verificación por SMS está habilitada.",
+        "smsPhoneReady": "Hay un número de teléfono guardado. Ya puedes configurar SMS.",
+        "smsChangeNumber": "Cambiar número",
+        "smsAddPhoneFirst": "Primero añade un número de teléfono en los ajustes del perfil.",
+        "smsAddPhoneHintStart": "Abre tus",
+        "smsAddPhoneHintEnd": "y añade un número de teléfono.",
+        "sms": {
+          "request": "Solicitar código por SMS",
+          "disable2faTitle": "Desactivar 2FA por SMS (el número permanece guardado)",
+          "disable2fa": "Desactivar 2FA por SMS",
+          "removeNumberTitle": "Eliminar número de teléfono",
+          "removeNumber": "Eliminar número",
+          "loginSendsToPrefix": "En el inicio de sesión enviaremos un código a"
+        }
       },
-
       "extraPassword": {
         "title": "Protección adicional de contraseña",
-        "desc": "Al restablecer la contraseña, también se debe confirmar el email o el teléfono.",
-        "toggle": { "title": "Alternar protección de restablecimiento", "enable": "Activar protección", "disable": "Desactivar protección" }
+        "desc": "El restablecimiento de contraseña requiere confirmar correo o teléfono.",
+        "toggle": {
+          "title": "Alternar protección de restablecimiento",
+          "enable": "Activar protección",
+          "disable": "Desactivar protección"
+        }
       },
-
       "sessions": {
         "title": "Finalizar sesiones",
-        "desc": "Finaliza todas las sesiones activas en todos los dispositivos y te cierra la sesión aquí.",
+        "desc": "Finaliza todas las sesiones activas en todos los dispositivos y cierra tu sesión.",
         "endAll": "Finalizar todas las sesiones"
       }
     },
@@ -1350,6 +1407,7 @@
       },
 
       "actions": {
+        "cancel": "Cancelar",
         "save": "Guardar ajustes",
         "reset": "Restablecer por defecto",
         "resetTitle": "Restablecer a valores de fábrica"

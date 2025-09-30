@@ -6,7 +6,7 @@ export const dynamic = 'force-static';
 type Params = { locale: string };
 
 export default async function RefundPage({ params }: { params: Params }) {
-  const { locale } = params;
+  const { locale } = await params;
   const t = await getTranslations({ locale, namespace: 'common.legal.refund'});
   const updated = new Intl.DateTimeFormat('de-DE', { dateStyle: 'medium' }).format(new Date());
 

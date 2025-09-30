@@ -29,7 +29,7 @@ type BookmarkRow = {
 };
 
 export default async function BookmarksPage({ params }: { params: Params }) {
-  const { locale } = params;
+  const { locale } = await params;
   const t = await getTranslations({ locale, namespace: 'common' });
 
   // Aktuellen User holen (mit id!)
