@@ -17,8 +17,11 @@ import { pinPostAction, unpinPostAction } from '@/app/actions/pin-post';
 import RichText from '@/components/RichText';
 import QuoteOverlay from '@/components/quotes/QuoteOverlay';
 import VideoPlayer from '@/components/VideoPlayer';
+import { useSession } from 'next-auth/react';
+import { toast } from '@/lib/toast';
 
 const AVATAR_PH = '/images/avatar-placeholder.png';
+
 
 /** —— Feed-Shape (mit optionaler Quote) + NEU: Multi-Media-Unterstützung —— */
 type ContentMedia = { url: string; alt?: string | null; kind?: 'image' | 'video' | 'gif' };
@@ -72,6 +75,7 @@ export type FeedPost = {
     bookmarked?: boolean;
     hasBlockedAuthor?: boolean;
     blockedByAuthor?: boolean;
+    isAuthor?: boolean;
   };
   initiallyBookmarked?: boolean;
   community?: { name: string; slug: string } | null;
@@ -81,6 +85,8 @@ export type FeedPost = {
 type VoidFormAction = (formData: FormData) => void | Promise<void>;
 const pinPostFormAction = pinPostAction as unknown as VoidFormAction;
 const unpinPostFormAction = unpinPostAction as unknown as VoidFormAction;
+
+
 
 function Counter({ value = 0, active }: { value?: number; active?: boolean }) {
   return (
@@ -237,7 +243,7 @@ function SingleMedia({
 }) {
   const alt = m.alt ?? '';
   const open = () => onOpen?.(index);
-
+  
   if (m.kind === 'video') {
     const stop = (e: React.SyntheticEvent) => { e.stopPropagation(); };
     return (
@@ -841,6 +847,81 @@ function DMShareOverlay({
   );
 }
 
+function usePulseFlag(ms = 650) {
+  const [flag, setFlag] = React.useState(false);
+  const fire = React.useCallback(() => {
+    setFlag(true);
+    window.setTimeout(() => setFlag(false), ms);
+  }, [ms]);
+  return [flag, fire] as const;
+}
+
+// ⬆️ direkt nach den Imports oder irgendwo oberhalb von PostCard:
+function ConfirmDialog({
+  open,
+  title,
+  message,
+  confirmLabel = 'Delete',
+  cancelLabel = 'Cancel',
+  destructive = false,
+  busy = false,
+  onConfirm,
+  onClose,
+}: {
+  open: boolean;
+  title: string;
+  message: string;
+  confirmLabel?: string;
+  cancelLabel?: string;
+  destructive?: boolean;
+  busy?: boolean;
+  onConfirm: () => void | Promise<void>;
+  onClose: () => void;
+}) {
+  React.useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[2147483604] flex items-center justify-center" role="dialog" aria-modal="true" data-no-nav onClick={onClose}>
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+      <div className="relative w-[min(520px,92vw)] rounded-2xl border border-white/12 bg-[#0b0b0d] p-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-start gap-3">
+          <div className={`mt-0.5 grid size-9 place-items-center rounded-full border ${destructive ? 'border-red-400/40 bg-red-500/10 text-red-300' : 'border-white/15 bg-white/10 text-white/80'}`} aria-hidden>
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M12 9v4M12 17h.01" />
+              <path d="M10 2h4l8 8v4l-8 8h-4l-8-8v-4z" />
+            </svg>
+          </div>
+          <div className="min-w-0 flex-1">
+            <h2 className="text-[18px] font-semibold">{title}</h2>
+            <p className="mt-2 text-white/80">{message}</p>
+          </div>
+        </div>
+        <div className="mt-4 flex items-center justify-end gap-2">
+          <button type="button" className="px-3 py-2 rounded-lg border border-white/15 hover:bg-white/10" onClick={onClose} disabled={busy}>
+            {cancelLabel}
+          </button>
+          <button
+            type="button"
+            className={`px-4 py-2 rounded-lg ${destructive ? 'bg-red-600/80 hover:bg-red-600 text-white' : 'bg-[var(--purple)] hover:opacity-95 text-white'} disabled:opacity-50`}
+            onClick={() => void onConfirm()}
+            disabled={busy}
+          >
+            {busy ? '…' : confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
 /* ---------------------- PostCard ---------------------- */
 export default function PostCard({
   post,
@@ -858,6 +939,14 @@ export default function PostCard({
   const tPost = useTranslations('common.post');
   const tTime = useTranslations('common');   // time.* liegen im Root
 
+  const [hasReposted, setHasReposted] = React.useState(false);
+  const [bookmarked, setBookmarked] = React.useState(!!post.initiallyBookmarked);
+  // Animation-Trigger
+  const [likePulse, fireLikePulse] = usePulseFlag();
+  const [commentPulse, fireCommentPulse] = usePulseFlag();
+  const [repostPulse, fireRepostPulse] = usePulseFlag();
+  const [bookmarkPulse, fireBookmarkPulse] = usePulseFlag();
+
   const c = post.content;
   const uiRole =
     c.author.role === 'DOMME'
@@ -867,14 +956,80 @@ export default function PostCard({
       : undefined;
 
   // STATE
+
   const [likes, setLikes] = React.useState<number>(post.stats?.likes ?? 0);
   const [liked, setLiked] = React.useState<boolean>(!!post.viewer?.liked);
   const [comments, setComments] = React.useState<number>(post.stats?.comments ?? 0);
+  const [hasCommented, setHasCommented] = React.useState(false);
   const [composerOpen, setComposerOpen] = React.useState<boolean>(false);
   const [reposts, setReposts] = React.useState<number>(post.stats?.reposts ?? 0);
   const [repostMenuOpen, setRepostMenuOpen] = React.useState<boolean>(false);
   const [quoteOpen, setQuoteOpen] = React.useState(false);
   const [moreOpen, setMoreOpen] = React.useState(false);
+
+  const rootRef   = React.useRef<HTMLElement | null>(null);
+  const moreRef   = React.useRef<HTMLDivElement | null>(null);
+  const shareRef  = React.useRef<HTMLDivElement | null>(null);
+  const repostRef = React.useRef<HTMLDivElement | null>(null);
+  const composerRef = React.useRef<HTMLDivElement | null>(null);
+
+  const closeTransientUI = React.useCallback(() => {
+    setMoreOpen(false);
+    setShareMenuOpen(false);
+    setRepostMenuOpen(false);
+    setComposerOpen(false);
+  }, []);
+
+
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = React.useState(false);
+  const [deleting, setDeleting] = React.useState(false);
+  const handleDelete = React.useCallback(async () => {
+    setDeleting(true);
+    try {
+      // WICHTIG: Immer den *sichtbaren Post* ansprechen.
+      // - Original-Post: post.id === c.id  → löscht original (+reposts)
+      // - Repost:        post.id ≠ c.id    → löscht nur den Repost
+      const url = `/api/posts/${post.id}?cascade=reposts`;
+
+      const resp = await fetch(url, { method: 'DELETE' });
+      const text = await resp.text();
+      let err = '';
+      try { err = (JSON.parse(text)?.error) || ''; } catch {}
+
+      if (!resp.ok) {
+        throw new Error(err || `HTTP ${resp.status}`);
+      }
+
+      setConfirmDeleteOpen(false);
+      setDeleted(true);
+      toast({
+        kind: 'success',
+        icon: 'trash',
+        title: tPost?.('delete.title') || 'Post gelöscht',
+        message: tPost?.('delete.success') || 'Post erfolgreich gelöscht',
+      });
+
+
+      try { window.dispatchEvent(new CustomEvent('profile:pinnedChange', { detail: { postId: c.id, pinned: false } })); } catch {}
+      try { window.dispatchEvent(new CustomEvent('post:deleted', { detail: { contentId: c.id } })); } catch {}
+
+      if (typeof window !== 'undefined' && window.location.pathname.includes(`/p/${post.id}`)) {
+        router.push(`/${locale}`);
+      } else {
+        router.refresh();
+      }
+    } catch {
+      toast.error(
+        (tPost?.('delete.failed') as string) || 'Konnte den Post nicht löschen.',
+        tPost?.('delete.title') || 'Löschen fehlgeschlagen'
+      );
+
+    } finally {
+      setDeleting(false);
+    }
+  }, [c.id, locale, post.id, router, tPost]);
+
+
 
   const [reposting, setReposting] = React.useState(false);
   const [isPinned, setIsPinned] = React.useState<boolean>(false);
@@ -882,6 +1037,18 @@ export default function PostCard({
   const [shareMenuOpen, setShareMenuOpen] = React.useState(false);
   const [dmShareOpen, setDmShareOpen] = React.useState(false);
   const [copied, setCopied] = React.useState(false);
+
+  const { data: session } = useSession();
+
+  const isMine = React.useMemo(() => {
+    // Falls dein API-Flag vorhanden ist, nimm das
+    if (typeof post.viewer?.isAuthor === 'boolean') return post.viewer.isAuthor;
+    // Fallback: Session-User mit Autor des Contents vergleichen
+    return !!(session?.user?.id && c.author.id && session.user.id === c.author.id);
+  }, [session?.user?.id, c.author.id, post.viewer?.isAuthor]);
+  
+  const [deleted, setDeleted] = React.useState(false);
+
 
   const initialHasBlocked = !!post.viewer?.hasBlockedAuthor;
   const initialBlockedByAuthor = !!post.viewer?.blockedByAuthor;
@@ -909,6 +1076,104 @@ export default function PostCard({
   };
 
   React.useEffect(() => {
+    function onPointerDown(e: PointerEvent) {
+      const target = e.target as Node | null;
+      const anyOpen = moreOpen || shareMenuOpen || repostMenuOpen || composerOpen;
+      if (!anyOpen) return;
+
+      // Klick innerhalb eines geöffneten Elements? -> ignorieren
+      if (
+        (moreOpen && moreRef.current?.contains(target as Node)) ||
+        (shareMenuOpen && shareRef.current?.contains(target as Node)) ||
+        (repostMenuOpen && repostRef.current?.contains(target as Node)) ||
+        (composerOpen && composerRef.current?.contains(target as Node))
+      ) return;
+
+      // sonst: schließen
+      closeTransientUI();
+    }
+
+    // Capture-Phase, damit wir vor onClick-Toggles schließen
+    window.addEventListener('pointerdown', onPointerDown, true);
+    return () => window.removeEventListener('pointerdown', onPointerDown, true);
+  }, [moreOpen, shareMenuOpen, repostMenuOpen, composerOpen, closeTransientUI]);
+
+  React.useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') closeTransientUI();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [closeTransientUI]);
+
+  React.useEffect(() => {
+    const el = rootRef.current;
+    if (!el) return;
+
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        // Wenn weniger als 10% sichtbar -> zumachen
+        if (!entry || entry.intersectionRatio >= 0.1) return;
+        closeTransientUI();
+      },
+      { threshold: [0, 0.1] }
+    );
+
+    io.observe(el);
+    return () => io.disconnect();
+  }, [closeTransientUI]);
+
+
+  // 🔁 Likes (global)
+React.useEffect(() => {
+  const onLike = (ev: Event) => {
+    const ce = ev as CustomEvent<{ contentId: string; liked: boolean; delta: number; byViewer?: boolean }>;
+    if (ce?.detail?.contentId !== c.id) return;
+    setLikes((n) => Math.max(0, n + (ce.detail.delta ?? 0)));
+    if (ce.detail.byViewer) setLiked(!!ce.detail.liked); // Tint für mich
+  };
+  window.addEventListener('post:likeToggle', onLike as EventListener);
+  return () => window.removeEventListener('post:likeToggle', onLike as EventListener);
+}, [c.id]);
+
+// 💬 Comments (global)
+React.useEffect(() => {
+  const onComment = (ev: Event) => {
+    const ce = ev as CustomEvent<{ contentId: string; delta: number; byViewer?: boolean }>;
+    if (ce?.detail?.contentId !== c.id) return;
+    setComments((n) => Math.max(0, n + (ce.detail.delta ?? 0)));
+    if (ce.detail.byViewer) setHasCommented(true); // Tint für mich
+  };
+  window.addEventListener('post:commentDelta', onComment as EventListener);
+  return () => window.removeEventListener('post:commentDelta', onComment as EventListener);
+}, [c.id]);
+
+// 🔁 Reposts (global)
+React.useEffect(() => {
+  const onRepost = (ev: Event) => {
+    const ce = ev as CustomEvent<{ contentId: string; delta: number; byViewer?: boolean }>;
+    if (ce?.detail?.contentId !== c.id) return;
+    setReposts((n) => Math.max(0, n + (ce.detail.delta ?? 0)));
+    if (ce.detail.byViewer) setHasReposted(true); // Tint für mich
+  };
+  window.addEventListener('post:repostDelta', onRepost as EventListener);
+  return () => window.removeEventListener('post:repostDelta', onRepost as EventListener);
+}, [c.id]);
+
+  // Bookmark-Events aus BookmarkButton (siehe Mini-Patch unten)
+  React.useEffect(() => {
+    function onBm(ev: Event) {
+      const ce = ev as CustomEvent<{ postId: string; value: boolean }>;
+      if (ce?.detail?.postId === c.id) {   // 👈 statt post.id
+        setBookmarked(ce.detail.value);
+        fireBookmarkPulse();
+      }
+    }
+    window.addEventListener('bookmark:toggled', onBm as EventListener);
+    return () => window.removeEventListener('bookmark:toggled', onBm as EventListener);
+  }, [c.id, fireBookmarkPulse]); // 👈 dependency auch auf c.id
+
+  React.useEffect(() => {
     function onPinnedChange(ev: Event) {
       const ce = ev as CustomEvent<{ postId: string; pinned: boolean }>;
       if (!ce.detail) return;
@@ -930,6 +1195,7 @@ export default function PostCard({
       setIsPinned(false);
     }
   }, [pinnedPostId, c.id]);
+  if (deleted) return null;
 
   const onProfileOfAuthor =
     typeof handle === 'string' &&
@@ -947,17 +1213,26 @@ export default function PostCard({
         onClick={(e) => e.stopPropagation()}
         onSubmit={() => {
           if (blockedByEither) return;
+          const willLike = !liked; // 👈 definieren
           startLikeTransition(() => {
             setLiked((v) => !v);
             setLikes((n) => (liked ? Math.max(0, n - 1) : n + 1));
           });
+          fireLikePulse(); // ⬅️ NEU
+          // 🛰️ global sync
+          try {
+            window.dispatchEvent(new CustomEvent('post:likeToggle', {
+              detail: { contentId: c.id, liked: willLike, delta: willLike ? +1 : -1, byViewer: true }
+            }));
+          } catch {}
+
         }}
       >
         <input type="hidden" name="postId" value={c.id} />
         <button
           type="submit"
           disabled={disabled}
-          className="group flex items-center gap-2 rounded px-2 py-1 hover:bg-white/5 disabled:opacity-50"
+          className={`actify like ${liked ? 'is-active' : ''} ${likePulse ? 'do-pop' : ''} group flex items-center gap-2 rounded px-2 py-1 hover:bg-white/5 disabled:opacity-50`}
           aria-pressed={liked || undefined}
           aria-disabled={disabled || undefined}
           title={blockedByEither ? tPost('interactionBlocked') : undefined}
@@ -985,6 +1260,7 @@ export default function PostCard({
 
   function CommentButton() {
     const disabled = blockedByEither;
+    const isActive = composerOpen || hasCommented;
     return (
       <button
         type="button"
@@ -992,9 +1268,12 @@ export default function PostCard({
         disabled={disabled}
         onClick={(e) => {
           e.stopPropagation();
-          if (!disabled) setComposerOpen((v) => !v);
+          if (!disabled) {
+            setComposerOpen((v) => !v);
+            fireCommentPulse(); // ⬅️ NEU
+          }
         }}
-        className="group flex items-center gap-2 rounded px-2 py-1 hover:bg-white/5 disabled:opacity-50"
+        className={`actify comment ${isActive ? 'is-active' : ''} ${commentPulse ? 'do-pop' : ''} group flex items-center gap-2 rounded px-2 py-1 hover:bg-white/5 disabled:opacity-50`}
         aria-expanded={composerOpen || undefined}
         aria-disabled={disabled || undefined}
         title={disabled ? tPost('interactionBlocked') : undefined}
@@ -1004,11 +1283,12 @@ export default function PostCard({
           style={{ width: 'clamp(18px,1.8vw,26px)', height: 'clamp(18px,1.8vw,26px)' }}
           aria-hidden
         >
-          <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full" style={{ color: 'rgba(255,255,255,.95)' }}>
+          <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full"
+            style={{ color: isActive ? 'var(--purple)' : 'rgba(255,255,255,.95)' }}>
             <path d="M4 7a5 5 0 0 1 5-5h6a5 5 0 0 1 5 5v4a5 5 0 0 1-5 5H11l-4 3v-3H9a5 5 0 0 1-5-5V7Z" />
           </svg>
         </span>
-        <Counter value={comments} />
+        <Counter value={comments} active={isActive} />
         <span className="sr-only">{tPost('comment')}</span>
       </button>
     );
@@ -1017,10 +1297,10 @@ export default function PostCard({
   function RepostButton() {
     const disabled = blockedByEither || reposting;
     return (
-      <div className="relative" data-no-nav onClick={(e) => e.stopPropagation()}>
+      <div ref={repostRef} className="relative" data-no-nav onClick={(e) => e.stopPropagation()}>
         <button
           type="button"
-          className="group flex items-center gap-2 rounded px-2 py-1 hover:bg-white/5 disabled:opacity-50"
+          className={`actify repost ${hasReposted ? 'is-active' : ''} ${repostPulse ? 'do-pop' : ''} group flex items-center gap-2 rounded px-2 py-1 hover:bg-white/5 disabled:opacity-50`}
           onClick={() => !disabled && setRepostMenuOpen((v) => !v)}
           disabled={disabled}
           aria-expanded={repostMenuOpen || undefined}
@@ -1029,12 +1309,16 @@ export default function PostCard({
         >
           <span
             className="inline-grid place-items-center"
-            style={{ width: 'clamp(18px,1.8vw,26px)', height: 'clamp(18px,1.8vw,26px)' }}
+            style={{
+              width: 'clamp(18px,1.8vw,26px)',
+              height: 'clamp(18px,1.8vw,26px)',
+              color: hasReposted ? 'var(--purple)' : 'rgba(255,255,255,.95)'
+            }}
             aria-hidden
           >
             <RepostBadgeIcon />
           </span>
-          <Counter value={reposts} />
+          <Counter value={reposts} active={hasReposted} />
           <span className="sr-only">{tPost('repost')}</span>
         </button>
 
@@ -1052,6 +1336,8 @@ export default function PostCard({
                 setRepostMenuOpen(false);
                 setReposting(true);
                 setReposts((n) => n + 1);
+                setHasReposted(true);       // ⬅️ NEU
+                fireRepostPulse();          // ⬅️ NEU
                 try {
                   const resp = await fetch(`/api/posts/${c.id}/repost`, { method: 'POST' });
                   const j = await resp.json().catch(() => null);
@@ -1059,8 +1345,15 @@ export default function PostCard({
                   try {
                     window.dispatchEvent(new CustomEvent('post:reposted', { detail: { originalId: c.id, newId: j.id } }));
                   } catch {}
+
+                  try {
+                    window.dispatchEvent(new CustomEvent('post:repostDelta', {
+                      detail: { contentId: c.id, delta: +1, byViewer: true }
+                    }));
+                  } catch {}
                 } catch {
                   setReposts((n) => Math.max(0, n - 1));
+                  setHasReposted(false);    // ⬅️ Revert bei Fehler
                 } finally {
                   setReposting(false);
                 }
@@ -1074,6 +1367,8 @@ export default function PostCard({
               onClick={() => {
                 setRepostMenuOpen(false);
                 setQuoteOpen(true);
+                setHasReposted(true);   // ⬅️ Auch Quote als "aktiv" markieren
+                fireRepostPulse();      // ⬅️ Animation
               }}
             >
               {tPost('quotePost')}
@@ -1121,11 +1416,15 @@ export default function PostCard({
     };
 
     return (
-      <div className="relative" data-no-nav onClick={(e) => e.stopPropagation()}>
+      <div ref={shareRef} className="relative" data-no-nav onClick={(e) => e.stopPropagation()}>
         <button
           type="button"
           className="group flex items-center gap-2 rounded px-2 py-1 hover:bg-white/5"
-          onClick={() => setShareMenuOpen((v) => !v)}
+          onClick={() => {
+            setShareMenuOpen((v) => !v);
+            // wichtig: sicherstellen, dass das More-Menü zu ist
+            setMoreOpen(false);
+          }}
           aria-expanded={shareMenuOpen || undefined}
           title={tPost('share.title')}
         >
@@ -1180,8 +1479,10 @@ export default function PostCard({
     );
   }
 
+
   function MoreMenu() {
     const showPinControls = onProfileOfAuthor;
+    const showReport = !isMine; // <-- eigenes Posting? Dann kein Report
 
     const optimisticBroadcast = (pinned: boolean) => {
       try {
@@ -1190,12 +1491,16 @@ export default function PostCard({
     };
 
     return (
-      <div className="relative" data-no-nav onClick={(e) => e.stopPropagation()}>
+      <div ref={moreRef} className="relative" data-no-nav onClick={(e) => e.stopPropagation()}>
         <button
           type="button"
           aria-label={tPost('more')}
           className="rounded p-1.5 hover:bg-white/5"
-          onClick={() => setMoreOpen((v) => !v)}
+          onClick={() => {
+            setMoreOpen((v) => !v);
+            setShareMenuOpen(false); // Share-Menü schließen
+          }}
+          aria-expanded={moreOpen || undefined}
         >
           <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth={2}>
             <circle cx="5" cy="12" r="1.6" />
@@ -1209,6 +1514,7 @@ export default function PostCard({
             className="absolute right-0 z-30 mt-2 w-64 rounded-xl border border-white/10 bg-black/85 backdrop-blur shadow-lg p-1"
             role="menu"
           >
+            {/* Pin / Unpin nur auf eigenem Profil */}
             {showPinControls && (
               <>
                 {!isPinned ? (
@@ -1248,6 +1554,7 @@ export default function PostCard({
               </>
             )}
 
+            {/* Copy Text */}
             <button
               type="button"
               className="flex w-full items-center justify-between px-3 py-2 rounded hover:bg-white/10"
@@ -1259,6 +1566,7 @@ export default function PostCard({
               <span>{tPost('copyText')}</span>
             </button>
 
+            {/* Block / Unblock */}
             {!hasBlockedAuthor ? (
               <form
                 action={blockUserAction}
@@ -1287,18 +1595,44 @@ export default function PostCard({
               </form>
             )}
 
-            <form action={reportPostAction} onSubmit={() => setMoreOpen(false)}>
-              <input type="hidden" name="postId" value={c.id} />
-              <input type="hidden" name="reason" value="OTHER" />
-              <button className="w-full text-left px-3 py-2 rounded hover:bg-white/10 text-red-300">
-                {tPost('report')}
-              </button>
-            </form>
+            {/* Report nur, wenn NICHT mein eigener Post */}
+            {showReport && (
+              <>
+                <div className="h-px my-1 bg-white/10" />
+                <form action={reportPostAction} onSubmit={() => setMoreOpen(false)}>
+                  <input type="hidden" name="postId" value={c.id} />
+                  <input type="hidden" name="reason" value="OTHER" />
+                  <button className="w-full text-left px-3 py-2 rounded hover:bg-white/10 text-red-300">
+                    {tPost('report')}
+                  </button>
+                </form>
+              </>
+            )}
+
+            {/* Delete GANZ unten (nur eigene Posts) */}
+            {isMine && (
+              <>
+                <div className="h-px my-1 bg-white/10" />
+                <button
+                  type="button"
+                  className="w-full text-left px-3 py-2 rounded hover:bg-red-500/10 text-red-300"
+                  title={tPost?.('delete.title') ?? 'Delete post'}
+                  onClick={async () => {
+                    setMoreOpen(false);
+                    setConfirmDeleteOpen(true); // nur Dialog öffnen
+                  }}
+                >
+                  {tPost?.('delete.button') ?? 'Delete post'}
+                </button>
+              </>
+            )}
           </div>
         )}
       </div>
     );
   }
+
+
 
   const RoleBadge = ({ role }: { role?: 'domme' | 'submissive' }) => {
     if (!role) return null;
@@ -1376,7 +1710,9 @@ export default function PostCard({
   const mediaItems = normalizeMediaFields(c);
 
   return (
+    <>
     <article
+      ref={rootRef}
       className="relative bg-card border border-sub rounded-app shadow-app p-4 md:p-5 cursor-pointer"
       onClick={goDetail}
       onKeyDown={onKeyActivate}
@@ -1499,8 +1835,16 @@ export default function PostCard({
             <CommentButton />
             <RepostButton />
             <LikeForm />
-            <div data-no-nav onClick={(e) => e.stopPropagation()}>
-              <BookmarkButton postId={c.id} initiallyBookmarked={post.initiallyBookmarked === true} />
+            <div
+              data-no-nav
+              onClick={(e) => e.stopPropagation()}
+              className={`actify bookmark ${bookmarked ? 'is-active' : ''} ${bookmarkPulse ? 'do-pop' : ''}`} // 👈 neu: bookmarkPulse
+              title={bookmarked ? 'Bookmarked' : undefined}
+            >
+              <BookmarkButton
+                postId={c.id}
+                initiallyBookmarked={post.initiallyBookmarked === true}
+              />
             </div>
             <div className="ml-auto">
               <ShareButton />
@@ -1508,15 +1852,23 @@ export default function PostCard({
           </div>
 
           {composerOpen && !blockedByEither && (
-            <div data-no-nav onClick={(e) => e.stopPropagation()}>
+            <div ref={composerRef} data-no-nav onClick={(e) => e.stopPropagation()}>
               <CommentComposer
                 postId={post.id}
                 onSuccess={() => {
                   setComments((n) => (n ?? 0) + 1);
                   setComposerOpen(false);
-                  if (typeof window !== 'undefined') {
+                  setHasCommented(true);
+                  fireCommentPulse();
+                  try {
+                    window.dispatchEvent(new CustomEvent('post:commentDelta', {
+                      detail: { contentId: c.id, delta: +1, byViewer: true }
+                    }));
+                  } catch {}
+
+                  try {
                     window.dispatchEvent(new CustomEvent('comment:created', { detail: { postId: post.id } }));
-                  }
+                  } catch {}
                 }}
                 onCancel={() => setComposerOpen(false)}
               />
@@ -1565,5 +1917,72 @@ export default function PostCard({
         />
       )}
     </article>
-  );
+
+    <ConfirmDialog
+    open={confirmDeleteOpen}
+    onClose={() => setConfirmDeleteOpen(false)}
+    onConfirm={handleDelete}
+    busy={deleting}
+    destructive
+    title={tPost?.('delete.title') ?? 'Delete post'}
+    message={tPost?.('delete.confirm') ?? 'Delete this post for everyone? This also removes all its reposts.'}
+    confirmLabel={tPost?.('delete.button') ?? 'Delete post'}
+    cancelLabel={t('actions.cancel')}
+    />
+
+      
+    {/* ⬇️ ⬇️ NEU: globale Styles für aktive Buttons & Animation */}
+    <style jsx global>{`
+      /* Purple scale */
+      :root {
+        --purple-100: #c4b5fd;
+        --purple-200: #b39dfd;
+        --purple-300: #a78bfa;
+        --purple-400: #8b5cf6;
+        --purple-500: #7c3aed;
+        --purple-600: #6d28d9;
+      }
+
+      /* Button-Activator: legt nur Optik oben drauf – bestehende Utility-Klassen bleiben! */
+      .actify {
+        position: relative;
+        border-radius: 10px;
+        transition: transform 120ms ease, opacity 220ms ease;
+      }
+
+      /* Pop/Burst-Animation */
+      @keyframes actify-pop {
+        0% { transform: scale(1); }
+        40% { transform: scale(1.08); }
+        100% { transform: scale(1); }
+      }
+      @keyframes actify-burst {
+        0% { opacity: .9; transform: translate(-50%, -50%) scale(.6) rotate(0deg); }
+        70% { opacity: .7; }
+        100% { opacity: 0; transform: translate(-50%, -50%) scale(1.25) rotate(25deg); }
+      }
+      .actify.do-pop {
+        animation: actify-pop 380ms ease;
+      }
+      .actify.do-pop::after {
+        content: '';
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 140%;
+        height: 140%;
+        pointer-events: none;
+        background:
+          radial-gradient(circle at 50% 0%, rgba(255,255,255,.9) 0 3px, transparent 4px) 50% 10% / 8px 8px no-repeat,
+          radial-gradient(circle at 0% 50%, rgba(255,255,255,.9) 0 3px, transparent 4px) 10% 50% / 8px 8px no-repeat,
+          radial-gradient(circle at 100% 50%, rgba(255,255,255,.9) 0 3px, transparent 4px) 90% 50% / 8px 8px no-repeat,
+          radial-gradient(circle at 50% 100%, rgba(255,255,255,.9) 0 3px, transparent 4px) 50% 90% / 8px 8px no-repeat;
+        animation: actify-burst 450ms ease forwards;
+        z-index: 0;
+      }
+      /* sorgt dafür, dass Inhalt über dem ::after sitzt */
+      .actify > * { position: relative; z-index: 1; }
+    `}</style>
+  </>
+);
 }

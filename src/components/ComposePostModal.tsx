@@ -1,3 +1,4 @@
+//src/components/ComposePostModal.tsx
 /* eslint-disable @next/next/no-img-element -- native <img> ist für lokale Blob-Previews in BlobImg nötig */
 'use client';
 
@@ -7,6 +8,7 @@ import Image from 'next/image';
 import { createPost } from '@/app/actions/posts';
 import MentionSuggest from '@/components/MentionSuggest';
 import { useTranslations } from 'next-intl';
+import { toast } from '@/lib/toast';
 
 type Props = { open: boolean; onClose: () => void };
 type MediaKind = 'image' | 'video';
@@ -319,6 +321,10 @@ export default function ComposePostModal({ open, onClose }: Props) {
     }
     // ts-expect-error — Client Action, React übergibt FormData
     await createPost(fd);
+    toast.success(
+    (t?.('states.posted') as string) || 'Post erfolgreich gepostet',
+    (t?.('header.newPost') as string) || 'Gepostet'
+  );
     onClose();
   };
 

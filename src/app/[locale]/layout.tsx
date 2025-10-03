@@ -1,31 +1,27 @@
-//src/app/[locale]/layout.tsx
-import '../globals.css';
-import { NextIntlClientProvider } from 'next-intl';
-import { notFound } from 'next/navigation';
-import { Inter } from 'next/font/google';
-import PageChrome from '@/components/PageChrome';
-import Providers from '@/components/Providers';
+// src/app/[locale]/layout.tsx
+import '../globals.css'
+import { NextIntlClientProvider } from 'next-intl'
+import { notFound } from 'next/navigation'
+import { Inter } from 'next/font/google'
+import PageChrome from '@/components/PageChrome'
+import Providers from '@/components/Providers'
+import Toaster from '@/components/ui/Toaster' // ⬅️ direkt importieren
 
-const inter = Inter({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
-  display: 'swap',
-});
+const inter = Inter({ subsets: ['latin'], weight: ['400','500','600','700'], display: 'swap' })
 
 type LayoutProps = {
-  children: React.ReactNode;
-  params: Promise<{ locale: 'en' | 'de' | 'es' | 'fr' }>;
-};
+  children: React.ReactNode
+  params: Promise<{ locale: 'en' | 'de' | 'es' | 'fr' }>
+}
 
 export default async function RootLayout({ children, params }: LayoutProps) {
-  const { locale } = await params;
+  const { locale } = await params
 
-  let messages: Record<string, unknown>;
+  let messages: Record<string, unknown>
   try {
-    // Struktur beibehalten: messages/<locale>/common.json
-    messages = (await import(`../../messages/${locale}/common.json`)).default;
+    messages = (await import(`../../messages/${locale}/common.json`)).default
   } catch {
-    notFound();
+    notFound()
   }
 
   return (
@@ -34,9 +30,10 @@ export default async function RootLayout({ children, params }: LayoutProps) {
         <NextIntlClientProvider locale={locale} messages={messages}>
           <Providers>
             <PageChrome locale={locale}>{children}</PageChrome>
+            <Toaster position="bottom" />
           </Providers>
         </NextIntlClientProvider>
       </body>
     </html>
-  );
+  )
 }

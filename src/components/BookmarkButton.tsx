@@ -18,16 +18,48 @@ export default function BookmarkButton({
       const fd = new FormData();
       fd.set('postId', postId);
 
-      // Optimistisch updaten
-      setBookmarked((v) => !v);
+      // Der nächste Wert, den wir setzen werden (vor Optimismus berechnen)
+      const nextValue = !bookmarked;
 
-      if (bookmarked) {
-        await removeBookmark(fd);
-      } else {
-        await addBookmark(fd);
+      // Optimistisch updaten
+      setBookmarked(nextValue);
+
+      // 👉 Event sofort nach dem lokalen Toggle feuern
+      try {
+        window.dispatchEvent(
+          new CustomEvent('bookmark:toggled', { detail: { postId, value: nextValue } })
+        );
+      } catch {}
+
+      try {
+        if (bookmarked) {
+          await removeBookmark(fd);
+        } else {
+          await addBookmark(fd);
+        }
+      } catch {
+        // Rollback bei Fehler
+        setBookmarked(!nextValue);
+        try {
+          window.dispatchEvent(
+            new CustomEvent('bookmark:toggled', { detail: { postId, value: !nextValue } })
+          );
+        } catch {}
       }
     });
   };
+
+  React.useEffect(() => {
+    const onBm = (ev: Event) => {
+      const ce = ev as CustomEvent<{ postId: string; value: boolean }>;
+      if (ce?.detail?.postId === postId) {
+        setBookmarked(ce.detail.value);
+      }
+    };
+    window.addEventListener('bookmark:toggled', onBm as EventListener);
+    return () => window.removeEventListener('bookmark:toggled', onBm as EventListener);
+  }, [postId]);
+
 
   return (
     <button

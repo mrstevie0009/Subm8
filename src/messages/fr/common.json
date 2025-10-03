@@ -1154,6 +1154,12 @@
     },
 
     "post": {
+      "delete": {
+        "title": "Supprimer la publication",
+        "confirm": "Supprimer cette publication pour tout le monde ? Cela supprimera également tous ses repartages.",
+        "button": "Supprimer la publication",
+        "failed": "Impossible de supprimer la publication."
+      },
       "communityPost": "Publication de la communauté",
       "repostedBy": "{name} a republié",
       "pinned": "Épinglé",

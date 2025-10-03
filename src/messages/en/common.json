@@ -30,6 +30,7 @@
     },
     "titles": { "gifSearch": "Search GIFs" },
     "actions": {
+      "close": "Close",
       "post": "Post",
       "removeImage": "Remove image",
       "removeVideo": "Remove video"
@@ -910,7 +911,8 @@
         "link": "Login"
       },
       "errors": {
-        "signupFailed": "Failed to sign up"
+        "signupFailed": "Failed to sign up",
+        "passwordMismatch": "Password Mismatch"
       }
     }
   },
@@ -1154,6 +1156,12 @@
     },
 
     "post": {
+      "delete": {
+        "title": "Delete post",
+        "confirm": "Delete this post for everyone? This also removes all its reposts.",
+        "button": "Delete post",
+        "failed": "Could not delete the post."
+      },
       "communityPost": "Community post",
       "repostedBy": "{name} reposted",
       "pinned": "Pinned",

@@ -1155,6 +1155,12 @@
     },
 
     "post": {
+      "delete": {
+        "title": "Eliminar publicación",
+        "confirm": "¿Eliminar esta publicación para todos? Esto también eliminará todas sus republicaciones.",
+        "button": "Eliminar publicación",
+        "failed": "No se pudo eliminar la publicación."
+      },
       "communityPost": "Publicación de la comunidad",
       "repostedBy": "{name} ha republicado",
       "pinned": "Fijado",

@@ -312,3 +312,4 @@ export const authOptions: NextAuthOptions = {
 
 // Helper für Server Components/Actions
 export const getAuth = () => getServerSession(authOptions);
+export const auth = getAuth;

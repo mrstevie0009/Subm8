@@ -962,7 +962,8 @@
             "link": "Login"
           },
           "errors": {
-            "signupFailed": "Registrierung fehlgeschlagen"
+            "signupFailed": "Registrierung fehlgeschlagen",
+            "passwordMismatch": "Passwort stimmen nicht überein"
           }
         }
       },
@@ -1206,6 +1207,12 @@
     },
 
     "post": {
+      "delete": {
+        "title": "Beitrag löschen",
+        "confirm": "Diesen Beitrag für alle löschen? Dadurch werden auch alle Reposts entfernt.",
+        "button": "Beitrag löschen",
+        "failed": "Der Beitrag konnte nicht gelöscht werden."
+      },
       "communityPost": "Community-Post",
       "repostedBy": "{name} hat repostet",
       "pinned": "Gepinnt",
