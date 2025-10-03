@@ -5,7 +5,6 @@ import { notFound } from 'next/navigation'
 import { Inter } from 'next/font/google'
 import PageChrome from '@/components/PageChrome'
 import Providers from '@/components/Providers'
-import Toaster from '@/components/ui/Toaster' // ⬅️ direkt importieren
 
 const inter = Inter({ subsets: ['latin'], weight: ['400','500','600','700'], display: 'swap' })
 
@@ -30,7 +29,6 @@ export default async function RootLayout({ children, params }: LayoutProps) {
         <NextIntlClientProvider locale={locale} messages={messages}>
           <Providers>
             <PageChrome locale={locale}>{children}</PageChrome>
-            <Toaster position="bottom" />
           </Providers>
         </NextIntlClientProvider>
       </body>

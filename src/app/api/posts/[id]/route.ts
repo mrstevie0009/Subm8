@@ -4,14 +4,17 @@ import { getAuth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { purgePostAndReposts } from '@/lib/posts';
 
-export async function DELETE(req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> }   // 👈 params ist ein Promise
+) {
   const session = await getAuth();
   if (!session?.user?.id) {
     return NextResponse.json({ ok: false, error: 'UNAUTHORIZED' }, { status: 401 });
   }
 
   // WICHTIG: id aus params holen (nicht contentId)
-  const id = await params.id; // oder: const id = (params as any).id ?? (params as any).contentId;
+  const { id } = await params; // oder: const id = (params as any).id ?? (params as any).contentId;
   if (!id) {
     return NextResponse.json({ ok: false, error: 'MISSING_ID' }, { status: 400 });
   }

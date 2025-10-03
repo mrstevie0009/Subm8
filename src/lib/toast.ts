@@ -1,3 +1,5 @@
+'use client';
+
 export type ToastArgs = {
   message: string;
   title?: string;
@@ -7,9 +9,8 @@ export type ToastArgs = {
 };
 
 export function toast(args: ToastArgs) {
-  try {
-    window.dispatchEvent(new CustomEvent('ui:toast', { detail: args }));
-  } catch {}
+  // nur Browser
+  window.dispatchEvent(new CustomEvent('ui:toast', { detail: args }));
 }
 
 toast.success = (message: string, title = 'Erfolg') =>
