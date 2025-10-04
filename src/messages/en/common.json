@@ -4,6 +4,48 @@
     "brand": { "name": "Subm8" },
     "time": { "now": "now", "m": "{count}m", "h": "{count}h", "d": "{count}d" },
     "actions": {"cancel": "Cancel"},
+
+    "verify": {
+      "complete": {
+        "title": "Finishing verification…",
+        "subtitle": "We’re waiting for the confirmation from our provider.",
+        "status": {
+          "waiting": "Status: pending",
+          "stillWaiting": "Status: still pending"
+        },
+        "elapsed": "{seconds, plural, =0 {0s} one {#s} other {#s}}",
+        "redirect": "You’ll be redirected automatically as soon as verification is confirmed.",
+        "actions": {
+          "backNow": "Continue now",
+          "refresh": "Refresh"
+        },
+        "help": {
+          "title": "Having trouble? Try this:",
+          "items": {
+            "0": "Keep this page open — it updates automatically.",
+            "1": "Only close the verification tab after you saw the confirmation.",
+            "2": "If it takes longer, click “Refresh” or “Continue now”.",
+            "3": "If nothing helps, contact support and attach a confirmation screenshot."
+          }
+        }
+      },
+      "modal": {
+        "title": "Age verification required",
+        "message": "Please verify your age once to use this feature.",
+        "confirm": "Verify now",
+        "cancel": "Cancel"
+      },
+      "overlay": {
+        "heading": "Age-restricted media",
+        "body": "Verify your age to view media, create posts, or send messages.",
+        "cta": "Verify age",
+        "note": "You’ll be redirected back automatically after completion."
+      },
+      "errors": {
+        "start": "We couldn't start the verification. Please try again."
+      }
+    },
+
     "accountSheet": {
       "title": "Add account",
       "close": "Close",

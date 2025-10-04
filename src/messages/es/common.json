@@ -4,6 +4,50 @@
     "brand": { "name": "Subm8" },
     "time": { "now": "ahora", "m": "{count}m", "h": "{count}h", "d": "{count}d" },
     "actions": {"cancel": "Cancelar"},
+
+
+    "verify": {
+      "complete": {
+        "title": "Finalizando la verificación…",
+        "subtitle": "Estamos esperando la confirmación del proveedor.",
+        "status": {
+          "waiting": "Estado: pendiente",
+          "stillWaiting": "Estado: sigue pendiente"
+        },
+        "elapsed": "{seconds, plural, =0 {0 s} one {# s} other {# s}}",
+        "redirect": "Te redirigiremos automáticamente en cuanto se confirme la verificación.",
+        "actions": {
+          "backNow": "Continuar ahora",
+          "refresh": "Actualizar"
+        },
+        "help": {
+          "title": "¿Problemas? Prueba esto:",
+          "items": {
+            "0": "Mantén esta página abierta: se actualiza sola.",
+            "1": "Cierra la pestaña de verificación solo después de ver la confirmación.",
+            "2": "Si tarda, pulsa «Actualizar» o «Continuar ahora».",
+            "3": "Si nada funciona, contacta con soporte y adjunta una captura de la confirmación."
+          }
+        }
+      },
+      "modal": {
+        "title": "Se requiere verificación de edad",
+        "message": "Verifica tu edad una sola vez para usar esta función.",
+        "confirm": "Verificar ahora",
+        "cancel": "Cancelar"
+      },
+      "overlay": {
+        "heading": "Contenido con restricción de edad",
+        "body": "Verifica tu edad para ver contenido, crear publicaciones o enviar mensajes.",
+        "cta": "Verificar edad",
+        "note": "Te redirigiremos automáticamente cuando termines."
+      },
+      "errors": {
+        "start": "No se pudo iniciar la verificación. Inténtalo de nuevo."
+      }
+    },
+
+
     "accountSheet": {
       "title": "Añadir cuenta",
       "close": "Cerrar",

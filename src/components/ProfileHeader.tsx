@@ -14,6 +14,9 @@ import { reportUserAction } from '@/app/actions/reports';
 import OfferViewerModal from '@/components/OfferViewerModal';
 import TipModal from '@/components/TipModal';
 import AutoDrainEnableModal from '@/components/AutoDrainEnableModal';
+import { useSession } from 'next-auth/react';
+import { toast } from '@/lib/toast';
+
 
 const AVATAR_PH = '/images/avatar-placeholder.png';
 const BANNER_PH = '/images/banner-placeholder.png';
@@ -99,10 +102,48 @@ export default function ProfileHeader({
 }: Props) {
   const locale = useLocale();
   const router = useRouter();
+  const { data: session } = useSession();
+  const ageOk = !!session?.user?.ageVerified;
+
+  const [verifyOpen, setVerifyOpen] = React.useState(false);
+
+  const startAgeVerification = React.useCallback(async () => {
+    try {
+      // Nach der Verifikation wieder zurück zum aktuellen Profil
+      const back = `/${locale}/u/${profile.username}`;
+
+      // Falls nicht eingeloggt -> Login mit Callback
+      if (!session) {
+        router.push(`/${locale}/signin?callbackUrl=${encodeURIComponent(back)}`);
+        return;
+      }
+
+      const res = await fetch(
+        `/api/veriff/start?back=${encodeURIComponent(back)}&locale=${locale}`,
+        { method: 'POST' }
+      );
+      const j = await res.json().catch(() => null);
+      if (!res.ok || !j?.url) throw new Error(j?.details || j?.error || `HTTP ${res.status}`);
+
+      router.push(j.url as string);
+    } catch{
+      toast.error('Die Verifikation konnte nicht gestartet werden.', 'Fehler');
+    }
+  }, [locale, profile.username, router, session]);
+
+  const onMessageClick = React.useCallback(() => {
+    if (ageOk) {
+      router.push(`/${locale}/chat/new?to=${profile.username}`);
+    } else {
+      setVerifyOpen(true);
+    }
+  }, [ageOk, router, locale, profile.username]);
+
 
   // 🔤 Translations
   const tPost = useTranslations('common.post');      // für share-Overlay (vorhandene Keys)
   const tProf = useTranslations('common.profile');   // neue Keys für ProfileHeader
+  const tVerify = useTranslations('common.verify');
 
   const AVATAR_BIG   = 'clamp(88px, 18vw, 136px)';
   const AVATAR_SMALL = '40px';
@@ -308,6 +349,71 @@ export default function ProfileHeader({
 
     return createPortal(panel, document.body);
   }
+
+  // --- Verify Prompt (Message-Gate) ---
+  function VerifyPrompt({
+    open,
+    onClose,
+    onStart,
+    title = 'Altersnachweis erforderlich',
+    message = 'Verifiziere einmalig dein Alter, um Direktnachrichten zu senden.',
+    confirmLabel = 'Jetzt verifizieren',
+    cancelLabel = 'Abbrechen',
+  }: {
+    open: boolean;
+    onClose: () => void;
+    onStart: () => void | Promise<void>;
+    title?: string;
+    message?: string;
+    confirmLabel?: string;
+    cancelLabel?: string;
+  }) {
+    React.useEffect(() => {
+      if (!open) return;
+      const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+      window.addEventListener('keydown', onKey);
+      return () => window.removeEventListener('keydown', onKey);
+    }, [open, onClose]);
+
+    if (!open) return null;
+
+    return createPortal(
+      <div
+        className="fixed inset-0 z-[2147483604] flex items-center justify-center"
+        role="dialog"
+        aria-modal="true"
+        data-no-nav
+        onClick={onClose}
+      >
+        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+        <div
+          className="relative w-[min(520px,92vw)] rounded-2xl border border-white/12 bg-[#0b0b0d] p-4 shadow-2xl"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <h2 className="text-[18px] font-semibold">{title}</h2>
+          <p className="mt-2 text-white/80">{message}</p>
+          <div className="mt-4 flex items-center justify-end gap-2">
+            <button
+              type="button"
+              className="px-3 py-2 rounded-lg border border-white/15 hover:bg-white/10"
+              onClick={onClose}
+            >
+              {cancelLabel}
+            </button>
+            <button
+              type="button"
+              className="px-4 py-2 rounded-lg bg-[var(--purple)] hover:opacity-95 text-white"
+              onClick={() => void onStart()}
+            >
+              {confirmLabel}
+            </button>
+          </div>
+        </div>
+      </div>,
+      document.body
+    );
+  }
+
 
   // ---------- DM-Overlay ----------
   function DMShareOverlay({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -625,16 +731,17 @@ export default function ProfileHeader({
               <div className="text-[12px] text-white/60 truncate">@{profile.username}</div>
             </div>
             {!isOwner && !blockedEither && (
-              <Link
-                href={`/${locale}/chat/new?to=${profile.username}`}
-                prefetch={false}
+              <button
+                type="button"
+                onClick={onMessageClick}
                 aria-label={tProf('message')}
                 title={tProf('message')}
                 className="inline-grid place-items-center rounded-full border border-white/20 hover:bg-white/5 h-8 w-8"
               >
                 <MessageIcon className="w-[16px] h-[16px]" />
-              </Link>
+              </button>
             )}
+
             <MoreMenu />
           </div>
 
@@ -791,16 +898,16 @@ export default function ProfileHeader({
                 )}
 
                 {!blockedEither ? (
-                  <Link
-                    href={`/${locale}/chat/new?to=${profile.username}`}
-                    prefetch={false}
+                  <button
+                    type="button"
+                    onClick={onMessageClick}
                     aria-label={tProf('message')}
                     title={tProf('message')}
                     className="inline-grid place-items-center rounded-full border border-white/20 hover:bg-white/5 h-9 w-9"
                   >
                     <MessageIcon className="w-[18px] h-[18px]" />
                     <span className="sr-only">{tProf('message')}</span>
-                  </Link>
+                  </button>
                 ) : (
                   <span
                     aria-hidden
@@ -928,6 +1035,16 @@ export default function ProfileHeader({
           router.push(`/${locale}/chat/new?to=${profile.username}&text=${encodeURIComponent(envelope)}`);
         }}
       />
+      <VerifyPrompt
+        open={verifyOpen}
+        onClose={() => setVerifyOpen(false)}
+        onStart={startAgeVerification}
+        title={tVerify('modal.title')}
+        message={tVerify('modal.message')}
+        confirmLabel={tVerify('modal.confirm')}
+        cancelLabel={tVerify('modal.cancel')}
+      />
+
     </section>
   );
 }

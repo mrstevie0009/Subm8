@@ -91,6 +91,11 @@ model User {
   WebAuthnCredential WebAuthnCredential[]
 
   smsChallenges SmsChallenge[]
+
+  ageVerified   Boolean @default(false)
+  dob           DateTime?
+  veriffId      String?   // letzte Veriff-Verification-ID
+  verifiedAt    DateTime?
 }
 
 model SmsChallenge {

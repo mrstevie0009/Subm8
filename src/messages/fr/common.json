@@ -3,6 +3,50 @@
     "nav": { "home": "Accueil", "search": "Recherche", "communities": "Communautés", "chat": "Chat" },
     "brand": { "name": "Subm8" },
     "time": { "now": "maintenant", "m": "{count}m", "h": "{count}h", "d": "{count}j" },
+
+
+    "verify": {
+      "complete": {
+        "title": "Finalisation de la vérification…",
+        "subtitle": "Nous attendons la confirmation de notre prestataire.",
+        "status": {
+          "waiting": "Statut : en attente",
+          "stillWaiting": "Statut : toujours en attente"
+        },
+        "elapsed": "{seconds, plural, =0 {0 s} one {# s} other {# s}}",
+        "redirect": "Vous serez redirigé·e automatiquement dès que la vérification est confirmée.",
+        "actions": {
+          "backNow": "Continuer maintenant",
+          "refresh": "Actualiser"
+        },
+        "help": {
+          "title": "Un souci ? Essayez ceci :",
+          "items": {
+            "0": "Laissez cette page ouverte — elle se met à jour automatiquement.",
+            "1": "Ne fermez l’onglet de vérification qu’après avoir vu la confirmation.",
+            "2": "Si cela prend du temps, cliquez sur « Actualiser » ou « Continuer maintenant ».",
+            "3": "Sinon, contactez l’assistance en joignant une capture de la confirmation."
+          }
+        }
+      },
+      "modal": {
+        "title": "Vérification d’âge requise",
+        "message": "Vérifiez votre âge une seule fois pour utiliser cette fonctionnalité.",
+        "confirm": "Vérifier maintenant",
+        "cancel": "Annuler"
+      },
+      "overlay": {
+        "heading": "Média réservé aux adultes",
+        "body": "Vérifiez votre âge pour voir le contenu, créer des posts ou envoyer des messages.",
+        "cta": "Vérifier l’âge",
+        "note": "Vous serez automatiquement redirigé une fois terminé."
+      },
+      "errors": {
+        "start": "Impossible de lancer la vérification. Veuillez réessayer."
+      }
+    },
+
+
     "actions": {"cancel": "Annuler"},
     "accountSheet": {
       "title": "Ajouter un compte",

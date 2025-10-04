@@ -49,15 +49,30 @@ export default function Header({ locale }: { locale: string }) {
     router.push(href, { scroll: false });
   };
 
-  const openCompose = () => {
+  const openCompose = async () => {
     if (!session) {
       const backTo = withQuery(pathname, searchParams, {});
       router.push(`/${locale}/signin?callbackUrl=${encodeURIComponent(backTo)}`);
       return;
     }
+
+    if (!session.user?.ageVerified) {
+      // wohin zurückkehren, wenn Verifikation durch ist:
+      const backToAfterVerify = withQuery(pathname, searchParams, { compose: '1' });
+
+      const res = await fetch(`/api/veriff/start?back=${encodeURIComponent(backToAfterVerify)}&locale=${locale}`, {
+        method: 'POST'
+      });
+      const { url } = await res.json();     // Veriff-URL
+      router.push(url);                      // Hosted-Flow öffnen
+      return;
+    }
+
+    // wie bisher
     const href = withQuery(pathname, searchParams, { compose: '1' });
     router.push(href, { scroll: false });
   };
+
 
   if (hideHeader) return null;
 

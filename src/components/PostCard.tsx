@@ -5,7 +5,7 @@ import * as React from 'react';
 import { createPortal } from 'react-dom';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import ProfileLink from '@/components/ProfileLink';
 import BookmarkButton from '@/components/BookmarkButton';
@@ -856,6 +856,62 @@ function usePulseFlag(ms = 650) {
   return [flag, fire] as const;
 }
 
+// --- Blur-Overlay für nicht verifizierte Nutzer ---
+function BlurredMediaGate({
+  items,
+  onStartVeriff,
+}: {
+  items: ContentMedia[];
+  locale: string;
+  onStartVeriff: () => void | Promise<void>;
+}) {
+  const tVerify = useTranslations('common.verify');
+  // Wir zeigen ein erstes Nicht-Video-Bild als Blur; Fallback ist ein Platzhalter
+  const firstImg = items.find((m) => m.kind !== 'video');
+
+  return (
+    <div className="relative mt-3 rounded-xl border border-white/10 overflow-hidden" data-no-nav>
+      <div className="bg-black/20">
+        {firstImg ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={firstImg.url}
+            alt={firstImg.alt ?? ''}
+            className="block w-full h-auto max-h-[65vh] sm:max-h-[70vh] object-cover"
+            style={{ filter: 'blur(22px) saturate(.6) brightness(.7)' }}
+            aria-hidden
+          />
+        ) : (
+          <div className="w-full h-64 sm:h-80" style={{ filter: 'blur(12px)' }} />
+        )}
+      </div>
+
+      {/* Overlay */}
+      <div className="absolute inset-0 grid place-items-center pointer-events-none">
+        <div className="pointer-events-auto text-center px-4">
+          <div className="inline-flex flex-col items-center gap-3 rounded-2xl border border-white/15 bg-black/70 backdrop-blur-md px-5 py-4">
+            <div className="text-base font-semibold">Altersnachweis erforderlich</div>
+            <div className="text-sm text-white/80 max-w-[38ch]">
+              {tVerify('overlay.body')}
+            </div>
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); void onStartVeriff(); }}
+              className="mt-1 inline-flex items-center gap-2 rounded-lg bg-[var(--purple)] px-4 py-2 text-white hover:opacity-95"
+            >
+              {tVerify('overlay.cta')}
+            </button>
+            <div className="text-[11px] text-white/60">
+              {tVerify('overlay.note')}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
 // ⬆️ direkt nach den Imports oder irgendwo oberhalb von PostCard:
 function ConfirmDialog({
   open,
@@ -930,6 +986,9 @@ export default function PostCard({
   const router = useRouter();
   const params = useParams() as { locale: string; handle?: string };
   const { locale, handle } = params;
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
 
   const [lightboxOpen, setLightboxOpen] = React.useState(false);
   const [lightboxIndex, setLightboxIndex] = React.useState(0);
@@ -1039,6 +1098,32 @@ export default function PostCard({
   const [copied, setCopied] = React.useState(false);
 
   const { data: session } = useSession();
+  const ageOk = !!session?.user?.ageVerified;
+
+  const startAgeVerification = React.useCallback(async () => {
+    try {
+      const back =
+        `${pathname}${searchParams && searchParams.toString() ? `?${searchParams.toString()}` : ''}`;
+
+      // Falls (aus irgendeinem Grund) keine Session vorhanden ist, leitest du zum Login
+      if (!session) {
+        router.push(`/${locale}/signin?callbackUrl=${encodeURIComponent(back)}`);
+        return;
+      }
+
+      const res = await fetch(
+        `/api/veriff/start?back=${encodeURIComponent(back)}&locale=${locale}`,
+        { method: 'POST' }
+      );
+      const j = await res.json().catch(() => null);
+      if (!res.ok || !j?.url) throw new Error(j?.details || j?.error || `HTTP ${res.status}`);
+
+      router.push(j.url as string);
+    } catch {
+      toast.error('Die Verifikation konnte nicht gestartet werden.', 'Fehler');
+    }
+  }, [locale, pathname, searchParams, router, session]);
+
 
   const isMine = React.useMemo(() => {
     // Falls dein API-Flag vorhanden ist, nimm das
@@ -1820,14 +1905,27 @@ React.useEffect(() => {
           </div>
 
           {/* Medien */}
-          {mediaItems.length === 1 && <SingleMedia m={mediaItems[0]} priority onOpen={openLightbox} index={0} />}
-          {mediaItems.length > 1 && (
+          {mediaItems.length > 0 && !ageOk ? (
+            <BlurredMediaGate
+              items={mediaItems}
+              locale={locale}
+              onStartVeriff={startAgeVerification}
+            />
+          ) : (
             <>
-              <MediaMosaic items={mediaItems} onOpen={openLightbox} />
-              <MediaMosaicOverflow items={mediaItems} onOpen={openLightbox} />
-              <MediaCarousel items={mediaItems} onOpen={openLightbox} />
+              {mediaItems.length === 1 && (
+                <SingleMedia m={mediaItems[0]} priority onOpen={openLightbox} index={0} />
+              )}
+              {mediaItems.length > 1 && (
+                <>
+                  <MediaMosaic items={mediaItems} onOpen={openLightbox} />
+                  <MediaMosaicOverflow items={mediaItems} onOpen={openLightbox} />
+                  <MediaCarousel items={mediaItems} onOpen={openLightbox} />
+                </>
+              )}
             </>
           )}
+
 
           <QuoteBox />
 

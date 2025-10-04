@@ -1,4 +1,4 @@
-// src/lib/auth.ts
+//src/lib/auth.ts
 import type { NextAuthOptions, User as NextAuthUser } from 'next-auth';
 import { PrismaAdapter } from '@next-auth/prisma-adapter';
 import GoogleProvider from 'next-auth/providers/google';
@@ -27,6 +27,8 @@ declare module 'next-auth' {
     email?: string | null;
     image?: string | null;
     id: string;
+    /** ⇨ hinzugefügt: Altersstatus in der DB */
+    ageVerified?: boolean | null;
   }
   interface Session {
     user: {
@@ -36,6 +38,8 @@ declare module 'next-auth' {
       name?: string | null;
       email?: string | null;
       image?: string | null;
+      /** ⇨ hinzugefügt: Altersstatus in der Session */
+      ageVerified?: boolean | null;
     };
   }
 }
@@ -48,6 +52,8 @@ declare module 'next-auth/jwt' {
     name?: string | null;
     email?: string | null;
     picture?: string | null;
+    /** ⇨ hinzugefügt: Altersstatus im Token */
+    ageVerified?: boolean | null;
   }
 }
 
@@ -171,6 +177,7 @@ export const authOptions: NextAuthOptions = {
             handle: true,
             role: true,
             isDeactivated: true,
+            /** ⇨ holen wir hier noch nicht, da beim Login nicht nötig */
           },
         });
 
@@ -218,6 +225,8 @@ export const authOptions: NextAuthOptions = {
             displayName: true,
             avatarUrl: true,
             email: true,
+            /** ⇨ neu: Altersstatus aus DB */
+            ageVerified: true,
           },
         });
         if (dbUser) {
@@ -226,10 +235,11 @@ export const authOptions: NextAuthOptions = {
           token.name = dbUser.displayName ?? null;
           token.picture = dbUser.avatarUrl ?? null;
           token.email = dbUser.email ?? null;
+          token.ageVerified = dbUser.ageVerified ?? false;
         }
       }
 
-      if (token.uid && (!token.handle || !token.role)) {
+      if (token.uid && (!token.handle || !token.role || typeof token.ageVerified === 'undefined')) {
         const dbUser = await prisma.user.findUnique({
           where: { id: token.uid },
           select: {
@@ -238,6 +248,8 @@ export const authOptions: NextAuthOptions = {
             displayName: true,
             avatarUrl: true,
             email: true,
+            /** ⇨ neu: Altersstatus aus DB */
+            ageVerified: true,
           },
         });
         if (dbUser) {
@@ -246,6 +258,7 @@ export const authOptions: NextAuthOptions = {
           token.name = dbUser.displayName ?? token.name ?? null;
           token.picture = dbUser.avatarUrl ?? token.picture ?? null;
           token.email = dbUser.email ?? token.email ?? null;
+          token.ageVerified = dbUser.ageVerified ?? token.ageVerified ?? false;
         }
       }
 
@@ -262,6 +275,11 @@ export const authOptions: NextAuthOptions = {
       if (typeof token.name !== 'undefined') session.user.name = token.name;
       if (typeof token.picture !== 'undefined') session.user.image = token.picture;
       if (typeof token.email !== 'undefined') session.user.email = token.email;
+
+      /** ⇨ neu: Altersstatus in die Session mappen */
+      if (typeof token.ageVerified !== 'undefined') {
+        session.user.ageVerified = token.ageVerified ?? false;
+      }
 
       return session;
     },

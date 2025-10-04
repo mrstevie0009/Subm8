@@ -3,6 +3,48 @@
     "nav": { "home": "Start", "search": "Suche", "communities": "Communities", "chat": "Chat" },
     "brand": { "name": "Subm8" },
     "time": { "now": "jetzt", "m": "{count}m", "h": "{count}h", "d": "{count}d" },
+
+    "verify": {
+      "complete": {
+        "title": "Verifikation wird abgeschlossen…",
+        "subtitle": "Wir warten auf die Bestätigung unseres Anbieters.",
+        "status": {
+          "waiting": "Status: ausstehend",
+          "stillWaiting": "Status: noch ausstehend"
+        },
+        "elapsed": "{seconds, plural, =0 {0 Sek.} one {# Sek.} other {# Sek.}}",
+        "redirect": "Du wirst automatisch weitergeleitet, sobald die Verifizierung bestätigt ist.",
+        "actions": {
+          "backNow": "Jetzt weiter",
+          "refresh": "Aktualisieren"
+        },
+        "help": {
+          "title": "Probleme? So klappt’s:",
+          "items": {
+            "0": "Lass diese Seite geöffnet – der Status aktualisiert sich automatisch.",
+            "1": "Schließe den Verifizierungs-Tab erst, wenn du die Bestätigung gesehen hast.",
+            "2": "Wenn es länger dauert, klicke auf „Aktualisieren“ oder „Jetzt weiter“.",
+            "3": "Notfalls melde dich beim Support mit einem Screenshot der Bestätigung."
+          }
+        }
+      },
+      "modal": {
+        "title": "Altersnachweis erforderlich",
+        "message": "Verifiziere einmalig dein Alter, um diese Funktion zu nutzen.",
+        "confirm": "Jetzt verifizieren",
+        "cancel": "Abbrechen"
+      },
+      "overlay": {
+        "heading": "Altersbeschränktes Medium",
+        "body": "Verifiziere dein Alter, um Medieninhalte zu sehen, Posts zu erstellen oder Nachrichten zu senden.",
+        "cta": "Alter verifizieren",
+        "note": "Du wirst nach Abschluss automatisch zurückgeleitet."
+      },
+      "errors": {
+        "start": "Die Verifizierung konnte nicht gestartet werden. Bitte versuche es erneut."
+      }
+    },
+
     "actions": {"cancel": "Abbrechen"},
       "twofa": {
         "title": "Zwei-Faktor-Authentifizierung",
