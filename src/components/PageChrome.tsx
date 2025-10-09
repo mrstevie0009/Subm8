@@ -25,9 +25,14 @@ export default function PageChrome({
 
   const chatBase = `/${locale}/chat`;
   const inChatThread = pathname.startsWith(`${chatBase}/`);
+  const isAuthPage =
+   pathname === `/${locale}/signin` ||
+   pathname.startsWith(`/${locale}/signin`) ||
+   pathname === `/${locale}/signup` ||
+   pathname.startsWith(`/${locale}/signup`);
 
   // Header in Threads aus, in Chat-Übersicht an
-  const hideHeader = inBookmarks || inChatThread;
+  const hideHeader = inBookmarks || inChatThread || isAuthPage;
   const hideBottomNav = inChatThread;
 
   const contentTopPad = hideHeader ? '12px' : 'calc(clamp(24px, 2.8vw, 50px) + 20px)';

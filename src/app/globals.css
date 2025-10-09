@@ -14,9 +14,29 @@ color-scheme: dark;
 --shadow: 0 8px 30px rgba(0,0,0,.35);
 }
 
+*, *::before, *::after { box-sizing: border-box; }
 
-html, body { background: var(--bg); color: var(--fg); font-size: var(--fs-base); line-height: 1.6; }
+html, body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;                     /* <- wichtig gegen Side-Scroll */
+  background: var(--bg);
+  color: var(--fg);
+  font-size: var(--fs-base);
+  line-height: 1.6;
+  -webkit-text-size-adjust: 100%;
+}
 
+img, video, canvas, svg {
+  max-width: 100%;
+  height: auto;
+  display: block;                         /* verhindert „inline“-Überlauf-Gaps */
+}
+
+.break-anywhere {                         /* optionales Utility */
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
 
 /* Utility-Aliase */
 .bg-card{background:var(--card)}
@@ -57,3 +77,37 @@ html, body { background: var(--bg); color: var(--fg); font-size: var(--fs-base);
   /* effektive Höhe inkl. Safe-Area unten */
   --bottomnav-h: calc(var(--icon-size) + var(--bottomnav-pad-y) + env(safe-area-inset-bottom));
 }
+
+/* ===== iOS Safe-Area Utilities (unteres Ende von globals.css einfügen) ===== */
+
+/* Variable für die untere Safe-Area */
+:root {
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Fallback für ältere iOS-Versionen (uses `constant()`) */
+@supports (padding-bottom: constant(safe-area-inset-bottom)) {
+  :root { --safe-bottom: constant(safe-area-inset-bottom); }
+}
+
+/* Utility: extra Platz unten (z.B. unter fixen Footern/Composer) */
+.pb-safe {
+  padding-bottom: calc(var(--safe-bottom) + 12px); /* 12px = dein Extra-Spacing */
+}
+
+/* Utility: fixierter Composer, der über der Tastatur sitzen soll */
+.fixed-safe {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  padding: 8px 12px calc(var(--safe-bottom) + 12px);
+  background: rgba(0,0,0,.9);
+  backdrop-filter: blur(8px);
+  border-top: 1px solid var(--border);
+  z-index: 50; /* ggf. anpassen, damit er über Content liegt */
+}
+
+/* Optional: volle Höhe mit dynamischem Viewport (hilft bei Mobile/Keyboard) */
+.min-h-dvh {
+  min-height: 100dvh;
+}
+

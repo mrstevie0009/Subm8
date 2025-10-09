@@ -76,6 +76,7 @@ export type FeedPost = {
     hasBlockedAuthor?: boolean;
     blockedByAuthor?: boolean;
     isAuthor?: boolean;
+    commented?: boolean; // ⬅️ optional vom Server hydrieren
   };
   initiallyBookmarked?: boolean;
   community?: { name: string; slug: string } | null;
@@ -248,7 +249,7 @@ function SingleMedia({
     const stop = (e: React.SyntheticEvent) => { e.stopPropagation(); };
     return (
       <figure
-        className="mt-3 overflow-hidden rounded-xl border border-white/10 bg-black/20"
+        className="mt-2 sm:mt-3 overflow-hidden rounded-xl border border-white/10 bg-black/20"
         data-no-nav
         onClick={stop}
         onDoubleClick={stop}
@@ -259,7 +260,7 @@ function SingleMedia({
           }
         }}
       >
-        <VideoPlayer src={m.url} className="w-full h-auto max-h-[65vh] sm:max-h-[70vh]" />
+        <VideoPlayer src={m.url} className="w-full h-auto max-h-[58vh] sm:max-h-[70vh]" />
       </figure>
     );
   }
@@ -271,13 +272,13 @@ function SingleMedia({
       alt={alt}
       loading={priority ? 'eager' : 'lazy'}
       decoding="async"
-      className="block mx-auto h-auto w-auto max-w-full max-h-[65vh] sm:max-h-[70vh] object-contain"
+      className="block mx-auto h-auto w-full max-w-full max-h-[58vh] sm:max-h-[70vh] object-contain"
     />
   );
 
   return (
     <figure
-      className="mt-3 overflow-hidden rounded-xl border border-white/10 bg-black/20"
+      className="mt-2 sm:mt-3 overflow-hidden rounded-xl border border-white/10 bg-black/20"
       role={onOpen ? 'button' : undefined}
       tabIndex={onOpen ? 0 : -1}
       data-no-nav
@@ -289,6 +290,26 @@ function SingleMedia({
       {ImgTag}
     </figure>
   );
+}
+
+function useBodyLock(lock: boolean) {
+  React.useEffect(() => {
+    if (!lock) return;
+    const y = window.scrollY;
+    const sbw = window.innerWidth - document.documentElement.clientWidth;
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${y}px`;
+    document.body.style.left = '0';
+    document.body.style.right = '0';
+    document.body.style.width = '100%';
+    document.body.style.overflow = 'hidden';
+    if (sbw > 0) document.body.style.paddingRight = `${sbw}px`;
+    return () => {
+      const top = document.body.style.top;
+      document.body.removeAttribute('style');
+      window.scrollTo(0, top ? -parseInt(top, 10) : 0);
+    };
+  }, [lock]);
 }
 
 /** Mosaik-Layout für reine Bilder (≤4) */
@@ -319,7 +340,7 @@ function MediaMosaic({
 
   if (items.length === 2) {
     return (
-      <div className="mt-3 grid grid-cols-2 gap-1 rounded-xl overflow-hidden border border-white/10 h-80">
+      <div className="mt-2 sm:mt-3 w-full grid grid-cols-2 gap-1 rounded-xl overflow-hidden border border-white/10 h-[48vh] sm:h-80">
         {items.map((m, i) => cell(m, i))}
       </div>
     );
@@ -328,12 +349,12 @@ function MediaMosaic({
   if (items.length === 3) {
     const [a, b, c] = items;
     return (
-      <div className="mt-3 grid grid-cols-2 gap-1 rounded-xl overflow-hidden border border-white/10">
-        <div className="relative col-span-1 row-span-2 bg-black/20 max-h-[70vh]">
+      <div className="mt-2 sm:mt-3 grid grid-cols-2 gap-1 rounded-xl overflow-hidden border border-white/10">
+        <div className="relative col-span-1 row-span-2 bg-black/20 max-h-[56vh] sm:max-h-[70vh]">
           {cell(a, 0)}
         </div>
-        <div className="relative h-40">{cell(b, 1)}</div>
-        <div className="relative h-40">{cell(c, 2)}</div>
+        <div className="relative h-36 sm:h-40">{cell(b, 1)}</div>
+        <div className="relative h-36 sm:h-40">{cell(c, 2)}</div>
       </div>
     );
   }
@@ -342,7 +363,7 @@ function MediaMosaic({
   return (
     <div className="mt-3 grid grid-cols-2 gap-1 rounded-xl overflow-hidden border border-white/10">
       {items.map((m, i) => (
-        <div key={m.url} className="relative bg-black/20 h-56">
+        <div key={m.url} className="relative bg-black/20 h-44 sm:h-56">
           {cell(m, i)}
         </div>
       ))}
@@ -372,7 +393,7 @@ function MediaMosaicOverflow({
           <button
             key={m.url}
             type="button"
-            className="relative bg-black/20 w-full h-56"
+            className="relative bg-black/20 w-full h-44 sm:h-56"
             onClick={(e) => { e.stopPropagation(); onOpen?.(origIdx); }}
             data-no-nav
           >
@@ -402,19 +423,23 @@ function MediaCarousel({
   if (!hasVideo) return null;
 
   return (
-    <figure className="mt-3 overflow-hidden rounded-xl border border-white/10 bg-black/20" data-no-nav>
+    <figure className="mt-2 sm:mt-3 overflow-hidden rounded-xl border border-white/10 bg-black/20" data-no-nav>
       <div className="relative">
-        <div className="flex overflow-x-auto snap-x snap-mandatory scroll-px-4 gap-1 p-1" style={{ scrollBehavior: 'smooth' }}>
+        <div
+          className="flex overflow-x-auto snap-x snap-mandatory gap-0 p-0"
+          style={{ scrollBehavior: 'smooth' }}
+        >
           {items.map((m, idx) => (
-            <div key={m.url} className="relative shrink-0 w-full snap-center">
+            <div key={m.url} className="relative shrink-0 basis-full snap-center px-2">
+
               {m.kind === 'video' ? (
-                <VideoPlayer src={m.url} className="w-full h-auto max-h-[65vh] sm:max-h-[70vh]" />
+                <VideoPlayer src={m.url} className="w-full h-auto max-h-[58vh] sm:max-h-[70vh]" />
               ) : (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={m.url}
                   alt={m.alt ?? ''}
-                  className="block w-full h-auto object-contain max-h-[65vh] sm:max-h-[70vh] cursor-zoom-in"
+                  className="block w-full h-auto object-contain max-h-[58vh] sm:max-h-[70vh] cursor-zoom-in"
                   onClick={(e) => { e.stopPropagation(); onOpen?.(idx); }}
                 />
               )}
@@ -589,6 +614,68 @@ function MediaLightbox({
     document.body
   );
 }
+
+type AnyHTMLElementRef =
+  | React.RefObject<HTMLElement | null>
+  | React.MutableRefObject<HTMLElement | null>;
+
+function Popover({
+  anchorRef, open, onClose, children, offset = 8
+}: { anchorRef: AnyHTMLElementRef; open: boolean; onClose: () => void; children: React.ReactNode; offset?: number }) {
+  const [pos, setPos] = React.useState<{top:number; left:number} | null>(null);
+
+  React.useLayoutEffect(() => {
+    const el = anchorRef.current;
+    if (!open || !el) return;
+    const rect = el.getBoundingClientRect();
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const width = 160;   // ≈ w-40
+    const height = 88;   // grob, wird unten nochmal korrigiert
+
+    // Standard: unterhalb linksbündig
+    let top = rect.bottom + offset;
+    const left = Math.min(vw - width - 8, Math.max(8, rect.left));
+
+    // Flip nach oben, wenn unten kein Platz
+    if (top + height > vh) top = Math.max(8, rect.top - height - offset);
+
+    setPos({ top, left });
+  }, [open, anchorRef, offset]);
+
+  React.useEffect(() => {
+    if (!open) return;
+    const onKeys = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    const onScroll = () => onClose();
+    window.addEventListener('keydown', onKeys);
+    window.addEventListener('scroll', onScroll, true);
+    window.addEventListener('resize', onScroll);
+    return () => {
+      window.removeEventListener('keydown', onKeys);
+      window.removeEventListener('scroll', onScroll, true);
+      window.removeEventListener('resize', onScroll);
+    };
+  }, [open, onClose]);
+
+  if (!open || !anchorRef.current || !pos) return null;
+  return createPortal(
+    <>
+      {/* Click-away */}
+      <div
+        className="fixed inset-0 z-[2147483601]"
+        onPointerDown={onClose}
+      />
+      <div
+        className="fixed z-[2147483602] w-40 rounded-lg border border-white/10 bg-black/80 backdrop-blur p-1 shadow-lg"
+        style={{ top: pos.top, left: pos.left }}
+        onPointerDown={(e) => e.stopPropagation()}
+      >
+        {children}
+      </div>
+    </>,
+    document.body
+  );
+}
+  
 
 /* ------------------- DM Share Overlay (vollständig) ------------------- */
 function DMShareOverlay({
@@ -862,46 +949,59 @@ function BlurredMediaGate({
   onStartVeriff,
 }: {
   items: ContentMedia[];
-  locale: string;
   onStartVeriff: () => void | Promise<void>;
+  locale?: string;
 }) {
   const tVerify = useTranslations('common.verify');
-  // Wir zeigen ein erstes Nicht-Video-Bild als Blur; Fallback ist ein Platzhalter
   const firstImg = items.find((m) => m.kind !== 'video');
 
   return (
-    <div className="relative mt-3 rounded-xl border border-white/10 overflow-hidden" data-no-nav>
-      <div className="bg-black/20">
+    <div
+      className="relative mt-2 sm:mt-3 rounded-xl border border-white/10 overflow-hidden"
+      data-no-nav
+      style={{ minHeight: 'clamp(280px, 62svh, 480px)' }}
+    >
+      {/* Backdrop (NO negative z-index) */}
+      <div className="absolute inset-0 z-0 pointer-events-none">
         {firstImg ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={firstImg.url}
             alt={firstImg.alt ?? ''}
-            className="block w-full h-auto max-h-[65vh] sm:max-h-[70vh] object-cover"
-            style={{ filter: 'blur(22px) saturate(.6) brightness(.7)' }}
+            className="w-full h-full object-cover"
+            // scale up to avoid blur clipping at edges
+            style={{ filter: 'blur(22px) saturate(.6) brightness(.7)', transform: 'scale(1.06)' }}
             aria-hidden
           />
         ) : (
-          <div className="w-full h-64 sm:h-80" style={{ filter: 'blur(12px)' }} />
+          <div
+            className="w-full h-full"
+            style={{ filter: 'blur(12px)', background: 'rgba(0,0,0,.2)' }}
+          />
         )}
       </div>
 
-      {/* Overlay */}
-      <div className="absolute inset-0 grid place-items-center pointer-events-none">
-        <div className="pointer-events-auto text-center px-4">
-          <div className="inline-flex flex-col items-center gap-3 rounded-2xl border border-white/15 bg-black/70 backdrop-blur-md px-5 py-4">
-            <div className="text-base font-semibold">Altersnachweis erforderlich</div>
-            <div className="text-sm text-white/80 max-w-[38ch]">
+      {/* Foreground content */}
+      <div className="absolute inset-0 z-10 overflow-y-auto overflow-x-hidden">
+        <div className="min-h-full grid place-items-center p-4">
+          <div className="pointer-events-auto text-center px-5 py-4 rounded-2xl border border-white/15 bg-black/70 backdrop-blur-md w-full max-w-[520px] break-words">
+            <div className="text-base font-semibold hyphens-auto">
+              {tVerify('overlay.heading')}
+            </div>
+
+            <div className="mt-2 text-sm text-white/80 mx-auto hyphens-auto" style={{ maxWidth: '38ch' }}>
               {tVerify('overlay.body')}
             </div>
+
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); void onStartVeriff(); }}
-              className="mt-1 inline-flex items-center gap-2 rounded-lg bg-[var(--purple)] px-4 py-2 text-white hover:opacity-95"
+              className="mt-3 inline-flex items-center gap-2 rounded-lg bg-[var(--purple)] px-4 py-2 text-white hover:opacity-95"
             >
               {tVerify('overlay.cta')}
             </button>
-            <div className="text-[11px] text-white/60">
+
+            <div className="mt-2 text-[11px] text-white/60">
               {tVerify('overlay.note')}
             </div>
           </div>
@@ -910,6 +1010,7 @@ function BlurredMediaGate({
     </div>
   );
 }
+
 
 
 // ⬆️ direkt nach den Imports oder irgendwo oberhalb von PostCard:
@@ -1019,7 +1120,22 @@ export default function PostCard({
   const [likes, setLikes] = React.useState<number>(post.stats?.likes ?? 0);
   const [liked, setLiked] = React.useState<boolean>(!!post.viewer?.liked);
   const [comments, setComments] = React.useState<number>(post.stats?.comments ?? 0);
-  const [hasCommented, setHasCommented] = React.useState(false);
+  const [hasCommented, setHasCommented] = React.useState<boolean>(!!post.viewer?.commented);
+
+ // beim Mount lokales Flag lesen (persistiert über Navigations)
+ React.useEffect(() => {
+   try {
+     const key = `pc:commented:${c.id}`;
+     if (sessionStorage.getItem(key) === '1') setHasCommented(true);
+     // cross-tab / cross-card sync
+     const onStorage = (e: StorageEvent) => {
+       if (e.key === key && e.newValue === '1') setHasCommented(true);
+     };
+     window.addEventListener('storage', onStorage);
+     return () => window.removeEventListener('storage', onStorage);
+   } catch {}
+ }, [c.id]);
+
   const [composerOpen, setComposerOpen] = React.useState<boolean>(false);
   const [reposts, setReposts] = React.useState<number>(post.stats?.reposts ?? 0);
   const [repostMenuOpen, setRepostMenuOpen] = React.useState<boolean>(false);
@@ -1031,6 +1147,7 @@ export default function PostCard({
   const shareRef  = React.useRef<HTMLDivElement | null>(null);
   const repostRef = React.useRef<HTMLDivElement | null>(null);
   const composerRef = React.useRef<HTMLDivElement | null>(null);
+  const composerPortalRef = React.useRef<HTMLDivElement | null>(null);
 
   const closeTransientUI = React.useCallback(() => {
     setMoreOpen(false);
@@ -1161,27 +1278,33 @@ export default function PostCard({
   };
 
   React.useEffect(() => {
-    function onPointerDown(e: PointerEvent) {
-      const target = e.target as Node | null;
-      const anyOpen = moreOpen || shareMenuOpen || repostMenuOpen || composerOpen;
-      if (!anyOpen) return;
+  function onPointerDown(e: PointerEvent) {
+    const target = e.target as Element | null;
+  // Klicks auf Interaktionsflächen nie schließen lassen
+    if (target?.closest('[data-no-nav]')) return; 
 
-      // Klick innerhalb eines geöffneten Elements? -> ignorieren
-      if (
-        (moreOpen && moreRef.current?.contains(target as Node)) ||
-        (shareMenuOpen && shareRef.current?.contains(target as Node)) ||
-        (repostMenuOpen && repostRef.current?.contains(target as Node)) ||
-        (composerOpen && composerRef.current?.contains(target as Node))
-      ) return;
+    const anyOpen = moreOpen || shareMenuOpen || repostMenuOpen || composerOpen;
+    if (!anyOpen) return;
 
-      // sonst: schließen
-      closeTransientUI();
-    }
+    const inMore   = moreOpen      && !!moreRef.current?.contains(target as Node);
+    const inShare  = shareMenuOpen && !!shareRef.current?.contains(target as Node);
+    const inRepost = repostMenuOpen&& !!repostRef.current?.contains(target as Node);
+    const inInline = composerOpen  && !!composerRef.current?.contains(target as Node);
+    const inPortal = composerOpen  && !!composerPortalRef.current?.contains(target as Node);
 
-    // Capture-Phase, damit wir vor onClick-Toggles schließen
-    window.addEventListener('pointerdown', onPointerDown, true);
-    return () => window.removeEventListener('pointerdown', onPointerDown, true);
-  }, [moreOpen, shareMenuOpen, repostMenuOpen, composerOpen, closeTransientUI]);
+    // jetzt typ-sicher, weil target ein Element ist:
+    const inComposerAny = !!target?.closest('[data-composer-root]');
+
+    // ⬅️ hier wird inComposerAny **verwendet**
+    if (inMore || inShare || inRepost || inInline || inPortal || inComposerAny) return;
+
+    closeTransientUI();
+  }
+
+  window.addEventListener('pointerdown', onPointerDown);
+  return () => window.removeEventListener('pointerdown', onPointerDown);
+}, [moreOpen, shareMenuOpen, repostMenuOpen, composerOpen, closeTransientUI]);
+
 
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -1210,40 +1333,57 @@ export default function PostCard({
 
 
   // 🔁 Likes (global)
-React.useEffect(() => {
-  const onLike = (ev: Event) => {
-    const ce = ev as CustomEvent<{ contentId: string; liked: boolean; delta: number; byViewer?: boolean }>;
-    if (ce?.detail?.contentId !== c.id) return;
-    setLikes((n) => Math.max(0, n + (ce.detail.delta ?? 0)));
-    if (ce.detail.byViewer) setLiked(!!ce.detail.liked); // Tint für mich
-  };
-  window.addEventListener('post:likeToggle', onLike as EventListener);
-  return () => window.removeEventListener('post:likeToggle', onLike as EventListener);
-}, [c.id]);
+  React.useEffect(() => {
+    const onLike = (ev: Event) => {
+      const ce = ev as CustomEvent<{ contentId: string; liked: boolean; delta: number; byViewer?: boolean }>;
+      if (ce?.detail?.contentId !== c.id) return;
 
-// 💬 Comments (global)
-React.useEffect(() => {
-  const onComment = (ev: Event) => {
-    const ce = ev as CustomEvent<{ contentId: string; delta: number; byViewer?: boolean }>;
-    if (ce?.detail?.contentId !== c.id) return;
-    setComments((n) => Math.max(0, n + (ce.detail.delta ?? 0)));
-    if (ce.detail.byViewer) setHasCommented(true); // Tint für mich
-  };
-  window.addEventListener('post:commentDelta', onComment as EventListener);
-  return () => window.removeEventListener('post:commentDelta', onComment as EventListener);
-}, [c.id]);
+      if (ce.detail.byViewer) {
+        // Nur den lokalen Status setzen (Tint) – KEINE Zähleränderung
+        setLiked(!!ce.detail.liked);
+        return;
+      }
+      // Fremde Events dürfen den Zähler verändern
+      setLikes((n) => Math.max(0, n + (ce.detail.delta ?? 0)));
+    };
+    window.addEventListener('post:likeToggle', onLike as EventListener);
+    return () => window.removeEventListener('post:likeToggle', onLike as EventListener);
+  }, [c.id]);
 
-// 🔁 Reposts (global)
-React.useEffect(() => {
-  const onRepost = (ev: Event) => {
-    const ce = ev as CustomEvent<{ contentId: string; delta: number; byViewer?: boolean }>;
-    if (ce?.detail?.contentId !== c.id) return;
-    setReposts((n) => Math.max(0, n + (ce.detail.delta ?? 0)));
-    if (ce.detail.byViewer) setHasReposted(true); // Tint für mich
-  };
-  window.addEventListener('post:repostDelta', onRepost as EventListener);
-  return () => window.removeEventListener('post:repostDelta', onRepost as EventListener);
-}, [c.id]);
+  // 💬 Comments (global)
+  React.useEffect(() => {
+    const onComment = (ev: Event) => {
+      const ce = ev as CustomEvent<{ contentId: string; delta: number; byViewer?: boolean }>;
+      if (ce?.detail?.contentId !== c.id) return;
+
+      if (ce.detail.byViewer) {
+        // Nur „ich habe kommentiert“ merken – KEINE Zähleränderung
+        setHasCommented(true);
+        return;
+      }
+      setComments((n) => Math.max(0, n + (ce.detail.delta ?? 0)));
+    };
+    window.addEventListener('post:commentDelta', onComment as EventListener);
+    return () => window.removeEventListener('post:commentDelta', onComment as EventListener);
+  }, [c.id]);
+
+  // 🔁 Reposts (global)
+  React.useEffect(() => {
+    const onRepost = (ev: Event) => {
+      const ce = ev as CustomEvent<{ contentId: string; delta: number; byViewer?: boolean }>;
+      if (ce?.detail?.contentId !== c.id) return;
+
+      if (ce.detail.byViewer) {
+        // Nur Aktiv-Status setzen – KEINE Zähleränderung
+        setHasReposted(true);
+        return;
+      }
+      setReposts((n) => Math.max(0, n + (ce.detail.delta ?? 0)));
+    };
+    window.addEventListener('post:repostDelta', onRepost as EventListener);
+    return () => window.removeEventListener('post:repostDelta', onRepost as EventListener);
+  }, [c.id]);
+
 
   // Bookmark-Events aus BookmarkButton (siehe Mini-Patch unten)
   React.useEffect(() => {
@@ -1272,6 +1412,9 @@ React.useEffect(() => {
     window.addEventListener('profile:pinnedChange', onPinnedChange);
     return () => window.removeEventListener('profile:pinnedChange', onPinnedChange);
   }, [c.id]);
+
+  const isSmall = typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches;
+  useBodyLock(composerOpen && isSmall);
 
   React.useEffect(() => {
     if (typeof pinnedPostId === 'string') {
@@ -1353,10 +1496,14 @@ React.useEffect(() => {
         disabled={disabled}
         onClick={(e) => {
           e.stopPropagation();
-          if (!disabled) {
-            setComposerOpen((v) => !v);
-            fireCommentPulse(); // ⬅️ NEU
-          }
+          if (disabled) return;
+          // ⬇️ statt toggle:
+          setComposerOpen(true);                         // immer öffnen
+          fireCommentPulse();
+          try { sessionStorage.setItem(`pc:commented:${c.id}`, '1'); } catch {}
+          requestAnimationFrame(() => {
+            try { window.dispatchEvent(new CustomEvent('composer:focus')); } catch {}
+          });
         }}
         className={`actify comment ${isActive ? 'is-active' : ''} ${commentPulse ? 'do-pop' : ''} group flex items-center gap-2 rounded px-2 py-1 hover:bg-white/5 disabled:opacity-50`}
         aria-expanded={composerOpen || undefined}
@@ -1381,9 +1528,38 @@ React.useEffect(() => {
 
   function RepostButton() {
     const disabled = blockedByEither || reposting;
+    const btnRef = React.useRef<HTMLButtonElement>(null);
+
+    const doRepost = React.useCallback(async (id: string) => {
+      if (disabled) return;
+      setRepostMenuOpen(false);
+      setReposting(true);
+      setReposts(n => n + 1);
+      setHasReposted(true);
+      fireRepostPulse();
+      try {
+        const resp = await fetch(`/api/posts/${id}/repost`, { method: 'POST' });
+        const j = await resp.json().catch(() => null);
+        if (!resp.ok || !j?.ok) throw new Error(j?.error || `HTTP ${resp.status}`);
+        // Broadcasts
+        try {
+          window.dispatchEvent(new CustomEvent('post:reposted', { detail: { originalId: id, newId: j.id } }));
+        } catch {}
+        try {
+          window.dispatchEvent(new CustomEvent('post:repostDelta', { detail: { contentId: id, delta: +1, byViewer: true } }));
+        } catch {}
+      } catch {
+        setReposts(n => Math.max(0, n - 1));
+        setHasReposted(false);
+      } finally {
+        setReposting(false);
+      }
+    }, [disabled]);
+
     return (
-      <div ref={repostRef} className="relative" data-no-nav onClick={(e) => e.stopPropagation()}>
+      <div ref={repostRef} data-no-nav onClick={(e) => e.stopPropagation()}>
         <button
+          ref={btnRef}
           type="button"
           className={`actify repost ${hasReposted ? 'is-active' : ''} ${repostPulse ? 'do-pop' : ''} group flex items-center gap-2 rounded px-2 py-1 hover:bg-white/5 disabled:opacity-50`}
           onClick={() => !disabled && setRepostMenuOpen((v) => !v)}
@@ -1406,60 +1582,29 @@ React.useEffect(() => {
           <Counter value={reposts} active={hasReposted} />
           <span className="sr-only">{tPost('repost')}</span>
         </button>
+        
 
-        {repostMenuOpen && (
-          <div
-            data-no-nav
-            className="absolute z-20 mt-2 w-40 rounded-lg border border-white/10 bg-black/80 backdrop-blur p-1 shadow-lg"
-            onClick={(e) => e.stopPropagation()}
+        <Popover
+          anchorRef={btnRef}
+          open={repostMenuOpen}
+          onClose={() => setRepostMenuOpen(false)}
+        >
+          <button
+            type="button"
+            className="w-full text-left px-3 py-2 rounded hover:bg-white/10 disabled:opacity-50"
+            disabled={reposting}
+            onClick={() => doRepost(c.id)}
           >
-            <button
-              type="button"
-              className="w-full text-left px-3 py-2 rounded hover:bg-white/10 disabled:opacity-50"
-              disabled={reposting}
-              onClick={async () => {
-                setRepostMenuOpen(false);
-                setReposting(true);
-                setReposts((n) => n + 1);
-                setHasReposted(true);       // ⬅️ NEU
-                fireRepostPulse();          // ⬅️ NEU
-                try {
-                  const resp = await fetch(`/api/posts/${c.id}/repost`, { method: 'POST' });
-                  const j = await resp.json().catch(() => null);
-                  if (!resp.ok || !j?.ok) throw new Error(j?.error || `HTTP ${resp.status}`);
-                  try {
-                    window.dispatchEvent(new CustomEvent('post:reposted', { detail: { originalId: c.id, newId: j.id } }));
-                  } catch {}
-
-                  try {
-                    window.dispatchEvent(new CustomEvent('post:repostDelta', {
-                      detail: { contentId: c.id, delta: +1, byViewer: true }
-                    }));
-                  } catch {}
-                } catch {
-                  setReposts((n) => Math.max(0, n - 1));
-                  setHasReposted(false);    // ⬅️ Revert bei Fehler
-                } finally {
-                  setReposting(false);
-                }
-              }}
-            >
-              {tPost('repost')}
-            </button>
-            <button
-              type="button"
-              className="w-full text-left px-3 py-2 rounded hover:bg-white/10"
-              onClick={() => {
-                setRepostMenuOpen(false);
-                setQuoteOpen(true);
-                setHasReposted(true);   // ⬅️ Auch Quote als "aktiv" markieren
-                fireRepostPulse();      // ⬅️ Animation
-              }}
-            >
-              {tPost('quotePost')}
-            </button>
-          </div>
-        )}
+            {tPost('repost')}
+          </button>
+          <button
+            type="button"
+            className="w-full text-left px-3 py-2 rounded hover:bg-white/10"
+            onClick={() => { setRepostMenuOpen(false); setQuoteOpen(true); setHasReposted(true); fireRepostPulse(); }}
+          >
+            {tPost('quotePost')}
+          </button>
+        </Popover>
       </div>
     );
   }
@@ -1525,7 +1670,7 @@ React.useEffect(() => {
 
         {shareMenuOpen && (
           <div
-            className="absolute right-0 z-30 mt-2 w-60 rounded-xl border border-white/10 bg-black/85 backdrop-blur shadow-lg p-1"
+            className="absolute right-0 z-30 mt-2 w-60 max-w-[min(90vw,16rem)] rounded-xl border border-white/10 bg-black/85 backdrop-blur shadow-lg p-1"
             role="menu"
           >
             <button
@@ -1793,12 +1938,12 @@ React.useEffect(() => {
   }
 
   const mediaItems = normalizeMediaFields(c);
-
+  
   return (
     <>
     <article
       ref={rootRef}
-      className="relative bg-card border border-sub rounded-app shadow-app p-4 md:p-5 cursor-pointer"
+      className="relative bg-card border border-sub rounded-app shadow-app p-3 md:p-5 cursor-pointer max-w-full overflow-x-hidden md:overflow-x-visible"
       onClick={goDetail}
       onKeyDown={onKeyActivate}
       role="button"
@@ -1832,9 +1977,9 @@ React.useEffect(() => {
         <MoreMenu />
       </div>
 
-      <header className="flex items-start gap-3">
-        {/* Avatar + Rolle */}
-        <div className="shrink-0 flex flex-col items-center w-[3.2em]">
+      <section className="grid grid-cols-[3.2em_1fr] gap-x-3 gap-y-2 sm:gap-3">
+        {/* Avatar + Rolle (linke Spalte) */}
+        <div className="col-start-1 row-start-1 shrink-0 flex flex-col items-center">
           <div data-no-nav onClick={(e) => e.stopPropagation()}>
             <ProfileLink
               handle={c.author.handle}
@@ -1855,8 +2000,8 @@ React.useEffect(() => {
           <RoleBadge role={uiRole} />
         </div>
 
-        {/* Name + Meta + Content */}
-        <div className="min-w-0 flex-1">
+        {/* Name/Handle/Meta + Text (rechte Spalte) */}
+        <div className="col-start-2 row-start-1 min-w-0">
           <div className="flex items-center flex-wrap">
             <div data-no-nav onClick={(e) => e.stopPropagation()}>
               <ProfileLink
@@ -1903,8 +2048,10 @@ React.useEffect(() => {
           <div className="mt-1 leading-relaxed">
             <RichText text={c.text} locale={locale} validateMentions />
           </div>
+        </div>
 
-          {/* Medien */}
+        {/* Medien – über die volle Breite (starten links) */}
+        <div className="col-span-2">
           {mediaItems.length > 0 && !ageOk ? (
             <BlurredMediaGate
               items={mediaItems}
@@ -1925,58 +2072,70 @@ React.useEffect(() => {
               )}
             </>
           )}
+        </div>
 
-
+        {/* Quote – volle Breite */}
+        <div className="col-span-2">
           <QuoteBox />
+        </div>
 
-          <div className="mt-3 flex items-center gap-4 sm:gap-6" data-no-nav onClick={(e) => e.stopPropagation()}>
+        {/* Action-Bar – volle Breite */}
+        <div className="col-span-2">
+          <div
+            className="mt-2 sm:mt-3 flex items-center gap-3 sm:gap-5 flex-wrap"
+            data-no-nav
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* linke Gruppe */}
             <CommentButton />
             <RepostButton />
             <LikeForm />
-            <div
-              data-no-nav
-              onClick={(e) => e.stopPropagation()}
-              className={`actify bookmark ${bookmarked ? 'is-active' : ''} ${bookmarkPulse ? 'do-pop' : ''}`} // 👈 neu: bookmarkPulse
-              title={bookmarked ? 'Bookmarked' : undefined}
-            >
-              <BookmarkButton
-                postId={c.id}
-                initiallyBookmarked={post.initiallyBookmarked === true}
-              />
-            </div>
-            <div className="ml-auto">
+
+            {/* rechte Gruppe: schiebt sich mit ml-auto ganz nach rechts */}
+            <div className="ml-auto flex items-center gap-3 flex-nowrap">
+              <div
+                data-no-nav
+                onClick={(e) => e.stopPropagation()}
+                className={`actify bookmark ${bookmarked ? 'is-active' : ''} ${bookmarkPulse ? 'do-pop' : ''}`}
+                title={bookmarked ? 'Bookmarked' : undefined}
+              >
+                <BookmarkButton
+                  postId={c.id}
+                  initiallyBookmarked={post.initiallyBookmarked === true}
+                />
+              </div>
+
               <ShareButton />
             </div>
           </div>
 
           {composerOpen && !blockedByEither && (
-            <div ref={composerRef} data-no-nav onClick={(e) => e.stopPropagation()}>
-              <CommentComposer
-                postId={post.id}
-                onSuccess={() => {
-                  setComments((n) => (n ?? 0) + 1);
-                  setComposerOpen(false);
-                  setHasCommented(true);
-                  fireCommentPulse();
-                  try {
-                    window.dispatchEvent(new CustomEvent('post:commentDelta', {
-                      detail: { contentId: c.id, delta: +1, byViewer: true }
-                    }));
-                  } catch {}
-
-                  try {
-                    window.dispatchEvent(new CustomEvent('comment:created', { detail: { postId: post.id } }));
-                  } catch {}
-                }}
-                onCancel={() => setComposerOpen(false)}
-              />
-            </div>
+            <>
+             {/* Einmal rendern – der Composer floatet auf Mobile selbst */}
+              <div ref={composerRef} data-no-nav onClick={(e) => e.stopPropagation()}>
+                <CommentComposer
+                  postId={c.id}
+                  autoFocus
+                  onSuccess={() => {
+                    setComments((n) => (n ?? 0) + 1); // jetzt passend zur ID
+                    setComposerOpen(false);
+                    setHasCommented(true);
+                    fireCommentPulse();
+                    window.dispatchEvent(new CustomEvent('post:commentDelta', { detail: { contentId: c.id, delta: +1, byViewer: true } }));
+                    try { window.dispatchEvent(new CustomEvent('comment:created',    { detail: { postId: post.id } })); } catch {}
+                  }}
+                  onCancel={() => setComposerOpen(false)}
+                />
+              </div> 
+            </>
           )}
+
           {composerOpen && blockedByEither && (
             <div className="mt-2 text-[12px] text-white/60">{tPost('cantInteract')}</div>
           )}
         </div>
-      </header>
+      </section>
+
 
       {quoteOpen && (
         <QuoteOverlay

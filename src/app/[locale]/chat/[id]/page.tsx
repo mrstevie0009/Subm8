@@ -1112,7 +1112,7 @@ export default function ChatThreadPage() {
 
       <main className="px-3">
         <div
-          className="mx-auto w-full max-w-[760px]"
+          className="mx-auto w-full max-w-[760px] overflow-x-hidden"
           style={{
             paddingTop: 'calc(var(--header-h, 56px) + var(--chat-header-h, 48px) + 8px)',
             paddingBottom: 'calc(var(--bottomnav-h, 72px) + 72px)',

@@ -864,7 +864,7 @@
       "fields": {
         "identifier": {
           "label": "E-mail ou identifiant",
-          "placeholder": "vous@example.com ou @votreidentifiant"
+          "placeholder": "E-mail ou identifiant"
         },
         "password": {
           "label": "Mot de passe"
@@ -927,7 +927,9 @@
         "li2": "Vous ne devez pas promouvoir ni garantir des services en échange de pourboires.",
         "li3": "Si vous proposez des services ailleurs, vous êtes seul responsable de la conformité légale et fiscale.",
         "li4": "Un usage abusif peut entraîner la suspension du compte.",
-        "checkbox": "Je comprends que les pourboires sur Subm8 sont des dons volontaires non liés à des services."
+        "checkbox": "Je comprends que les pourboires sur Subm8 sont des dons volontaires non liés à des services.",
+        "readMore": "En savoir plus",
+        "readLess": "Afficher moins"
       },
       "fields": {
         "email": {

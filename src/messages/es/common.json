@@ -865,7 +865,7 @@
       "fields": {
         "identifier": {
           "label": "Correo o usuario",
-          "placeholder": "tu@example.com o @tuusuario"
+          "placeholder": "Correo o usuario"
         },
         "password": {
           "label": "Contraseña"
@@ -928,7 +928,9 @@
         "li2": "No debes promocionar ni garantizar servicios a cambio de propinas.",
         "li3": "Si ofreces servicios en otro lugar, eres el único responsable del cumplimiento legal y fiscal.",
         "li4": "El uso indebido puede conllevar la suspensión de la cuenta.",
-        "checkbox": "Entiendo que las propinas en Subm8 son donaciones voluntarias y no están ligadas a servicios."
+        "checkbox": "Entiendo que las propinas en Subm8 son donaciones voluntarias y no están ligadas a servicios.",
+        "readMore": "Leer más",
+        "readLess": "Mostrar menos"
       },
       "fields": {
         "email": {

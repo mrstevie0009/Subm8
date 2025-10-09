@@ -50,10 +50,10 @@ function AccountTypeCard({
       onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onSelect()}
       aria-pressed={isSelected || undefined}
     >
-      <CardContent className="p-4 text-center">
-        <div className="mb-2 text-2xl">{emoji}</div>
-        <h3 className="text-white mb-2">{title}</h3>
-        <p className="text-white/70 text-sm leading-relaxed">{description}</p>
+      <CardContent className="p-3 sm:p-4 text-center">
+        <div className="mb-1.5 sm:mb-2 text-xl sm:text-2xl">{emoji}</div>
+        <h3 className="text-white mb-1.5 sm:mb-2 text-base sm:text-lg">{title}</h3>
+        <p className="text-white/70 text-[13px] sm:text-sm leading-relaxed">{description}</p>
       </CardContent>
     </Card>
   );
@@ -243,41 +243,39 @@ export default function SignupStartPage() {
     showFormatError || showTakenError || handleState === 'checking' || handleState === 'error';
 
   return (
-    <div
-      className="relative grid min-h-[90svh] place-items-center p-4
-                 bg-[#0b0b0c] overflow-hidden rounded-2xl
-                 [background-image:radial-gradient(00%_40%_at_50%_0%,rgba(255,255,255,.08),transparent_60%)]"
+    <div className="relative grid min-h-[100svh] place-items-center px-3 py-4 bg-[#0b0b0c] overflow-hidden rounded-none md:rounded-2xl
+                   [background-image:radial-gradient(00%_40%_at_50%_0%,rgba(255,255,255,.08),transparent_60%)]"
     >
       {/* weiche Blur-Blobs */}
-      <div className="pointer-events-none absolute -top-24 -left-24 h-72 w-72 rounded-full bg-purple-500/20 blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-24 -right-24 h-80 w-80 rounded-full bg-purple-500/20 blur-[90px]" />
+      <div className="pointer-events-none absolute -top-24 -left-24 h-48 w-48 md:h-72 md:w-72 rounded-full bg-purple-500/20 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-24 -right-24 h-56 w-56 md:h-80 md:w-80 rounded-full bg-purple-500/20 blur-[90px]" />
 
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-[380px] sm:max-w-md">
         <Card className="rounded-2xl bg-white/5 backdrop-blur-xl ring-1 ring-white/50 shadow-[0_8px_30px_rgba(0,0,0,.35)] overflow-hidden">
-          <CardContent className="p-8 bg-[rgba(162,89,255,0.45)]">
+          <CardContent className="p-5 sm:p-8 bg-[rgba(162,89,255,0.45)]">
             {/* Header + Logo */}
-            <div className="text-center mb-8">
+            <div className="text-center mb-6 sm:mb-8">
               <div className="flex justify-center mb-3">
                 <Image
                   src="/logo.png"
                   alt={`${tc('brand.name')} logo`}
-                  width={160}
-                  height={48}
+                  width={120}
+                  height={36}
                   priority
-                  className="h-10 w-auto drop-shadow-md"
+                  className="h-7 sm:h-10 w-auto drop-shadow-md"
                 />
               </div>
-              <p className="text-white/80 mb-2">
+              <p className="text-white/80 mb-1 sm:mb-2 text-[13px] sm:text-base">
                 {t('welcome', { brand: tc('brand.name') })}
               </p>
               <Link
                 href={`/${locale}`}
                 prefetch={false}
-                className="text-white text-4xl mb-4 inline-block font-extrabold"
+                className="text-white text-2xl sm:text-4xl mb-3 sm:mb-4 inline-block font-extrabold leading-tight"
               >
                 {tc('brand.name')}
               </Link>
-              <p className="text-white/70">{t('chooseUsername')}</p>
+              <p className="text-white/70 text-[13px] sm:text-base">{t('chooseUsername')}</p>
             </div>
 
             {/* Formular (Enter löst submit aus) */}
@@ -302,13 +300,13 @@ export default function SignupStartPage() {
                     spellCheck={false}
                     disabled={busy}
                     aria-invalid={showFormatError || showTakenError ? true : undefined}
-                    className={`pl-8 bg-black/30 border-white/20 text-white placeholder:text-white/50 focus:border-white/40 focus:ring-white/20 lowercase ${showFormatError || showTakenError ? 'border-red-400/70 focus:ring-red-400/30' : ''}`}
+                    className={`pl-8 h-10 sm:h-11 bg-black/30 border-white/20 text-white placeholder:text-white/50 focus:border-white/40 focus:ring-white/20 lowercase ${showFormatError || showTakenError ? 'border-red-400/70 focus:ring-red-400/30' : ''}`}
                   />
                 </div>
 
                 {/* Helper/Fehlermeldung */}
                 {showHelperRow && (
-                  <div className="mt-2 text-[12px]">
+                  <div className="mt-2 text-[12px] sm:text-[13px]">
                     {showFormatError && (
                       <span className="text-red-300">{t('fields.username.formatHelp')}</span>
                     )}
@@ -327,8 +325,8 @@ export default function SignupStartPage() {
 
               {/* Account Type Selection */}
               <div>
-                <p className="text-white/80 mb-4 text-center">{t('selectTypeTitle')}</p>
-                <div className="grid grid-cols-2 gap-4">
+                <p className="text-white/80 mb-3 sm:mb-4 text-center text-[13px] sm:text-base">{t('selectTypeTitle')}</p>
+                <div className="grid grid-cols-2 gap-3 sm:gap-4">
                   <AccountTypeCard
                     type="sub"
                     emoji="😊"
@@ -354,14 +352,14 @@ export default function SignupStartPage() {
               </div>
 
               {/* Kein Button — Enter im Username-Feld triggert onSubmit */}
-              <div className="text-center text-xs text-white/60">
+              <div className="text-center text-[11px] sm:text-xs text-white/60">
                 {t('enterToContinue')}&nbsp;
                 <kbd className="px-1 py-0.5 rounded border border-white/20">Enter</kbd>.
               </div>
             </form>
 
             {/* Login Link */}
-            <div className="mt-6 text-center">
+            <div className="mt-5 sm:mt-6 text-center">
               <p className="text-white/70">
                 {t('login.cta')}{' '}
                 <Link

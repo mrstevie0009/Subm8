@@ -18,6 +18,7 @@ function isValidEmail(e: string) {
 
 type LegalTab = 'terms' | 'privacy';
 
+/* ---------------- Terms/Privacy Modal (unverändert) ---------------- */
 function TermsPrivacyModal({
   open,
   onClose,
@@ -250,7 +251,9 @@ export default function SignupAccountPage() {
   const [legalOpen, setLegalOpen] = React.useState(false);
   const [legalTab, setLegalTab] = React.useState<LegalTab>('terms');
 
-  // "ready" für klassisches E-Mail/Passwort Signup
+  // NEW: Domme-Disclaimer auf/zu
+  const [dommeOpen, setDommeOpen] = React.useState(false);
+
   const ready =
     !!handle &&
     !!role &&
@@ -260,7 +263,6 @@ export default function SignupAccountPage() {
     agree &&
     (!isDomme || dommeGiftAgree);
 
-  // Für Google-Signup: keine E-Mail/PW nötig, aber Handle/Role + Checkboxen zwingend
   const googleAllowed = !!handle && !!role && agree && (!isDomme || dommeGiftAgree);
 
   const submit: React.FormEventHandler<HTMLFormElement> = async (ev) => {
@@ -302,17 +304,14 @@ export default function SignupAccountPage() {
     }
   };
 
-  // Google: Cookie setzen (handle/role) -> OAuth -> direkt in Feed
   const signInWithGoogle = async () => {
-    // Harte Guard, falls Button-Disable umgangen würde:
     if (!googleAllowed) {
-      setErr(t('errors.mustAccept')); // Stelle sicher, dass dieser Key existiert. Alternativ: fester Text.
+      setErr(t('errors.signupFailed'));
       return;
     }
     try {
       const payload = { handle, role };
       const raw = btoa(encodeURIComponent(JSON.stringify(payload)));
-      // 10 Minuten Gültigkeit, SameSite=Lax
       document.cookie = `subm8_pending_signup=${raw}; Path=/; Max-Age=600; SameSite=Lax`;
       await signIn('google', { callbackUrl: `/${locale}` });
     } catch (e) {
@@ -325,64 +324,101 @@ export default function SignupAccountPage() {
 
   const baseInput =
     'bg-black/30 border-white/20 text-white placeholder:text-white/50 focus:border-white/40 focus:ring-white/20';
-  const muted = 'text-white/70';
 
   return (
     <div
-      className="relative grid min-h-[90svh] place-items-center p-4
-                 bg-[#0b0b0c] overflow-hidden rounded-2xl
+      className="relative grid min-h-[100svh] place-items-center px-3 py-4
+                 bg-[#0b0b0c] overflow-hidden rounded-none md:rounded-2xl
                  [background-image:radial-gradient(00%_40%_at_50%_0%,rgba(255,255,255,.08),transparent_60%)]"
     >
-      <div className="pointer-events-none absolute -top-24 -left-24 h-72 w-72 rounded-full bg-purple-500/20 blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-24 -right-24 h-80 w-80 rounded-full bg-purple-500/20 blur-[90px]" />
+      {/* Blobs auf Mobile kleiner/versteckt */}
+      <div className="pointer-events-none absolute -top-24 -left-24 h-48 w-48 md:h-72 md:w-72 rounded-full bg-purple-500/20 blur-3xl hidden sm:block" />
+      <div className="pointer-events-none absolute -bottom-24 -right-24 h-56 w-56 md:h-80 md:w-80 rounded-full bg-purple-500/20 blur-[90px] hidden sm:block" />
 
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-[380px] sm:max-w-md">
         <Card className="rounded-2xl bg-white/5 backdrop-blur-xl ring-1 ring-white/50 shadow-[0_8px_30px_rgba(0,0,0,.35)] overflow-hidden">
-          <CardContent className="p-8 bg-[rgba(162,89,255,0.45)]">
-            <div className="text-center mb-6">
-              <div className="flex justify-center mb-3">
+          <CardContent className="p-5 sm:p-6 md:p-8 bg-[rgba(162,89,255,0.45)]">
+            {/* Header */}
+            <div className="text-center mb-6 sm:mb-6">
+              <div className="flex justify-center mb-2 sm:mb-3">
                 <Image
                   src="/logo.png"
                   alt="Subm8 logo"
-                  width={140}
-                  height={42}
+                  width={120}
+                  height={36}
                   priority
-                  className="h-9 w-auto drop-shadow-md"
+                  className="h-7 sm:h-9 w-auto drop-shadow-md"
                 />
               </div>
-              <div className={`text-sm ${muted}`}>{t('headerTop')}</div>
-              <h1 className="text-white text-3xl md:text-4xl font-extrabold tracking-tight mt-1">
+              <div className="text-[13px] sm:text-sm text-white/70">{t('headerTop')}</div>
+              <h1 className="text-white text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight mt-1 leading-tight">
                 {t('headerTitle')}
               </h1>
-              <p className="mt-2 text-sm text-white/80">
+              <p className="mt-2 text-[13px] sm:text-sm text-white/80">
                 @{handle} · {roleLabel}
               </p>
             </div>
 
+            {/* Domme Disclaimer – einklappbar */}
             {isDomme && (
-              <div className="mt-2 rounded-xl border border-yellow-400/40 bg-yellow-400/10 p-4">
-                <div className="font-semibold text-yellow-100">⚠️ {t('dommeDisclaimer.title')}</div>
-                <ul className="mt-2 text-sm text-white/85 list-disc pl-5 space-y-1">
-                  <li>{t('dommeDisclaimer.li1')}</li>
-                  <li>{t('dommeDisclaimer.li2')}</li>
-                  <li>{t('dommeDisclaimer.li3')}</li>
-                  <li>{t('dommeDisclaimer.li4')}</li>
-                </ul>
-                <label className="mt-3 flex items-start gap-2 text-sm text-white/90">
-                  <input
-                    type="checkbox"
-                    className="accent-[var(--purple)] mt-[3px]"
-                    checked={dommeGiftAgree}
-                    onChange={(e) => setDommeGiftAgree(e.target.checked)}
-                  />
-                  <span>{t('dommeDisclaimer.checkbox')}</span>
-                </label>
+              <div className="mt-2 rounded-xl border border-yellow-400/40 bg-yellow-400/10">
+                <div className="p-4 pb-2">
+                  <div className="font-semibold text-yellow-100 text-sm sm:text-base">
+                    ⚠️ {t('dommeDisclaimer.title')}
+                    <ul className="text-[13px] sm:text-sm text-white/85 list-disc pl-5 space-y-1">
+                        <li>{t('dommeDisclaimer.li1')}</li>
+                    </ul>    
+                  </div>
+
+                  {/* Collapsible area: nur die Liste ist einklappbar */}
+                  {dommeOpen ? (
+                    <div className="mt-3">
+                      <ul className="text-[13px] sm:text-sm text-white/85 list-disc pl-5 space-y-1">
+                        <li>{t('dommeDisclaimer.li1')}</li>
+                        <li>{t('dommeDisclaimer.li2')}</li>
+                        <li>{t('dommeDisclaimer.li3')}</li>
+                        <li>{t('dommeDisclaimer.li4')}</li>
+                      </ul>
+                      <div className="mt-2">
+                        <button
+                          type="button"
+                          onClick={() => setDommeOpen(false)}
+                          className="text-[12px] sm:text-sm underline text-yellow-100 hover:text-white"
+                        >
+                          {t('dommeDisclaimer.readLess')}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="mt-2">
+                      <button
+                        type="button"
+                        onClick={() => setDommeOpen(true)}
+                        className="text-[12px] sm:text-sm underline text-yellow-100 hover:text-white"
+                      >
+                        {t('dommeDisclaimer.readMore')}
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Checkbox bleibt immer sichtbar */}
+                  <label className="mt-3 flex items-start gap-2 text-[13px] sm:text-sm text-white/90">
+                    <input
+                      type="checkbox"
+                      className="accent-[var(--purple)] mt-[3px]"
+                      checked={dommeGiftAgree}
+                      onChange={(e) => setDommeGiftAgree(e.target.checked)}
+                    />
+                    <span>{t('dommeDisclaimer.checkbox')}</span>
+                  </label>
+                </div>
               </div>
             )}
 
-            <form className="mt-6 space-y-5" onSubmit={submit} noValidate>
+            {/* Formular */}
+            <form className="mt-6 space-y-4 sm:space-y-5" onSubmit={submit} noValidate>
               <div>
-                <label className="block text-sm font-medium mb-1 text-white/90">
+                <label className="block text-[13px] sm:text-sm font-medium mb-1 text-white/90">
                   {t('fields.email.label')}
                 </label>
                 <Input
@@ -390,14 +426,14 @@ export default function SignupAccountPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder={t('fields.email.placeholder')}
-                  className={baseInput}
+                  className={`${baseInput} h-10 sm:h-11`}
                   autoComplete="email"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1 text-white/90">
+                <label className="block text-[13px] sm:text-sm font-medium mb-1 text-white/90">
                   {t('fields.password.label')}
                 </label>
                 <Input
@@ -405,7 +441,7 @@ export default function SignupAccountPage() {
                   value={pw}
                   onChange={(e) => setPw(e.target.value)}
                   placeholder={t('fields.password.placeholder')}
-                  className={baseInput}
+                  className={`${baseInput} h-10 sm:h-11`}
                   autoComplete="new-password"
                   required
                   minLength={8}
@@ -414,14 +450,14 @@ export default function SignupAccountPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1 text-white/90">
+                <label className="block text-[13px] sm:text-sm font-medium mb-1 text-white/90">
                   {t('fields.password2.label')}
                 </label>
                 <Input
                   type="password"
                   value={pw2}
                   onChange={(e) => setPw2(e.target.value)}
-                  className={baseInput}
+                  className={`${baseInput} h-10 sm:h-11`}
                   autoComplete="new-password"
                   required
                   minLength={8}
@@ -431,7 +467,7 @@ export default function SignupAccountPage() {
                 )}
               </div>
 
-              <label className="flex items-start gap-2 text-sm text-white/90">
+              <label className="flex items-start gap-2 text-[13px] sm:text-sm text-white/90">
                 <input
                   type="checkbox"
                   className="accent-[var(--purple)] mt-[3px]"
@@ -471,7 +507,7 @@ export default function SignupAccountPage() {
                 <button
                   type="submit"
                   disabled={!ready || loading}
-                  className="w-full rounded-full py-3 font-semibold
+                  className="w-full rounded-full py-2.5 sm:py-3 text-[15px] sm:text-base font-semibold
                              bg-[var(--purple)]/80 hover:bg-[var(--purple)]
                              disabled:opacity-50 disabled:cursor-not-allowed
                              transition-colors"
@@ -479,12 +515,11 @@ export default function SignupAccountPage() {
                   {loading ? t('buttons.creating') : t('buttons.create')}
                 </button>
 
-                {/* Google – setzt Cookie & leitet dann direkt in den Feed */}
                 <button
                   type="button"
                   onClick={signInWithGoogle}
                   disabled={!googleAllowed || loading}
-                  className="w-full rounded-full py-2.5 text-sm font-medium
+                  className="w-full rounded-full py-2 text-[14px] sm:text-sm font-medium
                              border border-white/20 bg-black/20 hover:bg-black/30
                              disabled:opacity-50 disabled:cursor-not-allowed
                              transition-colors"
@@ -493,9 +528,13 @@ export default function SignupAccountPage() {
                 </button>
               </div>
 
-              <div className="text-center text-sm text-white/80">
+              <div className="text-center text-[13px] sm:text-sm text-white/80">
                 {t('login.cta')}{' '}
-                <Link href={`/${locale}/signin`} className="text-purple-200 hover:text-purple-100 underline" prefetch={false}>
+                <Link
+                  href={`/${locale}/signin`}
+                  className="text-purple-200 hover:text-purple-100 underline"
+                  prefetch={false}
+                >
                   {t('login.link')}
                 </Link>
               </div>

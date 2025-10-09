@@ -236,50 +236,55 @@ export default function SignInPage() {
 
   return (
     <div
-      className="relative grid min-h-[90svh] place-items-center p-4
-                 bg-[#0b0b0c] overflow-hidden rounded-2xl
-                 [background-image:radial-gradient(00%_40%_at_50%_0%,rgba(255,255,255,.08),transparent_60%)]"
+      className="relative grid min-h-[100svh] place-items-center px-3 py-4
+                bg-[#0b0b0c] overflow-hidden rounded-none md:rounded-2xl
+                [background-image:radial-gradient(00%_40%_at_50%_0%,rgba(255,255,255,.08),transparent_60%)]"
     >
-      <div className="pointer-events-none absolute -top-24 -left-24 h-72 w-72 rounded-full bg-purple-500/20 blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-24 -right-24 h-80 w-80 rounded-full bg-purple-500/20 blur-[90px]" />
+      {/* dekorative Blobs auf Mobile kleiner/weg */}
+      <div className="pointer-events-none absolute -top-24 -left-24 h-48 w-48 md:h-72 md:w-72 rounded-full bg-purple-500/20 blur-3xl hidden sm:block" />
+      <div className="pointer-events-none absolute -bottom-24 -right-24 h-56 w-56 md:h-80 md:w-80 rounded-full bg-purple-500/20 blur-[90px] hidden sm:block" />
 
-      <div className="w-full max-w-md">
-        <Card className="rounded-2xl bg-white/5 backdrop-blur-xl ring-1 ring-white/50 shadow-[0_8px_30px_rgba(0,0,0,.35)] overflow-hidden">
-          <CardContent className="p-8 bg [rgba(162,89,255,0.45)] bg-[rgba(162,89,255,0.45)]">
-            <div className="text-center mb-8">
-              <div className="flex justify-center mb-3">
+      <div className="w-full max-w-[380px] sm:max-w-md">
+        <Card className="rounded-2xl bg-[rgba(162,89,255,0.12)] backdrop-blur-xl ring-1 ring-white/20 shadow-[0_8px_30px_rgba(0,0,0,.35)] overflow-hidden">
+          {/* Card auf Mobile kompakter + harte Maxhöhe */}
+          <CardContent
+            className="p-5 sm:p-6 md:p-8
+                        bg-[rgba(162,89,255,0.08)]
+                        overflow-visible
+                        sm:max-h-[92svh] sm:overflow-auto sm:overscroll-contain"
+            >
+            <div className="text-center mb-6 sm:mb-8">
+              <div className="flex justify-center mb-2 sm:mb-3">
                 <Image
                   src="/logo.png"
                   alt={`${tc('brand.name')} logo`}
-                  width={160}
-                  height={48}
+                  width={120}
+                  height={36}
                   priority
-                  className="h-10 w-auto drop-shadow-md"
-                />
+                  className="h-7 sm:h-8 w-auto drop-shadow-md" />
               </div>
-              <p className="text-white/80 mb-2">
+              {/* Welcome/Brand: auf Mobile knapper */}
+              <p className="text-white/80 mb-1 sm:mb-2 text-[13px] sm:text-sm">
                 {t('welcome', { brand: tc('brand.name') })}
               </p>
               <Link
                 href={`/${locale}`}
                 prefetch={false}
-                className="text-white text-4xl mb-2 inline-block font-extrabold"
+                className="text-white text-2xl sm:text-3xl md:text-4xl mb-1 sm:mb-2 inline-block font-extrabold leading-tight"
               >
                 {tc('brand.name')}
               </Link>
-              <p className="text-white/70">{t('title')}</p>
+              <p className="text-white/70 text-[13px] sm:text-sm">{t('title')}</p>
             </div>
 
             {(registered || topErrorMsg || resetSuccess) && (
               <div
-                className={`mb-4 rounded-xl border p-3 text-sm
-                  ${
-                    registered
-                      ? 'border-blue-300/40 bg-blue-300/15 text-blue-100'
-                      : resetSuccess
-                      ? 'border-green-400/40 bg-green-400/15 text-green-100'
-                      : 'border-red-400/40 bg-red-400/15 text-red-100'
-                  }`}
+                className={`mb-4 sm:mb-5 rounded-xl border p-2.5 sm:p-3 text-[13px] sm:text-sm
+                ${registered
+                  ? 'border-blue-300/40 bg-blue-300/15 text-blue-100'
+                  : resetSuccess
+                  ? 'border-green-400/40 bg-green-400/15 text-green-100'
+                  : 'border-red-400/40 bg-red-400/15 text-red-100'}`}
               >
                 {registered
                   ? t('alerts.registered')
@@ -290,64 +295,51 @@ export default function SignInPage() {
             )}
 
             {!forgotMode ? (
-              <form onSubmit={handleCredentials} className="space-y-5" noValidate>
+              <form onSubmit={handleCredentials} className="space-y-4 sm:space-y-5" noValidate>
                 <div>
-                  <label htmlFor="identifier" className="block text-sm font-medium mb-1 text-white/90">
+                  <label htmlFor="identifier" className="block text-[13px] sm:text-sm font-medium mb-1 text-white/90">
                     {t('fields.identifier.label')}
                   </label>
                   <Input
                     id="identifier"
                     value={identifier}
-                    onChange={(e) => {
-                      setIdentifier(e.target.value);
-                      if (invalid) {
-                        setInvalid(false);
-                        setInlineError(null);
-                      }
-                    }}
+                    onChange={(e) => { setIdentifier(e.target.value); if (invalid) { setInvalid(false); setInlineError(null); } }}
                     type="text"
                     autoComplete="username"
                     required
                     placeholder={t('fields.identifier.placeholder')}
                     aria-invalid={invalid || undefined}
                     aria-describedby={invalid ? 'identifier-error' : undefined}
-                    className={`${baseInput} ${invalid ? 'border-red-400/70 focus:ring-red-400/30' : ''}`}
+                    className={`${baseInput} h-10 sm:h-11 ${invalid ? 'border-red-400/70 focus:ring-red-400/30' : ''}`}
                   />
                   {invalid && (
-                    <p id="identifier-error" className="mt-1 text-[12px] text-red-300">
-                      {inlineError}
-                    </p>
+                    <p id="identifier-error" className="mt-1 text-[12px] text-red-300">{inlineError}</p>
                   )}
                 </div>
 
                 <div>
-                  <label htmlFor="password" className="block text-sm font-medium mb-1 text-white/90">
+                  <label htmlFor="password" className="block text-[13px] sm:text-sm font-medium mb-1 text-white/90">
                     {t('fields.password.label')}
                   </label>
                   <Input
                     id="password"
                     value={password}
-                    onChange={(e) => {
-                      setPassword(e.target.value);
-                      if (invalid) { setInvalid(false); setInlineError(null); }
-                    }}
+                    onChange={(e) => { setPassword(e.target.value); if (invalid) { setInvalid(false); setInlineError(null); } }}
                     type="password"
                     autoComplete="current-password"
                     required
                     aria-invalid={invalid || undefined}
                     aria-describedby={invalid ? 'password-error' : undefined}
-                    className={`${baseInput} ${invalid ? 'border-red-400/70 focus:ring-red-400/30' : ''}`}
+                    className={`${baseInput} h-10 sm:h-11 ${invalid ? 'border-red-400/70 focus:ring-red-400/30' : ''}`}
                   />
                   {invalid && (
-                    <p id="password-error" className="mt-1 text-[12px] text-red-300">
-                      {inlineError}
-                    </p>
+                    <p id="password-error" className="mt-1 text-[12px] text-red-300">{inlineError}</p>
                   )}
                   <div className="mt-1 text-right">
                     <button
                       type="button"
                       onClick={() => setForgotMode(true)}
-                      className="text-xs text-purple-200 hover:text-purple-100 underline"
+                      className="text-[11px] sm:text-xs text-purple-200 hover:text-purple-100 underline"
                     >
                       {t('forgot.link')}
                     </button>
@@ -357,32 +349,30 @@ export default function SignInPage() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full rounded-full py-3 font-semibold
-                             bg-[var(--purple)]/80 hover:bg-[var(--purple)]
-                             disabled:opacity-50 disabled:cursor-not-allowed
-                             transition-colors"
+                  className="w-full rounded-full py-2.5 sm:py-3 text-[15px] sm:text-base font-semibold
+                            bg-[var(--purple)]/80 hover:bg-[var(--purple)]
+                            disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   {loading ? t('buttons.submitLoading') : t('buttons.submit')}
                 </button>
 
-                <div className="text-center text-xs text-white/60">{t('or')}</div>
+                <div className="text-center text-[12px] sm:text-xs text-white/60">{t('or')}</div>
 
                 <button
                   type="button"
                   onClick={() => signIn('google', { callbackUrl: `/${locale}` })}
-                  className="w-full rounded-full py-2.5 text-sm font-medium
-                             border border-white/20 bg-black/20 hover:bg-black/30
-                             transition-colors"
+                  className="w-full rounded-full py-2 text-[14px] sm:text-sm font-medium mt-1
+                            border border-white/20 bg-black/20 hover:bg-black/30 transition-colors"
                 >
                   {t('buttons.google')}
                 </button>
               </form>
             ) : (
-              <form onSubmit={handleForgot} className="space-y-5" noValidate>
+              <form onSubmit={handleForgot} className="space-y-4 sm:space-y-5" noValidate>
                 {!forgotDone ? (
                   <>
                     <div>
-                      <label htmlFor="forgotEmail" className="block text-sm font-medium mb-1 text-white/90">
+                      <label htmlFor="forgotEmail" className="block text-[13px] sm:text-sm font-medium mb-1 text-white/90">
                         {t('forgot.emailLabel')}
                       </label>
                       <Input
@@ -392,16 +382,15 @@ export default function SignInPage() {
                         type="email"
                         required
                         placeholder={t('forgot.emailPlaceholder')}
-                        className={baseInput}
+                        className={`${baseInput} h-10 sm:h-11`}
                       />
                     </div>
                     <button
                       type="submit"
                       disabled={forgotLoading}
-                      className="w-full rounded-full py-3 font-semibold
-                                 bg-[var(--purple)]/80 hover:bg-[var(--purple)]
-                                 disabled:opacity-50 disabled:cursor-not-allowed
-                                 transition-colors"
+                      className="w-full rounded-full py-2.5 sm:py-3 text-[15px] sm:text-base font-semibold
+                                bg-[var(--purple)]/80 hover:bg-[var(--purple)]
+                                disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                       {forgotLoading ? t('forgot.submitLoading') : t('forgot.submit')}
                     </button>
@@ -409,21 +398,21 @@ export default function SignInPage() {
                       <button
                         type="button"
                         onClick={() => setForgotMode(false)}
-                        className="text-xs text-purple-200 hover:text-purple-100 underline"
+                        className="text-[11px] sm:text-xs text-purple-200 hover:text-purple-100 underline"
                       >
                         {t('forgot.back')}
                       </button>
                     </div>
                   </>
                 ) : (
-                  <p className="text-center text-green-100">
+                  <p className="text-center text-green-100 text-[13px] sm:text-sm">
                     {t('forgot.success')}
                   </p>
                 )}
               </form>
             )}
 
-            <div className="mt-6 text-center text-sm text-white/80">
+            <div className="mt-6 pt-4 border-t border-white/10 text-center text-[13px] sm:text-sm text-white/80">
               {t('signup.cta')}{' '}
               <Link
                 href={`/${locale}/signup`}
@@ -437,10 +426,11 @@ export default function SignInPage() {
         </Card>
       </div>
 
-      {/* ============ 2FA MODAL ============ */}
+      {/* 2FA-Modal -> auf Mobile auch kompakter */}
       {show2FA && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="w-full max-w-md rounded-2xl border border-white/20 bg-zinc-900/90 backdrop-blur-xl p-5">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-3 sm:p-4">
+          <div className="w-full max-w-[380px] sm:max-w-md rounded-2xl border border-white/20
+                          bg-zinc-900/90 backdrop-blur-xl p-4 sm:p-5">
             <div className="mb-3">
               <h3 className="text-lg font-semibold text-white">{t2fa('title')}</h3>
               <p className="text-sm text-white/70">

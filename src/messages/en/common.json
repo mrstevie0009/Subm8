@@ -863,7 +863,7 @@
       "fields": {
         "identifier": {
           "label": "Email or handle",
-          "placeholder": "you@example.com or @yourhandle"
+          "placeholder": "Email or handle"
         },
         "password": {
           "label": "Password"
@@ -926,7 +926,9 @@
         "li2": "You must not advertise or guarantee services in exchange for tips.",
         "li3": "If you offer services elsewhere, you are solely responsible for legal/tax compliance.",
         "li4": "Misuse may result in account suspension.",
-        "checkbox": "I understand that tips on Subm8 are voluntary gifts and not tied to services."
+        "checkbox": "I understand that tips on Subm8 are voluntary gifts and not tied to services.",
+        "readMore": "Read more",
+        "readLess": "Show less"
       },
       "fields": {
         "email": {

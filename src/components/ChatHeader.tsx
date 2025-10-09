@@ -71,7 +71,7 @@ export default function ChatHeader({
 
   return (
     <header className="sticky top-0 z-40 border-b border-white/10 bg-black/65 backdrop-blur">
-      <div className="mx-auto w-full max-w-[760px] px-3 py-2">
+      <div className="mx-auto w-full max-w-[760px] px-3 py-2 overflow-x-hidden">
         <div className="flex items-center gap-3">
           {/* Back */}
           <Link

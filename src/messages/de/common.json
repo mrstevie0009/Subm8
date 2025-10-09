@@ -914,7 +914,7 @@
           "fields": {
             "identifier": {
               "label": "E-Mail oder Handle",
-              "placeholder": "you@example.com oder @deinhandle"
+              "placeholder": "E-Mail oder Handle"
             },
             "password": {
               "label": "Passwort"
@@ -977,7 +977,9 @@
             "li2": "Du darfst keine Leistungen für Tipps bewerben oder garantieren.",
             "li3": "Wenn du anderswo Leistungen anbietest, bist du allein für Rechts- und Steuerkonformität verantwortlich.",
             "li4": "Missbrauch kann zur Kontosperrung führen.",
-            "checkbox": "Ich verstehe, dass Tipps auf Subm8 freiwillige Geschenke sind und nicht an Leistungen geknüpft."
+            "checkbox": "Ich verstehe, dass Tipps auf Subm8 freiwillige Geschenke sind und nicht an Leistungen geknüpft.",
+            "readMore": "Weiterlesen",
+            "readLess": "Weniger anzeigen"
           },
           "fields": {
             "email": {
