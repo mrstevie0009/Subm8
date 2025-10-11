@@ -124,7 +124,10 @@ function GifPickerModal({
                   key={it.id}
                   type="button"
                   className="relative group rounded-lg overflow-hidden border border-white/10 hover:border-white/25"
-                  onClick={() => onPick(it.url)}
+                  onClick={() => {
+                    onClose();         // Picker sofort schließen
+                    onPick(it.url);    // GIF laden/anhängen passiert im Hintergrund
+                  }}
                   title={t('actions.pick')}
                 >
                   <Image
@@ -322,8 +325,8 @@ export default function ComposePostModal({ open, onClose }: Props) {
     // ts-expect-error — Client Action, React übergibt FormData
     await createPost(fd);
     toast.success(
-    (t?.('states.posted') as string) || 'Post erfolgreich gepostet',
-    (t?.('header.newPost') as string) || 'Gepostet'
+    'Post erfolgreich gepostet',
+    'Gepostet'
   );
     onClose();
   };
