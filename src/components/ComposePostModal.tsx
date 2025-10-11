@@ -16,6 +16,8 @@ type MediaKind = 'image' | 'video';
 /* ---------------- GIF Picker (Tenor) ---------------- */
 const TENOR_KEY = process.env.NEXT_PUBLIC_TENOR_API_KEY ?? 'LIVDSRZULELA';
 const TENOR_BASE = 'https://g.tenor.com/v1';
+const MEDIA_MAX = 4;
+const atLimit = (n: number) => n >= MEDIA_MAX;
 
 type TenorMedia = {
   gif?: { url?: string };
@@ -239,18 +241,37 @@ export default function ComposePostModal({ open, onClose }: Props) {
 
   const onPickMedia = (files?: FileList | null, input?: HTMLInputElement | null) => {
     if (!files || files.length === 0) return;
-    const list = Array.from(files);
+
+    // 1) Files *zuerst* klonen (FileList ist live!)
+    const pickedAll = Array.from(files);
+
+    // 2) Dann den Input resetten, damit das nächste gleiche File wieder ein change triggert
+    if (input) input.value = '';
+
+    // 3) State-Update mit der *kopierten* Liste
     setMedia((prev) => {
+      const remaining = MEDIA_MAX - prev.length;
+      if (remaining <= 0) {
+        toast.error(`Max. ${MEDIA_MAX} Medien pro Post erreicht`);
+        return prev;
+      }
+
+      const picked = pickedAll.slice(0, remaining);
       const next = [...prev];
-      for (const f of list) {
+      for (const f of picked) {
         const kind: MediaKind = f.type?.startsWith('video') ? 'video' : 'image';
         const preview = URL.createObjectURL(f);
         next.push({ id: crypto.randomUUID(), file: f, preview, kind });
       }
+
+      if (pickedAll.length > remaining) {
+        toast.error(`Nur ${remaining} weitere ${remaining === 1 ? 'Medium' : 'Medien'} möglich (max. ${MEDIA_MAX}).`);
+      }
+
       return next;
     });
-    if (input) input.value = '';
   };
+
 
   const removeMedia = (id: string) => {
     setMedia((prev) => {
@@ -265,15 +286,23 @@ export default function ComposePostModal({ open, onClose }: Props) {
   const [gifErr, setGifErr] = React.useState<string | null>(null);
 
   async function pickGifByUrl(url: string) {
+    if (atLimit(media.length)) {
+      toast.error(`Max. ${MEDIA_MAX} Medien pro Post erreicht`);
+      setGifOpen(false);
+      return;
+    }
     try {
       setGifErr(null);
       const r = await fetch(url, { mode: 'cors' });
       const blob = await r.blob();
       const type = blob.type || 'image/gif';
       const file = new File([blob], `gif_${Date.now()}.gif`, { type });
-
       const local = URL.createObjectURL(blob);
-      setMedia((prev) => [...prev, { id: crypto.randomUUID(), file, preview: local, kind: 'image' }]);
+
+      setMedia((prev) => {
+        if (atLimit(prev.length)) return prev; // Race-Schutz
+        return [...prev, { id: crypto.randomUUID(), file, preview: local, kind: 'image' }];
+      });
       setGifOpen(false);
     } catch {
       setGifErr(t('states.gifLoadError'));
@@ -486,7 +515,7 @@ export default function ComposePostModal({ open, onClose }: Props) {
   };
 
   const showGridMosaic = media.length > 0 && media.length <= 4 && media.every((m) => m.kind === 'image');
-
+  const limitReached = media.length >= MEDIA_MAX;
   const modal = (
     <div
       style={overlayStyle}
@@ -544,13 +573,20 @@ export default function ComposePostModal({ open, onClose }: Props) {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
                 {/* Medienauswahl */}
-                <label className="inline-flex items-center gap-2.5 px-3 py-1.5 rounded-lg border border-white/12 hover:bg-white/[.06] cursor-pointer">
+                <label
+                  className={`inline-flex items-center gap-2.5 px-3 py-1.5 rounded-lg border border-white/12 ${
+                    limitReached ? 'opacity-50 pointer-events-none' : 'hover:bg-white/[.06] cursor-pointer'
+                  }`}
+                  aria-disabled={limitReached}
+                >
                   <input
+                    key={media.length}                // <— remount nach jedem Add/Remove
                     type="file"
                     accept="image/*,video/*"
                     multiple
                     className="sr-only"
                     onChange={(e) => onPickMedia(e.currentTarget.files, e.currentTarget)}
+                    disabled={limitReached}
                   />
                   <span className="inline-grid place-items-center" style={{ width: 28, height: 28, color: 'var(--purple)' }} aria-hidden>
                     <svg viewBox="0 0 24 24" width={22} height={22} fill="none" stroke="currentColor" strokeWidth="2">
@@ -565,8 +601,9 @@ export default function ComposePostModal({ open, onClose }: Props) {
                 {/* GIF Button */}
                 <button
                   type="button"
-                  onClick={() => setGifOpen(true)}
-                  className="inline-flex items-center gap-2.5 px-3 py-1.5 rounded-lg border border-white/12 hover:bg-white/[.06]"
+                  onClick={() => !limitReached && setGifOpen(true)}
+                  disabled={limitReached}
+                  className={`inline-flex items-center gap-2.5 px-3 py-1.5 rounded-lg border border-white/12 ${limitReached ? 'opacity-50 pointer-events-none' : 'hover:bg-white/[.06]'}`}
                   title={t('titles.gifSearch')}
                   aria-label={t('titles.gifSearch')}
                 >
@@ -575,8 +612,9 @@ export default function ComposePostModal({ open, onClose }: Props) {
                   </span>
                   <span className="text-sm text-white/80">{t('fields.gifLabel')}</span>
                 </button>
+                <div className="text-xs text-white/60 ml-3">{media.length}/{MEDIA_MAX}</div>
               </div>
-
+              
               <button
                 type="submit"
                 className="px-4 py-1.5 rounded-full bg-[var(--purple)] hover:opacity-95 text-white disabled:opacity-50"
@@ -594,7 +632,6 @@ export default function ComposePostModal({ open, onClose }: Props) {
       <GifPickerModal open={gifOpen} onClose={() => setGifOpen(false)} onPick={(url) => void pickGifByUrl(url)} />
     </div>
   );
-
   return createPortal(modal, document.body);
 }
 

@@ -52,16 +52,21 @@ export default async function HomePage({
   searchParams,
 }: {
   params: Promise<Params>;
-  searchParams: Record<string, string | string[] | undefined>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  await params; // locale wird hier nicht benötigt
+  // Falls du locale nicht brauchst, trotzdem awaiten:
+  await params;
+
+  // searchParams zuerst auflösen
+  const spObj = (await searchParams) ?? {};
 
   // Query-Params → URLSearchParams
   const sp = new URLSearchParams();
-  for (const [k, v] of Object.entries(searchParams)) {
+  for (const [k, v] of Object.entries(spObj)) {
     const val = Array.isArray(v) ? v[0] : v;
     if (val != null) sp.set(k, val);
   }
+
   const { following, sort, role } = parseFilters(sp);
 
   const me = await getCurrentUser().catch(() => null);
