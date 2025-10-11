@@ -132,6 +132,102 @@ function mapToFeedPost(p: ApiPost): FeedPost {
   };
 }
 
+/* ---------- kleine Helfer für die Top-3 Karten ---------- */
+function formatMoney(cents?: number) {
+  return `$${(((cents ?? 0) / 100) as number).toFixed(2)}`;
+}
+
+function MedalIcon({ rank }: { rank: 1 | 2 | 3 }) {
+  const stroke =
+    rank === 1 ? '#F6C453' : rank === 2 ? '#D6D6D6' : '#C07A45';
+  const fill =
+    rank === 1 ? '#FFD54A' : rank === 2 ? '#E7E7E7' : '#DDA15E';
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className="size-5 drop-shadow"
+    >
+      <circle cx="12" cy="13" r="7" fill={fill} stroke={stroke} strokeWidth="1.5" />
+      <path d="M7 3l5 5 5-5" stroke={stroke} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+      <text x="12" y="16" textAnchor="middle" fontSize="9" fontWeight="700" fill="#3a2c1a">
+        {rank}
+      </text>
+    </svg>
+  );
+}
+
+function PodiumCard({
+  rank,
+  entry,
+}: {
+  rank: 1 | 2 | 3;
+  entry: LeaderTop | null;
+}) {
+  // Farbschema pro Rang
+  const colors =
+    rank === 1
+      ? {
+          ring: 'from-yellow-300/60 via-yellow-500/40 to-amber-600/40',
+          aura: 'shadow-[0_0_35px_rgba(255,213,74,.35)]',
+          chip: 'bg-yellow-300/15 text-yellow-100 ring-yellow-300/40',
+        }
+      : rank === 2
+      ? {
+          ring: 'from-zinc-200/60 via-zinc-300/40 to-stone-400/40',
+          aura: 'shadow-[0_0_35px_rgba(225,225,225,.25)]',
+          chip: 'bg-zinc-200/15 text-zinc-100 ring-zinc-300/40',
+        }
+      : {
+          ring: 'from-amber-200/50 via-orange-300/40 to-orange-500/40',
+          aura: 'shadow-[0_0_35px_rgba(221,161,94,.28)]',
+          chip: 'bg-orange-300/15 text-orange-100 ring-orange-300/40',
+        };
+
+  const displayName = entry?.user.displayName ?? '—';
+  const handle = entry ? `@${entry.user.handle}` : '@—';
+  const total = formatMoney(entry?.totalCents);
+  const cnt = entry?.count ?? 0;
+  const avatar = entry?.user.avatarUrl || AVATAR_PH;
+
+  return (
+    <div
+      className={`relative rounded-app p-[1px] bg-gradient-to-br ${colors.ring} ${colors.aura}`}
+    >
+      <div className="rounded-app bg-card/90 border border-white/10 p-3 text-center backdrop-blur-sm">
+        {/* Top-Zeile: Medaille + Chip */}
+        <div className="flex items-center justify-between">
+          <span className="inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-[11px] ring-1 ring-inset bg-white/5 text-white/80 ring-white/10">
+            <MedalIcon rank={rank} />
+            <span className="font-semibold leading-none">Top {rank}</span>
+          </span>
+        </div>
+
+        {/* Avatar */}
+        <div className="mt-3 flex justify-center">
+          <div className="relative size-14 rounded-full p-[2px] bg-gradient-to-br from-white/60 to-white/10">
+            <div className="absolute -inset-[2px] rounded-full bg-gradient-to-br from-white/20 to-transparent blur-[6px]" />
+            <div className="relative size-full rounded-full overflow-hidden ring-1 ring-white/20">
+              <Image src={avatar} alt="" fill className="object-cover" />
+            </div>
+          </div>
+        </div>
+
+        {/* Name + Handle */}
+        <div className="mt-2 font-semibold truncate">{displayName}</div>
+        <div className="text-[12px] text-muted truncate">{handle}</div>
+
+        {/* Zahlen */}
+        <div className="mt-1.5 text-[13px]">
+          <span className="text-white/90">{total}</span>
+          <span className="text-white/50"> · </span>
+          <span className="text-white/80">{cnt} tips</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ProfileTabsContent({
   handle,
   initialTab = 'posts',
@@ -253,25 +349,16 @@ export default function ProfileTabsContent({
             {loadingLead && <div className="text-sm text-muted">Loading…</div>}
             {errLead && <div className="text-sm text-red-500">{errLead}</div>}
 
-            {/* Top 3 */}
+            {/* Top 3 – nur optisch verbessert */}
             {!loadingLead && !errLead && (
               <>
                 {(() => {
                   const podium: (LeaderTop | null)[] = [top[0] ?? null, top[1] ?? null, top[2] ?? null];
                   return (
                     <div className="grid grid-cols-3 gap-3">
-                      {podium.map((t, i) => (
-                        <div key={i} className="rounded-app border border-sub bg-card p-3 text-center">
-                          <div className="text-2xl" aria-hidden="true">
-                            {i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉'}
-                          </div>
-                          <div className="mt-1 font-semibold truncate">{t?.user.displayName ?? '—'}</div>
-                          <div className="text-[12px] text-muted truncate">{t ? `@${t.user.handle}` : '@—'}</div>
-                          <div className="mt-1 text-sm">
-                            ${((t?.totalCents ?? 0) / 100).toFixed(2)} · {t?.count ?? 0} tips
-                          </div>
-                        </div>
-                      ))}
+                      <PodiumCard rank={1} entry={podium[0]} />
+                      <PodiumCard rank={2} entry={podium[1]} />
+                      <PodiumCard rank={3} entry={podium[2]} />
                     </div>
                   );
                 })()}
