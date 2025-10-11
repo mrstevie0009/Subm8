@@ -4,6 +4,17 @@
     "brand": { "name": "Subm8" },
     "time": { "now": "maintenant", "m": "{count}m", "h": "{count}h", "d": "{count}j" },
 
+    "feedFilter": {
+      "toggleAria": "Filtre du fil",
+      "title": "Filtrer votre fil",
+      "following": "Abonnements",
+      "newPosts": "Nouveaux posts",
+      "topPosts": "Posts populaires",
+      "onlyDommes": "Dommes uniquement",
+      "onlySubs": "Subs uniquement",
+      "reset": "Réinitialiser",
+      "apply": "Appliquer"
+    },
 
     "verify": {
       "complete": {

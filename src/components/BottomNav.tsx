@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import { useLocale } from 'next-intl';
 import * as React from 'react';
 import { createPortal } from 'react-dom';
-import { useScrollShowOnDown } from '../hooks/useScrollShowonDown';
+import { useScrollHide } from '../hooks/useScrollHide';
 
 type TabProps = {
   href: string;
@@ -50,7 +50,7 @@ function NavContent() {
   const isActive = (seg: string) =>
     pathname === `/${locale}${seg}` || pathname.startsWith(`/${locale}${seg}/`);
 
-  const show = useScrollShowOnDown({ threshold: 6, topAlwaysShow: 12 });
+  const hidden = useScrollHide({ threshold: 6, topAlwaysShow: 12 });
 
   // --- Notifications badge ---
   const [hasNewNoti, setHasNewNoti] = React.useState(false);
@@ -153,7 +153,7 @@ function NavContent() {
         WebkitBackdropFilter: 'blur(10px)',
         borderTop: '1px solid rgba(255,255,255,.10)',
         zIndex: 2147483647,
-        transform: show ? 'translateY(0)' : 'translateY(100%)',
+        transform: hidden ? 'translateY(100%)' : 'translateY(0)',
         transition: 'transform 220ms ease',
         willChange: 'transform',
       }}

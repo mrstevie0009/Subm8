@@ -1,3 +1,4 @@
+// src/app/[locale]/page.tsx
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/currentUser';
 import HomeFeedClient from '@/components/HomeFeedClient';
@@ -29,8 +30,39 @@ function mapUploaded(
   });
 }
 
-export default async function HomePage({ params }: { params: Promise<Params> }) {
+function parseFilters(sp: URLSearchParams) {
+  const feedRaw = (sp.get('feed') || '')
+    .split(',')
+    .map(s => s.trim())
+    .filter(Boolean);
+
+  const following = feedRaw.includes('following');
+  const sort: 'new' | 'top' = feedRaw.includes('top') ? 'top' : 'new';
+
+  const roleParam = sp.get('role');
+  const role: Role =
+    roleParam === 'dommes' ? 'DOMME' :
+    roleParam === 'subs'   ? 'SUBMISSIVE' : null;
+
+  return { following, sort, role };
+}
+
+export default async function HomePage({
+  params,
+  searchParams,
+}: {
+  params: Promise<Params>;
+  searchParams: Record<string, string | string[] | undefined>;
+}) {
   await params; // locale wird hier nicht benötigt
+
+  // Query-Params → URLSearchParams
+  const sp = new URLSearchParams();
+  for (const [k, v] of Object.entries(searchParams)) {
+    const val = Array.isArray(v) ? v[0] : v;
+    if (val != null) sp.set(k, val);
+  }
+  const { following, sort, role } = parseFilters(sp);
 
   const me = await getCurrentUser().catch(() => null);
 
@@ -41,69 +73,106 @@ export default async function HomePage({ params }: { params: Promise<Params> }) 
     viewerRole = (row?.role as Role) ?? null;
   }
 
-  const [posts, likedByMe, bookmarkedByMe] = await Promise.all([
-    prisma.post.findMany({
-      orderBy: { createdAt: 'desc' },
-      include: {
-        author: {
-          select: {
-            id: true,
-            handle: true,
-            displayName: true,
-            role: true,
-            avatarUrl: true,
-          },
+  // Following-Menge bestimmen
+  let followingUserIds = new Set<string>();
+  if (following) {
+    if (!me) {
+      return <HomeFeedClient initialItems={[]} />;
+    }
+    const rows = await prisma.follow.findMany({
+      where: { followerId: me.id },            // <-- ggf. Relationenname anpassen
+      select: { followeeId: true },            // <-- ggf. Feldnamen anpassen
+    });
+    followingUserIds = new Set(rows.map(r => r.followeeId));
+    if (followingUserIds.size === 0) {
+      return <HomeFeedClient initialItems={[]} />;
+    }
+  }
+
+  const orderBy =
+    sort === 'top'
+      ? [{ Like: { _count: 'desc' as const } }, { createdAt: 'desc' as const }]
+      : [{ createdAt: 'desc' as const }];
+
+  const posts = await prisma.post.findMany({
+    where: {
+      ...(following ? { authorId: { in: Array.from(followingUserIds) } } : {}),
+    },
+    orderBy,
+    include: {
+      author: {
+        select: {
+          id: true,
+          handle: true,
+          displayName: true,
+          role: true,
+          avatarUrl: true,
         },
-        uploaded: true, // Multi-Media am Hauptpost
-        repostOf: {
-          select: {
-            id: true,
-            text: true,
-            mediaUrl: true,   // legacy
-            mediaAlt: true,   // legacy
-            uploaded: true,   // Multi-Media beim Original des Reposts
-            createdAt: true,
-            communityId: true, // für Community-Badge bei Reposts
-            author: {
-              select: {
-                id: true,
-                handle: true,
-                displayName: true,
-                role: true,
-                avatarUrl: true,
-              },
-            },
-            _count: { select: { Like: true, Comment: true, reposts: true } },
-          },
-        },
-        quoteOf: {
-          select: {
-            id: true,
-            text: true,
-            mediaUrl: true,   // legacy
-            mediaAlt: true,   // legacy
-            uploaded: true,   // Multi-Media in Quotes
-            createdAt: true,
-            author: {
-              select: {
-                id: true,
-                handle: true,
-                displayName: true,
-                role: true,
-                avatarUrl: true,
-              },
-            },
-          },
-        },
-        _count: { select: { Like: true, Comment: true, reposts: true } },
       },
-      take: 30,
-    }),
+      uploaded: true, // Multi-Media am Hauptpost
+      repostOf: {
+        select: {
+          id: true,
+          text: true,
+          mediaUrl: true,   // legacy
+          mediaAlt: true,   // legacy
+          uploaded: true,   // Multi-Media beim Original des Reposts
+          createdAt: true,
+          communityId: true, // für Community-Badge bei Reposts
+          author: {
+            select: {
+              id: true,
+              handle: true,
+              displayName: true,
+              role: true,
+              avatarUrl: true,
+            },
+          },
+          _count: { select: { Like: true, Comment: true, reposts: true } },
+        },
+      },
+      quoteOf: {
+        select: {
+          id: true,
+          text: true,
+          mediaUrl: true,   // legacy
+          mediaAlt: true,   // legacy
+          uploaded: true,   // Multi-Media in Quotes
+          createdAt: true,
+          author: {
+            select: {
+              id: true,
+              handle: true,
+              displayName: true,
+              role: true,
+              avatarUrl: true,
+            },
+          },
+        },
+      },
+      _count: { select: { Like: true, Comment: true, reposts: true } },
+    },
+    take: 30,
+  });
+
+  // Role-Filter wirkt auf Inhalt (Repost → Original-Author; sonst Post-Author)
+  const rolePass = (p: typeof posts[number]) => {
+    if (!role) return true;
+    const contentRole: Role = p.repostOf?.author.role ?? p.author.role ?? null;
+    return contentRole === role;
+  };
+  const postsRoleFiltered = posts.filter(rolePass);
+
+  // Likes/Bookmarks
+  const [likedByMe, bookmarkedByMe] = await Promise.all([
     me
-      ? prisma.like.findMany({ where: { userId: me.id }, select: { postId: true } })
+      ? prisma.like.findMany({
+          where: { userId: me.id, postId: { in: postsRoleFiltered.map(p => (p.repostOf ? p.repostOf.id : p.id)) } },
+          select: { postId: true },
+        })
       : Promise.resolve([] as { postId: string }[]),
     me
-      ? prisma.bookmark.findMany({ where: { userId: me.id }, select: { postId: true } })
+      ? prisma.bookmark.findMany({ where: { userId: me.id, postId: { in: postsRoleFiltered.map(p => p.id) } }, select: { postId: true } })
       : Promise.resolve([] as { postId: string }[]),
   ]);
 
@@ -114,7 +183,7 @@ export default async function HomePage({ params }: { params: Promise<Params> }) 
   let hasBlockedSet = new Set<string>();
   let blockedBySet = new Set<string>();
   if (me) {
-    const feedAuthorIds = Array.from(new Set(posts.map((p) => p.author.id)));
+    const feedAuthorIds = Array.from(new Set(postsRoleFiltered.map((p) => p.author.id)));
     if (feedAuthorIds.length > 0) {
       const [myBlocks, blocksMe] = await Promise.all([
         prisma.block.findMany({
@@ -137,7 +206,7 @@ export default async function HomePage({ params }: { params: Promise<Params> }) 
 
   // Communities + Visibility filtern
   const communityIds = Array.from(
-    new Set(posts.map(effectiveCommunityId).filter(Boolean) as string[])
+    new Set(postsRoleFiltered.map(effectiveCommunityId).filter(Boolean) as string[])
   );
   const communities = communityIds.length
     ? await prisma.community.findMany({
@@ -159,7 +228,7 @@ export default async function HomePage({ params }: { params: Promise<Params> }) 
         )
       : new Set<string>();
 
-  const visible = posts.filter((p) => {
+  const visible = postsRoleFiltered.filter((p) => {
     const cid = effectiveCommunityId(p);
     if (!cid) return true;
     const c = commById.get(cid);

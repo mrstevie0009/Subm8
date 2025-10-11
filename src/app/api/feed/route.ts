@@ -34,19 +34,38 @@ function mapUploaded(
   });
 }
 
+function parseFilters(searchParams: URLSearchParams) {
+  const feedRaw = (searchParams.get('feed') || '')
+    .split(',')
+    .map(s => s.trim())
+    .filter(Boolean);
+
+  const following = feedRaw.includes('following');
+  const sort: 'new' | 'top' = feedRaw.includes('top') ? 'top' : 'new'; // Default: 'new'
+
+  const roleParam = searchParams.get('role');
+  const role: Role =
+    roleParam === 'dommes' ? 'DOMME' :
+    roleParam === 'subs'   ? 'SUBMISSIVE' : null;
+
+  return { following, sort, role };
+}
+
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
+  const { following, sort, role } = parseFilters(searchParams);
+
   const sinceISO = searchParams.get('since');
   const onlyCount = searchParams.get('onlyCount') === '1';
 
-  const sinceDate = sinceISO ? new Date(sinceISO) : new Date(0);
-  if (Number.isNaN(sinceDate.getTime())) {
+  const sinceDate = sinceISO ? new Date(sinceISO) : null;
+  if (sinceISO && Number.isNaN(sinceDate!.getTime())) {
     return NextResponse.json({ posts: [], count: 0 });
   }
 
   const me = await getCurrentUser().catch(() => null);
 
-  // Rolle sicher laden
+  // Rolle sicher laden (für Community Sichtbarkeit)
   let viewerRole: Role = null;
   if (me) {
     const row = await prisma.user.findUnique({
@@ -56,10 +75,27 @@ export async function GET(req: Request) {
     viewerRole = (row?.role ?? null) as Role;
   }
 
+  // Follows laden (für following-Filter)
+  let followingUserIds = new Set<string>();
+  if (following) {
+    if (!me) {
+      // nicht eingeloggt → kein Following-Feed
+      return NextResponse.json(onlyCount ? { count: 0 } : { posts: [] });
+    }
+    const rows = await prisma.follow.findMany({
+      where: { followerId: me.id }, // <-- ggf. Relationenname anpassen
+      select: { followeeId: true }, // <-- ggf. Feldnamen anpassen
+    });
+    followingUserIds = new Set(rows.map(r => r.followeeId));
+    if (followingUserIds.size === 0) {
+      return NextResponse.json(onlyCount ? { count: 0 } : { posts: [] });
+    }
+  }
+
   // Communities & Memberships laden und Posts nach Policy filtern
-  async function filterAndCollect<T extends { id: string; communityId: string | null; repostOf?: { communityId: string | null } | null }>(
-    posts: T[],
-  ) {
+  async function filterAndCollect<T extends {
+    id: string; communityId: string | null; repostOf?: { communityId: string | null } | null;
+  }>(posts: T[]) {
     const communityIds = Array.from(
       new Set(
         posts
@@ -100,27 +136,56 @@ export async function GET(req: Request) {
     return { allowed, communitiesById: byId };
   }
 
+  // --- Hilfsfunktion: Role-Filter auf den *Inhalt* (bei Repost der Original-Author, sonst Post-Author)
+  const passesRoleFilter = (p: {
+    author: { role: Role }; repostOf?: { author: { role: Role } } | null;
+  }) => {
+    if (!role) return true;
+    const contentRole = p.repostOf?.author.role ?? p.author.role ?? null;
+    return contentRole === role;
+  };
+
+  // --- Zählend (Polling) ---
   if (onlyCount) {
-    // Für Polling reicht eine gefilterte Zählung
     const recent = await prisma.post.findMany({
-      where: { createdAt: { gt: sinceDate } },
+      where: {
+        ...(sinceDate ? { createdAt: { gt: sinceDate } } : {}),
+        ...(following ? { authorId: { in: Array.from(followingUserIds) } } : {}),
+      },
       select: {
         id: true,
         communityId: true,
         createdAt: true,
-        repostOf: { select: { communityId: true } },
+        author: { select: { role: true } },
+        repostOf: {
+          select: {
+            communityId: true,
+            author: { select: { role: true } },
+          },
+        },
       },
       orderBy: { createdAt: 'desc' },
       take: 200,
     });
 
-    const { allowed } = await filterAndCollect(recent);
+    const recentRoleFiltered = role ? recent.filter(passesRoleFilter) : recent;
+    const { allowed } = await filterAndCollect(recentRoleFiltered);
     return NextResponse.json({ count: allowed.length });
   }
 
+  // --- Vollständige Liste ---
+  // Sortierung:
+  const orderBy =
+    sort === 'top'
+      ? [{ Like: { _count: 'desc' as const } }, { createdAt: 'desc' as const }]
+      : [{ createdAt: 'desc' as const }];
+
   const posts = await prisma.post.findMany({
-    where: { createdAt: { gt: sinceDate } },
-    orderBy: { createdAt: 'desc' },
+    where: {
+      ...(sinceDate ? { createdAt: { gt: sinceDate } } : {}),
+      ...(following ? { authorId: { in: Array.from(followingUserIds) } } : {}),
+    },
+    orderBy,
     include: {
       author: {
         select: { id: true, handle: true, displayName: true, role: true, avatarUrl: true },
@@ -168,14 +233,19 @@ export async function GET(req: Request) {
         },
       },
       _count: { select: { Like: true, Comment: true, reposts: true } },
+      // Für orderBy Like._count zu funktionieren, braucht Prisma kein extra include,
+      // aber wir lesen Likes/Bookmarks separat für viewer.
     },
     take: 50,
   });
 
+  // Role-Filter anwenden (auf Inhalt)
+  const postsRoleFiltered = role ? posts.filter(passesRoleFilter) : posts;
+
   // Likes/Bookmarks/Blocks
-  const likeTargetIds = posts.map((p) => (p.repostOf ? p.repostOf.id : p.id));
-  const bookmarkIds = posts.map((p) => p.id);
-  const authorIds = Array.from(new Set(posts.map((p) => p.author.id)));
+  const likeTargetIds = postsRoleFiltered.map((p) => (p.repostOf ? p.repostOf.id : p.id));
+  const bookmarkIds = postsRoleFiltered.map((p) => p.id);
+  const authorIds = Array.from(new Set(postsRoleFiltered.map((p) => p.author.id)));
 
   const [likes, bms, myBlocks, blocksMe] = await Promise.all([
     me
@@ -197,7 +267,7 @@ export async function GET(req: Request) {
   const hasBlockedSet = new Set(myBlocks.map((b) => b.blockedId));
   const blockedBySet = new Set(blocksMe.map((b) => b.blockerId));
 
-  const { allowed, communitiesById } = await filterAndCollect(posts);
+  const { allowed, communitiesById } = await filterAndCollect(postsRoleFiltered);
 
   return NextResponse.json({
     posts: allowed.map((p) => {
@@ -213,10 +283,10 @@ export async function GET(req: Request) {
 
       return {
         id: p.id,
-        text: p.text,
+        text: p.text, // text ist beim Container-Post vorhanden
         mediaUrl: p.mediaUrl,             // legacy
         mediaAlt: p.mediaAlt,             // legacy
-        uploaded: mapUploaded(p.uploaded), // NEU: ins erwartete Shape gemappt
+        uploaded: mapUploaded(p.uploaded), // NEU
         createdAt: p.createdAt.toISOString(),
 
         _count: {

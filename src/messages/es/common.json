@@ -5,6 +5,18 @@
     "time": { "now": "ahora", "m": "{count}m", "h": "{count}h", "d": "{count}d" },
     "actions": {"cancel": "Cancelar"},
 
+    "feedFilter": {
+      "toggleAria": "Filtro del feed",
+      "title": "Filtrar tu feed",
+      "following": "Siguiendo",
+      "newPosts": "Publicaciones nuevas",
+      "topPosts": "Publicaciones destacadas",
+      "onlyDommes": "Solo Dommes",
+      "onlySubs": "Solo Subs",
+      "reset": "Restablecer",
+      "apply": "Aplicar"
+    },
+
 
     "verify": {
       "complete": {

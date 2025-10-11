@@ -5,6 +5,18 @@
     "time": { "now": "now", "m": "{count}m", "h": "{count}h", "d": "{count}d" },
     "actions": {"cancel": "Cancel"},
 
+    "feedFilter": {
+      "toggleAria": "Feed filter",
+      "title": "Filter your feed",
+      "following": "Following",
+      "newPosts": "New Posts",
+      "topPosts": "Top Posts",
+      "onlyDommes": "Only Dommes",
+      "onlySubs": "Only Subs",
+      "reset": "Reset",
+      "apply": "Apply"
+    },
+
     "verify": {
       "complete": {
         "title": "Finishing verification…",

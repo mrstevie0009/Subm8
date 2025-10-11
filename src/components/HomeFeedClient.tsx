@@ -2,6 +2,7 @@
 'use client';
 
 import * as React from 'react';
+import { useSearchParams } from 'next/navigation';
 import PostCard from '@/components/PostCard';
 import type { FeedPost } from '@/components/PostCard';
 
@@ -126,8 +127,34 @@ function mapApiPost(p: ApiPost): FeedPost {
   };
 }
 
+// ---- Neu: Dedupe-Helper (stabil nach ID) ----
+function dedupeById<T extends { id: string }>(arr: T[]): T[] {
+  const seen = new Set<string>();
+  const out: T[] = [];
+  for (const item of arr) {
+    if (!seen.has(item.id)) {
+      seen.add(item.id);
+      out.push(item);
+    }
+  }
+  return out;
+}
+
 export default function HomeFeedClient({ initialItems }: Props) {
-  const [items, setItems] = React.useState<FeedPost[]>(initialItems);
+  const searchParams = useSearchParams();
+
+  // Nur die relevanten Query-Keys für den Feed übernehmen
+  const feedQuery = React.useMemo(() => {
+    const sp = new URLSearchParams();
+    const feed = searchParams.get('feed');
+    const role = searchParams.get('role');
+    if (feed) sp.set('feed', feed);
+    if (role) sp.set('role', role);
+    return sp.toString(); // z.B. "feed=following,top&role=dommes"
+  }, [searchParams]);
+
+  // Initial sofort deduplizieren (falls SSR schon Duplikate enthalten sollte)
+  const [items, setItems] = React.useState<FeedPost[]>(() => dedupeById(initialItems));
   const [newCount, setNewCount] = React.useState(0);
   const [loadingNew, setLoadingNew] = React.useState(false);
   const [atTop, setAtTop] = React.useState(true);
@@ -179,12 +206,34 @@ export default function HomeFeedClient({ initialItems }: Props) {
     return () => io.disconnect();
   }, [headerHeight]);
 
-  // Polling: nur zählen
+  // Wenn Filter (URL-Query) wechselt → initiale Liste neu laden
+  React.useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      const qs = feedQuery ? `?${feedQuery}` : '';
+      const res = await fetch(`/api/feed${qs}`, { cache: 'no-store' });
+      if (!res.ok) return;
+      const data = (await res.json()) as { posts: ApiPost[] };
+      if (!cancelled) {
+        const mapped = data.posts.map(mapApiPost);
+        setItems(dedupeById(mapped));       // ← dedupe
+        setNewCount(0);
+        window.scrollTo({ top: 0 });
+      }
+    };
+    load();
+    return () => { cancelled = true; };
+  }, [feedQuery]);
+
+  // Polling: nur zählen – Filter mitgeben
   React.useEffect(() => {
     let active = true;
     const tick = async () => {
       try {
-        const res = await fetch(`/api/feed?since=${encodeURIComponent(latestISO)}&onlyCount=1`, { cache: 'no-store' });
+        const sp = new URLSearchParams(feedQuery);
+        sp.set('since', latestISO);
+        sp.set('onlyCount', '1');
+        const res = await fetch(`/api/feed?${sp.toString()}`, { cache: 'no-store' });
         if (!res.ok) return;
         const data = (await res.json()) as { count: number };
         if (active) setNewCount(data.count ?? 0);
@@ -196,24 +245,26 @@ export default function HomeFeedClient({ initialItems }: Props) {
       active = false;
       clearInterval(id);
     };
-  }, [latestISO]);
+  }, [latestISO, feedQuery]);
 
-  // Neue Posts laden – als useCallback, damit der Effekt unten eine stabile Referenz hat
+  // Neue Posts laden – Filter mitgeben
   const loadNewPosts = React.useCallback(async () => {
     setLoadingNew(true);
     try {
-      const res = await fetch(`/api/feed?since=${encodeURIComponent(latestISO)}`, { cache: 'no-store' });
+      const sp = new URLSearchParams(feedQuery);
+      sp.set('since', latestISO);
+      const res = await fetch(`/api/feed?${sp.toString()}`, { cache: 'no-store' });
       if (!res.ok) return;
 
       const data = (await res.json()) as { posts: ApiPost[] };
       const mapped = data.posts.map(mapApiPost);
 
-      setItems((prev) => [...mapped, ...prev]);
+      setItems((prev) => dedupeById([...mapped, ...prev])); // ← dedupe beim Merge
       setNewCount(0);
     } finally {
       setLoadingNew(false);
     }
-  }, [latestISO]);
+  }, [latestISO, feedQuery]);
 
   // Wenn oben & neue vorhanden → automatisch laden
   React.useEffect(() => {
