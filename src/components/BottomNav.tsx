@@ -8,19 +8,90 @@ import * as React from 'react';
 import { createPortal } from 'react-dom';
 import { useScrollHide } from '../hooks/useScrollHide';
 
+type WindowWithWebkit = Window & {
+  webkitAudioContext?: typeof AudioContext;
+};
+
+function getAudioContextCtor(): typeof AudioContext {
+  const w = window as WindowWithWebkit;
+  return w.webkitAudioContext ?? window.AudioContext;
+}
+
+// ⬇️ ding-hook ohne `any` & mit iOS-Unlock
+function useDing() {
+  const ctxRef = React.useRef<AudioContext | null>(null);
+
+  // versuche AudioContext nach einer User-Interaktion zu unlocken (Mobile/iOS)
+  React.useEffect(() => {
+    const unlock = () => {
+      try {
+        if (!ctxRef.current) ctxRef.current = new (getAudioContextCtor())();
+        // iOS: resume, falls im suspended state
+        ctxRef.current?.resume?.();
+      } catch {}
+      window.removeEventListener('pointerdown', unlock);
+      window.removeEventListener('keydown', unlock);
+      window.removeEventListener('touchstart', unlock);
+    };
+    window.addEventListener('pointerdown', unlock, { once: true });
+    window.addEventListener('keydown', unlock, { once: true });
+    window.addEventListener('touchstart', unlock, { once: true });
+    return () => {
+      window.removeEventListener('pointerdown', unlock);
+      window.removeEventListener('keydown', unlock);
+      window.removeEventListener('touchstart', unlock);
+    };
+  }, []);
+
+  const play = React.useCallback(async () => {
+    try {
+      if (!ctxRef.current) ctxRef.current = new (getAudioContextCtor())();
+      const ctx = ctxRef.current;
+      await ctx.resume?.();
+
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      // weicher Envelope
+      const now = ctx.currentTime;
+      const dur = 0.2; // 200ms
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(0.5, now + 0.02); // Attack
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + dur); // Decay
+
+      // kleiner “message”-Sound: kurzer Sweep
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(900, now);
+      osc.frequency.exponentialRampToValueAtTime(1200, now + 0.08);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(now);
+      osc.stop(now + dur);
+    } catch {
+      // Browser blockt evtl. ohne User-Interaktion – still akzeptieren
+    }
+  }, []);
+
+  return play;
+}
+
 type TabProps = {
   href: string;
   label: string;
   active: boolean;
   render: (color: string) => React.ReactNode;
   badge?: boolean;
+  innerRef?: React.Ref<HTMLAnchorElement>;
 };
 
-function Tab({ href, label, active, render, badge }: TabProps) {
+function Tab({ href, label, active, render, badge, innerRef }: TabProps) {
   const color = active ? 'var(--purple)' : 'rgba(255,255,255,.95)';
   const size = 'clamp(24px, 2.8vw, 50px)';
   return (
     <Link
+      ref={innerRef}
       href={href}
       aria-label={label}
       aria-current={active ? 'page' : undefined}
@@ -44,9 +115,153 @@ function Tab({ href, label, active, render, badge }: TabProps) {
   );
 }
 
+/* ---------------- Mini Popup (Chat/Notifications) ---------------- */
+type MiniPopupProps = {
+  anchorEl: HTMLElement | null;
+  avatarUrl: string | null;
+  unreadCount: number;
+  hidden: boolean;
+  variant?: 'chat' | 'noti';
+};
+
+function MiniPopup({ anchorEl, avatarUrl, unreadCount, hidden, variant = 'chat' }: MiniPopupProps) {
+  const [pos, setPos] = React.useState<{ left: number; top: number } | null>(null);
+
+  const compute = React.useCallback(() => {
+    if (!anchorEl) return setPos(null);
+    const r = anchorEl.getBoundingClientRect();
+
+    // Mittig über dem Icon ausrichten
+    const left = Math.round(r.left + r.width / 2);
+    const top = Math.round(r.top - 15);
+    setPos({ left, top });
+  }, [anchorEl]);
+
+  React.useEffect(() => {
+    compute();
+    const on = () => compute();
+    window.addEventListener('resize', on, { passive: true });
+    window.addEventListener('scroll', on, { passive: true });
+    return () => {
+      window.removeEventListener('resize', on);
+      window.removeEventListener('scroll', on);
+    };
+  }, [compute]);
+
+  if (!anchorEl || !pos || hidden || !unreadCount) return null;
+
+  const node = (
+    <div
+      style={{
+        position: 'fixed',
+        left: pos.left,
+        top: pos.top,
+        transform: 'translate(-50%, -120%)',
+        zIndex: 2147483646,
+        pointerEvents: 'none',
+      }}
+      aria-live="polite"
+    >
+      <div className="relative">
+        <div
+          className="rounded-full overflow-hidden border border-white/20 shadow-xl grid place-items-center"
+          style={{
+            width: 36,
+            height: 36,
+            background: 'rgba(0,0,0,.45)',
+            backdropFilter: 'blur(4px)',
+          }}
+        >
+          {variant === 'chat' ? (
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={avatarUrl || '/images/avatar-placeholder.png'}
+                alt=""
+                className="w-full h-full object-cover"
+                draggable={false}
+              />
+            </>
+          ) : (
+            // Bell Icon for notifications
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#fff" strokeWidth="2" aria-hidden>
+              <path d="M6 9a6 6 0 1 1 12 0c0 4 2 5 2 6H4c0-1 2-2 2-6Z" />
+              <path d="M9 19a3 3 0 0 0 6 0" />
+            </svg>
+          )}
+        </div>
+
+        {/* Unread Counter (rechts oben) */}
+        <div
+          className="absolute -top-1 -right-1 grid place-items-center rounded-full text-[11px] font-semibold"
+          style={{
+            minWidth: 18,
+            height: 18,
+            padding: '0 5px',
+            background: 'var(--purple)',
+            color: 'white',
+            boxShadow: '0 0 0 2px rgba(0,0,0,.6)',
+          }}
+        >
+          {unreadCount > 99 ? '99+' : unreadCount}
+        </div>
+
+        {/* V-Pfeil */}
+        <div
+          aria-hidden
+          style={{
+            position: 'absolute',
+            left: '50%',
+            top: '100%',
+            transform: 'translate(-50%, 6px)',
+            width: 18,
+            height: 10,
+          }}
+        >
+          <span
+            style={{
+              position: 'absolute',
+              left: 1,
+              top: 0,
+              width: 10,
+              height: 2,
+              background: 'var(--purple)',
+              borderRadius: 2,
+              transform: 'rotate(35deg)',
+              boxShadow: '0 0 0 1px rgba(0,0,0,.35)',
+              display: 'block',
+            }}
+          />
+          <span
+            style={{
+              position: 'absolute',
+              right: 1,
+              top: 0,
+              width: 10,
+              height: 2,
+              background: 'var(--purple)',
+              borderRadius: 2,
+              transform: 'rotate(-35deg)',
+              boxShadow: '0 0 0 1px rgba(0,0,0,.35)',
+              display: 'block',
+            }}
+          />
+        </div>
+      </div>
+    </div>
+  );
+
+  return createPortal(node, document.body);
+}
+
+/* --------------------------------------------------- */
+
 function NavContent() {
   const pathname = usePathname();
   const locale = useLocale();
+  const ding = useDing();
+  const lastChatKeyRef = React.useRef<string | null>(null);
+  const lastNotiKeyRef = React.useRef<string | null>(null);
   const isActive = (seg: string) =>
     pathname === `/${locale}${seg}` || pathname.startsWith(`/${locale}${seg}/`);
 
@@ -54,6 +269,8 @@ function NavContent() {
 
   // --- Notifications badge ---
   const [hasNewNoti, setHasNewNoti] = React.useState(false);
+  const [latestNotiMs, setLatestNotiMs] = React.useState<number | null>(null);
+  const [miniNotiVisible, setMiniNotiVisible] = React.useState(false);
   const notificationsActive = isActive('/notifications');
 
   const checkNoti = React.useCallback(async () => {
@@ -61,19 +278,28 @@ function NavContent() {
       const res = await fetch('/api/notifications?limit=1', { cache: 'no-store' });
       if (!res.ok) {
         setHasNewNoti(false);
+        setMiniNotiVisible(false);
+        setLatestNotiMs(null);
         return;
       }
       const j: { ok: boolean; items?: Array<{ time: string }> } = await res.json();
       const latestIso = j?.ok && j.items && j.items[0]?.time;
       if (!latestIso) {
         setHasNewNoti(false);
+        setMiniNotiVisible(false);
+        setLatestNotiMs(null);
         return;
       }
       const latest = new Date(latestIso).getTime();
+      setLatestNotiMs(latest);
       const seen = Number(localStorage.getItem('notiLastSeen') || 0);
-      setHasNewNoti(latest > seen && !notificationsActive);
+      const fresh = latest > seen && !notificationsActive;
+      setHasNewNoti(fresh);
+      setMiniNotiVisible(fresh);
     } catch {
       setHasNewNoti(false);
+      setMiniNotiVisible(false);
+      setLatestNotiMs(null);
     }
   }, [notificationsActive]);
 
@@ -90,6 +316,7 @@ function NavContent() {
     if (notificationsActive) {
       localStorage.setItem('notiLastSeen', String(Date.now()));
       setHasNewNoti(false);
+      setMiniNotiVisible(false); // Seite besucht → Popup weg
     }
   }, [notificationsActive]);
 
@@ -97,25 +324,83 @@ function NavContent() {
     if (!notificationsActive) checkNoti();
   }, [pathname, locale, notificationsActive, checkNoti]);
 
-  // --- Chat badge (ungelesene Nachrichten) ---
+  // --- Chat badge + Mini-Popup ---
   const [hasUnreadChat, setHasUnreadChat] = React.useState(false);
   const chatActive = isActive('/chat');
+
+  // Mini popup state (chat)
+  const [miniUser, setMiniUser] = React.useState<{
+    conversationId: string;
+    userId: string;
+    avatarUrl: string | null;
+    unread: number;
+  } | null>(null);
+
+  const chatTabRef = React.useRef<HTMLAnchorElement | null>(null);
+  const notiTabRef = React.useRef<HTMLAnchorElement | null>(null);
+
+  // Dismiss logic: wenn Thread offen ist → Overlay verstecken
+  const currentThreadId = React.useMemo(() => {
+    // erwartet Pfad: /[locale]/chat/[id]
+    const parts = pathname.split('/').filter(Boolean);
+    const idx = parts.indexOf('chat');
+    return idx >= 0 && parts[idx + 1] ? parts[idx + 1] : null;
+  }, [pathname]);
 
   const checkChat = React.useCallback(async () => {
     try {
       const res = await fetch('/api/chat', { cache: 'no-store' });
       if (!res.ok) {
         setHasUnreadChat(false);
+        setMiniUser(null);
         return;
       }
-      const j: { ok: boolean; items?: Array<{ unread?: number }> } = await res.json();
-      const anyUnread = Boolean(j?.ok && j.items?.some((it) => (it.unread ?? 0) > 0));
-      // Badge nur zeigen, wenn wir NICHT auf /chat sind – analog zu Notifications
+      const j: {
+        ok: boolean;
+        items?: Array<{
+          id: string;
+          other: { id: string; avatarUrl: string | null };
+          lastMessageAt: string;
+          unread?: number;
+          muted?: boolean;
+        }>;
+      } = await res.json();
+
+      const list = (j?.ok && Array.isArray(j.items) ? j.items : []) as NonNullable<typeof j.items>;
+
+      // Any unread?
+      const anyUnread = list.some((it) => (it.unread ?? 0) > 0);
       setHasUnreadChat(anyUnread && !chatActive);
+
+      // letzter Thread mit unread > 0
+      const latestUnread = list
+        .filter((it) => (it.unread ?? 0) > 0)
+        .sort((a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime())[0];
+
+      if (!latestUnread) {
+        setMiniUser(null);
+        return;
+      }
+
+      // Wenn der aktuell geöffnete Thread genau dieser ist → Popup nicht zeigen
+      const openId = currentThreadId;
+      const shouldHide = openId && latestUnread.id === openId;
+
+      setMiniUser(
+        shouldHide
+          ? null
+          : {
+              conversationId: latestUnread.id,
+              userId: latestUnread.other.id,
+              avatarUrl: latestUnread.other.avatarUrl ?? null,
+              unread: latestUnread.unread ?? 0,
+            },
+      );
     } catch {
       setHasUnreadChat(false);
+      setMiniUser(null);
     }
-  }, [chatActive]);
+  }, [chatActive, currentThreadId]);
 
   React.useEffect(() => {
     checkChat();
@@ -123,122 +408,190 @@ function NavContent() {
       if (document.visibilityState === 'visible') checkChat();
     };
     document.addEventListener('visibilitychange', onVis);
-    return () => document.removeEventListener('visibilitychange', onVis);
+    const int = window.setInterval(checkChat, 5000);
+    return () => {
+      document.removeEventListener('visibilitychange', onVis);
+      window.clearInterval(int);
+    };
   }, [checkChat]);
 
   React.useEffect(() => {
     if (chatActive) {
-      // Im Chat-Bereich Badge ausblenden
       setHasUnreadChat(false);
     } else {
       checkChat();
     }
   }, [pathname, locale, chatActive, checkChat]);
 
+  // Reagiere auf Chat-Open Events (Popup sofort weg)
+  React.useEffect(() => {
+    const onOpen = (e: Event) => {
+      const ce = e as CustomEvent<{ conversationId?: string; userId?: string }>;
+      if (miniUser && (ce.detail?.conversationId === miniUser.conversationId || ce.detail?.userId === miniUser.userId)) {
+        setMiniUser(null);
+      }
+    };
+    window.addEventListener('chat:thread-opened', onOpen as EventListener);
+    return () => window.removeEventListener('chat:thread-opened', onOpen as EventListener);
+  }, [miniUser]);
+
+  // 🔔 Sound abspielen (Chat)
+  React.useEffect(() => {
+    if (!miniUser) return;
+
+    const key = `${miniUser.conversationId}:${miniUser.unread}`;
+    if (lastChatKeyRef.current === key) return; // nichts Neues → kein Ton
+    lastChatKeyRef.current = key;
+
+    if (document.visibilityState === 'visible') {
+      const t = setTimeout(() => {
+        ding();
+      }, 30);
+      return () => clearTimeout(t);
+    }
+  }, [miniUser, ding]);
+
+  // 🔔 Sound abspielen (Notifications)
+  React.useEffect(() => {
+    if (!miniNotiVisible || !latestNotiMs) return;
+
+    const key = String(latestNotiMs);
+    if (lastNotiKeyRef.current === key) return;
+    lastNotiKeyRef.current = key;
+
+    if (document.visibilityState === 'visible') {
+      const t = setTimeout(() => {
+        ding();
+      }, 30);
+      return () => clearTimeout(t);
+    }
+  }, [miniNotiVisible, latestNotiMs, ding]);
+
   const navHeight = 'calc(clamp(24px, 2.8vw, 50px) + 20px + env(safe-area-inset-bottom))';
 
   return (
-    <nav
-      role="navigation"
-      aria-label="Bottom navigation"
-      style={{
-        position: 'fixed',
-        left: 0,
-        right: 0,
-        bottom: 0,
-        height: navHeight,
-        paddingBottom: 'env(safe-area-inset-bottom)',
-        background: 'rgba(0,0,0,.60)',
-        backdropFilter: 'blur(10px)',
-        WebkitBackdropFilter: 'blur(10px)',
-        borderTop: '1px solid rgba(255,255,255,.10)',
-        zIndex: 2147483647,
-        transform: hidden ? 'translateY(100%)' : 'translateY(0)',
-        transition: 'transform 220ms ease',
-        willChange: 'transform',
-      }}
-    >
-      <div
-        className="mx-auto h-full grid justify-items-center items-center"
-        style={{ maxWidth: 760, gridTemplateColumns: 'repeat(5, 1fr)' }}
+    <>
+      <nav
+        role="navigation"
+        aria-label="Bottom navigation"
+        style={{
+          position: 'fixed',
+          left: 0,
+          right: 0,
+          bottom: 0,
+          height: navHeight,
+          paddingBottom: 'env(safe-area-inset-bottom)',
+          background: 'rgba(0,0,0,.60)',
+          backdropFilter: 'blur(10px)',
+          WebkitBackdropFilter: 'blur(10px)',
+          borderTop: '1px solid rgba(255,255,255,.10)',
+          zIndex: 2147483647,
+          transform: hidden ? 'translateY(100%)' : 'translateY(0)',
+          transition: 'transform 220ms ease',
+          willChange: 'transform',
+        }}
       >
-        {/* Home */}
-        <Tab
-          href={`/${locale}`}
-          label="Home"
-          active={pathname === `/${locale}`}
-          render={(color) => (
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style={{ color, width: '100%', height: '100%' }} aria-hidden="true">
-              <mask id="homeDoorMask"><rect width="24" height="24" fill="white" /><rect x="10.2" y="16.2" width="3.6" height="6" rx="1.1" fill="black" /></mask>
-              <path d="M3.2 10.6 12 3l8.8 7.6V20.5c0 .83-.67 1.5-1.5 1.5H4.7c-.83 0-1.5-.67-1.5-1.5V10.6Z" mask="url(#homeDoorMask)" />
-              <rect x="6.2" y="12.1" width="2.4" height="2.4" rx=".5" fill="#fff" opacity=".22" />
-              <rect x="15.4" y="12.1" width="2.4" height="2.4" rx=".5" fill="#fff" opacity=".22" />
-            </svg>
-          )}
-        />
+        <div
+          className="mx-auto h-full grid justify-items-center items-center"
+          style={{ maxWidth: 760, gridTemplateColumns: 'repeat(5, 1fr)' }}
+        >
+          {/* Home */}
+          <Tab
+            href={`/${locale}`}
+            label="Home"
+            active={pathname === `/${locale}`}
+            render={(color) => (
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style={{ color, width: '100%', height: '100%' }} aria-hidden="true">
+                <mask id="homeDoorMask"><rect width="24" height="24" fill="white" /><rect x="10.2" y="16.2" width="3.6" height="6" rx="1.1" fill="black" /></mask>
+                <path d="M3.2 10.6 12 3l8.8 7.6V20.5c0 .83-.67 1.5-1.5 1.5H4.7c-.83 0-1.5-.67-1.5-1.5V10.6Z" mask="url(#homeDoorMask)" />
+                <rect x="6.2" y="12.1" width="2.4" height="2.4" rx=".5" fill="#fff" opacity=".22" />
+                <rect x="15.4" y="12.1" width="2.4" height="2.4" rx=".5" fill="#fff" opacity=".22" />
+              </svg>
+            )}
+          />
 
-        {/* Search */}
-        <Tab
-          href={`/${locale}/search`}
-          label="Search"
-          active={isActive('/search')}
-          render={(color) => (
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style={{ color, width: '100%', height: '100%' }} aria-hidden="true">
-              <path fillRule="evenodd" clipRule="evenodd" d="M10.5 3a7.5 7.5 0 0 1 5.917 12.136l4.473 4.474a1.5 1.5 0 1 1-2.122 2.121l-4.473-4.473A7.5 7.5 0 1 1 10.5 3Zm0 3a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9Z" />
-              <circle cx="14.2" cy="8.8" r="1.05" opacity=".35" />
-            </svg>
-          )}
-        />
+          {/* Search */}
+          <Tab
+            href={`/${locale}/search`}
+            label="Search"
+            active={isActive('/search')}
+            render={(color) => (
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style={{ color, width: '100%', height: '100%' }} aria-hidden="true">
+                <path fillRule="evenodd" clipRule="evenodd" d="M10.5 3a7.5 7.5 0 0 1 5.917 12.136l4.473 4.474a1.5 1.5 0 1 1-2.122 2.121l-4.473-4.473A7.5 7.5 0 1 1 10.5 3Zm0 3a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9Z" />
+                <circle cx="14.2" cy="8.8" r="1.05" opacity=".35" />
+              </svg>
+            )}
+          />
 
-        {/* Notifications */}
-        <Tab
-          href={`/${locale}/notifications`}
-          label="Notifications"
-          active={notificationsActive}
-          badge={hasNewNoti}
-          render={(color) => (
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style={{ color, width: '100%', height: '100%' }} aria-hidden="true">
-              <path d="M12 22a2.75 2.75 0 0 0 2.62-2H9.38A2.75 2.75 0 0 0 12 22Zm7-6V11a7 7 0 1 0-14 0v5l-1.8 1.8c-.3.3-.2.7.2.7H20.6c.4 0 .5-.4.2-.7L19 16Z" />
-              <circle cx="15.8" cy="7.6" r=".9" fill="#fff" opacity=".28" />
-            </svg>
-          )}
-        />
+          {/* Notifications */}
+          <Tab
+            innerRef={notiTabRef}
+            href={`/${locale}/notifications`}
+            label="Notifications"
+            active={notificationsActive}
+            badge={hasNewNoti}
+            render={(color) => (
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style={{ color, width: '100%', height: '100%' }} aria-hidden="true">
+                <path d="M12 22a2.75 2.75 0 0 0 2.62-2H9.38A2.75 2.75 0 0 0 12 22Zm7-6V11a7 7 0 1 0-14 0v5l-1.8 1.8c-.3.3-.2.7.2.7H20.6c.4 0 .5-.4.2-.7L19 16Z" />
+                <circle cx="15.8" cy="7.6" r=".9" fill="#fff" opacity=".28" />
+              </svg>
+            )}
+          />
 
-        {/* Communities */}
-        <Tab
-          href={`/${locale}/communities`}
-          label="Communities"
-          active={isActive('/communities')}
-          render={(color) => (
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style={{ color, width: '100%', height: '100%' }} aria-hidden="true">
-              <circle cx="12" cy="8.2" r="3.2" />
-              <circle cx="6.2" cy="9.2" r="2.4" />
-              <circle cx="17.8" cy="9.2" r="2.4" />
-              <path d="M2.8 20c0-4.2 4.2-7.6 9.2-7.6s9.2 3.4 9.2 7.6H2.8Z" />
-              <circle cx="13.8" cy="6.8" r=".9" fill="#fff" opacity=".28" />
-              <circle cx="7.7" cy="8.2" r=".6" fill="#fff" opacity=".22" />
-              <circle cx="18.3" cy="8.2" r=".6" fill="#fff" opacity=".22" />
-            </svg>
-          )}
-        />
+          {/* Communities */}
+          <Tab
+            href={`/${locale}/communities`}
+            label="Communities"
+            active={isActive('/communities')}
+            render={(color) => (
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style={{ color, width: '100%', height: '100%' }} aria-hidden="true">
+                <circle cx="12" cy="8.2" r="3.2" />
+                <circle cx="6.2" cy="9.2" r="2.4" />
+                <circle cx="17.8" cy="9.2" r="2.4" />
+                <path d="M2.8 20c0-4.2 4.2-7.6 9.2-7.6s9.2 3.4 9.2 7.6H2.8Z" />
+                <circle cx="13.8" cy="6.8" r=".9" fill="#fff" opacity=".28" />
+                <circle cx="7.7" cy="8.2" r=".6" fill="#fff" opacity=".22" />
+                <circle cx="18.3" cy="8.2" r=".6" fill="#fff" opacity=".22" />
+              </svg>
+            )}
+          />
 
-        {/* Chat */}
-        <Tab
-          href={`/${locale}/chat`}
-          label="Chat"
-          active={isActive('/chat')}
-          badge={hasUnreadChat}
-          render={(color) => (
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style={{ color, width: '100%', height: '100%' }} aria-hidden="true">
-              <path d="M4 6.5C4 4.3 5.8 2.5 8 2.5h8c2.2 0 4 1.8 4 4v5c0 2.2-1.8 4-4 4h-3.2L8 20.5v-4H8c-2.2 0-4-1.8-4-4v-6Z" />
-              <circle cx="9.25" cy="10.2" r="1.05" fill="#fff" opacity=".85" />
-              <circle cx="12"   cy="10.2" r="1.05" fill="#fff" opacity=".85" />
-              <circle cx="14.75" cy="10.2" r="1.05" fill="#fff" opacity=".85" />
-            </svg>
-          )}
-        />
-      </div>
-    </nav>
+          {/* Chat */}
+          <Tab
+            innerRef={chatTabRef}
+            href={`/${locale}/chat`}
+            label="Chat"
+            active={isActive('/chat')}
+            badge={hasUnreadChat}
+            render={(color) => (
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style={{ color, width: '100%', height: '100%' }} aria-hidden="true">
+                <path d="M4 6.5C4 4.3 5.8 2.5 8 2.5h8c2.2 0 4 1.8 4 4v5c0 2.2-1.8 4-4 4h-3.2L8 20.5v-4H8c-2.2 0-4-1.8-4-4v-6Z" />
+                <circle cx="9.25" cy="10.2" r="1.05" fill="#fff" opacity=".85" />
+                <circle cx="12"   cy="10.2" r="1.05" fill="#fff" opacity=".85" />
+                <circle cx="14.75" cy="10.2" r="1.05" fill="#fff" opacity=".85" />
+              </svg>
+            )}
+          />
+        </div>
+      </nav>
+
+      {/* Mini-Popups gerendert via Portal an die richtige Position */}
+      <MiniPopup
+        variant="chat"
+        anchorEl={chatTabRef.current}
+        avatarUrl={miniUser?.avatarUrl ?? null}
+        unreadCount={miniUser?.unread ?? 0}
+        hidden={!miniUser}
+      />
+
+      <MiniPopup
+        variant="noti"
+        anchorEl={notiTabRef.current}
+        avatarUrl={null}
+        unreadCount={miniNotiVisible ? 1 : 0}
+        hidden={!miniNotiVisible}
+      />
+    </>
   );
 }
 
@@ -250,7 +603,7 @@ export default function BottomNav() {
   const [overlayOpen, setOverlayOpen] = React.useState<boolean>(() => {
     if (typeof document === 'undefined') return false;
     return document.body?.dataset?.overlayOpen === 'true';
-    });
+  });
 
   React.useEffect(() => {
     const onToggle = (e: Event) => {
@@ -258,7 +611,6 @@ export default function BottomNav() {
       setOverlayOpen(!!ce?.detail?.open);
     };
     window.addEventListener('ui:overlay-toggle', onToggle as EventListener);
-    // Falls sich nur das data-Flag ändert, ohne Event:
     const obs = new MutationObserver(() => {
       setOverlayOpen(document.body?.dataset?.overlayOpen === 'true');
     });
@@ -283,8 +635,6 @@ export default function BottomNav() {
   }, []);
 
   if (!mounted || !elRef.current) return null;
-
-  // NEU: Wenn Overlay offen, Nav nicht rendern
   if (overlayOpen) return null;
 
   return createPortal(<NavContent />, elRef.current);

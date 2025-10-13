@@ -16,6 +16,7 @@ import { useLocale } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { toast } from '@/lib/toast';
+import { useKeyboardInset } from '@/hooks/useKeyboardInset';
 
 
 type RoleLike = 'domme' | 'submissive' | 'DOMME' | 'SUBMISSIVE';
@@ -325,7 +326,7 @@ export default function ChatComposer({
   const ageOk = !!session?.user?.ageVerified;
 
   const [verifyOpen, setVerifyOpen] = React.useState(false);
-
+  useKeyboardInset();
   const startAgeVerification = React.useCallback(async () => {
     try {
       // Nach Abschluss des Flows zurück an die aktuelle URL (Chat-Seite)
@@ -604,10 +605,15 @@ export default function ChatComposer({
 
   return (
     <div
-      className="fixed bottom-0 left-1/2 -translate-x-1/2 z-40 w-[min(100vw,760px)]
+      className="fixed bottom-0 inset-x-0 z-40 mx-auto w-full max-w-[760px]
                  border-t border-sub bg-black/60 backdrop-blur supports-[backdrop-filter]:bg-black/45
                  px-3 pb-2 pt-2"
-      style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 8px)' }}
+      style={{
+        // Safe-Area beibehalten
+        paddingBottom: 'calc(env(safe-area-inset-bottom) + 8px)',
+        // nur vertikal anheben (Keyboard), Zentrierung läuft via mx-auto
+        transform: 'translateY(calc(-1 * var(--kb, 0px)))',
+      }}
     >
       {disabled && (
         <div className="mb-2 text-center text-[13px] text-white/80">

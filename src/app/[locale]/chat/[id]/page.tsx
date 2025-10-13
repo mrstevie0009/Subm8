@@ -20,7 +20,6 @@ import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { toast } from '@/lib/toast';
 
-
 type DbRole = 'DOMME' | 'SUBMISSIVE';
 
 type ThreadOk = {
@@ -1023,6 +1022,17 @@ export default function ChatThreadPage() {
     }
   }, [id, mapRole]);
 
+
+  React.useEffect(() => {
+    if (!other) return;
+    // Signalisiere BottomNav, welcher Thread offen ist
+    const ev = new CustomEvent('chat:thread-opened', {
+      detail: { conversationId: String(id), userId: other.id },
+    });
+    window.dispatchEvent(ev);
+  }, [id, other]);
+
+
   React.useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -1114,8 +1124,8 @@ export default function ChatThreadPage() {
         <div
           className="mx-auto w-full max-w-[760px] overflow-x-hidden"
           style={{
-            paddingTop: 'calc(var(--header-h, 56px) + var(--chat-header-h, 48px) + 8px)',
-            paddingBottom: 'calc(var(--bottomnav-h, 72px) + 72px)',
+            paddingTop: 'calc(var(--chat-header-h, 48px) + 8px)',
+            paddingBottom: 'calc(var(--bottomnav-h, 72px) + 72px + var(--kb, 0px))',
           }}
         >
           {loading ? (

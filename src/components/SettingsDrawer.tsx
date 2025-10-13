@@ -358,9 +358,9 @@ async function smartSignOut() {
               {isAuth && canAddMore && (
                 <button
                   onClick={() => { setConnErr(null); setSheetOpen(true); }}
-                  title={t('addAccount') as string}
+                  title='addAccount'
                   className="grid place-items-center h-8 w-8 rounded-full border border-white/20 hover:bg-white/10"
-                  aria-label={t('addAccount') as string}
+                  aria-label='addAccount'
                 >
                   <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" strokeWidth="2" fill="none" aria-hidden="true">
                     <path d="M12 5v14M5 12h14" />

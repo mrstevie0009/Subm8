@@ -70,7 +70,9 @@ export default function ChatHeader({
   const profileHref = `/${locale}/u/${other.username}`;
 
   return (
-    <header className="sticky top-0 z-40 border-b border-white/10 bg-black/65 backdrop-blur">
+    <header
+      className="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-black/65 backdrop-blur"
+    >
       <div className="mx-auto w-full max-w-[760px] px-3 py-2 overflow-x-hidden">
         <div className="flex items-center gap-3">
           {/* Back */}
