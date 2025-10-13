@@ -1455,56 +1455,63 @@
     },
 
     "notifications": {
-      "ariaBack": "Atrás",
-      "title": "Notificaciones",
-      "notSignedInNote": "Inicia sesión.",
-      "notSignedInIntro": "Esta página gestiona tus ajustes de push, email y filtros.",
-      "intro": "Gestiona notificaciones push, correos y filtros.",
-
-      "cards": {
-        "push": {
-          "title": "Notificaciones push",
-          "toggleActive": "Push activadas",
-          "note": "Controla todas las notificaciones push en tu dispositivo."
-        },
-        "dm": {
-          "title": "Mensajes directos",
-          "messages": "Mensajes directos",
-          "reactions": "Reacciones a tus mensajes"
-        },
-        "feed": {
-          "title": "Feed y actividad",
-          "mentions": "Menciones (@handle)",
-          "comments": "Comentarios en tus publicaciones",
-          "likes": "Me gusta en tus publicaciones",
-          "newFollowers": "Nuevos seguidores",
-          "photoTags": "Etiquetas en fotos"
-        },
-        "email": {
-          "title": "Correo",
-          "messages": "Correo por nuevos mensajes",
-          "digest": "Resumen semanal por email",
-          "note": "Enviamos rara vez y con foco. Puedes darte de baja cuando quieras."
-        },
-        "filters": {
-          "title": "Silenciar notificaciones de personas",
-          "notFollowing": "... a quienes no sigues",
-          "notFollowers": "... que no te siguen",
-          "newAccounts": "... con cuenta nueva",
-          "noAvatar": "... con foto de perfil por defecto",
-          "emailUnverified": "... cuyo email no está verificado",
-          "phoneUnverified": "... cuyo teléfono no está verificado",
-          "note": "Estos filtros solo afectan a desconocidos. Contactos/seguidos no se ven afectados."
-        }
+    "ariaBack": "Atrás",
+    "title": "Notificaciones",
+    "notSignedInNote": "Inicia sesión, por favor.",
+    "notSignedInIntro": "Esta página gestiona tus ajustes de notificaciones push, correo y filtros.",
+    "intro": "Gestiona notificaciones push, correos y filtros.",
+    "cards": {
+      "ui": {
+        "title": "Visualización y sonido",
+        "popup": "Mostrar mini ventana emergente",
+        "sound": "Reproducir sonido",
+        "note": "Si ambos están desactivados, solo verás pequeños indicadores en el ícono."
       },
-
-      "actions": {
-        "cancel": "Cancelar",
-        "save": "Guardar ajustes",
-        "reset": "Restablecer por defecto",
-        "resetTitle": "Restablecer a valores de fábrica"
+      "push": {
+        "title": "Notificaciones push",
+        "toggleActive": "Notificaciones push activadas",
+        "note": "Controla todas las alertas push en tu dispositivo."
+      },
+      "dm": {
+        "title": "Mensajes directos",
+        "messages": "Mensajes directos",
+        "reactions": "Reacciones a tus mensajes"
+      },
+      "feed": {
+        "title": "Feed y actividad",
+        "mentions": "Menciones (@handle)",
+        "comments": "Comentarios en tus publicaciones",
+        "likes": "Me gusta en tus publicaciones",
+        "newFollowers": "Nuevos seguidores",
+        "photoTags": "Etiquetas de fotos"
+      },
+      "email": {
+        "title": "Correo electrónico",
+        "messages": "Correo para mensajes nuevos",
+        "digest": "Resumen semanal por correo",
+        "note": "Enviamos raras veces y de forma dirigida. Puedes darte de baja en cualquier momento."
+      },
+      "filters": {
+        "title": "Silenciar notificaciones de personas",
+        "notFollowing": "… a las que no sigues",
+        "notFollowers": "… que no te siguen",
+        "newAccounts": "… con una cuenta nueva",
+        "noAvatar": "… con foto de perfil predeterminada",
+        "emailUnverified": "… con correo sin verificar",
+        "phoneUnverified": "… con teléfono sin verificar",
+        "note": "Estos filtros solo aplican a desconocidos. Tus contactos/seguidos no se ven afectados."
       }
     },
+    "actions": {
+      "cancel": "Cancelar",
+      "save": "Guardar configuración",
+      "saving": "Guardando…",
+      "saved": "Guardado",
+      "savedAria": "La configuración se ha guardado.",
+      "reset": "Restablecer valores predeterminados",
+      "resetTitle": "Restaurar configuración de fábrica"
+    }
+  },
 
     "legalPage": {
       "ariaBack": "Atrás",

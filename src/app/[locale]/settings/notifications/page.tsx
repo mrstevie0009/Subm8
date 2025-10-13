@@ -1,4 +1,4 @@
-// src/app/[locale]/notifications/page.tsx
+// src/app/[locale]/settings/notifications/page.tsx
 import Link from 'next/link';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/prisma';
@@ -13,6 +13,9 @@ type Params = { locale: string };
 type NotifSettings = {
   pushEnabled: boolean;
 
+  uiSound: boolean;   // Ding abspielen?
+  uiPopup: boolean;   // Mini-Popup anzeigen?
+
   // DM / Chat
   dmMessages: boolean;
   dmReactions: boolean;
@@ -22,7 +25,6 @@ type NotifSettings = {
   comments: boolean;
   likes: boolean;
   newFollowers: boolean;
-  photoTags: boolean;
 
   // E-Mail
   emailMessages: boolean;
@@ -40,6 +42,9 @@ type NotifSettings = {
 const DEFAULTS: NotifSettings = {
   pushEnabled: true,
 
+  uiSound: true,
+  uiPopup: true,
+
   dmMessages: true,
   dmReactions: true,
 
@@ -47,7 +52,6 @@ const DEFAULTS: NotifSettings = {
   comments: true,
   likes: true,
   newFollowers: true,
-  photoTags: true,
 
   emailMessages: false,
   emailDigest: false,
@@ -69,6 +73,9 @@ async function ensureSettingsTable() {
       "userId" TEXT PRIMARY KEY REFERENCES "User"("id") ON DELETE CASCADE,
       "pushEnabled" BOOLEAN NOT NULL DEFAULT true,
 
+      "uiSound" BOOLEAN NOT NULL DEFAULT true,
+      "uiPopup"  BOOLEAN NOT NULL DEFAULT true,
+
       "dmMessages" BOOLEAN NOT NULL DEFAULT true,
       "dmReactions" BOOLEAN NOT NULL DEFAULT true,
 
@@ -76,7 +83,6 @@ async function ensureSettingsTable() {
       "comments" BOOLEAN NOT NULL DEFAULT true,
       "likes" BOOLEAN NOT NULL DEFAULT true,
       "newFollowers" BOOLEAN NOT NULL DEFAULT true,
-      "photoTags" BOOLEAN NOT NULL DEFAULT true,
 
       "emailMessages" BOOLEAN NOT NULL DEFAULT false,
       "emailDigest" BOOLEAN NOT NULL DEFAULT false,
@@ -92,6 +98,12 @@ async function ensureSettingsTable() {
       "updatedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
   `);
+
+  await prisma.$executeRawUnsafe(`
+    ALTER TABLE "UserNotificationSettings"
+      ADD COLUMN IF NOT EXISTS "uiSound" BOOLEAN NOT NULL DEFAULT true,
+      ADD COLUMN IF NOT EXISTS "uiPopup"  BOOLEAN NOT NULL DEFAULT true;
+  `);
 }
 
 async function readSettings(userId: string): Promise<NotifSettings> {
@@ -99,8 +111,9 @@ async function readSettings(userId: string): Promise<NotifSettings> {
   const rows = await prisma.$queryRaw<Array<NotifSettings>>`
     SELECT
       "pushEnabled",
+      "uiSound", "uiPopup",
       "dmMessages", "dmReactions",
-      "mentions", "comments", "likes", "newFollowers", "photoTags",
+      "mentions", "comments", "likes", "newFollowers",
       "emailMessages", "emailDigest",
       "muteNotFollowing", "muteNotFollowers", "muteNewAccounts", "muteNoAvatar",
       "requireEmailVerified", "requirePhoneVerified"
@@ -114,13 +127,15 @@ async function readSettings(userId: string): Promise<NotifSettings> {
 }
 
 function boolFromForm(form: FormData, key: keyof NotifSettings): boolean {
-  // Checkboxen schicken nur was, wenn checked
   return form.get(key) === 'on' || form.get(key) === 'true';
 }
 
 async function upsertSettings(userId: string, form: FormData) {
   const values: NotifSettings = {
     pushEnabled:              boolFromForm(form, 'pushEnabled'),
+
+    uiSound:                  boolFromForm(form, 'uiSound'),
+    uiPopup:                  boolFromForm(form, 'uiPopup'),
 
     dmMessages:               boolFromForm(form, 'dmMessages'),
     dmReactions:              boolFromForm(form, 'dmReactions'),
@@ -129,7 +144,6 @@ async function upsertSettings(userId: string, form: FormData) {
     comments:                 boolFromForm(form, 'comments'),
     likes:                    boolFromForm(form, 'likes'),
     newFollowers:             boolFromForm(form, 'newFollowers'),
-    photoTags:                boolFromForm(form, 'photoTags'),
 
     emailMessages:            boolFromForm(form, 'emailMessages'),
     emailDigest:              boolFromForm(form, 'emailDigest'),
@@ -150,8 +164,9 @@ async function upsertSettings(userId: string, form: FormData) {
     INSERT INTO "UserNotificationSettings" (
       "userId",
       "pushEnabled",
+      "uiSound", "uiPopup",
       "dmMessages", "dmReactions",
-      "mentions", "comments", "likes", "newFollowers", "photoTags",
+      "mentions", "comments", "likes", "newFollowers",
       "emailMessages", "emailDigest",
       "muteNotFollowing", "muteNotFollowers", "muteNewAccounts", "muteNoAvatar",
       "requireEmailVerified", "requirePhoneVerified",
@@ -160,8 +175,9 @@ async function upsertSettings(userId: string, form: FormData) {
     VALUES (
       ${userId},
       ${values.pushEnabled},
+      ${values.uiSound}, ${values.uiPopup},
       ${values.dmMessages}, ${values.dmReactions},
-      ${values.mentions}, ${values.comments}, ${values.likes}, ${values.newFollowers}, ${values.photoTags},
+      ${values.mentions}, ${values.comments}, ${values.likes}, ${values.newFollowers},
       ${values.emailMessages}, ${values.emailDigest},
       ${values.muteNotFollowing}, ${values.muteNotFollowers}, ${values.muteNewAccounts}, ${values.muteNoAvatar},
       ${values.requireEmailVerified}, ${values.requirePhoneVerified},
@@ -169,13 +185,14 @@ async function upsertSettings(userId: string, form: FormData) {
     )
     ON CONFLICT ("userId") DO UPDATE SET
       "pushEnabled" = EXCLUDED."pushEnabled",
+      "uiSound"     = EXCLUDED."uiSound",
+      "uiPopup"     = EXCLUDED."uiPopup",
       "dmMessages" = EXCLUDED."dmMessages",
       "dmReactions" = EXCLUDED."dmReactions",
       "mentions" = EXCLUDED."mentions",
       "comments" = EXCLUDED."comments",
       "likes" = EXCLUDED."likes",
       "newFollowers" = EXCLUDED."newFollowers",
-      "photoTags" = EXCLUDED."photoTags",
       "emailMessages" = EXCLUDED."emailMessages",
       "emailDigest" = EXCLUDED."emailDigest",
       "muteNotFollowing" = EXCLUDED."muteNotFollowing",
@@ -196,7 +213,7 @@ export async function saveNotificationsAction(formData: FormData) {
   if (!me) throw new Error('Nicht angemeldet');
 
   await upsertSettings(me.id, formData);
-  revalidatePath('/[locale]/notifications', 'page');
+  revalidatePath('/[locale]/settings/notifications', 'page');
 }
 
 export async function resetNotificationsAction() {
@@ -208,7 +225,7 @@ export async function resetNotificationsAction() {
   await prisma.$executeRaw`
     DELETE FROM "UserNotificationSettings" WHERE "userId" = ${me.id}
   `;
-  revalidatePath('/[locale]/notifications', 'page');
+  revalidatePath('/[locale]/settings/notifications', 'page');
 }
 
 /* --------------------------------- Page UI -------------------------------- */
@@ -248,21 +265,41 @@ export default async function NotificationsPage({
       <header className="px-4 pt-3 pb-4 border-b border-white/10">
         <div className="flex items-center gap-2">
           <BackButton
-                    fallbackHref={`/${locale}`}
-                    ariaLabel={t('bookmarksPage.ariaBack')}
-                    className="inline-flex items-center justify-center p-1 hover:opacity-85 focus:outline-none focus:ring-2 focus:ring-[var(--purple)]/40"
-                    style={{ color: 'var(--purple)' }}
-                  >
-                    <ChevronLeftIcon />
-                  </BackButton>
-                  <div className="ml-2 sm:ml-3">
+            fallbackHref={`/${locale}`}
+            ariaLabel={t('bookmarksPage.ariaBack')}
+            className="inline-flex items-center justify-center p-1 hover:opacity-85 focus:outline-none focus:ring-2 focus:ring-[var(--purple)]/40"
+            style={{ color: 'var(--purple)' }}
+          >
+            <ChevronLeftIcon />
+          </BackButton>
+          <div className="ml-2 sm:ml-3">
             <h1 className="text-lg font-semibold">{t('notifications.title')}</h1>
             <p className="text-sm text-white/60">{t('notifications.intro')}</p>
           </div>
         </div>
       </header>
 
-      <form action={saveNotificationsAction} className="grid gap-6 p-4">
+      {/* Toast / Save-Feedback – zentriert im Viewport */}
+      <div
+        id="save-toast"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        className="pointer-events-none fixed left-1/2 top-1/2 z-50 hidden -translate-x-1/2 -translate-y-1/2 transform rounded-full border border-white/15 bg-black/70 px-4 py-2 text-sm text-white/90 shadow-lg backdrop-blur"
+      >
+        <span id="save-toast-text">{t('notifications.actions.savedAria')}</span>
+      </div>
+
+      <form action={saveNotificationsAction} className="grid gap-6 p-4" id="notifications-form">
+        {/* Anzeige & Sound */}
+        <Card title={t('notifications.cards.ui.title')}>
+          <Toggle name="uiPopup" label={t('notifications.cards.ui.popup')} defaultChecked={s.uiPopup} />
+          <Toggle name="uiSound" label={t('notifications.cards.ui.sound')} defaultChecked={s.uiSound} />
+          <p className="text-xs text-white/50">
+            {t('notifications.cards.ui.note')}
+          </p>
+        </Card>
+
         {/* Global */}
         <Card title={t('notifications.cards.push.title')}>
           <Toggle name="pushEnabled" label={t('notifications.cards.push.toggleActive')} defaultChecked={s.pushEnabled} />
@@ -281,7 +318,6 @@ export default async function NotificationsPage({
           <Toggle name="comments" label={t('notifications.cards.feed.comments')} defaultChecked={s.comments} />
           <Toggle name="likes" label={t('notifications.cards.feed.likes')} defaultChecked={s.likes} />
           <Toggle name="newFollowers" label={t('notifications.cards.feed.newFollowers')} defaultChecked={s.newFollowers} />
-          <Toggle name="photoTags" label={t('notifications.cards.feed.photoTags')} defaultChecked={s.photoTags} />
         </Card>
 
         {/* E-Mail */}
@@ -307,21 +343,130 @@ export default async function NotificationsPage({
         <div className="flex flex-wrap items-center gap-3 pt-2">
           <button
             type="submit"
-            className="px-4 py-2 rounded-full bg-white/10 hover:bg-white/15 border border-white/15"
+            className="px-4 py-2 rounded-full bg-white/10 hover:bg-white/15 border border-white/15 data-[busy=true]:opacity-60"
+            aria-label={t('notifications.actions.save')}
+            title={t('notifications.actions.save')}
+            id="save-button"
           >
             {t('notifications.actions.save')}
           </button>
 
-          <form action={resetNotificationsAction}>
-            <button
-              type="submit"
-              className="px-4 py-2 rounded-full border border-red-400/40 text-red-200/90 hover:bg-red-500/10"
-              title={t('notifications.actions.resetTitle')}
-            >
-              {t('notifications.actions.reset')}
-            </button>
-          </form>
+          {/* Server Action direkt am Button */}
+          <button
+            type="submit"
+            formAction={resetNotificationsAction}
+            className="px-4 py-2 rounded-full border border-red-400/40 text-red-200/90 hover:bg-red-500/10"
+            title={t('notifications.actions.resetTitle')}
+            aria-label={t('notifications.actions.reset')}
+            id="reset-button"
+          >
+            {t('notifications.actions.reset')}
+          </button>
         </div>
+
+        {/* Client: lokaler Pref-Sync + submit per fetch + Toast */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function(){
+                var form = document.getElementById('notifications-form');
+                if(!form) return;
+
+                // ---------- UI Pref Sync ----------
+                function read(){
+                  var popup = !!form.querySelector('input[name="uiPopup"]')?.checked;
+                  var sound = !!form.querySelector('input[name="uiSound"]')?.checked;
+                  return { popup: popup, sound: sound };
+                }
+                function sync(){
+                  var p = read();
+                  try {
+                    localStorage.setItem('uiNotiPopup', p.popup ? '1' : '0');
+                    localStorage.setItem('uiNotiSound', p.sound ? '1' : '0');
+                    window.dispatchEvent(new CustomEvent('ui:noti-prefs', { detail: p }));
+                  } catch(e) {}
+                }
+                form.addEventListener('change', sync);
+                sync();
+
+                // ---------- Toast helpers (zentriert) ----------
+                var toast = document.getElementById('save-toast');
+                var toastText = document.getElementById('save-toast-text');
+                function showToast(msg){
+                  if(!toast) return;
+                  if(msg && toastText) toastText.textContent = msg;
+                  toast.classList.remove('hidden');
+                  toast.classList.add('opacity-0');
+                  requestAnimationFrame(function(){
+                    toast.classList.remove('opacity-0');
+                  });
+                  setTimeout(hideToast, 2000);
+                }
+                function hideToast(){
+                  if(!toast) return;
+                  toast.classList.add('opacity-0');
+                  setTimeout(function(){ toast.classList.add('hidden'); }, 200);
+                }
+                (function injectStyles(){
+                  var id='toast-fade-style';
+                  if(document.getElementById(id)) return;
+                  var s=document.createElement('style');
+                  s.id=id;
+                  s.textContent = '#save-toast{transition:opacity .2s ease;}';
+                  document.head.appendChild(s);
+                })();
+
+                // ---------- Submit per fetch zur API-Route ----------
+                var saveBtn = document.getElementById('save-button');
+                var resetBtn = document.getElementById('reset-button');
+                var savingLabel = ${JSON.stringify(t('notifications.actions.saving') || 'Saving…')};
+                var saveLabel = ${JSON.stringify(t('notifications.actions.save') || 'Save settings')};
+                var savedMsg = ${JSON.stringify(t('notifications.actions.savedAria') || 'Settings have been saved.')};
+
+                async function submitServerAction(ev){
+                  ev.preventDefault();
+                  var submitter = ev.submitter || document.activeElement;
+
+                  // Speichern: POST an unsere API-Route
+                  if (submitter !== resetBtn) {
+                    if (saveBtn) {
+                      saveBtn.dataset.busy = 'true';
+                      saveBtn.setAttribute('aria-busy', 'true');
+                      saveBtn.setAttribute('disabled', 'true');
+                      saveBtn.textContent = savingLabel;
+                    }
+                    try {
+                      var fd = new FormData(form);
+                      await fetch('/api/settings/notifications', {
+                        method: 'POST',
+                        body: fd,
+                        credentials: 'include'
+                      });
+                      showToast(savedMsg);
+                    } catch (err) {
+                      console.error(err);
+                      showToast('Something went wrong. Please try again.');
+                    } finally {
+                      if (saveBtn) {
+                        saveBtn.dataset.busy = 'false';
+                        saveBtn.removeAttribute('aria-busy');
+                        saveBtn.removeAttribute('disabled');
+                        saveBtn.textContent = saveLabel;
+                      }
+                    }
+                    return;
+                  }
+
+                  // Reset: optional auch ohne Navigation per API implementieren
+                  // -> aktuell lässt du Reset weiterhin als echte Server Action laufen.
+                }
+
+                form.addEventListener('submit', submitServerAction);
+                window.addEventListener('keydown', function(ev){ if(ev.key === 'Escape') hideToast(); });
+              })();
+            `,
+          }}
+        />
       </form>
     </section>
   );

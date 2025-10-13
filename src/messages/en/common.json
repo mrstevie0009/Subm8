@@ -1454,55 +1454,63 @@
     },
 
     "notifications": {
-      "ariaBack": "Back",
-      "title": "Notifications",
-      "notSignedInNote": "Please sign in.",
-      "notSignedInIntro": "This page manages your push, email and filter settings.",
-      "intro": "Manage push notifications, emails & filters.",
-
-      "cards": {
-        "push": {
-          "title": "Push notifications",
-          "toggleActive": "Push notifications enabled",
-          "note": "Controls all push notifications on your device."
-        },
-        "dm": {
-          "title": "Direct messages",
-          "messages": "Direct messages",
-          "reactions": "Reactions to your messages"
-        },
-        "feed": {
-          "title": "Feed & activity",
-          "mentions": "Mentions (@handle)",
-          "comments": "Comments on your posts",
-          "likes": "Likes on your posts",
-          "newFollowers": "New followers",
-          "photoTags": "Photo tags"
-        },
-        "email": {
-          "title": "Email",
-          "messages": "Email on new messages",
-          "digest": "Weekly email summary",
-          "note": "We send rarely and with focus. You can unsubscribe anytime."
-        },
-        "filters": {
-          "title": "Mute notifications from people",
-          "notFollowing": "... you don't follow",
-          "notFollowers": "... who don't follow you",
-          "newAccounts": "... with a new account",
-          "noAvatar": "... who have a default profile photo",
-          "emailUnverified": "... whose email is not verified",
-          "phoneUnverified": "... whose phone number is not verified",
-          "note": "These filters only affect unknown people. Contacts/followings are unaffected."
-        }
+    "ariaBack": "Back",
+    "title": "Notifications",
+    "notSignedInNote": "Please sign in.",
+    "notSignedInIntro": "This page manages your push, email, and filter settings.",
+    "intro": "Manage push notifications, emails & filters.",
+    "cards": {
+      "ui": {
+        "title": "Display & Sound",
+        "popup": "Show mini popup",
+        "sound": "Play sound",
+        "note": "If both are disabled, only small indicators on the icon will appear."
       },
-
-      "actions": {
-        "save": "Save settings",
-        "reset": "Reset to default",
-        "resetTitle": "Reset to factory settings"
+      "push": {
+        "title": "Push Notifications",
+        "toggleActive": "Push notifications enabled",
+        "note": "Controls all push alerts on your device."
+      },
+      "dm": {
+        "title": "Direct Messages",
+        "messages": "Direct messages",
+        "reactions": "Reactions to your messages"
+      },
+      "feed": {
+        "title": "Feed & Activity",
+        "mentions": "Mentions (@handle)",
+        "comments": "Comments on your posts",
+        "likes": "Likes on your posts",
+        "newFollowers": "New followers",
+        "photoTags": "Photo tags"
+      },
+      "email": {
+        "title": "Email",
+        "messages": "Email for new messages",
+        "digest": "Weekly email digest",
+        "note": "We send rarely and purposefully. You can unsubscribe anytime."
+      },
+      "filters": {
+        "title": "Mute notifications from people",
+        "notFollowing": "… you don’t follow",
+        "notFollowers": "… who don’t follow you",
+        "newAccounts": "… with a new account",
+        "noAvatar": "… who use a default profile photo",
+        "emailUnverified": "… whose email is unverified",
+        "phoneUnverified": "… whose phone number is unverified",
+        "note": "These filters apply only to unknown users. Contacts/followings are unaffected."
       }
     },
+    "actions": {
+      "cancel": "Cancel",
+      "save": "Save settings",
+      "saving": "Saving…",
+      "saved": "Saved",
+      "savedAria": "Settings have been saved.",
+      "reset": "Reset to defaults",
+      "resetTitle": "Restore factory defaults"
+    }
+  },
 
     "legalPage": {
       "ariaBack": "Back",

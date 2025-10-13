@@ -260,6 +260,35 @@ function NavContent() {
   const pathname = usePathname();
   const locale = useLocale();
   const ding = useDing();
+  // UI-Preferences
+  const [prefs, setPrefs] = React.useState<{ sound: boolean; popup: boolean }>(() => {
+    if (typeof window === 'undefined') return { sound: true, popup: true };
+    const s = localStorage.getItem('uiNotiSound');
+    const p = localStorage.getItem('uiNotiPopup');
+    return { sound: s == null ? true : s === '1', popup: p == null ? true : p === '1' };
+  });
+  React.useEffect(() => {
+    const read = () => {
+      try {
+        const s = localStorage.getItem('uiNotiSound');
+        const p = localStorage.getItem('uiNotiPopup');
+        setPrefs({ sound: s == null ? true : s === '1', popup: p == null ? true : p === '1' });
+      } catch {}
+    };
+    const onPrefs = (e: Event) => {
+      const d = (e as CustomEvent).detail || {};
+      if (typeof d.sound === 'boolean' || typeof d.popup === 'boolean') {
+        setPrefs((old) => ({ sound: d.sound ?? old.sound, popup: d.popup ?? old.popup }));
+      }
+    };
+    window.addEventListener('ui:noti-prefs', onPrefs as EventListener);
+    window.addEventListener('storage', read);
+    read();
+    return () => {
+      window.removeEventListener('ui:noti-prefs', onPrefs as EventListener);
+      window.removeEventListener('storage', read);
+    };
+  }, []);
   const lastChatKeyRef = React.useRef<string | null>(null);
   const lastNotiKeyRef = React.useRef<string | null>(null);
   const isActive = (seg: string) =>
@@ -437,7 +466,7 @@ function NavContent() {
 
   // 🔔 Sound abspielen (Chat)
   React.useEffect(() => {
-    if (!miniUser) return;
+    if (!miniUser || !prefs.sound) return;
 
     const key = `${miniUser.conversationId}:${miniUser.unread}`;
     if (lastChatKeyRef.current === key) return; // nichts Neues → kein Ton
@@ -449,11 +478,11 @@ function NavContent() {
       }, 30);
       return () => clearTimeout(t);
     }
-  }, [miniUser, ding]);
+  }, [miniUser, ding, prefs.sound]);
 
   // 🔔 Sound abspielen (Notifications)
   React.useEffect(() => {
-    if (!miniNotiVisible || !latestNotiMs) return;
+    if (!miniNotiVisible || !latestNotiMs || !prefs.sound) return;
 
     const key = String(latestNotiMs);
     if (lastNotiKeyRef.current === key) return;
@@ -465,7 +494,7 @@ function NavContent() {
       }, 30);
       return () => clearTimeout(t);
     }
-  }, [miniNotiVisible, latestNotiMs, ding]);
+  }, [miniNotiVisible, latestNotiMs, ding, prefs.sound]);
 
   const navHeight = 'calc(clamp(24px, 2.8vw, 50px) + 20px + env(safe-area-inset-bottom))';
 
@@ -581,7 +610,7 @@ function NavContent() {
         anchorEl={chatTabRef.current}
         avatarUrl={miniUser?.avatarUrl ?? null}
         unreadCount={miniUser?.unread ?? 0}
-        hidden={!miniUser}
+        hidden={!miniUser || !prefs.popup}
       />
 
       <MiniPopup
@@ -589,7 +618,7 @@ function NavContent() {
         anchorEl={notiTabRef.current}
         avatarUrl={null}
         unreadCount={miniNotiVisible ? 1 : 0}
-        hidden={!miniNotiVisible}
+        hidden={!miniNotiVisible || !prefs.popup}
       />
     </>
   );

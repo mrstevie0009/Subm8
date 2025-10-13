@@ -1454,56 +1454,63 @@
     },
 
     "notifications": {
-      "ariaBack": "Retour",
-      "title": "Notifications",
-      "notSignedInNote": "Veuillez vous connecter.",
-      "notSignedInIntro": "Cette page gère tes notifications push, e-mails et filtres.",
-      "intro": "Gère les notifications push, les e-mails et les filtres.",
-
-      "cards": {
-        "push": {
-          "title": "Notifications push",
-          "toggleActive": "Notifications push activées",
-          "note": "Contrôle toutes les notifications push sur ton appareil."
-        },
-        "dm": {
-          "title": "Messages privés",
-          "messages": "Messages privés",
-          "reactions": "Réactions à tes messages"
-        },
-        "feed": {
-          "title": "Fil d’actualité & activités",
-          "mentions": "Mentions (@handle)",
-          "comments": "Commentaires sur tes posts",
-          "likes": "Mentions J’aime sur tes posts",
-          "newFollowers": "Nouveaux abonnés",
-          "photoTags": "Identifications photo"
-        },
-        "email": {
-          "title": "E-mail",
-          "messages": "E-mail pour les nouveaux messages",
-          "digest": "Récapitulatif hebdomadaire par e-mail",
-          "note": "Nous envoyons rarement et de manière ciblée. Tu peux te désabonner à tout moment."
-        },
-        "filters": {
-          "title": "Réduire les notifications de",
-          "notFollowing": "… des personnes que tu ne suis pas",
-          "notFollowers": "… des personnes qui ne te suivent pas",
-          "newAccounts": "… des nouveaux comptes",
-          "noAvatar": "… des comptes avec photo de profil par défaut",
-          "emailUnverified": "… dont l’e-mail n’est pas vérifié",
-          "phoneUnverified": "… dont le numéro de téléphone n’est pas vérifié",
-          "note": "Ces filtres ne s’appliquent qu’aux inconnus. Les contacts/abonnements ne sont pas concernés."
-        }
+    "ariaBack": "Retour",
+    "title": "Notifications",
+    "notSignedInNote": "Veuillez vous connecter.",
+    "notSignedInIntro": "Cette page gère vos réglages de notifications push, e-mail et filtres.",
+    "intro": "Gérez les notifications push, e-mails et filtres.",
+    "cards": {
+      "ui": {
+        "title": "Affichage & Son",
+        "popup": "Afficher le mini pop-up",
+        "sound": "Lire un son",
+        "note": "Si les deux sont désactivés, seuls de petits indicateurs s’affichent sur l’icône."
       },
-
-      "actions": {
-        "cancel": "Annuler",
-        "save": "Enregistrer les paramètres",
-        "reset": "Réinitialiser les valeurs par défaut",
-        "resetTitle": "Réinitialiser aux paramètres d’usine"
+      "push": {
+        "title": "Notifications push",
+        "toggleActive": "Notifications push activées",
+        "note": "Contrôle toutes les alertes push sur votre appareil."
+      },
+      "dm": {
+        "title": "Messages privés",
+        "messages": "Messages privés",
+        "reactions": "Réactions à vos messages"
+      },
+      "feed": {
+        "title": "Flux & Activité",
+        "mentions": "Mentions (@handle)",
+        "comments": "Commentaires sur vos publications",
+        "likes": "Mentions J’aime sur vos publications",
+        "newFollowers": "Nouveaux abonnés",
+        "photoTags": "Identifications photo"
+      },
+      "email": {
+        "title": "E-mail",
+        "messages": "E-mail pour les nouveaux messages",
+        "digest": "Récapitulatif hebdomadaire par e-mail",
+        "note": "Nous envoyons rarement et de manière ciblée. Désinscription possible à tout moment."
+      },
+      "filters": {
+        "title": "Masquer les notifications de",
+        "notFollowing": "… utilisateurs que vous ne suivez pas",
+        "notFollowers": "… utilisateurs qui ne vous suivent pas",
+        "newAccounts": "… nouveaux comptes",
+        "noAvatar": "… comptes sans avatar",
+        "emailUnverified": "… e-mail non vérifié",
+        "phoneUnverified": "… numéro de téléphone non vérifié",
+        "note": "Ces filtres s’appliquent uniquement aux inconnus. Vos contacts/abonnements ne sont pas affectés."
       }
     },
+    "actions": {
+      "cancel": "Annuler",
+      "save": "Enregistrer les paramètres",
+      "saving": "Enregistrement…",
+      "saved": "Enregistré",
+      "savedAria": "Les paramètres ont été enregistrés.",
+      "reset": "Rétablir les valeurs par défaut",
+      "resetTitle": "Restaurer les paramètres d’usine"
+    }
+  },
 
     "legalPage": {
       "ariaBack": "Retour",
