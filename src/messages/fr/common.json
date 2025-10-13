@@ -4,6 +4,29 @@
     "brand": { "name": "Subm8" },
     "time": { "now": "maintenant", "m": "{count}m", "h": "{count}h", "d": "{count}j" },
 
+
+    "toast": {
+      "generic": {
+        "tryAgain": "Veuillez réessayer plus tard"
+      },
+      "comment": {
+        "sent": "Commentaire envoyé",
+        "failedTitle": "Échec de l’envoi"
+      },
+      "community": {
+        "created": "Communauté créée",
+        "createFailedTitle": "Échec de la création"
+      },
+      "post": {
+        "published": "Publication publiée",
+        "failedTitle": "Échec de la publication"
+      },
+      "media": {
+        "maxReached": "Nombre maximal de {max} médias par publication atteint",
+        "onlyRemaining": "Seulement {remaining} {remaining, plural, one {média} other {médias}} supplémentaires autorisé(s) (max {max})."
+      }
+    },
+
     "feedFilter": {
       "toggleAria": "Filtre du fil",
       "title": "Filtrer votre fil",
@@ -655,6 +678,11 @@
       }
     },
     "create": {
+      "banner": {
+        "choose": "Choisir une image",
+        "label": "Bannière (optionnel)",
+        "help": "PNG/JPG/WebP/GIF, max ~10 Mo. Glisser-déposer pris en charge."
+      },
       "button": "Nouvelle communauté",
       "title": "Créer une communauté",
       "aria": {

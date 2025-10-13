@@ -218,6 +218,7 @@ function isHeicLike(file: File | undefined) {
 
 export default function ComposePostModal({ open, onClose }: Props) {
   const t = useTranslations('common.compose');
+  const tt = useTranslations('common.toast');
 
   const [mounted, setMounted] = React.useState(false);
   React.useEffect(() => setMounted(true), []);
@@ -252,7 +253,7 @@ export default function ComposePostModal({ open, onClose }: Props) {
     setMedia((prev) => {
       const remaining = MEDIA_MAX - prev.length;
       if (remaining <= 0) {
-        toast.error(`Max. ${MEDIA_MAX} Medien pro Post erreicht`);
+        toast.error(tt('media.maxReached', { max: MEDIA_MAX }));
         return prev;
       }
 
@@ -265,7 +266,9 @@ export default function ComposePostModal({ open, onClose }: Props) {
       }
 
       if (pickedAll.length > remaining) {
-        toast.error(`Nur ${remaining} weitere ${remaining === 1 ? 'Medium' : 'Medien'} möglich (max. ${MEDIA_MAX}).`);
+        toast.error(
+          tt('media.onlyRemaining', { remaining, max: MEDIA_MAX })
+        );
       }
 
       return next;
@@ -287,7 +290,7 @@ export default function ComposePostModal({ open, onClose }: Props) {
 
   async function pickGifByUrl(url: string) {
     if (atLimit(media.length)) {
-      toast.error(`Max. ${MEDIA_MAX} Medien pro Post erreicht`);
+      toast.error(tt('media.maxReached', { max: MEDIA_MAX }));
       setGifOpen(false);
       return;
     }
@@ -353,10 +356,7 @@ export default function ComposePostModal({ open, onClose }: Props) {
     }
     // ts-expect-error — Client Action, React übergibt FormData
     await createPost(fd);
-    toast.success(
-    'Post erfolgreich gepostet',
-    'Gepostet'
-  );
+    toast.posted(tt('post.published')); // → "Post wurde geteilt" mit Häkchen
     onClose();
   };
 

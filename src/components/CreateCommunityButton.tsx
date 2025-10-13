@@ -4,6 +4,7 @@ import * as React from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
+import { toast } from '@/lib/toast';
 
 type JoinPolicy = 'OPEN' | 'INVITE_ONLY' | 'DOMME_ONLY' | 'SUB_ONLY';
 
@@ -21,7 +22,6 @@ function slugify(input: string) {
 export default function CreateCommunityButton() {
   const [open, setOpen] = React.useState(false);
   const [name, setName] = React.useState('');
-  const [handle, setHandle] = React.useState('');
   const [description, setDescription] = React.useState('');
   const [policy, setPolicy] = React.useState<JoinPolicy>('OPEN');
   const [banner, setBanner] = React.useState<File | null>(null);
@@ -36,25 +36,18 @@ export default function CreateCommunityButton() {
   const router = useRouter();
   const locale = useLocale();
   const t = useTranslations('common.communities.create');
+  const tt = useTranslations('common.toast');
 
-  // Portal-Root ohne Styles, blockiert nichts wenn geschlossen.
+  // Portal-Root
   React.useEffect(() => {
     const el = document.createElement('div');
     document.body.appendChild(el);
     portalRef.current = el;
     setMounted(true);
     return () => {
-      if (portalRef.current?.parentNode) {
-        portalRef.current.parentNode.removeChild(portalRef.current);
-      }
+      if (portalRef.current?.parentNode) portalRef.current.parentNode.removeChild(portalRef.current);
     };
   }, []);
-
-  // Auto-Handle aus Name (nur wenn leer)
-  React.useEffect(() => {
-    if (!handle.trim() && name.trim()) setHandle(slugify(name));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [name]);
 
   // Preview fürs Banner
   React.useEffect(() => {
@@ -68,28 +61,32 @@ export default function CreateCommunityButton() {
   React.useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
-    const prevOverflow = document.documentElement.style.overflow;
+    const prev = document.documentElement.style.overflow;
     document.documentElement.style.overflow = 'hidden';
     window.addEventListener('keydown', onKey);
     return () => {
       window.removeEventListener('keydown', onKey);
-      document.documentElement.style.overflow = prevOverflow;
+      document.documentElement.style.overflow = prev;
     };
   }, [open]);
 
   function reset() {
-    setName(''); setHandle(''); setDescription('');
+    setName(''); setDescription('');
     setPolicy('OPEN'); setBanner(null); setPreview(null); setErr(null);
   }
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!name.trim()) return;
-    setLoading(true); setErr(null);
+    setLoading(true);
+    setErr(null);
+
     try {
       const fd = new FormData();
-      fd.set('name', name.trim());
-      if (handle.trim()) fd.set('handle', handle.trim());
+      const handleFromName = slugify(name);            // ← Handle = slug aus Displayname
+
+      fd.set('name', name.trim());                     // Displayname
+      fd.set('handle', handleFromName);                // URL-Handle (auto)
       if (description.trim()) fd.set('description', description.trim());
       fd.set('policy', policy);
       if (banner) fd.set('banner', banner);
@@ -99,8 +96,16 @@ export default function CreateCommunityButton() {
 
       if (!res.ok || !json?.ok || !json.community) {
         setErr(json?.error || `HTTP ${res.status}`);
+        toast.error(tt('community.createFailedTitle'), tt('generic.tryAgain'));
         return;
       }
+
+      toast.show({
+        title: tt('community.created'),
+        variant: 'success',
+        durationMs: 2000, // 2 Sekunden
+      });
+
       setOpen(false);
       reset();
       router.push(`/${locale}/communities/${json.community.slug}`);
@@ -114,8 +119,6 @@ export default function CreateCommunityButton() {
     'px-3 py-2 outline-none focus:ring-2 focus:ring-[var(--purple)]/45 placeholder:opacity-50 ' +
     'shadow-inner';
 
-  const handlePreview = handle || t('fields.handle.example');
-
   const modal = !open ? null : (
     <div
       role="dialog"
@@ -124,19 +127,13 @@ export default function CreateCommunityButton() {
       style={{ background: 'rgba(0,0,0,.88)' }}
       onClick={(e) => { if (e.target === e.currentTarget) setOpen(false); }}
     >
-      {/* Zentrierung + Seitenabstand für Mobile */}
       <div className="min-h-full flex items-center justify-center py-4 sm:py-10 px-3">
         <div
           className="relative w-full max-w-[min(680px,100%)] rounded-2xl border border-white/10 shadow-2xl"
           style={{ backgroundColor: '#0c0e13', isolation: 'isolate' }}
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Flex-Layout: Header (fix) / Body (scrollbar) / Footer (fix) */}
-          <form
-            onSubmit={submit}
-            className="flex flex-col"
-            style={{ maxHeight: 'calc(100vh - 2rem)' }}
-          >
+          <form onSubmit={submit} className="flex flex-col" style={{ maxHeight: 'calc(100vh - 2rem)' }}>
             {/* Header */}
             <div className="shrink-0 px-4 sm:px-5 py-3 border-b border-white/10 flex items-center justify-between">
               <div className="text-base sm:text-lg font-semibold">{t('title')}</div>
@@ -152,8 +149,9 @@ export default function CreateCommunityButton() {
               </button>
             </div>
 
-            {/* Body – scrollt eigenständig bei kleinen Displays */}
+            {/* Body */}
             <div className="flex-1 overflow-y-auto px-4 sm:px-5 py-4 space-y-4">
+              {/* Displayname (Handle wird daraus erzeugt) */}
               <label className="block space-y-1.5">
                 <span className="text-sm opacity-80">{t('fields.name.label')}</span>
                 <input
@@ -163,18 +161,9 @@ export default function CreateCommunityButton() {
                   placeholder={t('fields.name.placeholder')}
                   required
                 />
-              </label>
-
-              <label className="block space-y-1.5">
-                <span className="text-sm opacity-80">{t('fields.handle.label')}</span>
-                <input
-                  className={inputCls}
-                  value={handle}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setHandle(e.target.value)}
-                  placeholder={t('fields.handle.placeholder')}
-                />
+                {/* kleine Vorschau der künftigen URL/Handle */}
                 <div className="text-xs opacity-60">
-                  {t('fields.handle.helperPreview', { handle: handlePreview })}
+                  @{slugify(name) || 'dein-handle'}
                 </div>
               </label>
 
@@ -224,9 +213,7 @@ export default function CreateCommunityButton() {
                     >
                       {t('banner.choose')}
                     </button>
-                    <div className="text-sm opacity-70">
-                      {t('banner.help')}
-                    </div>
+                    <div className="text-sm opacity-70">{t('banner.help')}</div>
                   </div>
 
                   <input

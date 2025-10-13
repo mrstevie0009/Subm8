@@ -5,7 +5,7 @@ import { useFormStatus, useFormState } from 'react-dom';
 import type { AddCommentResult } from '@/app/actions/comments';
 import { addCommentAction } from '@/app/actions/comments';
 import { useTranslations } from 'next-intl';
-
+import { toast } from '@/lib/toast';
 
 type Props = {
   postId: string;
@@ -43,6 +43,8 @@ export default function CommentComposer({
 }: Props) {
   const t = useTranslations('common.comments');
   const ta = useTranslations('common.communities.share');
+  const tt = useTranslations('common.toast');
+  const submittedRef = React.useRef(false);
 
   const [text, setText] = React.useState('');
   const textareaRef = React.useRef<HTMLTextAreaElement | null>(null);
@@ -144,16 +146,26 @@ export default function CommentComposer({
   const [state, formAction] = useFormState<ComposerState, FormData>(reducer, initialState);
 
   React.useEffect(() => {
+    // Nur reagieren, wenn der User wirklich submit gedrückt hat
+    if (!submittedRef.current) return;
+
     if (state.ok) {
+      toast.show({
+        title: tt('comment.sent'),
+        variant: 'success',
+        durationMs: 2000, // 2s; anpassbar
+      });
       onSuccess?.();
       onCancel?.();
       setText('');
       exitFloating();
-    } else {
-      // Optional: Fehler-Feedback anhand state.error
-      // z.B. toast(errorMap[state.error])
+      submittedRef.current = false; // Reset
+    } else if (state.error && state.error !== 'INVALID_INPUT') {
+      // Nur „echte“ Fehler melden, nicht den Initialzustand
+      toast.error(tt('comment.failedTitle'), tt('generic.tryAgain'));
+      submittedRef.current = false; // Reset
     }
-  }, [state, onCancel, onSuccess]);
+  }, [state, onCancel, onSuccess, tt]);
 
   const Form = (
     <form
@@ -161,6 +173,7 @@ export default function CommentComposer({
       action={formAction}
       data-no-nav
       onClick={(e) => e.stopPropagation()}
+      onSubmit={() => { submittedRef.current = true; }}
       className={className ?? 'mt-3 rounded-xl border border-white/10 bg-white/5 p-2'}
     >
       <input type="hidden" name="postId" value={postId} />

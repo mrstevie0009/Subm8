@@ -4,6 +4,29 @@
     "brand": { "name": "Subm8" },
     "time": { "now": "jetzt", "m": "{count}m", "h": "{count}h", "d": "{count}d" },
 
+
+    "toast": {
+      "generic": {
+        "tryAgain": "Bitte später erneut versuchen"
+      },
+      "comment": {
+        "sent": "Kommentar wurde gesendet",
+        "failedTitle": "Senden fehlgeschlagen"
+      },
+      "community": {
+        "created": "Community erstellt",
+        "createFailedTitle": "Erstellen fehlgeschlagen"
+      },
+      "post": {
+        "published": "Beitrag wurde veröffentlicht",
+        "failedTitle": "Posten fehlgeschlagen"
+      },
+      "media": {
+        "maxReached": "Max. {max} Medien pro Post erreicht",
+        "onlyRemaining": "Nur {remaining} weitere {remaining, plural, one {Medium} other {Medien}} möglich (max. {max})."
+      }
+    },
+
     "feedFilter": {
       "toggleAria": "Feed-Filter",
       "title": "Deinen Feed filtern",
@@ -705,6 +728,11 @@
       }
     },
     "create": {
+      "banner": {
+        "choose": "Bild auswählen",
+        "label": "Banner (optional)",
+        "help": "PNG/JPG/WebP/GIF, max. ~10 MB. Drag & Drop wird unterstützt."
+      },
       "button": "Neue Community",
       "title": "Community erstellen",
       "aria": {

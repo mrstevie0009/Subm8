@@ -4,6 +4,8 @@
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { createPortal } from 'react-dom';
+import { useTranslations } from 'next-intl';
+import { toast } from '@/lib/toast';
 
 type Props = { slug: string };
 
@@ -146,7 +148,7 @@ export default function CommunityComposer({ slug }: Props) {
   const canPostText = text.trim().length > 0 && text.trim().length <= 4000;
   const hasAttachment = !!file || !!gifUrl.trim();
   const canPost = (canPostText || hasAttachment) && !loading;
-
+  const tt = useTranslations('common.toast');
   function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
     if (!f) return;
@@ -196,7 +198,7 @@ export default function CommunityComposer({ slug }: Props) {
         fd.append('text', text.trim());
         if (file) fd.append('media', file);
         if (!file && gifUrl.trim()) fd.append('gifUrl', gifUrl.trim());
-
+        
         const res = await fetch(
           `/api/communities/${encodeURIComponent(slug)}/posts`,
           { method: 'POST', body: fd }
@@ -219,10 +221,15 @@ export default function CommunityComposer({ slug }: Props) {
         const json = await res.json().catch(() => ({}));
         if (!res.ok || !json?.ok) {
           setErr(json?.error || `HTTP ${res.status}`);
+          toast.error(tt('post.failedTitle'), tt('generic.tryAgain'));
           return;
         }
       }
-
+      toast.show({
+        title: tt('post.published'),
+        variant: 'success',
+        durationMs: 2000, // 2s – bei Bedarf anpassen
+      });
       // Reset & Refresh
       setText('');
       clearAttachment();

@@ -5,6 +5,7 @@ import * as React from 'react';
 import Image from 'next/image';
 import { addCommentAction } from '@/app/actions/comments';
 import { useTranslations } from 'next-intl';
+import { toast } from '@/lib/toast';
 
 const AVATAR_PH = '/images/avatar-placeholder.png';
 
@@ -359,11 +360,13 @@ function Composer({
   onDone: () => void;
 }) {
   const t = useTranslations('common.comments');
+  const tt = useTranslations('common.toast');
   const [text, setText] = React.useState('');
   const [busy, setBusy] = React.useState(false);
   const [file, setFile] = React.useState<File | null>(null);
   const [preview, setPreview] = React.useState<string | null>(null);
   const [gifOpen, setGifOpen] = React.useState(false);
+  const submittedRef = React.useRef(false);
 
   React.useEffect(() => {
     return () => {
@@ -398,6 +401,8 @@ function Composer({
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    submittedRef.current = true;
+
     const tText = text.trim();
     if (!tText && !file) return;
     setBusy(true);
@@ -406,13 +411,28 @@ function Composer({
     fd.set('text', tText);
     if (parentId) fd.set('parentId', parentId);
     if (file) fd.set('media', file);
+
     const res = await addCommentAction(fd);
     setBusy(false);
+
+
     if (res.ok) {
-      setText('');
-      clearFile();
-      onDone();
-    }
+    // ✅ Erfolg – 2s Toast (anpassbar über durationMs)
+    toast.show({
+      title: tt('comment.sent'),
+      variant: 'success',
+      durationMs: 2000, // 2 Sekunden
+    });
+
+    setText('');
+    clearFile();
+    onDone();
+  } else if (submittedRef.current) {
+    // ❌ Fehler nur nach echtem Submit anzeigen
+    toast.error(tt('comment.failedTitle'), tt('generic.tryAgain'));
+  }
+
+  submittedRef.current = false; // Reset
   }
 
   return (

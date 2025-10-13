@@ -8,6 +8,8 @@ import BottomNav from '@/components/BottomNav';
 import SettingsDrawerMount from '@/components/SettingsDrawerMount';
 import ComposePostOverlayMount from '@/components/ComposePostOverlayMount';
 
+import ToastHost from '@/components/ToastHost';
+
 export default function PageChrome({
   children,
   locale,
@@ -68,6 +70,8 @@ export default function PageChrome({
 
       <SettingsDrawerMount />
       <ComposePostOverlayMount />
+      {/* Neu: Toasts global rendern */}
+      <ToastHost />
     </>
   );
 }

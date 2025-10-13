@@ -5,6 +5,29 @@
     "time": { "now": "now", "m": "{count}m", "h": "{count}h", "d": "{count}d" },
     "actions": {"cancel": "Cancel"},
 
+
+    "toast": {
+      "generic": {
+        "tryAgain": "Please try again later"
+      },
+      "comment": {
+        "sent": "Comment sent",
+        "failedTitle": "Send failed"
+      },
+      "community": {
+        "created": "Community created",
+        "createFailedTitle": "Create failed"
+      },
+      "post": {
+        "published": "Post published",
+        "failedTitle": "Posting failed"
+      },
+      "media": {
+        "maxReached": "Maximum {max} media per post reached",
+        "onlyRemaining": "Only {remaining} more {remaining, plural, one {item} other {items}} allowed (max {max})."
+      }
+    },
+
     "feedFilter": {
       "toggleAria": "Feed filter",
       "title": "Filter your feed",
@@ -654,6 +677,11 @@
       }
     },
     "create": {
+      "banner": {
+        "choose": "Choose image",
+        "label": "Banner (optional)",
+        "help": "PNG/JPG/WebP/GIF, max ~10MB. Drag & drop supported."
+      },
       "button": "New Community",
       "title": "Create community",
       "aria": {

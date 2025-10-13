@@ -1178,13 +1178,6 @@ export default function PostCard({
 
       setConfirmDeleteOpen(false);
       setDeleted(true);
-      toast({
-        kind: 'success',
-        icon: 'trash',
-        title: tPost?.('delete.title') || 'Post gelöscht',
-        message: tPost?.('delete.success') || 'Post erfolgreich gelöscht',
-      });
-
 
       try { window.dispatchEvent(new CustomEvent('profile:pinnedChange', { detail: { postId: c.id, pinned: false } })); } catch {}
       try { window.dispatchEvent(new CustomEvent('post:deleted', { detail: { contentId: c.id } })); } catch {}
