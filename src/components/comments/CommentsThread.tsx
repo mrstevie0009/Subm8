@@ -151,6 +151,35 @@ type TreeComment = {
   children: TreeComment[];
 };
 
+// Tie-Breaker: likes desc, createdAt desc (neuste zuerst)
+function byLikesThenDate(a: TreeComment, b: TreeComment) {
+  const likeDiff = (b.counts?.likes ?? 0) - (a.counts?.likes ?? 0);
+  if (likeDiff !== 0) return likeDiff;
+  return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+}
+
+// Rekursive Sortierung
+function sortTreeByLikes(nodes: TreeComment[]): TreeComment[] {
+  // tiefe Kopie nur insoweit nötig, dass children neu sortiert werden
+  return nodes
+    .map(n => ({ ...n, children: sortTreeByLikes(n.children ?? []) }))
+    .sort(byLikesThenDate);
+}
+
+// (Optional, falls Pagination Duplikate liefert)
+function dedupeById<T extends { id: string }>(arr: T[]): T[] {
+  const seen = new Set<string>();
+  const out: T[] = [];
+  for (const it of arr) {
+    if (!seen.has(it.id)) {
+      seen.add(it.id);
+      out.push(it);
+    }
+  }
+  return out;
+}
+
+
 function Counter({ value = 0, active }: { value?: number; active?: boolean }) {
   return (
     <span className="text-sm" style={{ color: active ? 'var(--purple)' : 'var(--muted)' }}>
@@ -176,7 +205,12 @@ export default function CommentsThread({ postId }: { postId: string }) {
         const res = await fetch(url.toString(), { cache: 'no-store' });
         const json = await res.json();
         if (!json.ok) throw new Error(json.error || t('errorLoading'));
-        setTree((prev) => (reset ? json.items : [...prev, ...json.items]));
+
+        setTree(prev => {
+          const merged = reset ? json.items : [...prev, ...json.items];
+          const deduped = dedupeById<TreeComment>(merged);
+          return sortTreeByLikes(deduped);      // ⬅️ HIER wird rekursiv sortiert
+        });
         setNextCursor(json.nextCursor ?? null);
       } catch (e) {
         setErr(e instanceof Error ? e.message : t('errorLoading'));
@@ -248,7 +282,8 @@ function CommentNode({
     const json = await res.json();
     if (json.ok) {
       setLiked(json.liked);
-      setLikeCount((c) => (json.liked ? c + 1 : Math.max(0, c - 1)));
+      setLikeCount(c => (json.liked ? c + 1 : Math.max(0, c - 1)));
+      onChanged(); // ⬅️ resort via Reload
     }
   }
 

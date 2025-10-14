@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/currentUser';
 import HomeFeedClient from '@/components/HomeFeedClient';
 import type { FeedPost } from '@/components/PostCard';
+import { redirect } from 'next/navigation';
+import { auth } from '@/lib/auth';  
 
 export const dynamic = 'force-dynamic';
 
@@ -54,13 +56,18 @@ export default async function HomePage({
   params: Promise<Params>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  // Falls du locale nicht brauchst, trotzdem awaiten:
-  await params;
+  // Locale wirklich auslesen (brauchst du für den Redirect)
+  const { locale } = await params;                    // ⬅️ angepasst
 
-  // searchParams zuerst auflösen
+  // 🔒 Serverseitiger Auth-Guard (zusätzlich zur Middleware)
+  const session = await auth();
+  if (!session?.user?.id) {
+    const back = `/${locale}`;                        // Ziel nach Login
+    redirect(`/${locale}/signin?callbackUrl=${encodeURIComponent(back)}`);
+  }
+
+  // ab hier dein bestehender Code …
   const spObj = (await searchParams) ?? {};
-
-  // Query-Params → URLSearchParams
   const sp = new URLSearchParams();
   for (const [k, v] of Object.entries(spObj)) {
     const val = Array.isArray(v) ? v[0] : v;

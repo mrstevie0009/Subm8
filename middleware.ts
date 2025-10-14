@@ -11,9 +11,10 @@ const SUPPORTED_LOCALES = new Set(
 );
 const DEFAULT_LOCALE = (nextIntlConfig.defaultLocale ?? 'en').toLowerCase();
 
-// Lokalisierte ODER nicht-lokalisierte Auth-Routen erlauben
-const AUTH_PATHS_NON_LOCALIZED = new Set(['/signin', '/signup']);
-const AUTH_RE_LOCALIZED = /^\/[A-Za-z-]{2,5}(?:-[A-Za-z]{2})?\/(signin|signup)\/?$/i;
+// Öffentliche Auth-Routen (lokalisiert + nicht-lokalisiert)
+const AUTH_PATHS_NON_LOCALIZED = new Set(['/signin', '/signup', '/signin-bridge']);
+const AUTH_RE_LOCALIZED =
+  /^\/[A-Za-z-]{2,5}(?:-[A-Za-z]{2})?\/(signin|signup|signin-bridge)\/?$/i;
 
 // 18+ geschützte Pfade NACH dem Locale-Segment
 const PROTECTED_PREFIXES = ['chat', 'messages', 'images']; // ggf. erweitern
@@ -22,14 +23,7 @@ function hasLocalePrefix(pathname: string): boolean {
   const first = pathname.split('/').filter(Boolean)[0]?.toLowerCase();
   return !!first && SUPPORTED_LOCALES.has(first);
 }
-function ensureLocaleUrl(req: NextRequest): URL | null {
-  const { pathname, search } = req.nextUrl;
-  if (!hasLocalePrefix(pathname)) {
-    const url = new URL(`/${DEFAULT_LOCALE}${pathname}${search || ''}`, req.url);
-    return url;
-  }
-  return null;
-}
+
 function isAuthRoute(pathname: string): boolean {
   if (AUTH_PATHS_NON_LOCALIZED.has(pathname.toLowerCase())) return true;
   return AUTH_RE_LOCALIZED.test(pathname);
@@ -38,7 +32,7 @@ function isAuthRoute(pathname: string): boolean {
 function needsAgeVerification(req: NextRequest): boolean {
   const { pathname, searchParams } = req.nextUrl;
 
-  // 1) Post-Composer über Query (?compose=1) – dein aktueller Flow
+  // 1) Post-Composer über Query (?compose=1)
   if (searchParams.get('compose') === '1') return true;
 
   // 2) Präfixe nach Locale schützen: /<locale>/<prefix>...
@@ -47,15 +41,40 @@ function needsAgeVerification(req: NextRequest): boolean {
   const firstAfterLocale = (afterLocale[0] ?? '').toLowerCase();
 
   if (PROTECTED_PREFIXES.includes(firstAfterLocale)) return true;
-
-  // ggf. weitere Regeln hier ergänzen
   return false;
 }
 
-export default async function middleware(req: NextRequest) {
-  const { pathname } = req.nextUrl;
+// Robustes Token-Reading: unterstützt HTTP (dev) & HTTPS (__Secure-…)
+async function readAuthToken(req: NextRequest) {
+  // Versuch 1: HTTPS-Cookie (__Secure-…)
+  let token =
+    await getToken({
+      req,
+      secret: process.env.NEXTAUTH_SECRET,
+      cookieName: '__Secure-next-auth.session-token',
+    });
 
-  // Skip assets & files
+  // Versuch 2: HTTP-Dev-Cookie (next-auth.session-token)
+  if (!token) {
+    token = await getToken({
+      req,
+      secret: process.env.NEXTAUTH_SECRET,
+      cookieName: 'next-auth.session-token',
+    });
+  }
+
+  // Versuch 3: Standard (getToken entscheidet selbst über den Namen)
+  if (!token) {
+    token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+  }
+
+  return token;
+}
+
+export default async function middleware(req: NextRequest) {
+  const { pathname, search } = req.nextUrl;
+
+  // 0) Skip: API, Next assets, Uploads, statische Dateien
   if (
     pathname.startsWith('/api') ||
     pathname.startsWith('/_next') ||
@@ -65,43 +84,52 @@ export default async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // 1) Falls kein Locale-Prefix => auf Default-Locale umschreiben
-  const addLocale = ensureLocaleUrl(req);
-  if (addLocale) return NextResponse.redirect(addLocale);
-
-  // 2) Auth-Token lesen
-  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+  const isLocalized = hasLocalePrefix(pathname);
   const onAuthPage = isAuthRoute(pathname);
 
-  // 3) Nicht eingeloggt => ALLES sperren außer signin/signup (lokalisiert + nicht-lokalisiert)
-  if (!token && !onAuthPage) {
-    // baue lokalisierte Signin-URL + callbackUrl
-    const locale = pathname.split('/').filter(Boolean)[0]!.toLowerCase();
-    const url = new URL(`/${locale}/signin`, req.url);
-    const search = req.nextUrl.search || '';
-    url.searchParams.set('callbackUrl', `${pathname}${search}`);
+  // 1) Nicht-lokalisierte Auth-Routen → auf lokalisierte umbiegen (z. B. /signin → /en/signin)
+  if (!isLocalized && AUTH_PATHS_NON_LOCALIZED.has(pathname.toLowerCase())) {
+    const url = new URL(`/${DEFAULT_LOCALE}${pathname}${search || ''}`, req.url);
     return NextResponse.redirect(url);
   }
 
-  // 4) Eingeloggt => signin/signup (alle Varianten) blocken -> Home
+  // 2) Kein Locale-Prefix? → Default-Locale injizieren
+  if (!isLocalized) {
+    const url = new URL(`/${DEFAULT_LOCALE}${pathname}${search || ''}`, req.url);
+    return NextResponse.redirect(url);
+  }
+
+  // 3) Auth-Token robust lesen (HTTP/HTTPS)
+  const token = await readAuthToken(req);
+
+  // 4) Nicht eingeloggt → alles sperren außer Auth-Seiten
+  if (!token && !onAuthPage) {
+    const locale = pathname.split('/').filter(Boolean)[0]!.toLowerCase();
+    const url = new URL(`/${locale}/signin`, req.url);
+    url.searchParams.set('callbackUrl', `${pathname}${search || ''}`);
+    return NextResponse.redirect(url);
+  }
+
+  // 5) Eingeloggt → Auth-Seiten blocken → Home
   if (token && onAuthPage) {
     const locale = pathname.split('/').filter(Boolean)[0]!.toLowerCase();
     return NextResponse.redirect(new URL(`/${locale}`, req.url));
   }
 
-  // 5) Altersgate: wenn eingeloggt aber NICHT verifiziert und Route/Query erfordert 18+
+  // 6) Altersgate: eingeloggt & nicht verifiziert & Route erfordert 18+
   if (token && !token.ageVerified && needsAgeVerification(req)) {
     const locale = pathname.split('/').filter(Boolean)[0]!.toLowerCase();
-    const back = `${pathname}${req.nextUrl.search || ''}`;
+    const back = `${pathname}${search || ''}`;
     const url = new URL(`/${locale}/verify/complete`, req.url);
     url.searchParams.set('back', back);
     return NextResponse.redirect(url);
   }
 
-  // 6) Locale-Handling an next-intl übergeben
+  // 7) Locale-Handling (next-intl)
   return intl(req);
 }
 
 export const config = {
+  // Deckt die App-Router-Routen ab, excl. API/Assets/Dateien
   matcher: ['/((?!api|_next|uploads|.*\\..*).*)'],
 };
