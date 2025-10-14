@@ -1970,7 +1970,7 @@ export default function PostCard({
         <MoreMenu />
       </div>
 
-      <section className="grid grid-cols-[3.2em_1fr] gap-x-3 gap-y-2 sm:gap-3">
+      <section className="grid grid-cols-[3.2em_1fr] gap-x-3 gap-y-1 sm:gap-y-2">
         {/* Avatar + Rolle (linke Spalte) */}
         <div className="col-start-1 row-start-1 shrink-0 flex flex-col items-center">
           <div data-no-nav onClick={(e) => e.stopPropagation()}>
@@ -2038,44 +2038,39 @@ export default function PostCard({
             </time>
           </div>
 
-          <div className="mt-1 leading-relaxed">
+          <div className="mt-0.5 leading-snug">
             <RichText text={c.text} locale={locale} validateMentions />
           </div>
         </div>
 
-        {/* Medien – über die volle Breite (starten links) */}
-        <div className="col-span-2">
-          {mediaItems.length > 0 && !ageOk ? (
-            <BlurredMediaGate
-              items={mediaItems}
-              locale={locale}
-              onStartVeriff={startAgeVerification}
-            />
-          ) : (
-            <>
-              {mediaItems.length === 1 && (
-                <SingleMedia m={mediaItems[0]} priority onOpen={openLightbox} index={0} />
-              )}
-              {mediaItems.length > 1 && (
-                <>
-                  <MediaMosaic items={mediaItems} onOpen={openLightbox} />
-                  <MediaMosaicOverflow items={mediaItems} onOpen={openLightbox} />
-                  <MediaCarousel items={mediaItems} onOpen={openLightbox} />
-                </>
-              )}
-            </>
-          )}
-        </div>
+        {/* Medien – volle Breite NUR wenn vorhanden */}
+        {mediaItems.length > 0 && (
+          <div className="col-span-2">
+            {!ageOk ? (
+              <BlurredMediaGate items={mediaItems} onStartVeriff={startAgeVerification} />
+            ) : mediaItems.length === 1 ? (
+              <SingleMedia m={mediaItems[0]} priority onOpen={openLightbox} index={0} />
+            ) : (
+              <>
+                <MediaMosaic items={mediaItems} onOpen={openLightbox} />
+                <MediaMosaicOverflow items={mediaItems} onOpen={openLightbox} />
+                <MediaCarousel items={mediaItems} onOpen={openLightbox} />
+              </>
+            )}
+          </div>
+        )}
 
-        {/* Quote – volle Breite */}
-        <div className="col-span-2">
-          <QuoteBox />
-        </div>
+        {/* Quote – volle Breite NUR wenn vorhanden */}
+        {c.quote && (
+          <div className="col-span-2">
+            <QuoteBox />
+          </div>
+        )}
 
         {/* Action-Bar – volle Breite */}
         <div className="col-span-2">
           <div
-            className="mt-2 sm:mt-3 flex items-center gap-3 sm:gap-5 flex-wrap"
+            className="mt-1.5 sm:mt-2 flex items-center gap-3 sm:gap-4 flex-wrap"
             data-no-nav
             onClick={(e) => e.stopPropagation()}
           >
