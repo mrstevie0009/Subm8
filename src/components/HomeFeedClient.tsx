@@ -127,7 +127,7 @@ function mapApiPost(p: ApiPost): FeedPost {
   };
 }
 
-// ---- Neu: Dedupe-Helper (stabil nach ID) ----
+// Dedupe-Helper (stabil nach ID)
 function dedupeById<T extends { id: string }>(arr: T[]): T[] {
   const seen = new Set<string>();
   const out: T[] = [];
@@ -143,6 +143,8 @@ function dedupeById<T extends { id: string }>(arr: T[]): T[] {
 export default function HomeFeedClient({ initialItems }: Props) {
   const searchParams = useSearchParams();
 
+  const PAGE_SIZE = 20; // Batch-Größe pro Nachlade-Request
+
   // Nur die relevanten Query-Keys für den Feed übernehmen
   const feedQuery = React.useMemo(() => {
     const sp = new URLSearchParams();
@@ -153,14 +155,18 @@ export default function HomeFeedClient({ initialItems }: Props) {
     return sp.toString(); // z.B. "feed=following,top&role=dommes"
   }, [searchParams]);
 
-  // Initial sofort deduplizieren (falls SSR schon Duplikate enthalten sollte)
+  // State
   const [items, setItems] = React.useState<FeedPost[]>(() => dedupeById(initialItems));
   const [newCount, setNewCount] = React.useState(0);
   const [loadingNew, setLoadingNew] = React.useState(false);
   const [atTop, setAtTop] = React.useState(true);
 
-  const topSentinelRef = React.useRef<HTMLDivElement | null>(null);
+  // Bottom-Infinite-Scroll
+  const [loadingMore, setLoadingMore] = React.useState(false);
+  const [endReached, setEndReached] = React.useState(false);
+  const bottomSentinelRef = React.useRef<HTMLDivElement | null>(null);
 
+  const topSentinelRef = React.useRef<HTMLDivElement | null>(null);
   const [headerHeight, setHeaderHeight] = React.useState(64);
   const [buttonTop, setButtonTop] = React.useState(12);
 
@@ -194,6 +200,11 @@ export default function HomeFeedClient({ initialItems }: Props) {
     [items]
   );
 
+  const oldestISO = React.useMemo(
+    () => items[items.length - 1]?.createdAtISO ?? null,
+    [items]
+  );
+
   // Top-Erkennung
   React.useEffect(() => {
     const el = topSentinelRef.current;
@@ -206,18 +217,21 @@ export default function HomeFeedClient({ initialItems }: Props) {
     return () => io.disconnect();
   }, [headerHeight]);
 
-  // Wenn Filter (URL-Query) wechselt → initiale Liste neu laden
+  // Initial laden bei Filterwechsel (und End-Flag resetten)
   React.useEffect(() => {
     let cancelled = false;
     const load = async () => {
-      const qs = feedQuery ? `?${feedQuery}` : '';
+      const sp = new URLSearchParams(feedQuery);
+      sp.set('limit', String(PAGE_SIZE));
+      const qs = sp.toString() ? `?${sp.toString()}` : '';
       const res = await fetch(`/api/feed${qs}`, { cache: 'no-store' });
       if (!res.ok) return;
       const data = (await res.json()) as { posts: ApiPost[] };
       if (!cancelled) {
         const mapped = data.posts.map(mapApiPost);
-        setItems(dedupeById(mapped));       // ← dedupe
+        setItems(dedupeById(mapped));
         setNewCount(0);
+        setEndReached(false);
         window.scrollTo({ top: 0 });
       }
     };
@@ -259,7 +273,7 @@ export default function HomeFeedClient({ initialItems }: Props) {
       const data = (await res.json()) as { posts: ApiPost[] };
       const mapped = data.posts.map(mapApiPost);
 
-      setItems((prev) => dedupeById([...mapped, ...prev])); // ← dedupe beim Merge
+      setItems((prev) => dedupeById([...mapped, ...prev]));
       setNewCount(0);
     } finally {
       setLoadingNew(false);
@@ -271,6 +285,39 @@ export default function HomeFeedClient({ initialItems }: Props) {
     if (atTop && newCount > 0 && !loadingNew) void loadNewPosts();
   }, [atTop, newCount, loadingNew, loadNewPosts]);
 
+  // Bottom-Sentinel: automatisch mehr laden
+  React.useEffect(() => {
+    const el = bottomSentinelRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver(
+      async ([entry]) => {
+        if (entry.isIntersecting && !loadingMore && !endReached && oldestISO) {
+          setLoadingMore(true);
+          try {
+            const sp = new URLSearchParams(feedQuery);
+            sp.set('before', oldestISO);
+            sp.set('limit', String(PAGE_SIZE));
+            const res = await fetch(`/api/feed?${sp.toString()}`, { cache: 'no-store' });
+            if (!res.ok) return;
+            const data = (await res.json()) as { posts: ApiPost[] };
+            const mapped = data.posts.map(mapApiPost);
+
+            if (mapped.length === 0) {
+              setEndReached(true);
+            } else {
+              setItems(prev => dedupeById([...prev, ...mapped]));
+            }
+          } finally {
+            setLoadingMore(false);
+          }
+        }
+      },
+      { rootMargin: '128px 0px 256px 0px' }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [feedQuery, loadingMore, endReached, oldestISO]);
+
   function handleClickNew() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
     setTimeout(() => { void loadNewPosts(); }, 150);
@@ -278,7 +325,7 @@ export default function HomeFeedClient({ initialItems }: Props) {
 
   return (
     <>
-      {/* Sentinel */}
+      {/* Top-Sentinel fürs „am Anfang“-Erkennen */}
       <div ref={topSentinelRef} style={{ height: 1 }} />
 
       {/* New-Posts Button */}
@@ -305,6 +352,27 @@ export default function HomeFeedClient({ initialItems }: Props) {
         {items.map((post) => (
           <PostCard key={post.id} post={post} />
         ))}
+
+        {/* Bottom-Sentinel + Mini-Loader */}
+        {!endReached && (
+          <div ref={bottomSentinelRef} className="flex justify-center py-6">
+            {loadingMore ? (
+              <div
+                className="h-5 w-5 rounded-full border-2 border-white/30 border-t-white animate-spin"
+                aria-label="Loading more"
+              />
+            ) : (
+              <div className="h-5" />
+            )}
+          </div>
+        )}
+
+        {/* Optional: Ende-Hinweis */}
+        {endReached && (
+          <div className="text-center text-sm opacity-60 py-6">
+            Keine weiteren Posts.
+          </div>
+        )}
       </section>
     </>
   );

@@ -55,11 +55,18 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const { following, sort, role } = parseFilters(searchParams);
 
+  // NEU: Pagination nach unten
+  const beforeISO = searchParams.get('before');
+  const limitRaw = Number(searchParams.get('limit'));
+  const limit = Number.isFinite(limitRaw) && limitRaw > 0 && limitRaw <= 50 ? limitRaw : 20;
+
+  // Bestehend (Polling nach oben)
   const sinceISO = searchParams.get('since');
   const onlyCount = searchParams.get('onlyCount') === '1';
 
   const sinceDate = sinceISO ? new Date(sinceISO) : null;
-  if (sinceISO && Number.isNaN(sinceDate!.getTime())) {
+  const beforeDate = beforeISO ? new Date(beforeISO) : null;
+  if ((sinceISO && Number.isNaN(sinceDate!.getTime())) || (beforeISO && Number.isNaN(beforeDate!.getTime()))) {
     return NextResponse.json({ posts: [], count: 0 });
   }
 
@@ -83,8 +90,8 @@ export async function GET(req: Request) {
       return NextResponse.json(onlyCount ? { count: 0 } : { posts: [] });
     }
     const rows = await prisma.follow.findMany({
-      where: { followerId: me.id }, // <-- ggf. Relationenname anpassen
-      select: { followeeId: true }, // <-- ggf. Feldnamen anpassen
+      where: { followerId: me.id }, // ggf. Relationen/Felder anpassen
+      select: { followeeId: true },
     });
     followingUserIds = new Set(rows.map(r => r.followeeId));
     if (followingUserIds.size === 0) {
@@ -136,7 +143,7 @@ export async function GET(req: Request) {
     return { allowed, communitiesById: byId };
   }
 
-  // --- Hilfsfunktion: Role-Filter auf den *Inhalt* (bei Repost der Original-Author, sonst Post-Author)
+  // Hilfsfunktion: Role-Filter auf den *Inhalt* (bei Repost der Original-Author, sonst Post-Author)
   const passesRoleFilter = (p: {
     author: { role: Role }; repostOf?: { author: { role: Role } } | null;
   }) => {
@@ -173,8 +180,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ count: allowed.length });
   }
 
-  // --- Vollständige Liste ---
-  // Sortierung:
+  // --- Vollständige Liste (Pagination) ---
   const orderBy =
     sort === 'top'
       ? [{ Like: { _count: 'desc' as const } }, { createdAt: 'desc' as const }]
@@ -183,6 +189,7 @@ export async function GET(req: Request) {
   const posts = await prisma.post.findMany({
     where: {
       ...(sinceDate ? { createdAt: { gt: sinceDate } } : {}),
+      ...(beforeDate ? { createdAt: { lt: beforeDate } } : {}), // NEU: nach unten paginieren
       ...(following ? { authorId: { in: Array.from(followingUserIds) } } : {}),
     },
     orderBy,
@@ -190,7 +197,6 @@ export async function GET(req: Request) {
       author: {
         select: { id: true, handle: true, displayName: true, role: true, avatarUrl: true },
       },
-      // Hauptpost (inkl. neuem uploaded)
       uploaded: true,
       repostOf: {
         select: {
@@ -233,10 +239,8 @@ export async function GET(req: Request) {
         },
       },
       _count: { select: { Like: true, Comment: true, reposts: true } },
-      // Für orderBy Like._count zu funktionieren, braucht Prisma kein extra include,
-      // aber wir lesen Likes/Bookmarks separat für viewer.
     },
-    take: 50,
+    take: limit, // NEU: Batch-Größe
   });
 
   // Role-Filter anwenden (auf Inhalt)
@@ -283,10 +287,10 @@ export async function GET(req: Request) {
 
       return {
         id: p.id,
-        text: p.text, // text ist beim Container-Post vorhanden
+        text: p.text,
         mediaUrl: p.mediaUrl,             // legacy
         mediaAlt: p.mediaAlt,             // legacy
-        uploaded: mapUploaded(p.uploaded), // NEU
+        uploaded: mapUploaded(p.uploaded),
         createdAt: p.createdAt.toISOString(),
 
         _count: {

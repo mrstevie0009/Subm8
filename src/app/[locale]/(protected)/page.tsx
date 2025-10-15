@@ -164,7 +164,7 @@ export default async function HomePage({
       },
       _count: { select: { Like: true, Comment: true, reposts: true } },
     },
-    take: 30,
+    take: 20,
   });
 
   // Role-Filter wirkt auf Inhalt (Repost → Original-Author; sonst Post-Author)
