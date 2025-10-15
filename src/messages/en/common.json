@@ -6,6 +6,34 @@
     "actions": {"cancel": "Cancel"},
 
 
+    "community": {
+    "composer": {
+      "placeholder": "What's new?",
+      "remove": "Remove",
+      "media": "Media",
+      "gif": "GIF",
+      "gifSearchTitle": "Search GIF",
+      "post": {
+        "buttonPosting": "Posting…",
+        "buttonPost": "Post"
+      },
+      "errors": {
+        "onlyImageOrVideo": "Only image or video files are allowed.",
+        "generic": "Failed to post."
+      }
+    },
+    "gifPicker": {
+      "searchPlaceholder": "Search for GIFs…",
+      "searchButton": "Search",
+      "closeButton": "Close",
+      "loadingGifs": "Loading GIFs…",
+      "select": "Select",
+      "errors": {
+        "loadGifs": "Could not load GIFs."
+      }
+    }
+  },
+
     "toast": {
       "generic": {
         "tryAgain": "Please try again later"
@@ -315,9 +343,10 @@
 
     "chatThread": {
     "loading": "Loading…",
+    "you": "You",
     "disabled": {
-      "byOther": "You can no longer send direct messages to this user.",
-      "youBlocked": "You blocked this user. Sending is disabled."
+      "byOther": "You can no longer send direct messages to this person.",
+      "youBlocked": "You blocked this person. Sending is disabled."
     },
     "audio": {
       "play": "Play",
@@ -325,7 +354,27 @@
     },
     "actions": {
       "accept": "Accept",
-      "decline": "Decline"
+      "decline": "Decline",
+      "reply": "Reply",
+      "moreEmojis": "More emojis"
+    },
+    "media": {
+      "image": "📷 Image",
+      "video": "🎞 Video",
+      "audio": "🎙 Audio",
+      "attachment": "📎 Attachment"
+    },
+    "quoted": {
+      "notFound": "Message not found"
+    },
+    "emoji": {
+      "searchPlaceholder": "Search emojis",
+      "close": "Close",
+      "recent": "Recently used",
+      "sheetTitle": "Smileys & reactions"
+    },
+    "verify": {
+      "redirectNote": "You'll be redirected automatically after completion."
     },
     "community": {
       "members": "{count} members"
@@ -337,7 +386,7 @@
     "envelopes": {
       "tipRequest": {
         "title": "TIP REQUEST",
-        "declinedMsg": "❌ Declined tip request"
+        "declinedMsg": "❌ Tip request declined"
       },
       "tipPaid": {
         "title": "TIP PAID"
@@ -350,7 +399,7 @@
           "weekly": "Weekly",
           "monthly": "Monthly"
         },
-        "declinedMsg": "❌ Declined autodrain request"
+        "declinedMsg": "❌ Autodrain request declined"
       },
       "autodrainEnabled": {
         "title": "AUTODRAIN ENABLED"
@@ -362,11 +411,15 @@
           "banner": "Banner",
           "bio": "Bio"
         },
-        "declinedMsg": "❌ Declined ownership request"
+        "legacy": {
+          "avatarPreview": "🖼 Avatar preview attached.",
+          "bannerPreview": "🏞 Banner preview attached."
+        },
+        "declinedMsg": "❌ Ownership request declined"
       },
       "ownershipAccepted": {
         "title": "OWNERSHIP ACCEPTED",
-        "applied": "Changes were applied to the sub’s profile."
+        "applied": "Changes have been applied to the sub profile."
       }
     }
   },
@@ -593,14 +646,15 @@
         "delete": "Delete chat"
       }
     },
+    "you": "You",
     "loading": "Loading…",
     "empty": {
       "title": "No conversations",
       "subtitle": "Start a new chat from a profile."
     },
-    "loadingError": "Failed to load chats",
+    "loadingError": "Couldn’t load chats",
     "system": {
-      "ownershipAccepted": "Ownership accepted",
+      "ownershipAccepted": "Ownership confirmed",
       "ownershipRequest": "Ownership request",
       "ownershipRequestWithParts": "Ownership request: {parts}",
       "part": {
@@ -614,6 +668,10 @@
         "post": "Shared a post",
         "profile": "Shared profile @{handle}",
         "link": "Shared a link"
+      },
+      "reaction": {
+        "added": "{user} reacted with {emoji}",
+        "removed": "{user} removed reaction {emoji}"
       }
     }
   },

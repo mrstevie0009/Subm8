@@ -1,3 +1,4 @@
+//src/app/[locale]/(protected)/communities/[slug]/page.tsx
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/currentUser';
 import { notFound } from 'next/navigation';

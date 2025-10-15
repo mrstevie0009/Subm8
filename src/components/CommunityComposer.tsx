@@ -9,6 +9,16 @@ import { toast } from '@/lib/toast';
 
 type Props = { slug: string };
 
+/** Kleiner Helper: Übersetzung ODER Fallback-String (ohne any) */
+function tOr(t: (key: string) => string, key: string, fallback: string) {
+  try {
+    const val = t?.(key);
+    return typeof val === 'string' && val.trim() ? val : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 /* ---------------- GIF Picker (Tenor) – wie im ComposePostModal ---------------- */
 const TENOR_KEY = process.env.NEXT_PUBLIC_TENOR_API_KEY ?? 'LIVDSRZULELA'; // Demo-Key; produktiv via ENV ersetzen
 const TENOR_BASE = 'https://g.tenor.com/v1';
@@ -31,6 +41,9 @@ function GifPickerModal({
   onClose: () => void;
   onPick: (gifUrl: string) => void;
 }) {
+  // Übersetzungen (robust mit Fallbacks)
+  const tg = useTranslations('community.gifPicker');
+
   const [q, setQ] = React.useState('');
   const [loading, setLoading] = React.useState(false);
   const [err, setErr] = React.useState<string | null>(null);
@@ -62,11 +75,11 @@ function GifPickerModal({
 
       setItems(list);
     } catch {
-      setErr('Konnte GIFs nicht laden.');
+      setErr(tOr(tg, 'errors.loadGifs', 'Konnte GIFs nicht laden.'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [tg]);
 
   React.useEffect(() => {
     if (open) run();
@@ -83,7 +96,7 @@ function GifPickerModal({
             value={q}
             onChange={(e) => setQ(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') run(q); }}
-            placeholder="Nach GIFs suchen…"
+            placeholder={tOr(tg, 'searchPlaceholder', 'Nach GIFs suchen…')}
             className="flex-1 h-10 rounded-xl bg-white/[.06] border border-white/10 px-3 outline-none"
           />
           <button
@@ -91,21 +104,23 @@ function GifPickerModal({
             onClick={() => run(q)}
             className="h-10 px-4 rounded-xl bg-[var(--purple)] text-white hover:opacity-95"
           >
-            Suchen
+            {tOr(tg, 'searchButton', 'Suchen')}
           </button>
           <button
             type="button"
             onClick={onClose}
             className="h-10 px-3 rounded-xl border border-white/15 hover:bg-white/10"
           >
-            Schließen
+            {tOr(tg, 'closeButton', 'Schließen')}
           </button>
         </div>
 
         <div className="mt-3">
           {err && <div className="text-red-300 text-sm mb-2">{err}</div>}
           {loading ? (
-            <div className="text-sm text-white/80 py-8 text-center">Lade GIFs…</div>
+            <div className="text-sm text-white/80 py-8 text-center">
+              {tOr(tg, 'loadingGifs', 'Lade GIFs…')}
+            </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 overflow-y-auto max-h-[65vh] pr-1">
               {items.map((it) => (
@@ -114,7 +129,7 @@ function GifPickerModal({
                   type="button"
                   className="relative group rounded-lg overflow-hidden border border-white/10 hover:border-white/25"
                   onClick={() => onPick(it.url)}
-                  title="Auswählen"
+                  title={tOr(tg, 'select', 'Auswählen')}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={it.url} alt="" loading="lazy" decoding="async" className="block w-full h-44 object-cover" />
@@ -148,7 +163,13 @@ export default function CommunityComposer({ slug }: Props) {
   const canPostText = text.trim().length > 0 && text.trim().length <= 4000;
   const hasAttachment = !!file || !!gifUrl.trim();
   const canPost = (canPostText || hasAttachment) && !loading;
+
+  // toasts (bestehender Namespace)
   const tt = useTranslations('common.toast');
+
+  // neuer Namespace für diesen Composer (mit Fallbacks)
+  const t = useTranslations('common.community.composer');
+
   function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
     if (!f) return;
@@ -156,7 +177,7 @@ export default function CommunityComposer({ slug }: Props) {
     // nur Bild ODER Video
     const ok = f.type.startsWith('image/') || f.type.startsWith('video/');
     if (!ok) {
-      setErr('Nur Bild- oder Videodateien sind erlaubt.');
+      setErr(tOr(t, 'errors.onlyImageOrVideo', 'Nur Bild- oder Videodateien sind erlaubt.'));
       e.target.value = '';
       return;
     }
@@ -198,7 +219,7 @@ export default function CommunityComposer({ slug }: Props) {
         fd.append('text', text.trim());
         if (file) fd.append('media', file);
         if (!file && gifUrl.trim()) fd.append('gifUrl', gifUrl.trim());
-        
+
         const res = await fetch(
           `/api/communities/${encodeURIComponent(slug)}/posts`,
           { method: 'POST', body: fd }
@@ -235,7 +256,7 @@ export default function CommunityComposer({ slug }: Props) {
       clearAttachment();
       router.refresh();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Failed to post');
+      setErr(e instanceof Error ? e.message : tOr(t, 'errors.generic', 'Failed to post'));
     } finally {
       setLoading(false);
     }
@@ -249,7 +270,7 @@ export default function CommunityComposer({ slug }: Props) {
         value={text}
         onChange={(e) => setText(e.target.value)}
         rows={3}
-        placeholder="Whats new?"
+        placeholder={tOr(t, 'placeholder', 'Whats new?')}
         className="w-full rounded-xl bg-white/[.06] border border-white/10 px-3 py-2 outline-none"
         maxLength={4000}
       />
@@ -283,7 +304,7 @@ export default function CommunityComposer({ slug }: Props) {
                 onClick={clearAttachment}
                 className="px-3 py-1.5 rounded-lg border border-white/15 hover:bg-white/10 text-sm"
               >
-                Entfernen
+                {tOr(t, 'remove', 'Entfernen')}
               </button>
             </div>
           </div>
@@ -310,7 +331,7 @@ export default function CommunityComposer({ slug }: Props) {
             >
               <MediaIcon size={22} />
             </span>
-            <span className="text-sm text-white/80">Media</span>
+            <span className="text-sm text-white/80">{tOr(t, 'media', 'Media')}</span>
           </label>
 
           {/* GIF – öffnet Tenor Picker wie im ComposePostModal */}
@@ -318,7 +339,7 @@ export default function CommunityComposer({ slug }: Props) {
             type="button"
             onClick={() => setGifOpen(true)}
             className="inline-flex items-center gap-2.5 px-3 py-1.5 rounded-lg border border-white/12 hover:bg-white/[.06]"
-            title="GIF suchen"
+            title={tOr(t, 'gifSearchTitle', 'GIF suchen')}
             aria-expanded={gifOpen || undefined}
           >
             <span
@@ -328,7 +349,7 @@ export default function CommunityComposer({ slug }: Props) {
             >
               <GifIcon size={22} />
             </span>
-            <span className="text-sm text-white/80">GIF</span>
+            <span className="text-sm text-white/80">{tOr(t, 'gif', 'GIF')}</span>
           </button>
         </div>
 
@@ -339,7 +360,7 @@ export default function CommunityComposer({ slug }: Props) {
             disabled={!canPost}
             className="px-4 h-9 rounded-full bg-[var(--purple)] text-white disabled:opacity-50"
           >
-            {loading ? 'Poste…' : 'Posten'}
+            {loading ? tOr(t, 'post.buttonPosting', 'Poste…') : tOr(t, 'post.buttonPost', 'Posten')}
           </button>
         </div>
       </div>

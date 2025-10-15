@@ -6,6 +6,34 @@
     "actions": {"cancel": "Cancelar"},
 
 
+    "community": {
+    "composer": {
+      "placeholder": "¿Qué hay de nuevo?",
+      "remove": "Quitar",
+      "media": "Medios",
+      "gif": "GIF",
+      "gifSearchTitle": "Buscar GIF",
+      "post": {
+        "buttonPosting": "Publicando…",
+        "buttonPost": "Publicar"
+      },
+      "errors": {
+        "onlyImageOrVideo": "Solo se permiten archivos de imagen o video.",
+        "generic": "No se pudo publicar."
+      }
+    },
+    "gifPicker": {
+      "searchPlaceholder": "Buscar GIFs…",
+      "searchButton": "Buscar",
+      "closeButton": "Cerrar",
+      "loadingGifs": "Cargando GIFs…",
+      "select": "Seleccionar",
+      "errors": {
+        "loadGifs": "No se pudieron cargar los GIFs."
+      }
+    }
+  },
+
     "toast": {
       "generic": {
         "tryAgain": "Vuelve a intentarlo más tarde"
@@ -317,9 +345,10 @@
 
     "chatThread": {
     "loading": "Cargando…",
+    "you": "Tú",
     "disabled": {
       "byOther": "Ya no puedes enviar mensajes directos a esta persona.",
-      "youBlocked": "Has bloqueado a esta persona. El envío está deshabilitado."
+      "youBlocked": "Has bloqueado a esta persona. El envío está desactivado."
     },
     "audio": {
       "play": "Reproducir",
@@ -327,13 +356,33 @@
     },
     "actions": {
       "accept": "Aceptar",
-      "decline": "Rechazar"
+      "decline": "Rechazar",
+      "reply": "Responder",
+      "moreEmojis": "Más emojis"
+    },
+    "media": {
+      "image": "📷 Imagen",
+      "video": "🎞 Video",
+      "audio": "🎙 Audio",
+      "attachment": "📎 Archivo adjunto"
+    },
+    "quoted": {
+      "notFound": "Mensaje no encontrado"
+    },
+    "emoji": {
+      "searchPlaceholder": "Buscar emojis",
+      "close": "Cerrar",
+      "recent": "Usados recientemente",
+      "sheetTitle": "Emojis y reacciones"
+    },
+    "verify": {
+      "redirectNote": "Serás redirigido automáticamente al finalizar."
     },
     "community": {
       "members": "{count} miembros"
     },
     "invite": {
-      "expires": "Caduca: {date}",
+      "expires": "Expira: {date}",
       "usesLeft": "Usos restantes: {count}"
     },
     "envelopes": {
@@ -364,11 +413,15 @@
           "banner": "Banner",
           "bio": "Bio"
         },
+        "legacy": {
+          "avatarPreview": "🖼 Vista previa de avatar incluida.",
+          "bannerPreview": "🏞 Vista previa de banner incluida."
+        },
         "declinedMsg": "❌ Solicitud de ownership rechazada"
       },
       "ownershipAccepted": {
         "title": "OWNERSHIP ACEPTADO",
-        "applied": "Se aplicaron los cambios al perfil del sub."
+        "applied": "Los cambios se aplicaron al perfil del sub."
       }
     }
   },
@@ -576,18 +629,18 @@
       "settingsAria": "Ajustes",
       "filters": {
         "all": "Todas",
-        "unread": "Sin leer",
-        "pinned": "Fijadas"
+        "unread": "No leídas",
+        "pinned": "Ancladas"
       }
     },
     "row": {
       "badges": {
         "muted": "Silenciado",
-        "pinned": "Fijado"
+        "pinned": "Anclado"
       },
       "menu": {
-        "pin": "Fijar chat",
-        "unpin": "Quitar fijación",
+        "pin": "Anclar chat",
+        "unpin": "Desanclar chat",
         "mute": "Silenciar chat",
         "unmute": "Quitar silencio",
         "report": "Reportar usuario",
@@ -595,27 +648,32 @@
         "delete": "Eliminar chat"
       }
     },
+    "you": "Tú",
     "loading": "Cargando…",
     "empty": {
-      "title": "Sin conversaciones",
-      "subtitle": "Inicia un chat desde un perfil."
+      "title": "No hay conversaciones",
+      "subtitle": "Inicia un nuevo chat desde un perfil."
     },
     "loadingError": "No se pudieron cargar los chats",
     "system": {
-      "ownershipAccepted": "Ownership aceptado",
-      "ownershipRequest": "Solicitud de ownership",
-      "ownershipRequestWithParts": "Solicitud de ownership: {parts}",
+      "ownershipAccepted": "Propiedad confirmada",
+      "ownershipRequest": "Solicitud de propiedad",
+      "ownershipRequestWithParts": "Solicitud de propiedad: {parts}",
       "part": {
         "avatar": "Avatar",
         "banner": "Banner",
-        "bio": "Bio"
+        "bio": "Biografía"
       },
       "tipRequest": "Solicitud de propina: {amount}",
       "tipPaid": "Propina pagada: {amount}",
       "shared": {
-        "post": "Compartió una publicación",
-        "profile": "Compartió el perfil @{handle}",
-        "link": "Compartió un enlace"
+        "post": "Publicación compartida",
+        "profile": "Perfil @{handle} compartido",
+        "link": "Enlace compartido"
+      },
+      "reaction": {
+        "added": "{user} reaccionó con {emoji}",
+        "removed": "{user} quitó la reacción {emoji}"
       }
     }
   },

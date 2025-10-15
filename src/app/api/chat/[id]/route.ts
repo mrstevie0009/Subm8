@@ -14,6 +14,9 @@ type DbRole = 'DOMME' | 'SUBMISSIVE';
 
 // Maximalgröße für Uploads (MB) – per ENV konfigurierbar, Default 100 MB.
 const MAX_UPLOAD_MB = Number(process.env.CHAT_UPLOAD_MAX_MB || '100');
+const MAX_TEXT = 4000;
+const MAX_ENVELOPE_TEXT = 16000; // z. B. 16k
+const ENVELOPE_RE = /^(REPLY|TIPREQ|TIPPAID|ADREQ|ADACC|OWNREQ|OWNACC)::/;
 
 function sanitizeFileName(name: string) {
   const base = name.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9._-]/g, '');
@@ -265,9 +268,10 @@ export async function POST(req: Request, { params }: Ctx) {
 
       const textRaw = form.get('text');
       const text =
-        (typeof textRaw === 'string' ? textRaw : (textRaw as File | null)?.name ?? '')
-          .toString()
-          .trim() || null;
+        typeof textRaw === 'string'
+          ? textRaw.trim()
+          : '';
+
 
       const fileEntry = form.get('file');
       const file = fileEntry && typeof fileEntry !== 'string' ? (fileEntry as File) : null;
@@ -353,6 +357,11 @@ export async function POST(req: Request, { params }: Ctx) {
     // Normaler Text
     const text = (body?.text ?? '').toString().trim();
     if (!text) return Response.json({ ok: false, error: 'Empty message' }, { status: 400 });
+
+    const isEnvelope = ENVELOPE_RE.test(text);
+    if (text.length > (isEnvelope ? MAX_ENVELOPE_TEXT : MAX_TEXT)) {
+      return Response.json({ ok: false, error: 'Too long' }, { status: 400 });
+    }
     if (text.length > 4000) return Response.json({ ok: false, error: 'Too long' }, { status: 400 });
 
     const msg = await prisma.message.create({

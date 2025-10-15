@@ -18,6 +18,7 @@ const TIPREQ_PREFIX  = 'TIPREQ::';
 const TIPPAID_PREFIX = 'TIPPAID::';
 const OWNREQ_PREFIX  = 'OWNREQ::';
 const OWNACC_PREFIX  = 'OWNACC::';
+const REACT_PREFIX   = 'REACT::';
 
 function fmtCurrency(cents: number, currency = 'EUR') {
   return new Intl.NumberFormat(undefined, { style: 'currency', currency }).format((cents || 0) / 100);
@@ -32,6 +33,18 @@ type OwnershipReqSnippet = {
   avatarDataUrl?: string;
   bannerDataUrl?: string;
 };
+
+type ReactionPayload = { to: string; emoji: string; op?: 'add' | 'remove' };
+function parseReactionEnvelope(raw?: string | null): ReactionPayload | null {
+  if (!raw || !raw.startsWith(REACT_PREFIX)) return null;
+  try {
+    const obj = JSON.parse(raw.slice(REACT_PREFIX.length));
+    if (obj && typeof obj.to === 'string' && typeof obj.emoji === 'string') {
+      return obj as ReactionPayload;
+    }
+  } catch {}
+  return null;
+}
 
 function withQuery(
   pathname: string | null,
@@ -95,6 +108,8 @@ type Item = {
   other: { id: string; username: string; displayName: string; avatarUrl: string | null };
   lastMessageAt: string; // ISO
   lastSnippet: string;
+  /** Wer hat die letzte Nachricht gesendet? Optional; wenn nicht vorhanden, wird other als Actor verwendet. */
+  lastAuthorId?: string;
   unread: number;
   muted?: boolean;
 };
@@ -223,12 +238,33 @@ function ChatRow({
   const t = useTranslations('common.chat');
   const tTime = useTranslations('common.time');
 
-  // i18n-Variante des Snippet-Formatters
-  const prettySnippetI18n = React.useCallback((raw: string): string => {
-    if (!raw) return '';
+  // Snippet-Shape für Anzeige
+  type Snippet =
+    | { type: 'text'; text: string }
+    | { type: 'reaction'; text: string; emoji: string };
 
-    // 1) Systemereignisse zuerst
-    if (raw.startsWith(OWNACC_PREFIX)) return t('system.ownershipAccepted');
+  // i18n-Formatter inkl. Reaction-Envelope
+  const formatSnippet = React.useCallback((raw: string, actorName?: string | null): Snippet => {
+    if (!raw) return { type: 'text', text: '' };
+
+    // Reactions (REACT::)
+    const rx = parseReactionEnvelope(raw);
+    if (rx) {
+      const emoji = rx.emoji || '👍';
+      const op = rx.op === 'remove' ? 'remove' : 'add';
+      const user = actorName || t('you');
+      return {
+        type: 'reaction',
+        emoji,
+        text:
+          op === 'remove'
+            ? t('system.reaction.removed', { user, emoji })
+            : t('system.reaction.added', { user, emoji }),
+      };
+    }
+
+    // 1) Systemereignisse
+    if (raw.startsWith(OWNACC_PREFIX)) return { type: 'text', text: t('system.ownershipAccepted') };
 
     if (raw.startsWith(OWNREQ_PREFIX)) {
       try {
@@ -237,11 +273,14 @@ function ChatRow({
         if (p.avatar || p.avatarUrl || p.avatarDataUrl) parts.push(t('system.part.avatar'));
         if (p.banner || p.bannerUrl || p.bannerDataUrl) parts.push(t('system.part.banner'));
         if (p.bio && p.bio.trim()) parts.push(t('system.part.bio'));
-        return parts.length
-          ? t('system.ownershipRequestWithParts', { parts: parts.join(', ') })
-          : t('system.ownershipRequest');
+        return {
+          type: 'text',
+          text: parts.length
+            ? t('system.ownershipRequestWithParts', { parts: parts.join(', ') })
+            : t('system.ownershipRequest'),
+        };
       } catch {
-        return t('system.ownershipRequest');
+        return { type: 'text', text: t('system.ownershipRequest') };
       }
     }
 
@@ -250,7 +289,7 @@ function ChatRow({
         const body = JSON.parse(raw.slice(TIPREQ_PREFIX.length)) as { amountCents?: number; currency?: string };
         if (typeof body?.amountCents === 'number') {
           const amount = fmtCurrency(body.amountCents, body?.currency || 'EUR');
-          return t('system.tipRequest', { amount });
+          return { type: 'text', text: t('system.tipRequest', { amount }) };
         }
       } catch {}
     }
@@ -260,7 +299,7 @@ function ChatRow({
         const body = JSON.parse(raw.slice(TIPPAID_PREFIX.length)) as { amountCents?: number; currency?: string };
         if (typeof body?.amountCents === 'number') {
           const amount = fmtCurrency(body.amountCents, body?.currency || 'EUR');
-          return t('system.tipPaid', { amount });
+          return { type: 'text', text: t('system.tipPaid', { amount }) };
         }
       } catch {}
     }
@@ -278,11 +317,11 @@ function ChatRow({
           : link.kind === 'profile'
           ? t('system.shared.profile', { handle: link.handle })
           : t('system.shared.link');
-      return note ? `${label} — ${truncateMid(note, 80)}` : label;
+      return { type: 'text', text: note ? `${label} — ${truncateMid(note, 80)}` : label };
     }
 
-    // 3) Normale Nachricht (fix: kein generisches „Link geteilt“ mehr)
-    return raw.replace(/\s+/g, ' ').trim();
+    // 3) Normale Nachricht
+    return { type: 'text', text: raw.replace(/\s+/g, ' ').trim() };
   }, [t]);
 
   const timeAgoShort = React.useCallback((iso: string) => {
@@ -376,7 +415,15 @@ function ChatRow({
   }
 
   const profileHref = `/${locale}/u/${c.other.username}`;
-  const snippet = React.useMemo(() => prettySnippetI18n(c.lastSnippet), [c.lastSnippet, prettySnippetI18n]);
+
+  // Wer hat reagiert / geschrieben? Standard: other (falls nicht bekannt)
+  const actorIsOther = c.lastAuthorId ? c.lastAuthorId === c.other.id : true;
+  const actorName = actorIsOther ? c.other.displayName : t('you');
+
+  const snippet = React.useMemo(
+    () => formatSnippet(c.lastSnippet, actorName),
+    [c.lastSnippet, actorName, formatSnippet]
+  );
 
   return (
     <div
@@ -433,7 +480,13 @@ function ChatRow({
             </span>
           )}
         </div>
-        <div className="text-sm text-muted truncate">{snippet}</div>
+
+        {/* Snippet ohne linkes Emoji bei Reactions */}
+        {snippet.type === 'reaction' ? (
+          <div className="text-sm text-muted truncate">{snippet.text}</div>
+        ) : (
+          <div className="text-sm text-muted truncate">{snippet.text}</div>
+        )}
       </div>
 
       <div className="flex flex-col items-end gap-1">

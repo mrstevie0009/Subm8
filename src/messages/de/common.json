@@ -5,6 +5,34 @@
     "time": { "now": "jetzt", "m": "{count}m", "h": "{count}h", "d": "{count}d" },
 
 
+    "community": {
+    "composer": {
+      "placeholder": "Was gibt's Neues?",
+      "remove": "Entfernen",
+      "media": "Media",
+      "gif": "GIF",
+      "gifSearchTitle": "GIF suchen",
+      "post": {
+        "buttonPosting": "Poste…",
+        "buttonPost": "Posten"
+      },
+      "errors": {
+        "onlyImageOrVideo": "Nur Bild- oder Videodateien sind erlaubt.",
+        "generic": "Posten fehlgeschlagen."
+      }
+    },
+    "gifPicker": {
+      "searchPlaceholder": "Nach GIFs suchen…",
+      "searchButton": "Suchen",
+      "closeButton": "Schließen",
+      "loadingGifs": "Lade GIFs…",
+      "select": "Auswählen",
+      "errors": {
+        "loadGifs": "Konnte GIFs nicht laden."
+      }
+    }
+  },
+
     "toast": {
       "generic": {
         "tryAgain": "Bitte später erneut versuchen"
@@ -366,6 +394,7 @@
 
     "chatThread": {
     "loading": "Lade…",
+    "you": "Du",
     "disabled": {
       "byOther": "Du kannst dieser Person keine Direktnachrichten mehr senden.",
       "youBlocked": "Du hast diese Person blockiert. Senden ist deaktiviert."
@@ -376,7 +405,27 @@
     },
     "actions": {
       "accept": "Akzeptieren",
-      "decline": "Ablehnen"
+      "decline": "Ablehnen",
+      "reply": "Antworten",
+      "moreEmojis": "Weitere Emojis"
+    },
+    "media": {
+      "image": "📷 Bild",
+      "video": "🎞 Video",
+      "audio": "🎙 Audio",
+      "attachment": "📎 Anhang"
+    },
+    "quoted": {
+      "notFound": "Nachricht nicht gefunden"
+    },
+    "emoji": {
+      "searchPlaceholder": "Emojis durchsuchen",
+      "close": "Schließen",
+      "recent": "Kürzlich benutzt",
+      "sheetTitle": "Smileys & Reaktionen"
+    },
+    "verify": {
+      "redirectNote": "Du wirst nach Abschluss automatisch zurückgeleitet."
     },
     "community": {
       "members": "{count} Mitglieder"
@@ -412,6 +461,10 @@
           "avatar": "Avatar",
           "banner": "Banner",
           "bio": "Bio"
+        },
+        "legacy": {
+          "avatarPreview": "🖼 Avatar-Vorschau enthalten.",
+          "bannerPreview": "🏞 Banner-Vorschau enthalten."
         },
         "declinedMsg": "❌ Ownership-Anfrage abgelehnt"
       },
@@ -644,6 +697,7 @@
         "delete": "Chat löschen"
       }
     },
+    "you": "Du",
     "loading": "Lade…",
     "empty": {
       "title": "Keine Unterhaltungen",
@@ -665,6 +719,10 @@
         "post": "Beitrag geteilt",
         "profile": "Profil @{handle} geteilt",
         "link": "Link geteilt"
+      },
+      "reaction": {
+        "added": "{user} hat mit {emoji} reagiert",
+        "removed": "{user} hat die Reaktion {emoji} entfernt"
       }
     }
   },

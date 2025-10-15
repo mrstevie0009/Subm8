@@ -18,10 +18,19 @@ import { useSession } from 'next-auth/react';
 import { toast } from '@/lib/toast';
 import { useKeyboardInset } from '@/hooks/useKeyboardInset';
 
+// 🆕 Reply envelope prefix (client-only)
+const REPLY_PREFIX = 'REPLY::';
 
 type RoleLike = 'domme' | 'submissive' | 'DOMME' | 'SUBMISSIVE';
 type TipRequestPayload = { amountCents: number; note?: string; currency?: string };
 type AutoDrainRequestPayload = ADReqPayload;
+
+// 🆕: Lightweight reply target type for the composer UI
+export type ReplyTargetLite = {
+  id: string;
+  authorName: string;
+  text?: string | null;
+};
 
 type Props = {
   disabled?: boolean;
@@ -35,6 +44,12 @@ type Props = {
   onCreateTipRequest?: (payload: TipRequestPayload) => void;
   onCreateAutoDrainRequest?: (payload: AutoDrainRequestPayload) => void;
   onTypingPing?: (active: boolean) => void;
+
+  // 🆕 Reply support (optional, non-breaking)
+  replyTo?: ReplyTargetLite | null;
+  onCancelReply?: () => void;
+  onCreateReply?: (p: { to: string; text: string }) => void;
+  onCreateReaction?: (p: { to: string; emoji: string; op?: 'add' | 'remove' }) => void;
 };
 
 /* ---------- kleines Popover/ActionMenu via Portal ---------- */
@@ -317,6 +332,11 @@ export default function ChatComposer({
   onCreateTipRequest,
   onCreateAutoDrainRequest,
   onTypingPing,
+
+  // 🆕 (optional)
+  replyTo,
+  onCancelReply,
+  onCreateReply,
 }: Props) {
   const t = useTranslations('common.chatComposer');
   const tVerify = useTranslations('common.verify');
@@ -577,13 +597,12 @@ export default function ChatComposer({
     if (disabled) return;
     const tMsg = text.trim();
 
-    // Dateien senden (erst Medien, dann GIFs) – Caption nur bei der ersten Datei
+    // Dateien zuerst senden …
     if ((mediaPreviews.length > 0 || gifPreviews.length > 0) && onUpload) {
       const all = [...mediaPreviews, ...gifPreviews];
       for (let i = 0; i < all.length; i++) {
         const { file } = all[i];
         const cap = i === 0 ? (tMsg || undefined) : undefined;
-        // @eslint-disable-next-line no-await-in-loop
         await onUpload(file, cap);
       }
       clearAllPreviews();
@@ -593,13 +612,32 @@ export default function ChatComposer({
       return;
     }
 
-    // reiner Text
-    if (!tMsg) return;
+    // Nichts zu senden?
+    if (!tMsg && !replyTo) return;
+
+    if (replyTo) {
+      if (onCreateReply) {
+        onCreateReply({ to: replyTo.id, text: tMsg });
+      } else {
+        // Fallback, falls Page veraltet ist
+        onSend(`${REPLY_PREFIX}${JSON.stringify({ to: replyTo.id, text: tMsg })}`);
+      }
+      setText('');
+      stopTyping();
+      requestAnimationFrame(() => autosize());
+      onCancelReply?.();
+      return;
+    }
+
+    // normaler Text
     onSend(tMsg);
     setText('');
     stopTyping();
     requestAnimationFrame(() => autosize());
-  }, [disabled, text, onUpload, onSend, autosize, stopTyping, mediaPreviews, gifPreviews, clearAllPreviews]);
+  }, [
+    disabled, text, onUpload, mediaPreviews, gifPreviews, clearAllPreviews,
+    stopTyping, autosize, replyTo, onCreateReply, onSend, onCancelReply
+  ]);
 
   const hasAnyAttach = mediaPreviews.length > 0 || gifPreviews.length > 0;
 
@@ -618,6 +656,28 @@ export default function ChatComposer({
       {disabled && (
         <div className="mb-2 text-center text-[13px] text-white/80">
           {disabledNotice ?? t('disabled.default')}
+        </div>
+      )}
+
+      {/* 🆕 Reply banner */}
+      {replyTo && (
+        <div className="mx-auto mb-2 max-w-[760px] rounded-2xl border border-white/15 bg-white/[.06] px-3 py-2">
+          <div className="flex items-start gap-2">
+            <div className="text-[12px] font-semibold">Antwort an {replyTo.authorName}</div>
+            <button
+              type="button"
+              onClick={onCancelReply}
+              className="ml-auto text-[12px] px-2 py-0.5 rounded-lg border border-white/15 hover:bg-white/10"
+              title="Abbrechen"
+            >
+              Abbrechen
+            </button>
+          </div>
+          {replyTo.text && (
+            <div className="mt-1 text-[12px] text-white/70 line-clamp-2 whitespace-pre-wrap break-words">
+              {replyTo.text}
+            </div>
+          )}
         </div>
       )}
 
@@ -875,7 +935,7 @@ export default function ChatComposer({
           <button
             type="button"
             onClick={() => void submit()}
-            disabled={(!text.trim() && !hasAnyAttach) || disabled}
+            disabled={(!text.trim() && !hasAnyAttach && !replyTo) || disabled}
             className={`${circle} bg-[var(--purple)] text-white hover:opacity-95 disabled:opacity-50`}
             style={{ width: sendSize, height: sendSize }}
             aria-label={t('actions.sendMessageAria')}

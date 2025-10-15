@@ -5,6 +5,34 @@
     "time": { "now": "maintenant", "m": "{count}m", "h": "{count}h", "d": "{count}j" },
 
 
+    "community": {
+    "composer": {
+      "placeholder": "Quoi de neuf ?",
+      "remove": "Retirer",
+      "media": "Média",
+      "gif": "GIF",
+      "gifSearchTitle": "Rechercher un GIF",
+      "post": {
+        "buttonPosting": "Publication…",
+        "buttonPost": "Publier"
+      },
+      "errors": {
+        "onlyImageOrVideo": "Seuls les fichiers image ou vidéo sont autorisés.",
+        "generic": "Échec de la publication."
+      }
+    },
+    "gifPicker": {
+      "searchPlaceholder": "Rechercher des GIFs…",
+      "searchButton": "Rechercher",
+      "closeButton": "Fermer",
+      "loadingGifs": "Chargement des GIFs…",
+      "select": "Sélectionner",
+      "errors": {
+        "loadGifs": "Impossible de charger les GIFs."
+      }
+    }
+  },
+
     "toast": {
       "generic": {
         "tryAgain": "Veuillez réessayer plus tard"
@@ -316,9 +344,10 @@
 
     "chatThread": {
     "loading": "Chargement…",
+    "you": "Vous",
     "disabled": {
-      "byOther": "Vous ne pouvez plus envoyer de messages directs à cet utilisateur.",
-      "youBlocked": "Vous avez bloqué cet utilisateur. L’envoi est désactivé."
+      "byOther": "Vous ne pouvez plus envoyer de messages directs à cette personne.",
+      "youBlocked": "Vous avez bloqué cette personne. L’envoi est désactivé."
     },
     "audio": {
       "play": "Lecture",
@@ -326,7 +355,27 @@
     },
     "actions": {
       "accept": "Accepter",
-      "decline": "Refuser"
+      "decline": "Refuser",
+      "reply": "Répondre",
+      "moreEmojis": "Plus d’emojis"
+    },
+    "media": {
+      "image": "📷 Image",
+      "video": "🎞 Vidéo",
+      "audio": "🎙 Audio",
+      "attachment": "📎 Pièce jointe"
+    },
+    "quoted": {
+      "notFound": "Message introuvable"
+    },
+    "emoji": {
+      "searchPlaceholder": "Rechercher des emojis",
+      "close": "Fermer",
+      "recent": "Récemment utilisés",
+      "sheetTitle": "Smileys et réactions"
+    },
+    "verify": {
+      "redirectNote": "Vous serez redirigé automatiquement après la vérification."
     },
     "community": {
       "members": "{count} membres"
@@ -362,6 +411,10 @@
           "avatar": "Avatar",
           "banner": "Bannière",
           "bio": "Bio"
+        },
+        "legacy": {
+          "avatarPreview": "🖼 Aperçu d’avatar inclus.",
+          "bannerPreview": "🏞 Aperçu de bannière inclus."
         },
         "declinedMsg": "❌ Demande d’ownership refusée"
       },
@@ -574,36 +627,37 @@
       "searchPlaceholder": "Rechercher des messages…",
       "settingsAria": "Paramètres",
       "filters": {
-        "all": "Toutes",
-        "unread": "Non lues",
-        "pinned": "Épinglées"
+        "all": "Tous",
+        "unread": "Non lus",
+        "pinned": "Épinglés"
       }
     },
     "row": {
       "badges": {
-        "muted": "Muet",
+        "muted": "En sourdine",
         "pinned": "Épinglé"
       },
       "menu": {
-        "pin": "Épingler la discussion",
-        "unpin": "Désépingler la discussion",
+        "pin": "Épingler la conversation",
+        "unpin": "Désépingler la conversation",
         "mute": "Mettre en sourdine",
-        "unmute": "Retirer la sourdine",
+        "unmute": "Annuler la sourdine",
         "report": "Signaler l’utilisateur",
         "block": "Bloquer l’utilisateur",
-        "delete": "Supprimer la discussion"
+        "delete": "Supprimer la conversation"
       }
     },
+    "you": "Vous",
     "loading": "Chargement…",
     "empty": {
       "title": "Aucune conversation",
-      "subtitle": "Démarrez une nouvelle discussion depuis un profil."
+      "subtitle": "Commencez une nouvelle conversation depuis un profil."
     },
-    "loadingError": "Impossible de charger les discussions",
+    "loadingError": "Impossible de charger les conversations",
     "system": {
-      "ownershipAccepted": "Ownership accepté",
-      "ownershipRequest": "Demande d’ownership",
-      "ownershipRequestWithParts": "Demande d’ownership : {parts}",
+      "ownershipAccepted": "Ownership confirmée",
+      "ownershipRequest": "Demande d’Ownership",
+      "ownershipRequestWithParts": "Demande d’Ownership : {parts}",
       "part": {
         "avatar": "Avatar",
         "banner": "Bannière",
@@ -612,9 +666,13 @@
       "tipRequest": "Demande de pourboire : {amount}",
       "tipPaid": "Pourboire payé : {amount}",
       "shared": {
-        "post": "A partagé une publication",
-        "profile": "A partagé le profil @{handle}",
-        "link": "A partagé un lien"
+        "post": "Publication partagée",
+        "profile": "Profil @{handle} partagé",
+        "link": "Lien partagé"
+      },
+      "reaction": {
+        "added": "{user} a réagi avec {emoji}",
+        "removed": "{user} a retiré la réaction {emoji}"
       }
     }
   },

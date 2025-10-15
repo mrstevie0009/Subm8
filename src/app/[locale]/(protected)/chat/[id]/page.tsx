@@ -1,4 +1,4 @@
-// src/app/[locale]/chat/[id]/page.tsx
+// src/app/[locale]/(protected)/chat/[id]/page.tsx
 'use client';
 
 import * as React from 'react';
@@ -7,6 +7,7 @@ import { useLocale, useTranslations } from 'next-intl';
 import Image from 'next/image';
 import ChatHeader from '@/components/ChatHeader';
 import ChatComposer from '@/components/ChatComposer';
+import type { ReplyTargetLite } from '@/components/ChatComposer';
 import TipModal from '@/components/TipModal';
 import TipRequestAcceptModal from '@/components/TipRequestAcceptModal';
 import OwnershipRequestAcceptModal from '@/components/OwnershipRequestAcceptModal';
@@ -51,6 +52,34 @@ type UiMessage = ChatMessage & {
   mediaUrl?: string;
   mediaType?: string;
 };
+
+/* ========= (1) STABIL: shallowEqualMsg + stableMergeMessages im Modul-Scope ========= */
+function shallowEqualMsg(a: UiMessage, b: UiMessage) {
+  return (
+    a.id === b.id &&
+    a.senderId === b.senderId &&
+    a.createdAt === b.createdAt &&
+    a.text === b.text &&
+    a.mediaUrl === b.mediaUrl &&
+    a.mediaType === b.mediaType &&
+    a.seen === b.seen
+  );
+}
+
+function stableMergeMessages(prev: UiMessage[], next: UiMessage[]) {
+  if (prev.length === next.length) {
+    let allSame = true;
+    for (let i = 0; i < prev.length; i++) {
+      if (!shallowEqualMsg(prev[i], next[i])) { allSame = false; break; }
+    }
+    if (allSame) return prev; // nichts ändern → kein Re-Render
+  }
+  const prevById = new Map(prev.map(m => [m.id, m]));
+  return next.map(n => {
+    const p = prevById.get(n.id);
+    return p && shallowEqualMsg(p, n) ? p : n;
+  });
+}
 
 const AVATAR_PH = '/images/avatar-placeholder.png';
 
@@ -119,6 +148,7 @@ function parseAutoDrainAcc(text?: string | null): AutoDrainAccPayload | null {
   return null;
 }
 
+/* ----- Ownership envelopes ----- */
 const OWNREQ_PREFIX = 'OWNREQ::';
 const OWNACC_PREFIX = 'OWNACC::';
 
@@ -207,13 +237,12 @@ function ChatBlurredMediaGate({
   subtitle?: string;
   cta?: string;
 }) {
+  const t = useTranslations('common.chatThread');
   const isImg = mediaUrl ? (() => {
     const u = mediaUrl.split('?')[0].toLowerCase();
     return /\.(png|jpe?g|webp|gif)$/i.test(u);
   })() : false;
 
-  // Gemeinsamer, stabiler Wrapper: feste responsive Breite, runde Ecken, overflow hidden
-  // Wir geben dem Container eine eigene Breite, damit Flex ihn nicht zusammenquetscht.
   const wrapperStyle: React.CSSProperties = { width: 'min(75vw, 560px)' };
 
   return (
@@ -224,7 +253,6 @@ function ChatBlurredMediaGate({
     >
       <div className="bg-black/20">
         {isImg && mediaUrl ? (
-          // Bild: nimmt volle Breite ein, Höhe folgt dem Bild (max-h für Viewport)
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={mediaUrl}
@@ -234,8 +262,6 @@ function ChatBlurredMediaGate({
             aria-hidden
           />
         ) : (
-          // Video: Platzhalter mit stabiler Aspect Ratio (hier 16:9),
-          // damit Layout/Overlay nicht kollabieren
           <div
             className="w-full"
             style={{
@@ -248,7 +274,6 @@ function ChatBlurredMediaGate({
         )}
       </div>
 
-      {/* Overlay */}
       <div className="absolute inset-0 grid place-items-center pointer-events-none">
         <div className="pointer-events-auto text-center px-4">
           <div className="inline-flex flex-col items-center gap-3 rounded-2xl border border-white/15 bg-black/70 backdrop-blur-md px-5 py-4">
@@ -262,7 +287,7 @@ function ChatBlurredMediaGate({
               {cta}
             </button>
             <div className="text-[11px] text-white/60">
-              Du wirst nach Abschluss automatisch zurückgeleitet.
+              {t('verify.redirectNote')}
             </div>
           </div>
         </div>
@@ -270,8 +295,6 @@ function ChatBlurredMediaGate({
     </div>
   );
 }
-
-
 
 /* ---------- Waveform (Peaks) + AudioBubble ---------- */
 function usePeaks(src: string, bars = 56) {
@@ -895,6 +918,341 @@ function InviteLinkPreview({ code, href }: { code: string; href: string }) {
   );
 }
 
+/* -------------------- Reply & Reaction (NEW) -------------------- */
+/** Reply envelope: REPLY::{"to":"<messageId>","text":"..."} */
+const REPLY_PREFIX = 'REPLY::';
+type ReplyPayload = { to: string; text: string };
+function parseReply(text?: string | null): ReplyPayload | null {
+  if (!text || !text.startsWith(REPLY_PREFIX)) return null;
+  try {
+    const obj = JSON.parse(text.slice(REPLY_PREFIX.length));
+    if (obj && typeof obj.to === 'string' && typeof obj.text === 'string') return obj as ReplyPayload;
+  } catch {}
+  return null;
+}
+
+/** Reaction envelope: REACT::{"to":"<messageId>","emoji":"❤️","op":"add"|"remove"} (op optional, default add) */
+const REACT_PREFIX = 'REACT::';
+type ReactionPayload = { to: string; emoji: string; op?: 'add'|'remove' };
+function parseReaction(text?: string | null): ReactionPayload | null {
+  if (!text || !text.startsWith(REACT_PREFIX)) return null;
+  try {
+    const obj = JSON.parse(text.slice(REACT_PREFIX.length));
+    if (obj && typeof obj.to === 'string' && typeof obj.emoji === 'string') return obj as ReactionPayload;
+  } catch {}
+  return null;
+}
+
+/** kompakte Vorschau für referenzierte Nachricht */
+function QuotedPreview({
+  target,
+  mine,
+  locale,
+}: {
+  target: UiMessage | undefined;
+  mine: boolean;
+  locale: string;
+}) {
+  const t = useTranslations('common.chatThread');
+  return (
+    <div className={`mb-1 rounded-lg border px-2 py-1 ${mine ? 'border-white/25 bg-white/10' : 'border-white/12 bg-white/06'}`}>
+      {target ? (
+        <>
+          <div className="text-[11px] text-white/70">
+            {new Date(target.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          </div>
+          {target.mediaUrl ? (
+            <div className="text-[12px] text-white/80 italic">
+              {isImage(target.mediaUrl, target.mediaType)
+                ? t('media.image')
+                : isVideo(target.mediaUrl, target.mediaType)
+                  ? t('media.video')
+                  : isAudio(target.mediaUrl, target.mediaType)
+                    ? t('media.audio')
+                    : t('media.attachment')}
+            </div>
+          ) : (
+            <div className="text-[12px] text-white/90 line-clamp-3 break-words">
+              <RichText text={target.text || ''} locale={locale} validateMentions variant="default" />
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="text-[12px] text-white/70 italic">{t('quoted.notFound')}</div>
+      )}
+    </div>
+  );
+}
+
+/* ------------ Long-Press + ContextMenu helper ------------ */
+function useLongPress(
+  onLongPress: (e: React.PointerEvent | React.MouseEvent) => void,
+  { delay = 420 }: { delay?: number } = {},
+) {
+  const timerRef = React.useRef<number | null>(null);
+  const targetRef = React.useRef<EventTarget | null>(null);
+
+  const clear = React.useCallback(() => {
+    if (timerRef.current) {
+      window.clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+  }, []);
+
+  const onPointerDown = React.useCallback((e: React.PointerEvent) => {
+    if (e.button !== 0) return; // nur Hauptbutton
+    targetRef.current = e.target;
+    clear();
+    timerRef.current = window.setTimeout(() => {
+      onLongPress(e);
+      timerRef.current = null;
+    }, delay);
+  }, [delay, onLongPress, clear]);
+
+  const cancelers = React.useMemo(() => ({
+    onPointerUp: clear,
+    onPointerLeave: clear,
+    onPointerCancel: clear,
+  }), [clear]);
+
+  const onContextMenu = React.useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    onLongPress(e);
+  }, [onLongPress]);
+
+  return { onPointerDown, onContextMenu, ...cancelers };
+}
+
+/* ---------- Popover + Types ---------- */
+const DEFAULT_REACTIONS = ['❤️','😂','🔥','👍','👎','😮','😢'];
+
+type ActionSheetState = {
+  open: boolean;
+  x: number; y: number;
+  msgId: string;
+  mine: boolean;
+};
+
+function ActionsPopover({ state, onClose, onReply, onReact }: {
+  state: ActionSheetState;
+  onClose: () => void;
+  onReply: (msgId: string) => void;
+  onReact: (msgId: string, emoji: string) => void;
+}) {
+  const t = useTranslations('common.chatThread');
+  const popRef = React.useRef<HTMLDivElement | null>(null);
+  const [pos, setPos] = React.useState<{ left: number; top: number }>({ left: 0, top: 0 });
+  const [showPicker, setShowPicker] = React.useState(false);
+
+  React.useLayoutEffect(() => {
+    if (!state.open || !popRef.current) return;
+
+    // Größe der Popover-Box holen
+    const rect = popRef.current.getBoundingClientRect();
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+
+    // Wunsch-Position: bevorzugt ÜBER dem Finger/Klick (12px Abstand).
+    let left = state.x - rect.width / 2;
+    let top = state.y - rect.height - 12;
+
+    // Wenn oben nicht genug Platz, unter den Klick (auch 12px Abstand)
+    if (top < 8) top = state.y + 12;
+
+    // Clamps an die Ränder (8px Padding zum Rand)
+    left = Math.max(8, Math.min(left, vw - rect.width - 8));
+    top  = Math.max(8, Math.min(top,  vh - rect.height - 8));
+
+    setPos({ left, top });
+  }, [state.open, state.x, state.y]);
+
+  if (!state.open) return null;
+  return (
+    <div
+      className="fixed inset-0 z-[80]"
+      onClick={onClose}
+      onContextMenu={(e) => { e.preventDefault(); onClose(); }}
+    >
+      <div
+        ref={popRef}
+        className="absolute rounded-xl border border-white/12 bg-black/80 backdrop-blur-md p-2 shadow-xl
+                   max-w-[calc(100vw-16px)]"
+        style={{ left: pos.left, top: pos.top }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center gap-1 flex-wrap">
+          {DEFAULT_REACTIONS.map((emo) => (
+            <button
+              key={emo}
+              type="button"
+              className="px-2 py-1 text-lg rounded-lg hover:bg-white/10"
+              onClick={() => { onReact(state.msgId, emo); onClose(); }}
+            >
+              {emo}
+            </button>
+          ))}
+          <button
+            type="button"
+            className="ml-1 px-2 py-1 text-sm rounded-lg border border-white/15 hover:bg-white/10 navigator.vibrate?.(10)"
+            onClick={() => setShowPicker(true)}
+            aria-label={t('actions.moreEmojis')}
+            title={t('actions.moreEmojis')}
+          >
+            …
+          </button>
+        </div>
+
+        <div className="mt-2 border-t border-white/10 pt-2 flex gap-2">
+          <button
+            type="button"
+            className="px-3 py-1.5 rounded-lg bg-[var(--purple)]/90 text-white hover:opacity-95"
+            onClick={() => { onReply(state.msgId); onClose(); }}
+          >
+            {t('actions.reply')}
+          </button>
+        </div>
+        <EmojiPickerSheet
+        open={showPicker}
+        onClose={() => setShowPicker(false)}
+        onPick={(e) => { onReact(state.msgId, e); setShowPicker(false); onClose(); }}
+      />
+      </div>
+    </div>
+  );
+}
+
+const EMOJI_ALL = [
+  // häufige Reactions + viele Alternativen
+  '❤️','🧡','💛','💚','💙','💜','🖤','🤍','🤎',
+  '👍','👎','👏','🙌','🙏','🤝','💪','🫶','👌','👀',
+  '😂','🤣','😅','😊','😉','😍','🥰','😘','🤗','😮','😯','😲','🤯',
+  '😐','😑','😶','🙄','😴','🥱','🤤','😔','😕','😢','😭','😡','🤬','😤',
+  '🔥','💯','✨','🎉','🥳','💥','🌟','🫠','🤡','🤪','😈','👻','💀','⚡',
+];
+
+function EmojiPickerSheet({
+  open,
+  onClose,
+  onPick,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onPick: (emoji: string) => void;
+}) {
+  const t = useTranslations('common.chatThread');
+  const [q, setQ] = React.useState('');
+  const [recent, setRecent] = React.useState<string[]>([]);
+
+  React.useEffect(() => {
+    if (!open) return;
+    try {
+      const raw = localStorage.getItem('rx.recent');
+      if (raw) setRecent(JSON.parse(raw));
+    } catch {}
+  }, [open]);
+
+  const saveRecent = (e: string) => {
+    try {
+      const next = [e, ...recent.filter((x) => x !== e)].slice(0, 18);
+      setRecent(next);
+      localStorage.setItem('rx.recent', JSON.stringify(next));
+    } catch {}
+  };
+
+  const pick = (e: string) => { saveRecent(e); onPick(e); };
+
+  const list = React.useMemo(() => {
+    const term = q.trim();
+    if (!term) return EMOJI_ALL;
+    // „Suche“ ist simpel: enthält alle Codepoints, die als Text vorkommen
+    return EMOJI_ALL.filter(e => e.includes(term));
+  }, [q]);
+
+  React.useEffect(() => {
+    const onEsc = (ev: KeyboardEvent) => ev.key === 'Escape' && onClose();
+    if (open) window.addEventListener('keydown', onEsc);
+    return () => window.removeEventListener('keydown', onEsc);
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-[2147483640]"
+      role="dialog"
+      aria-modal="true"
+      onClick={onClose}
+    >
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+
+      {/* Bottom Sheet */}
+      <div
+        className="absolute inset-x-0 bottom-0"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mx-auto w-[min(720px,100vw)] rounded-t-2xl border border-white/12 border-b-0 bg-[#0b0b0d] p-3 shadow-2xl">
+          <div className="mx-auto mb-2 h-1 w-10 rounded-full bg-white/15" />
+
+          {/* Suche */}
+          <div className="flex items-center gap-2">
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder={t('emoji.searchPlaceholder')}
+              className="flex-1 h-10 rounded-xl bg-white/[.06] border border-white/10 px-3 outline-none"
+            />
+            <button
+              type="button"
+              onClick={onClose}
+              className="h-10 px-3 rounded-xl border border-white/15 hover:bg-white/10"
+            >
+              {t('emoji.close')}
+            </button>
+          </div>
+
+          {/* Kürzlich benutzt */}
+          {recent.length > 0 && (
+            <>
+              <div className="mt-3 mb-1 text-[12px] text-white/70">{t('emoji.recent')}</div>
+              <div className="flex flex-wrap gap-1.5">
+                {recent.map((e) => (
+                  <button
+                    key={e}
+                    className="h-10 w-10 grid place-items-center rounded-lg hover:bg-white/10 text-xl"
+                    onClick={() => pick(e)}
+                    title={e}
+                  >
+                    {e}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* Grid */}
+          <div className="mt-3 mb-1 text-[12px] text-white/70">{t('emoji.sheetTitle')}</div>
+          <div
+            className="grid max-h-[48vh] overflow-y-auto pr-1
+                       grid-cols-8 sm:grid-cols-10 md:grid-cols-12 gap-1.5"
+          >
+            {list.map((e) => (
+              <button
+                key={`${e}-${Math.random()}`}
+                className="h-10 w-10 grid place-items-center rounded-lg hover:bg-white/10 text-xl"
+                onClick={() => pick(e)}
+                title={e}
+              >
+                {e}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
 /* ------------------------- Page ------------------------- */
 export default function ChatThreadPage() {
   const t = useTranslations('common.chatThread');
@@ -905,31 +1263,26 @@ export default function ChatThreadPage() {
   const router = useRouter();
   const { data: session } = useSession();
   const ageOk = !!session?.user?.ageVerified;
+  const [replyTarget, setReplyTarget] = React.useState<ReplyTargetLite | null>(null);
 
   const startAgeVerification = React.useCallback(async () => {
     try {
-      // Zurück in diesen Chat
       const back = `/${locale}/chat/${id}`;
-
-      // Wenn nicht eingeloggt → Login mit Callback
       if (!session) {
         router.push(`/${locale}/signin?callbackUrl=${encodeURIComponent(back)}`);
         return;
       }
-
       const res = await fetch(
         `/api/veriff/start?back=${encodeURIComponent(back)}&locale=${locale}`,
         { method: 'POST' }
       );
       const j = await res.json().catch(() => null);
       if (!res.ok || !j?.url) throw new Error(j?.details || j?.error || `HTTP ${res.status}`);
-
       router.push(j.url as string);
     } catch {
       toast.error('Die Verifikation konnte nicht gestartet werden.', 'Fehler');
     }
   }, [id, locale, router, session]);
-
 
   const [meId, setMeId] = React.useState<string | null>(null);
   const [meRole, setMeRole] = React.useState<'domme' | 'submissive' | null>(null);
@@ -973,7 +1326,12 @@ export default function ChatThreadPage() {
 
   const mapRole = React.useCallback((r: DbRole): 'domme' | 'submissive' => (r === 'DOMME' ? 'domme' : 'submissive'), []);
 
+  /* ========= (3) Anti-Race: letzte Request-ID merken ========= */
+  const latestReqRef = React.useRef(0);
+
+  /* ========= (2) load nur von stabilen Dingen abhängig ========= */
   const load = React.useCallback(async () => {
+    const myReq = ++latestReqRef.current; // start: meine Request-Nummer
     try {
       setError(null);
       const res = await fetch(`/api/chat/${id}`, { cache: 'no-store' });
@@ -984,24 +1342,43 @@ export default function ChatThreadPage() {
       }
 
       const json: ThreadResponse = await res.json();
+      if (myReq !== latestReqRef.current) return; // älterer Response -> ignorieren
       if (!json.ok) throw new Error(json.error || 'Failed to load');
 
-      setMeId(json.me.id);
-      setMeRole(mapRole(json.me.role));
-      setMeAvatarUrl((json as ThreadOk).me.avatarUrl ?? null);
+      /* ========= (5) State-Updates nur bei Änderungen ========= */
+      setMeId(prev => (prev === json.me.id ? prev : json.me.id));
+      setMeRole(prev => {
+        const next = mapRole(json.me.role);
+        return prev === next ? prev : next;
+      });
+      setMeAvatarUrl(prev => {
+        const next = (json as ThreadOk).me.avatarUrl ?? null;
+        return prev === next ? prev : next;
+      });
 
       setViewerHasBlocked(json.viewerHasBlocked ?? false);
       setIsBlockedByOther(json.isBlockedByOther ?? false);
 
       const disabled = (json.viewerHasBlocked ?? false) || (json.isBlockedByOther ?? false);
 
-      setOther({
-        id: (json as ThreadOk).other.id,
-        username: (json as ThreadOk).other.handle,
-        displayName: (json as ThreadOk).other.displayName,
-        avatarUrl: (json as ThreadOk).other.avatarUrl ?? undefined,
-        role: mapRole((json as ThreadOk).other.role),
-        dmOpen: !disabled,
+      setOther(prev => {
+        const next = {
+          id: (json as ThreadOk).other.id,
+          username: (json as ThreadOk).other.handle,
+          displayName: (json as ThreadOk).other.displayName,
+          avatarUrl: (json as ThreadOk).other.avatarUrl ?? undefined,
+          role: mapRole((json as ThreadOk).other.role),
+          dmOpen: !disabled,
+        };
+        return prev &&
+          prev.id === next.id &&
+          prev.username === next.username &&
+          prev.displayName === next.displayName &&
+          prev.avatarUrl === next.avatarUrl &&
+          prev.role === next.role &&
+          prev.dmOpen === next.dmOpen
+          ? prev
+          : next;
       });
 
       const mapped: UiMessage[] = (json as ThreadOk).messages.map((m) => ({
@@ -1014,31 +1391,43 @@ export default function ChatThreadPage() {
         mediaUrl: m.mediaUrl ?? undefined,
         mediaType: m.mediaType ?? undefined,
       }));
-      setMessages(mapped);
+
+      setMessages(prev => stableMergeMessages(prev, mapped));
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load');
     } finally {
-      setLoading(false);
+      if (myReq === latestReqRef.current) setLoading(false); // nur mein jüngster Request darf loading schließen
     }
   }, [id, mapRole]);
 
+  const beginReplyTo = React.useCallback((msgId: string) => {
+    const target = messages.find(x => x.id === msgId);
+    if (!target) {
+      setReplyTarget(null);
+      return;
+    }
+    const authorName =
+      target.senderId === meId ? t('you') : (other?.displayName ?? 'User');
+    const previewText = target.mediaUrl ? undefined : (target.text ?? '');
+    setReplyTarget({ id: msgId, authorName, text: previewText });
+  }, [messages, meId, other, t]);
 
   React.useEffect(() => {
     if (!other) return;
-    // Signalisiere BottomNav, welcher Thread offen ist
     const ev = new CustomEvent('chat:thread-opened', {
       detail: { conversationId: String(id), userId: other.id },
     });
     window.dispatchEvent(ev);
   }, [id, other]);
 
-
+  /* ========= (4) Polling stabil halten + Visibility beachten ========= */
   React.useEffect(() => {
     let cancelled = false;
     (async () => {
       if (!cancelled) await load();
     })();
-    const tmr = setInterval(load, 4000);
+    const tick = () => { if (!document.hidden) void load(); };
+    const tmr = setInterval(tick, 4000);
     return () => {
       cancelled = true;
       clearInterval(tmr);
@@ -1065,6 +1454,72 @@ export default function ChatThreadPage() {
     [id, load, viewerHasBlocked, isBlockedByOther]
   );
 
+  const [actionSheet, setActionSheet] = React.useState<ActionSheetState>({
+    open: false, x: 0, y: 0, msgId: '', mine: false,
+  });
+
+  // welche Reaktion habe ICH aktuell auf msgId?
+  const getMyReactionFor = React.useCallback((msgId: string): string | null => {
+    if (!meId) return null;
+    let current: string | null = null;
+    for (const m of messages) {
+      const rx = parseReaction(m.text);
+      if (!rx) continue;
+      if (rx.to !== msgId) continue;
+      if (m.senderId !== meId) continue;
+
+      const op = rx.op === 'remove' ? 'remove' : 'add';
+      if (op === 'add') {
+        current = rx.emoji;           // letzte gesetzte Emoji-Marke
+      } else if (op === 'remove' && current === rx.emoji) {
+        current = null;               // abgewählt
+      }
+    }
+    return current;
+  }, [messages, meId]);
+
+
+  const handleReact = React.useCallback(async (msgId: string, emoji: string) => {
+    try {
+      const mine = getMyReactionFor(msgId);
+
+      if (mine === emoji) {
+        // gleiches Emoji erneut -> entfernen (toggle off)
+        await sendMessage({
+          text: `${REACT_PREFIX}${JSON.stringify({ to: msgId, emoji, op: 'remove' })}`,
+        });
+      } else {
+        // anderes Emoji gewählt:
+        if (mine) {
+          // erst altes entfernen
+          await sendMessage({
+            text: `${REACT_PREFIX}${JSON.stringify({ to: msgId, emoji: mine, op: 'remove' })}`,
+          });
+        }
+        // dann neues hinzufügen
+        await sendMessage({
+          text: `${REACT_PREFIX}${JSON.stringify({ to: msgId, emoji, op: 'add' })}`,
+        });
+      }
+
+      navigator.vibrate?.(10);
+      await load();
+    } catch {
+      // optional: toast.error('Reaktion fehlgeschlagen');
+    }
+  }, [getMyReactionFor, sendMessage, load]);
+
+
+
+  const openActionsAt = React.useCallback((
+    e: React.PointerEvent | React.MouseEvent,
+    msgId: string,
+    mine: boolean
+  ) => {
+    const pt = 'clientX' in e ? { x: e.clientX, y: e.clientY } : { x: 0, y: 0 };
+    setActionSheet({ open: true, x: pt.x, y: pt.y, msgId, mine });
+  }, []);
+
   // --------- Einmaliges Senden von ?text= beim ersten Laden ---------
   const didInjectRef = React.useRef(false);
   React.useEffect(() => {
@@ -1090,6 +1545,57 @@ export default function ChatThreadPage() {
       : t('disabled.youBlocked')
     : undefined;
 
+  const cadenceLabel = (c: AutoDrainReqPayload['cadence']) =>
+    c === 'DAILY' ? t('envelopes.autodrainRequest.cadence.daily')
+      : c === 'WEEKLY' ? t('envelopes.autodrainRequest.cadence.weekly')
+      : t('envelopes.autodrainRequest.cadence.monthly');
+
+  /* ---- Reactions aggregieren (aus REACT:: Envelopes) ---- */
+  type ReactionSummary = Record<string, { count: number; by: Set<string> }>;
+  const reactionsByMsg = React.useMemo(() => {
+    const map = new Map<string, ReactionSummary>();
+    for (const m of messages) {
+      const rx = parseReaction(m.text);
+      if (!rx) continue;
+      const key = rx.to;
+      if (!map.has(key)) map.set(key, {});
+      const summary = map.get(key)!;
+      const emoji = rx.emoji;
+      if (!summary[emoji]) summary[emoji] = { count: 0, by: new Set() };
+      const entry = summary[emoji];
+      const actor = m.senderId;
+      const op = rx.op === 'remove' ? 'remove' : 'add';
+      if (op === 'add') {
+        if (!entry.by.has(actor)) {
+          entry.by.add(actor);
+          entry.count = entry.by.size;
+        }
+      } else {
+        if (entry.by.has(actor)) {
+          entry.by.delete(actor);
+          entry.count = entry.by.size;
+        }
+      }
+    }
+    return map;
+  }, [messages]);
+
+  // kompakter Schlüssel damit MessageItem rerendert, wenn sich Reaktionen ändern
+  const reactionDigestByMsg = React.useMemo(() => {
+    const map = new Map<string, string>();
+    for (const [msgId, summary] of reactionsByMsg.entries()) {
+      // sortiert für stabile Reihenfolge
+      const parts = Object.entries(summary)
+        .filter(([, v]) => v.count > 0)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([emoji, v]) => `${emoji}:${v.count}`)
+        .join('|');
+      map.set(msgId, parts); // z.B. "❤️:2|😂:1"
+    }
+    return map;
+  }, [reactionsByMsg]);
+
+
   if (!loading && error) {
     return (
       <main className="mx-auto px-3 py-6" style={{ maxWidth: 760 }}>
@@ -1098,10 +1604,508 @@ export default function ChatThreadPage() {
     );
   }
 
-  const cadenceLabel = (c: AutoDrainReqPayload['cadence']) =>
-    c === 'DAILY' ? t('envelopes.autodrainRequest.cadence.daily')
-      : c === 'WEEKLY' ? t('envelopes.autodrainRequest.cadence.weekly')
-      : t('envelopes.autodrainRequest.cadence.monthly');
+  /* ---- Message Item ---- */
+  const MessageItem = React.memo(function MessageItem({
+    m,
+    rxKey,
+  }: {
+    m: UiMessage;
+    rxKey: string;
+  }) {
+    const mine = meId ? m.senderId === meId : false;
+    React.useDebugValue(rxKey);
+
+    const longPress = useLongPress(
+      (e) => openActionsAt(e, m.id, mine),
+      { delay: 420 }
+    );
+
+    // --- REACTION EVENT: nicht rendern (nur fürs Zählen nutzen) ---
+    if (parseReaction(m.text)) return null;
+
+    // Corner-Badges
+    function ReactionsCorner({
+      mine,
+      summary,
+    }: {
+      mine: boolean;
+      summary?: Record<string, { count: number; by: Set<string> }>;
+    }) {
+      if (!summary) return null;
+      const items = Object.entries(summary).filter(([, v]) => v.count > 0);
+      if (!items.length) return null;
+
+      return (
+        <div
+          className={[
+            'absolute -bottom-1 flex gap-1',
+            mine ? 'left-2' : 'right-2',
+          ].join(' ')}
+        >
+          {items.map(([emoji, v]) => (
+            <div
+              key={emoji}
+              className="px-1.5 py-[2px] text-[11px] rounded-full border border-white/15 bg-white/10 backdrop-blur"
+            >
+              {emoji} {v.count}
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    /* ---------------- REPLY ---------------- */
+    const reply = parseReply(m.text);
+    if (reply) {
+      const target = messages.find((x) => x.id === reply.to);
+      const bubbleCls = mine
+        ? 'bg-[var(--purple)]/90 border-[var(--purple)]/40 text-white'
+        : 'bg-white/[.07] border-white/10';
+      const reactions = reactionsByMsg.get(m.id);
+      return (
+        <div className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
+          <div className="relative max-w-[75%] w-fit pb-5">
+            <div
+              className={`inline-block rounded-2xl px-3 py-2 border break-words ${bubbleCls}`}
+              title={new Date(m.createdAt).toLocaleString()}
+              {...longPress}
+              onClick={(e) => {
+                const el = e.target as HTMLElement;
+                if (el.closest('a,button,video,audio,img')) e.stopPropagation();
+              }}
+            >
+              <QuotedPreview target={target} mine={mine} locale={locale} />
+              <RichText
+                text={reply.text}
+                locale={locale}
+                validateMentions
+                className="break-words"
+                variant={mine ? 'chat' : 'default'}
+              />
+              <div className={`text-[11px] mt-1 opacity-80 ${mine ? 'text-white/80' : 'text-white/70'}`}>
+                {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </div>
+            </div>
+            <ReactionsCorner mine={mine} summary={reactions} />
+          </div>
+        </div>
+      );
+    }
+
+    /* --------------- OWNERSHIP REQUEST --------------- */
+    const ownReq = parseOwnReq(m.text);
+    if (ownReq) {
+      const canAct = !mine && meRole === 'submissive';
+      const bubble = 'bg-white/[.07] border-white/10';
+      return (
+        <div className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
+          <div
+            className={`max-w-[75%] rounded-2xl px-3 py-2 border ${bubble}`}
+            {...longPress}
+            onClick={(e) => {
+              const el = e.target as HTMLElement;
+              if (el.closest('a,button,video,audio,img')) e.stopPropagation();
+            }}
+          >
+            <div className="text-[11px] uppercase tracking-wide text-white/70 mb-1">
+              {t('envelopes.ownershipRequest.title', { default: 'Ownership-Anfrage' })}
+            </div>
+
+            {isLegacyDataUrls(ownReq) && ownReq.bio && (
+              <div className="text-[13px] text-white/80 whitespace-pre-wrap mb-1">{ownReq.bio}</div>
+            )}
+            {isLegacyDataUrls(ownReq) && (ownReq.avatarDataUrl || ownReq.bannerDataUrl) && (
+              <div className="text-[12px] text-white/60 italic">
+                {ownReq.avatarDataUrl ? t('envelopes.ownershipRequest.legacy.avatarPreview') + ' ' : ''}
+                {ownReq.bannerDataUrl ? t('envelopes.ownershipRequest.legacy.bannerPreview') : ''}
+              </div>
+            )}
+
+            {canAct && (
+              <div className="mt-2 flex items-center gap-2">
+                <button
+                  type="button"
+                  className="px-3 py-1.5 rounded-lg bg-[var(--purple)]/90 text-white hover:opacity-95"
+                  onClick={() => setOwnToAccept(ownReq)}
+                >
+                  {t('actions.accept')}
+                </button>
+                <button
+                  type="button"
+                  className="px-3 py-1.5 rounded-lg border border-white/15 hover:bg-white/10"
+                  onClick={() =>
+                    void sendMessage({
+                      text: t('envelopes.ownershipRequest.declinedMsg', { default: 'Abgelehnt.' }),
+                    })
+                  }
+                >
+                  {t('actions.decline')}
+                </button>
+              </div>
+            )}
+
+            <div className="text-[11px] mt-2 text-white/60" title={new Date(m.createdAt).toLocaleString()}>
+              {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    /* --------------- OWNERSHIP ACCEPTED --------------- */
+    const ownAcc = parseOwnAcc(m.text);
+    if (ownAcc) {
+      return (
+        <div className="flex justify-center">
+          <div className="text-[12px] text-white/70 px-3 py-1">
+            {t('envelopes.ownershipAccepted.title', { default: 'Ownership akzeptiert.' })}
+          </div>
+        </div>
+      );
+    }
+
+    /* ---------------- TIP REQUEST ---------------- */
+    const req = parseTipRequest(m.text);
+    if (req) {
+      const isViewerSub = meRole === 'submissive';
+      const canAct = !mine && isViewerSub && !!other;
+      return (
+        <div className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
+          <div
+            className="max-w-[75%] rounded-2xl px-3 py-2 border bg-white/[.07] border-white/10"
+            {...longPress}
+            onClick={(e) => {
+              const el = e.target as HTMLElement;
+              if (el.closest('a,button,video,audio,img')) e.stopPropagation();
+            }}
+          >
+            <div className="text-[11px] uppercase tracking-wide text-white/70 mb-1">
+              {t('envelopes.tipRequest.title')}
+            </div>
+            <div className="text-[15px] font-semibold">{fmtCurrency(req.amountCents, req.currency)}</div>
+            {req.note && <div className="mt-1 text-[13px] text-white/80 whitespace-pre-wrap">{req.note}</div>}
+            {canAct && other && (
+              <div className="mt-2 flex items-center gap-2">
+                <button
+                  type="button"
+                  className="px-3 py-1.5 rounded-lg bg-[var(--purple)]/90 text-white hover:opacity-95"
+                  onClick={() => {
+                    setAccept({
+                      amountCents: req.amountCents,
+                      currency: req.currency,
+                      toUserId: m.senderId,
+                      toDisplayName: other.displayName,
+                      toAvatarUrl: other.avatarUrl,
+                    });
+                  }}
+                >
+                  {t('actions.accept')}
+                </button>
+                <button
+                  type="button"
+                  className="px-3 py-1.5 rounded-lg border border-white/15 hover:bg-white/10"
+                  onClick={() => void sendMessage({ text: t('envelopes.tipRequest.declinedMsg') })}
+                >
+                  {t('actions.decline')}
+                </button>
+              </div>
+            )}
+            <div className="text-[11px] mt-2 text-white/60" title={new Date(m.createdAt).toLocaleString()}>
+              {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    /* ---------------- AUTODRAIN REQUEST ---------------- */
+    const ad = parseAutoDrainReq(m.text);
+    if (ad) {
+      const canAct = !mine && meRole === 'submissive' && !!other;
+      return (
+        <div className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
+          <div
+            className="max-w-[75%] rounded-2xl px-3 py-2 border bg-white/[.07] border-white/10"
+            {...longPress}
+            onClick={(e) => {
+              const el = e.target as HTMLElement;
+              if (el.closest('a,button,video,audio,img')) e.stopPropagation();
+            }}
+          >
+            <div className="text-[11px] uppercase tracking-wide text-white/70 mb-1">
+              {t('envelopes.autodrainRequest.title')}
+            </div>
+            <div className="text-[15px] font-semibold">{fmtCurrency(ad.amountCents, ad.currency)}</div>
+            <div className="text-[13px] text-white/80 mt-0.5">
+              {t('envelopes.autodrainRequest.recurrenceLabel', { cadence: cadenceLabel(ad.cadence) })}
+            </div>
+            {canAct && other && (
+              <div className="mt-2 flex items-center gap-2">
+                <button
+                  type="button"
+                  className="px-3 py-1.5 rounded-lg bg-[var(--purple)]/90 text-white hover:opacity-95"
+                  onClick={() =>
+                    setAdAccept({
+                      amountCents: ad.amountCents,
+                      currency: ad.currency,
+                      cadence: ad.cadence,
+                      toUserId: m.senderId,
+                      toDisplayName: other.displayName,
+                      toAvatarUrl: other.avatarUrl,
+                    })
+                  }
+                >
+                  {t('actions.accept')}
+                </button>
+                <button
+                  type="button"
+                  className="px-3 py-1.5 rounded-lg border border-white/15 hover:bg-white/10"
+                  onClick={() => void sendMessage({ text: t('envelopes.autodrainRequest.declinedMsg') })}
+                >
+                  {t('actions.decline')}
+                </button>
+              </div>
+            )}
+            <div className="text-[11px] mt-2 text-white/60" title={new Date(m.createdAt).toLocaleString()}>
+              {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    /* ---------------- AUTODRAIN ACCEPTED ---------------- */
+    const adAcc = parseAutoDrainAcc(m.text);
+    if (adAcc) {
+      return (
+        <div className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
+          <div className="max-w-[75%] rounded-2xl px-3 py-2 border bg-white/[.07] border-white/10">
+            <div className="flex items-center gap-2 text-[11px] uppercase tracking-wide text-white/70 mb-1">
+              <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="9" />
+                <path d="M8.5 12.5l2.5 2.5 4.5-5" />
+              </svg>
+              <span>{t('envelopes.autodrainEnabled.title')}</span>
+              {adAcc.id && <span className="text-white/50 normal-case ml-1">#{String(adAcc.id).slice(0, 6)}</span>}
+            </div>
+            <div className="text-[15px] font-semibold">{fmtCurrency(adAcc.amountCents, adAcc.currency)}</div>
+            <div className="mt-1 text-[13px] text-white/80">
+              {t('envelopes.autodrainRequest.recurrenceLabel', { cadence: cadenceLabel(adAcc.cadence) })}
+            </div>
+            <div className="text-[11px] mt-2 text-white/60" title={new Date(m.createdAt).toLocaleString()}>
+              {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    /* ---------------- TIP PAID ---------------- */
+    const paid = parseTipPaid(m.text);
+    if (paid) {
+      return (
+        <div className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
+          <div className="max-w-[75%] rounded-2xl px-3 py-2 border bg-white/[.07] border-white/10">
+            <div className="flex items-center gap-2 text-[11px] uppercase tracking-wide text-white/70 mb-1">
+              <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="9" />
+                <path d="M8.5 12.5l2.5 2.5 4.5-5" />
+              </svg>
+              <span>{t('envelopes.tipPaid.title')}</span>
+              {paid.id && <span className="text-white/50 normal-case ml-1">#{paid.id.slice(0, 6)}</span>}
+            </div>
+            <div className="text-[15px] font-semibold">{fmtCurrency(paid.amountCents, paid.currency)}</div>
+            {paid.note && <div className="mt-1 text-[13px] text-white/80 whitespace-pre-wrap">{paid.note}</div>}
+            <div className="text-[11px] mt-2 text-white/60" title={new Date(m.createdAt).toLocaleString()}>
+              {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    /* ---------------- MEDIA (Image/Video) ---------------- */
+    if (m.mediaUrl && (isImage(m.mediaUrl, m.mediaType) || isVideo(m.mediaUrl, m.mediaType))) {
+      const reactions = reactionsByMsg.get(m.id);
+      return (
+        <div className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
+          <div className="relative inline-block pb-5" {...longPress}>
+            {!ageOk ? (
+              <ChatBlurredMediaGate
+                mediaUrl={isImage(m.mediaUrl, m.mediaType) ? m.mediaUrl : undefined}
+                onStartVeriff={startAgeVerification}
+                title={tVerify('modal.title')}
+                subtitle={tVerify('modal.message')}
+                cta={tVerify('modal.confirm')}
+              />
+            ) : isVideo(m.mediaUrl, m.mediaType) ? (
+              <video
+                src={m.mediaUrl}
+                controls
+                playsInline
+                className="block max-w-[75vw] md:max-w-[560px] h-auto max-h-[60vh] rounded-xl border border-white/10 object-contain"
+              />
+            ) : (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={m.mediaUrl}
+                alt=""
+                loading="lazy"
+                decoding="async"
+                className="block max-w-[75vw] md:max-w-[560px] h-auto max-h-[60vh] rounded-xl border border-white/10 object-contain"
+              />
+            )}
+
+            {m.text && (
+              <div className={`mt-1 text-[13px] ${mine ? 'text-white/90' : 'text-white/80'}`}>
+                <RichText text={m.text} locale={locale} validateMentions variant={mine ? 'chat' : 'default'} />
+              </div>
+            )}
+
+            <div className="text-[11px] mt-1 text-white/60 text-right">
+              {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </div>
+
+            <ReactionsCorner mine={mine} summary={reactions} />
+          </div>
+        </div>
+      );
+    }
+
+    /* ---------------- AUDIO ---------------- */
+    if (m.mediaUrl && isAudio(m.mediaUrl, m.mediaType)) {
+      const reactions = reactionsByMsg.get(m.id);
+      return (
+        <div className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
+          <div className="relative inline-block pb-5 w-full max-w-[75vw] md:max-w-[560px]" {...longPress}>
+            <AudioBubble src={m.mediaUrl} mine={mine} avatarUrl={mine ? meAvatarUrl : other?.avatarUrl} />
+            {m.text && (
+              <div className={`mt-1 ${mine ? 'text-white' : 'text-white/90'}`}>
+                <RichText text={m.text} locale={locale} validateMentions variant={mine ? 'chat' : 'default'} />
+              </div>
+            )}
+
+            <div className="text-[11px] mt-1 text-white/60 text-right">
+              {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </div>
+
+            <ReactionsCorner mine={mine} summary={reactions} />
+          </div>
+        </div>
+      );
+    }
+
+    /* ---------------- INVITE LINK PREVIEW ---------------- */
+    const inv = parseInviteLink(m.text);
+    if (inv) {
+      const note = (m.text || '').replace(inv.url, '').trim();
+      const reactions = reactionsByMsg.get(m.id);
+      return (
+        <div className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
+          <div className="relative inline-block pb-5" {...longPress}>
+            <InviteLinkPreview code={inv.code} href={inv.url} />
+            {note && (
+              <div className={`mt-1 text-[13px] ${mine ? 'text-white/90' : 'text-white/80'}`}>
+                <RichText text={note} locale={locale} validateMentions variant={mine ? 'chat' : 'default'} />
+              </div>
+            )}
+            <div className="text-[11px] mt-1 text-white/60 text-right" title={new Date(m.createdAt).toLocaleString()}>
+              {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </div>
+            <ReactionsCorner mine={mine} summary={reactions} />
+          </div>
+        </div>
+      );
+    }
+
+    /* ---------------- POST LINK PREVIEW ---------------- */
+    const link = parsePostLink(m.text);
+    if (link && (!m.text || m.text.trim() === link.url.trim())) {
+      const reactions = reactionsByMsg.get(m.id);
+      return (
+        <div className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
+          <div className="relative inline-block pb-5" {...longPress}>
+            <PostLinkPreview postId={link.id} locale={locale} />
+            <div className="text-[11px] mt-1 text-white/60 text-right" title={new Date(m.createdAt).toLocaleString()}>
+              {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </div>
+            <ReactionsCorner mine={mine} summary={reactions} />
+          </div>
+        </div>
+      );
+    }
+
+    /* ---------------- PROFILE LINK PREVIEW ---------------- */
+    const pLink = parseProfileLink(m.text);
+    if (pLink && (!m.text || m.text.trim() === pLink.url.trim())) {
+      const reactions = reactionsByMsg.get(m.id);
+      return (
+        <div className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
+          <div className="relative inline-block pb-5" {...longPress}>
+            <ProfileLinkPreview handle={pLink.handle} locale={locale} />
+            <div className="text-[11px] mt-1 text-white/60 text-right" title={new Date(m.createdAt).toLocaleString()}>
+              {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </div>
+            <ReactionsCorner mine={mine} summary={reactions} />
+          </div>
+        </div>
+      );
+    }
+
+    /* ---------------- COMMUNITY LINK PREVIEW ---------------- */
+    const cLink = parseCommunityLink(m.text);
+    if (cLink && (!m.text || m.text.trim() === cLink.url.trim())) {
+      const reactions = reactionsByMsg.get(m.id);
+      return (
+        <div className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
+          <div className="relative inline-block pb-5" {...longPress}>
+            <CommunityLinkPreview slug={cLink.slug} locale={locale} />
+            <div className="text-[11px] mt-1 text-white/60 text-right" title={new Date(m.createdAt).toLocaleString()}>
+              {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </div>
+            <ReactionsCorner mine={mine} summary={reactions} />
+          </div>
+        </div>
+      );
+    }
+
+    /* ---------------- TEXT ---------------- */
+    const mineBubble = mine
+      ? 'bg-[var(--purple)]/90 border-[var(--purple)]/40 text-white'
+      : 'bg-white/[.07] border-white/10';
+    const reactions = reactionsByMsg.get(m.id);
+    return (
+      <div className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
+        <div className="relative max-w-[75%] w-fit pb-5">
+          <div
+            className={`inline-block rounded-2xl px-3 py-2 border break-words ${mineBubble}`}
+            title={new Date(m.createdAt).toLocaleString()}
+            {...longPress}
+            onClick={(e) => {
+              const el = e.target as HTMLElement;
+              if (el.closest('a,button,video,audio,img')) e.stopPropagation();
+            }}
+          >
+            {m.text && (
+              <RichText
+                text={m.text}
+                locale={locale}
+                validateMentions
+                className="break-words"
+                variant={mine ? 'chat' : 'default'}
+              />
+            )}
+            <div className={`text-[11px] mt-1 opacity-80 ${mine ? 'text-white/80' : 'text-white/70'}`}>
+              {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </div>
+          </div>
+          <ReactionsCorner mine={mine} summary={reactions} />
+        </div>
+      </div>
+    );
+  },(prev, next) => {
+      return prev.m === next.m && prev.rxKey === next.rxKey;
+    });
 
   return (
     <>
@@ -1132,390 +2136,13 @@ export default function ChatThreadPage() {
             <div className="py-8 text-sm text-muted">{t('loading')}</div>
           ) : (
             <div className="space-y-2 pb-24">
-              {messages.map((m) => {
-                const mine = meId ? m.senderId === meId : false;
-
-                // --- TIP REQUEST ---
-                const req = parseTipRequest(m.text);
-                if (req) {
-                  const isViewerSub = meRole === 'submissive';
-                  const canAct = !mine && isViewerSub && !!other;
-                  return (
-                    <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
-                      <div className="max-w-[75%] rounded-2xl px-3 py-2 border bg-white/[.07] border-white/10">
-                        <div className="text-[11px] uppercase tracking-wide text-white/70 mb-1">{t('envelopes.tipRequest.title')}</div>
-                        <div className="text-[15px] font-semibold">{fmtCurrency(req.amountCents, req.currency)}</div>
-                        {req.note && <div className="mt-1 text-[13px] text-white/80 whitespace-pre-wrap">{req.note}</div>}
-                        {canAct && (
-                          <div className="mt-2 flex items-center gap-2">
-                            <button
-                              type="button"
-                              className="px-3 py-1.5 rounded-lg bg-[var(--purple)]/90 text-white hover:opacity-95"
-                              onClick={() => {
-                                setAccept({
-                                  amountCents: req.amountCents,
-                                  currency: req.currency,
-                                  toUserId: m.senderId,
-                                  toDisplayName: other!.displayName,
-                                  toAvatarUrl: other!.avatarUrl,
-                                });
-                              }}
-                            >
-                              {t('actions.accept')}
-                            </button>
-                            <button
-                              type="button"
-                              className="px-3 py-1.5 rounded-lg border border-white/15 hover:bg-white/10"
-                              onClick={() => void sendMessage({ text: t('envelopes.tipRequest.declinedMsg') })}
-                            >
-                              {t('actions.decline')}
-                            </button>
-                          </div>
-                        )}
-                        <div className="text-[11px] mt-2 text-white/60" title={new Date(m.createdAt).toLocaleString()}>
-                          {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                }
-
-                // --- AUTODRAIN REQUEST ---
-                const ad = parseAutoDrainReq(m.text);
-                if (ad) {
-                  const canAct = !mine && meRole === 'submissive' && !!other;
-                  return (
-                    <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
-                      <div className="max-w-[75%] rounded-2xl px-3 py-2 border bg-white/[.07] border-white/10">
-                        <div className="text-[11px] uppercase tracking-wide text-white/70 mb-1">{t('envelopes.autodrainRequest.title')}</div>
-                        <div className="text-[15px] font-semibold">{fmtCurrency(ad.amountCents, ad.currency)}</div>
-                        <div className="text-[13px] text-white/80 mt-0.5">
-                          {t('envelopes.autodrainRequest.recurrenceLabel', { cadence: cadenceLabel(ad.cadence) })}
-                        </div>
-                        {canAct && (
-                          <div className="mt-2 flex items-center gap-2">
-                            <button
-                              type="button"
-                              className="px-3 py-1.5 rounded-lg bg-[var(--purple)]/90 text-white hover:opacity-95"
-                              onClick={() =>
-                                setAdAccept({
-                                  amountCents: ad.amountCents,
-                                  currency: ad.currency,
-                                  cadence: ad.cadence,
-                                  toUserId: m.senderId,
-                                  toDisplayName: other!.displayName,
-                                  toAvatarUrl: other!.avatarUrl,
-                                })
-                              }
-                            >
-                              {t('actions.accept')}
-                            </button>
-                            <button
-                              type="button"
-                              className="px-3 py-1.5 rounded-lg border border-white/15 hover:bg-white/10"
-                              onClick={() => void sendMessage({ text: t('envelopes.autodrainRequest.declinedMsg') })}
-                            >
-                              {t('actions.decline')}
-                            </button>
-                          </div>
-                        )}
-                        <div className="text-[11px] mt-2 text-white/60" title={new Date(m.createdAt).toLocaleString()}>
-                          {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                }
-
-                // --- AUTODRAIN ACCEPTED ---
-                const adAcc = parseAutoDrainAcc(m.text);
-                if (adAcc) {
-                  return (
-                    <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
-                      <div className="max-w-[75%] rounded-2xl px-3 py-2 border bg-white/[.07] border-white/10">
-                        <div className="flex items-center gap-2 text-[11px] uppercase tracking-wide text-white/70 mb-1">
-                          <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden fill="none" stroke="currentColor" strokeWidth="2">
-                            <circle cx="12" cy="12" r="9" />
-                            <path d="M8.5 12.5l2.5 2.5 4.5-5" />
-                          </svg>
-                          <span>{t('envelopes.autodrainEnabled.title')}</span>
-                          {adAcc.id && <span className="text-white/50 normal-case ml-1">#{String(adAcc.id).slice(0, 6)}</span>}
-                        </div>
-                        <div className="text-[15px] font-semibold">{fmtCurrency(adAcc.amountCents, adAcc.currency)}</div>
-                        <div className="mt-1 text-[13px] text-white/80">
-                          {t('envelopes.autodrainRequest.recurrenceLabel', { cadence: cadenceLabel(adAcc.cadence) })}
-                        </div>
-                        <div className="text-[11px] mt-2 text-white/60" title={new Date(m.createdAt).toLocaleString()}>
-                          {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                }
-
-                // --- TIP PAID ---
-                const paid = parseTipPaid(m.text);
-                if (paid) {
-                  return (
-                    <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
-                      <div className="max-w-[75%] rounded-2xl px-3 py-2 border bg-white/[.07] border-white/10">
-                        <div className="flex items-center gap-2 text-[11px] uppercase tracking-wide text-white/70 mb-1">
-                          <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden fill="none" stroke="currentColor" strokeWidth="2">
-                            <circle cx="12" cy="12" r="9" />
-                            <path d="M8.5 12.5l2.5 2.5 4.5-5" />
-                          </svg>
-                          <span>{t('envelopes.tipPaid.title')}</span>
-                          {paid.id && <span className="text-white/50 normal-case ml-1">#{paid.id.slice(0, 6)}</span>}
-                        </div>
-                        <div className="text-[15px] font-semibold">{fmtCurrency(paid.amountCents, paid.currency)}</div>
-                        {paid.note && <div className="mt-1 text-[13px] text-white/80 whitespace-pre-wrap">{paid.note}</div>}
-                        <div className="text-[11px] mt-2 text-white/60" title={new Date(m.createdAt).toLocaleString()}>
-                          {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                }
-
-                // --- OWNERSHIP REQUEST ---
-                const ownReq = parseOwnReq(m.text);
-                if (ownReq) {
-                  const canAct = !mine && meRole === 'submissive';
-
-                  const hasAvatar =
-                    Boolean((ownReq as { avatar?: true }).avatar) ||
-                    (isLegacyDataUrls(ownReq) && Boolean(ownReq.avatarDataUrl));
-
-                  const hasBanner =
-                    Boolean((ownReq as { banner?: true }).banner) ||
-                    (isLegacyDataUrls(ownReq) && Boolean(ownReq.bannerDataUrl));
-
-                  const hasBio =
-                    (isLegacyDataUrls(ownReq) && typeof ownReq.bio === 'string' && ownReq.bio.trim().length > 0) ||
-                    Boolean((ownReq as { bio?: string }).bio && String((ownReq as { bio?: string }).bio).trim().length > 0);
-
-                  return (
-                    <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
-                      <div className="max-w-[75%] rounded-2xl px-3 py-2 border bg-white/[.07] border-white/10">
-                        <div className="text-[11px] uppercase tracking-wide text-white/70 mb-1">{t('envelopes.ownershipRequest.title')}</div>
-                        <ul className="text-[13px] text-white/80 space-y-1 mb-2">
-                          {hasAvatar && <li>• {t('envelopes.ownershipRequest.items.avatar')}</li>}
-                          {hasBanner && <li>• {t('envelopes.ownershipRequest.items.banner')}</li>}
-                          {hasBio && <li>• {t('envelopes.ownershipRequest.items.bio')}</li>}
-                        </ul>
-                        {canAct && (
-                          <div className="mt-1 flex items-center gap-2">
-                            <button
-                              type="button"
-                              className="px-3 py-1.5 rounded-lg bg-[var(--purple)]/90 text-white hover:opacity-95"
-                              onClick={() => setOwnToAccept(ownReq)}
-                            >
-                              {t('actions.accept')}
-                            </button>
-                            <button
-                              type="button"
-                              className="px-3 py-1.5 rounded-lg border border-white/15 hover:bg-white/10"
-                              onClick={() => void sendMessage({ text: t('envelopes.ownershipRequest.declinedMsg') })}
-                            >
-                              {t('actions.decline')}
-                            </button>
-                          </div>
-                        )}
-                        <div className="text-[11px] mt-2 text-white/60" title={new Date(m.createdAt).toLocaleString()}>
-                          {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                }
-
-                const ownAcc = parseOwnAcc(m.text);
-                if (ownAcc) {
-                  return (
-                    <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
-                      <div className="max-w-[75%] rounded-2xl px-3 py-2 border bg-white/[.07] border-white/10">
-                        <div className="flex items-center gap-2 text-[11px] uppercase tracking-wide text-white/70 mb-1">
-                          <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden fill="none" stroke="currentColor" strokeWidth="2">
-                            <circle cx="12" cy="12" r="9" />
-                            <path d="M8.5 12.5l2.5 2.5 4.5-5" />
-                          </svg>
-                          <span>{t('envelopes.ownershipAccepted.title')}</span>
-                        </div>
-                        <div className="text-[13px] text-white/80">{t('envelopes.ownershipAccepted.applied')}</div>
-                        <div className="text-[11px] mt-2 text-white/60" title={new Date(m.createdAt).toLocaleString()}>
-                          {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                }
-
-                // Medien (Image/Video) – gated by age verification
-                if (m.mediaUrl && (isImage(m.mediaUrl, m.mediaType) || isVideo(m.mediaUrl, m.mediaType))) {
-                  return (
-                    <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
-                      <div>
-                        {!ageOk ? (
-                          <ChatBlurredMediaGate
-                            mediaUrl={isImage(m.mediaUrl, m.mediaType) ? m.mediaUrl : undefined}
-                            onStartVeriff={startAgeVerification}
-                            title={tVerify('modal.title')}       // 🔹 gleicher Key wie in den anderen Stellen
-                            subtitle={tVerify('modal.message')}  // 🔹 gleicher Key wie in den anderen Stellen
-                            cta={tVerify('modal.confirm')}       // 🔹 gleicher Key wie in den anderen Stellen
-                          />
-                        ) : isVideo(m.mediaUrl, m.mediaType) ? (
-                          <video
-                            src={m.mediaUrl}
-                            controls
-                            playsInline
-                            className="block max-w-[75vw] md:max-w-[560px] h-auto max-h-[60vh] rounded-xl border border-white/10 object-contain"
-                          />
-                        ) : (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={m.mediaUrl}
-                            alt=""
-                            loading="lazy"
-                            decoding="async"
-                            className="block max-w-[75vw] md:max-w-[560px] h-auto max-h-[60vh] rounded-xl border border-white/10 object-contain"
-                          />
-                        )}
-
-                        {m.text && (
-                          <div className={`mt-1 text-[13px] ${mine ? 'text-white/90' : 'text-white/80'}`}>
-                            <RichText text={m.text} locale={locale} validateMentions variant={mine ? 'chat' : 'default'} />
-                          </div>
-                        )}
-                        <div className="text-[11px] mt-1 text-white/60 text-right">
-                          {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                }
-
-
-                // Audio
-                if (m.mediaUrl && isAudio(m.mediaUrl, m.mediaType)) {
-                  return (
-                    <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
-                      <div className="w-full max-w-[75vw] md:max-w-[560px]">
-                        <AudioBubble src={m.mediaUrl} mine={mine} avatarUrl={mine ? meAvatarUrl : other?.avatarUrl} />
-                        {m.text && (
-                          <div className={`mt-1 ${mine ? 'text-white' : 'text-white/90'}`}>
-                            <RichText text={m.text} locale={locale} validateMentions variant={mine ? 'chat' : 'default'} />
-                          </div>
-                        )}
-                        <div className="text-[11px] mt-1 text-white/60 text-right">
-                          {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                }
-
-                // --- INVITE LINK PREVIEW ---
-                const inv = parseInviteLink(m.text);
-                if (inv) {
-                  const note = (m.text || '').replace(inv.url, '').trim();
-                  return (
-                    <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
-                      <div>
-                        <InviteLinkPreview code={inv.code} href={inv.url} />
-                        {note && (
-                          <div className={`mt-1 text-[13px] ${mine ? 'text-white/90' : 'text-white/80'}`}>
-                            <RichText text={note} locale={locale} validateMentions variant={mine ? 'chat' : 'default'} />
-                          </div>
-                        )}
-                        <div
-                          className="text-[11px] mt-1 text-white/60 text-right"
-                          title={new Date(m.createdAt).toLocaleString()}
-                        >
-                          {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                }
-
-                // Post-Link Preview
-                const link = parsePostLink(m.text);
-                if (link && (!m.text || m.text.trim() === link.url.trim())) {
-                  return (
-                    <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
-                      <div>
-                        <PostLinkPreview postId={link.id} locale={locale} />
-                        <div
-                          className="text-[11px] mt-1 text-white/60 text-right"
-                          title={new Date(m.createdAt).toLocaleString()}
-                        >
-                          {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                }
-
-                // Profile-Link Preview
-                const pLink = parseProfileLink(m.text);
-                if (pLink && (!m.text || m.text.trim() === pLink.url.trim())) {
-                  return (
-                    <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
-                      <div>
-                        <ProfileLinkPreview handle={pLink.handle} locale={locale} />
-                        <div
-                          className="text-[11px] mt-1 text-white/60 text-right"
-                          title={new Date(m.createdAt).toLocaleString()}
-                        >
-                          {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                }
-
-                // Community-Link Preview (NEW)
-                const cLink = parseCommunityLink(m.text);
-                if (cLink && (!m.text || m.text.trim() === cLink.url.trim())) {
-                  return (
-                    <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
-                      <div>
-                        <CommunityLinkPreview slug={cLink.slug} locale={locale} />
-                        <div
-                          className="text-[11px] mt-1 text-white/60 text-right"
-                          title={new Date(m.createdAt).toLocaleString()}
-                        >
-                          {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                }
-
-                // reiner Text
-                const mineBubble = mine ? 'bg-[var(--purple)]/90 border-[var(--purple)]/40 text-white' : 'bg-white/[.07] border-white/10';
-                return (
-                  <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
-                    <div
-                      className={`max-w-[75%] rounded-2xl px-3 py-2 border break-words ${mineBubble}`}
-                      title={new Date(m.createdAt).toLocaleString()}
-                    >
-                      {m.text && (
-                        <RichText
-                          text={m.text}
-                          locale={locale}
-                          validateMentions
-                          className="break-words"
-                          variant={mine ? 'chat' : 'default'}
-                        />
-                      )}
-                      <div className={`text-[11px] mt-1 opacity-80 ${mine ? 'text-white/80' : 'text-white/70'}`}>
-                        {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+              {messages.map((m) => (
+                <MessageItem
+                  key={m.id}
+                  m={m}
+                  rxKey={reactionDigestByMsg.get(m.id) ?? ''} // ← neu
+                />
+              ))}
             </div>
           )}
         </div>
@@ -1532,12 +2159,23 @@ export default function ChatThreadPage() {
           onSend={(text) => sendMessage({ text })}
           onTip={() => setTipOpen(true)}
           onUpload={(file, caption) => sendMessage({ text: caption || '', file })}
+          // 🟣 Reply: Vorschau + Cancel im Composer
+          replyTo={replyTarget}
+          onCancelReply={() => setReplyTarget(null)}
+          onCreateReply={(p) => {
+            void sendMessage({ text: `${REPLY_PREFIX}${JSON.stringify({ to: p.to, text: p.text })}` });
+            setReplyTarget(null);
+          }}
           onCreateTipRequest={(p: { amountCents: number; currency?: string; note?: string }) => {
             const { amountCents, currency = 'EUR', note } = p;
             const payload = { amountCents, currency, note: note?.trim() || undefined };
             void sendMessage({ text: `${TIPREQ_PREFIX}${JSON.stringify(payload)}` });
           }}
-          onCreateAutoDrainRequest={(p: { amountCents: number; currency?: string; cadence: 'DAILY' | 'WEEKLY' | 'MONTHLY' }) => {
+          onCreateAutoDrainRequest={(p: {
+            amountCents: number;
+            currency?: string;
+            cadence: 'DAILY' | 'WEEKLY' | 'MONTHLY';
+          }) => {
             const { amountCents, currency = 'EUR', cadence } = p;
             const payload = { amountCents, currency, cadence };
             void sendMessage({ text: `${ADREQ_PREFIX}${JSON.stringify(payload)}` });
@@ -1614,6 +2252,13 @@ export default function ChatThreadPage() {
           }}
         />
       )}
+
+      <ActionsPopover
+        state={actionSheet}
+        onClose={() => setActionSheet((s) => ({ ...s, open: false }))}
+        onReply={(msgId) => { beginReplyTo(msgId); }}
+        onReact={handleReact}
+      />
     </>
   );
 }
