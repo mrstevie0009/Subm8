@@ -184,9 +184,18 @@ model Conversation {
   messages      Message[]
   tips          Tip[]
 
+  updatedAt       DateTime @updatedAt                // für Sortierung
+  lastMessageId   String?   @unique                  // direkte Join auf Message
+  lastMessageAt   DateTime?                          // falls du Zeit ohne Join brauchst
+
+  // (optional) Unread pro Seite:
+  unreadForDomme  Int       @default(0)
+  unreadForSub    Int       @default(0)
+
   @@unique([dommeId, subId])
   @@index([dommeId])
   @@index([subId])
+  @@index([updatedAt(sort: Desc)])                   // super schnell für Liste
 }
 
 model Message {
@@ -201,6 +210,10 @@ model Message {
   author         User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
   conversation   Conversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   reads          MessageRead[]
+
+  @@index([conversationId, createdAt(sort: Desc)])  // „letzte Nachricht je Konvo“
+  @@index([authorId, createdAt(sort: Desc)])        // eigene Nachrichten/Unread schneller
+  @@index([conversationId, authorId])               // Unread-Filter (author != me)
 }
 
 model MessageRead {
@@ -210,8 +223,11 @@ model MessageRead {
   message      Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
   readerUser   User     @relation(fields: [readerUserId], references: [id], onDelete: Cascade)
 
-  @@id([messageId, readerUserId])
-  @@index([readerUserId])
+@@id([messageId, readerUserId])
+  // 🔑 Für „reads none where readerUserId = me“
+  @@index([readerUserId, messageId])
+  // (PK ist (messageId, readerUserId); für unsere Abfrage-Reihenfolge bringt obiger Index viel)
+
 }
 
 model Tip {
