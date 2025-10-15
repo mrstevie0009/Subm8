@@ -14,11 +14,15 @@ import { blockUserAction } from '@/app/actions/blocks';
 const AVATAR_PH = '/images/avatar-placeholder.png';
 const PINS_STORAGE_KEY = 'chat:pinned:v1';
 
+// ---- Envelope Prefixes (müssen mit Thread-Seite übereinstimmen) ----
 const TIPREQ_PREFIX  = 'TIPREQ::';
 const TIPPAID_PREFIX = 'TIPPAID::';
 const OWNREQ_PREFIX  = 'OWNREQ::';
 const OWNACC_PREFIX  = 'OWNACC::';
+const ADREQ_PREFIX   = 'ADREQ::';
+const ADACC_PREFIX   = 'ADACC::';
 const REACT_PREFIX   = 'REACT::';
+const REPLY_PREFIX   = 'REPLY::';
 
 function fmtCurrency(cents: number, currency = 'EUR') {
   return new Intl.NumberFormat(undefined, { style: 'currency', currency }).format((cents || 0) / 100);
@@ -46,6 +50,18 @@ function parseReactionEnvelope(raw?: string | null): ReactionPayload | null {
   return null;
 }
 
+type ReplyPayload = { to: string; text: string };
+function parseReplyEnvelope(raw?: string | null): ReplyPayload | null {
+  if (!raw || !raw.startsWith(REPLY_PREFIX)) return null;
+  try {
+    const obj = JSON.parse(raw.slice(REPLY_PREFIX.length));
+    if (obj && typeof obj.to === 'string' && typeof obj.text === 'string') {
+      return obj as ReplyPayload;
+    }
+  } catch {}
+  return null;
+}
+
 function withQuery(
   pathname: string | null,
   search: ReturnType<typeof useSearchParams>,
@@ -61,23 +77,16 @@ function withQuery(
   return qs ? `${p}?${qs}` : p;
 }
 
-/* ---------- Erkennung von geteilten App-Links (Post/Profil) ---------- */
+/* ---------- Erkennung von geteilten App-Links (Post/Profil/allg. Link) ---------- */
 type LinkKind =
   | { kind: 'post' }
   | { kind: 'profile'; handle: string }
   | { kind: 'link' };
 
-/**
- * Strenger Link-Classifier:
- * - Nur behandeln, wenn der Text klar wie ein Link aussieht:
- *   beginnt mit http(s):// ODER ist ein absoluter Pfad (/...)
- * - Dadurch werden normale Texte NICHT mehr als „Link geteilt“ angezeigt.
- */
 function classifyAppLink(raw: string): LinkKind | null {
   const s = raw.trim();
   if (!s) return null;
 
-  // Nur echte Links berücksichtigen (http/https) oder App-interne absolute Pfade
   const looksLikeUrl = /^(https?:\/\/|\/)/i.test(s);
   if (!looksLikeUrl) return null;
 
@@ -112,6 +121,7 @@ type Item = {
   lastAuthorId?: string;
   unread: number;
   muted?: boolean;
+  lastMediaType?: 'image' | 'video' | 'audio' | 'file';
 };
 
 /* ------------ ActionMenu (Portal) ------------ */
@@ -238,13 +248,30 @@ function ChatRow({
   const t = useTranslations('common.chat');
   const tTime = useTranslations('common.time');
 
+  const MEDIA_PREFIX = 'MEDIA::';
+  function parseMediaEnvelope(raw?: string | null): 'image' | 'video' | 'audio' | 'file' | null {
+    if (!raw || !raw.startsWith(MEDIA_PREFIX)) return null;
+    const k = raw.slice(MEDIA_PREFIX.length);
+    return (k === 'image' || k === 'video' || k === 'audio' || k === 'file') ? k : null;
+  }
+
   // Snippet-Shape für Anzeige
   type Snippet =
     | { type: 'text'; text: string }
     | { type: 'reaction'; text: string; emoji: string };
 
-  // i18n-Formatter inkl. Reaction-Envelope
+  // i18n-Formatter inkl. Envelopes
   const formatSnippet = React.useCallback((raw: string, actorName?: string | null): Snippet => {
+
+    const m = parseMediaEnvelope(raw);
+    if (m) {
+      // Keine i18n-Keys in deinem Bundle → kurze, neutrale Labels:
+      const label = m === 'image' ? 'Photo'
+                  : m === 'video' ? 'Video'
+                  : m === 'audio' ? 'Audio'
+                  : 'File';
+      return { type: 'text', text: label };
+    }
     if (!raw) return { type: 'text', text: '' };
 
     // Reactions (REACT::)
@@ -263,9 +290,18 @@ function ChatRow({
       };
     }
 
-    // 1) Systemereignisse
+    // Reply (REPLY::)
+    const reply = parseReplyEnvelope(raw);
+    if (reply) {
+      const who = actorName || t('you');
+      const text = reply.text ? truncateMid(reply.text, 80) : '';
+      return { type: 'text', text: `↩︎ ${who}: ${text}` };
+    }
+
+    // Ownership accepted
     if (raw.startsWith(OWNACC_PREFIX)) return { type: 'text', text: t('system.ownershipAccepted') };
 
+    // Ownership request
     if (raw.startsWith(OWNREQ_PREFIX)) {
       try {
         const p = JSON.parse(raw.slice(OWNREQ_PREFIX.length)) as OwnershipReqSnippet;
@@ -284,6 +320,7 @@ function ChatRow({
       }
     }
 
+    // Tip request
     if (raw.startsWith(TIPREQ_PREFIX)) {
       try {
         const body = JSON.parse(raw.slice(TIPREQ_PREFIX.length)) as { amountCents?: number; currency?: string };
@@ -294,6 +331,7 @@ function ChatRow({
       } catch {}
     }
 
+    // Tip paid
     if (raw.startsWith(TIPPAID_PREFIX)) {
       try {
         const body = JSON.parse(raw.slice(TIPPAID_PREFIX.length)) as { amountCents?: number; currency?: string };
@@ -304,7 +342,29 @@ function ChatRow({
       } catch {}
     }
 
-    // 2) Freitext / ggf. geteilte Links
+    // Auto-Drain request / accepted (kurze Labels)
+    if (raw.startsWith(ADREQ_PREFIX)) {
+      try {
+        const body = JSON.parse(raw.slice(ADREQ_PREFIX.length)) as { amountCents?: number; currency?: string; cadence?: string };
+        const amount = typeof body?.amountCents === 'number' ? fmtCurrency(body.amountCents, body?.currency || 'EUR') : '';
+        const cad = body?.cadence ? ` • ${body.cadence}` : '';
+        return { type: 'text', text: `Auto-drain request: ${amount}${cad}` };
+      } catch {
+        return { type: 'text', text: 'Auto-drain request' };
+      }
+    }
+    if (raw.startsWith(ADACC_PREFIX)) {
+      try {
+        const body = JSON.parse(raw.slice(ADACC_PREFIX.length)) as { amountCents?: number; currency?: string; cadence?: string };
+        const amount = typeof body?.amountCents === 'number' ? fmtCurrency(body.amountCents, body?.currency || 'EUR') : '';
+        const cad = body?.cadence ? ` • ${body.cadence}` : '';
+        return { type: 'text', text: `Auto-drain enabled: ${amount}${cad}` };
+      } catch {
+        return { type: 'text', text: 'Auto-drain enabled' };
+      }
+    }
+
+    // Freitext oder Link-Share
     const lines = raw.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
     const first = lines[0] ?? '';
     const note  = lines.slice(1).join(' ').trim();
@@ -320,7 +380,7 @@ function ChatRow({
       return { type: 'text', text: note ? `${label} — ${truncateMid(note, 80)}` : label };
     }
 
-    // 3) Normale Nachricht
+    // Normale Nachricht
     return { type: 'text', text: raw.replace(/\s+/g, ' ').trim() };
   }, [t]);
 
@@ -416,7 +476,7 @@ function ChatRow({
 
   const profileHref = `/${locale}/u/${c.other.username}`;
 
-  // Wer hat reagiert / geschrieben? Standard: other (falls nicht bekannt)
+  // Wer hat die letzte Nachricht gesendet? Standard: other
   const actorIsOther = c.lastAuthorId ? c.lastAuthorId === c.other.id : true;
   const actorName = actorIsOther ? c.other.displayName : t('you');
 
@@ -426,6 +486,7 @@ function ChatRow({
   );
 
   return (
+    
     <div
       ref={rowRef}
       className="grid grid-cols-[3.2em_1fr_auto] items-center gap-3 rounded-app border border-sub bg-card p-3 hover:bg-white/5 cursor-pointer"
@@ -468,7 +529,7 @@ function ChatRow({
           >
             @{c.other.username}
           </Link>
-
+          
           {c.muted && (
             <span className="ml-1 text-[10px] px-1.5 py-[1px] rounded-full bg-white/10 text-white/70">
               {t('row.badges.muted')}
@@ -481,12 +542,24 @@ function ChatRow({
           )}
         </div>
 
-        {/* Snippet ohne linkes Emoji bei Reactions */}
-        {snippet.type === 'reaction' ? (
-          <div className="text-sm text-muted truncate">{snippet.text}</div>
-        ) : (
-          <div className="text-sm text-muted truncate">{snippet.text}</div>
-        )}
+        {/* Snippet (sichtbar mit Absender + Icons) */}
+        <div className="text-sm text-muted flex items-center gap-1.5 min-w-0">
+          <span className="shrink-0 text-white/80">
+            {actorIsOther ? c.other.displayName : t('you')}:
+          </span>
+
+          {snippet.type === 'reaction' && (
+            <span aria-hidden className="shrink-0">{snippet.emoji}</span>
+          )}
+
+          {parseReplyEnvelope(c.lastSnippet) && (
+            <span className="shrink-0 opacity-80" aria-hidden>↩︎</span>
+          )}
+
+          <span className="flex-1 min-w-0 truncate">
+            {snippet.text && snippet.text.trim().length > 0 ? snippet.text : '…'}
+          </span>
+        </div>
       </div>
 
       <div className="flex flex-col items-end gap-1">

@@ -2206,7 +2206,10 @@ export default function ChatThreadPage() {
         />
       )}
 
-      <main className="px-3">
+      <main
+        className="px-3"
+        style={{ paddingTop: 'var(--chat-header-h, 64px)' }} // 👈 Platz für den fixen Header
+      >
         <div className="mx-auto w-full max-w-[760px]">
           {/* Eigener Scroll-Container: füllt die Resthöhe zwischen Header & Bottomnav */}
           <div

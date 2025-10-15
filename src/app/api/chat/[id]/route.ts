@@ -358,6 +358,18 @@ export async function POST(req: Request, { params }: Ctx) {
         },
       });
 
+      await prisma.conversation.update({
+        where: { id },
+        data: {
+          lastMessageId: created.id,
+          lastMessageAt: created.createdAt,
+          // unread für die GEGENSEITE erhöhen:
+          ...(me.id === convo.dommeId
+            ? { unreadForSub: { increment: 1 } }
+            : { unreadForDomme: { increment: 1 } }),
+        },
+      });
+
       return Response.json({
         ok: true,
         message: {
@@ -397,6 +409,17 @@ export async function POST(req: Request, { params }: Ctx) {
     const msg = await prisma.message.create({
       data: { conversationId: id, authorId: me.id, text },
       select: { id: true, createdAt: true, authorId: true, text: true },
+    });
+
+    await prisma.conversation.update({
+      where: { id },
+      data: {
+        lastMessageId: msg.id,
+        lastMessageAt: msg.createdAt,
+        ...(me.id === convo.dommeId
+          ? { unreadForSub: { increment: 1 } }
+          : { unreadForDomme: { increment: 1 } }),
+      },
     });
 
     // Beim Senden: Typing-State räumen

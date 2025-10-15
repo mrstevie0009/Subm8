@@ -18,7 +18,7 @@ export async function GET() {
   // 1) Konversationen: nur leichte Felder + lastMessageId/At + Unread
   const convos = await prisma.conversation.findMany({
     where: { OR: [{ dommeId: me.id }, { subId: me.id }] },
-    orderBy: { updatedAt: 'desc' }, // 🚀 wichtig
+    orderBy: { updatedAt: 'desc' }, 
     select: {
       id: true,
       createdAt: true,
@@ -53,22 +53,36 @@ export async function GET() {
       })
     : [];
 
-  const lastById = new Map(lastMsgs.map(m => [m.id, m]));
+  const lastById = new Map(lastMsgs.map(m => [String(m.id), m]));
 
-  // 3) Shape für Frontend
+  /// 3) Shape für Frontend
   const items = convos.map(c => {
     const iAmDomme = c.dommeId === me.id;
     const other = iAmDomme ? c.sub : c.domme;
-    const last = c.lastMessageId ? lastById.get(c.lastMessageId) : undefined;
+    const last = c.lastMessageId ? lastById.get(String(c.lastMessageId)) : undefined;
 
-    let lastSnippet = 'Media';
-    if (last?.text?.trim()) lastSnippet = last.text.trim();
-    else if (last?.mediaType) {
-      if (last.mediaType.startsWith('video/')) lastSnippet = 'Video';
-      else if (last.mediaType.startsWith('image/')) lastSnippet = 'Photo';
-    } else if (!c.lastMessageId) {
-      lastSnippet = ''; // Konvo ohne Messages
-    }
+    // Media-Kategorie ableiten
+    const mediaKind =
+      last?.mediaType
+        ? last.mediaType.startsWith('image/') ? 'image'
+          : last.mediaType.startsWith('video/') ? 'video'
+          : last.mediaType.startsWith('audio/') ? 'audio'
+          : 'file'
+        : undefined;
+
+    // 🔧 NEU: Zero-Width & NBSP entfernen, dann trimmen
+    const rawText = (last?.text ?? '');
+    const normalizedText = rawText
+      // zero-width chars & BOM & NBSP entfernen
+      .replace(/[\u200B-\u200D\uFEFF\u00A0]/g, ' ')
+      // Mehrfach-Spaces zu einem Space
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    // 1) Wenn nach Normalisierung noch Text übrig ist → den nehmen
+    // 2) Sonst, falls Media vorhanden → MEDIA::… Envelope
+    // 3) Sonst leer (Konvo ohne Messages)
+    const lastSnippet = normalizedText || (mediaKind ? `MEDIA::${mediaKind}` : '');
 
     return {
       id: c.id,

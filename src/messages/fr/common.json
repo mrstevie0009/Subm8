@@ -633,6 +633,12 @@
       }
     },
     "row": {
+      "preview": {
+      "image": "Photo",
+      "video": "Vidéo",
+      "audio": "Audio",
+      "file": "Fichier"
+    },
       "badges": {
         "muted": "En sourdine",
         "pinned": "Épinglé"

@@ -634,6 +634,12 @@
       }
     },
     "row": {
+      "preview": {
+      "image": "Foto",
+      "video": "Vídeo",
+      "audio": "Audio",
+      "file": "Archivo"
+    },
       "badges": {
         "muted": "Silenciado",
         "pinned": "Anclado"

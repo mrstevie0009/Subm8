@@ -683,6 +683,12 @@
       }
     },
     "row": {
+      "preview": {
+      "image": "Foto",
+      "video": "Video",
+      "audio": "Audio",
+      "file": "Datei"
+    },
       "badges": {
         "muted": "Stumm",
         "pinned": "Angeheftet"
