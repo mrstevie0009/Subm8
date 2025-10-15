@@ -1400,6 +1400,52 @@ export default function ChatThreadPage() {
     }
   }, [id, mapRole]);
 
+  // NEW: super-schnelle Erstladung
+  const loadFastFirstPaint = React.useCallback(async () => {
+    const myReq = ++latestReqRef.current;
+    try {
+      const res = await fetch(`/api/chat/${id}?fast=1&take=30`, { cache: 'no-store' });
+      const json: ThreadResponse & { pageSize?: number } = await res.json();
+      if (myReq !== latestReqRef.current) return;
+      if (!json.ok) throw new Error(json.error || 'Failed to load');
+      // dieselben State-Updates wie in load(), nur ohne Reads/Extras
+      setMeId((p) => (p === json.me.id ? p : json.me.id));
+      setMeRole((p) => {
+        const next = mapRole((json as ThreadOk).me.role as DbRole);
+        return p === next ? p : next;
+      });
+      setMeAvatarUrl((p) => {
+        const next = (json as ThreadOk).me.avatarUrl ?? null;
+        return p === next ? p : next;
+      });
+      setViewerHasBlocked(json.viewerHasBlocked ?? false);
+      setIsBlockedByOther(json.isBlockedByOther ?? false);
+      setOther((prev) => {
+        const o = (json as ThreadOk).other;
+        const next = { id: o.id, username: o.handle, displayName: o.displayName, avatarUrl: o.avatarUrl ?? undefined, role: mapRole(o.role), dmOpen: !(json.viewerHasBlocked || json.isBlockedByOther) };
+        return prev &&
+          prev.id === next.id &&
+          prev.username === next.username &&
+          prev.displayName === next.displayName &&
+          prev.avatarUrl === next.avatarUrl &&
+          prev.role === next.role &&
+          prev.dmOpen === next.dmOpen ? prev : next;
+      });
+      const mapped: UiMessage[] = (json as ThreadOk).messages.map((m) => ({
+        id: m.id, convoId: String(id), senderId: m.authorId,
+        text: m.text ?? (m.mediaUrl ? '' : ''), createdAt: m.at, seen: m.read,
+        mediaUrl: m.mediaUrl ?? undefined, mediaType: m.mediaType ?? undefined,
+      }));
+      setMessages((prev) => stableMergeMessages(prev, mapped));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load');
+    } finally {
+      if (myReq === latestReqRef.current) setLoading(false); // ← UI sofort „da“
+      // Danach still den „vollen“ Load fürs Read-Mark + ggf. mehr Messages
+      void load();
+    }
+  }, [id, load, mapRole]);
+
   const beginReplyTo = React.useCallback((msgId: string) => {
     const target = messages.find(x => x.id === msgId);
     if (!target) {
@@ -1424,7 +1470,7 @@ export default function ChatThreadPage() {
   React.useEffect(() => {
     let cancelled = false;
     (async () => {
-      if (!cancelled) await load();
+      if (!cancelled) await loadFastFirstPaint();
     })();
     const tick = () => { if (!document.hidden) void load(); };
     const tmr = setInterval(tick, 4000);
@@ -1432,7 +1478,7 @@ export default function ChatThreadPage() {
       cancelled = true;
       clearInterval(tmr);
     };
-  }, [load]);
+  }, [load, loadFastFirstPaint]);
 
   const sendMessage = React.useCallback(
     async ({ text, file }: { text: string; file?: File }) => {
@@ -1457,6 +1503,42 @@ export default function ChatThreadPage() {
   const [actionSheet, setActionSheet] = React.useState<ActionSheetState>({
     open: false, x: 0, y: 0, msgId: '', mine: false,
   });
+
+   // ----- Scroll: „immer unten starten“ + „sticky bottom“, bis User hochscrollt
+  const scrollerRef = React.useRef<HTMLDivElement | null>(null);
+  const [stickBottom, setStickBottom] = React.useState(true);
+
+  const isNearBottom = React.useCallback(() => {
+    const el = scrollerRef.current;
+    if (!el) return true;
+    const dist = el.scrollHeight - el.scrollTop - el.clientHeight;
+    return dist < 80; // px
+  }, []);
+
+  const scrollToBottom = React.useCallback((behavior: ScrollBehavior = 'auto') => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior });
+  }, []);
+
+  // Beim ersten Render nach dem Laden ganz nach unten
+  React.useLayoutEffect(() => {
+    if (!loading) scrollToBottom('auto');
+  }, [loading, scrollToBottom]);
+
+  // Bei neuen Nachrichten nur nach unten scrollen, wenn der User „unten“ ist
+  const prevLenRef = React.useRef(0);
+  React.useLayoutEffect(() => {
+    const len = messages.length;
+    if (len !== prevLenRef.current) {
+      if (stickBottom) scrollToBottom('smooth');
+      prevLenRef.current = len;
+    }
+  }, [messages.length, stickBottom, scrollToBottom]);
+
+  const onScrollList = React.useCallback(() => {
+    setStickBottom(isNearBottom());
+  }, [isNearBottom]);
 
   // welche Reaktion habe ICH aktuell auf msgId?
   const getMyReactionFor = React.useCallback((msgId: string): string | null => {
@@ -2125,26 +2207,34 @@ export default function ChatThreadPage() {
       )}
 
       <main className="px-3">
-        <div
-          className="mx-auto w-full max-w-[760px] overflow-x-hidden"
-          style={{
-            paddingTop: 'calc(var(--chat-header-h, 48px) + 8px)',
-            paddingBottom: 'calc(var(--bottomnav-h, 72px) + 72px + var(--kb, 0px))',
-          }}
-        >
-          {loading ? (
-            <div className="py-8 text-sm text-muted">{t('loading')}</div>
-          ) : (
-            <div className="space-y-2 pb-24">
-              {messages.map((m) => (
-                <MessageItem
-                  key={m.id}
-                  m={m}
-                  rxKey={reactionDigestByMsg.get(m.id) ?? ''} // ← neu
-                />
-              ))}
-            </div>
-          )}
+        <div className="mx-auto w-full max-w-[760px]">
+          {/* Eigener Scroll-Container: füllt die Resthöhe zwischen Header & Bottomnav */}
+          <div
+            ref={scrollerRef}
+            onScroll={onScrollList}
+            className="overflow-y-auto overflow-x-hidden no-scrollbar"
+            style={{
+               height: 'calc(100vh - var(--chat-header-h, 48px) - var(--bottomnav-h, 72px) - 72px)',
+                 scrollbarGutter: 'stable',     // reserviert Platz, falls OS doch eine Leiste einblendet
+                 overscrollBehavior: 'contain', // verhindert „Gummiband“-Scroll der Seite
+              paddingTop: 8,
+              paddingBottom: 'calc(72px + var(--kb, 0px))',
+            }}
+          >
+            {loading ? (
+              <div className="py-8 text-sm text-muted">{t('loading')}</div>
+            ) : (
+              <div className="space-y-2 pb-6">
+                {messages.map((m) => (
+                  <MessageItem
+                    key={m.id}
+                    m={m}
+                    rxKey={reactionDigestByMsg.get(m.id) ?? ''}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </main>
 

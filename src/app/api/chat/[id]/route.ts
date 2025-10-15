@@ -136,6 +136,10 @@ export async function GET(_req: Request, { params }: Ctx) {
     await ensureTypingTableOnce();
 
     const { id } = await params;
+    const url = new URL(_req.url);
+    const fast = url.searchParams.get('fast') === '1';
+    const take = Number(url.searchParams.get('take') || (fast ? '30' : '200'));
+
     const me = await getCurrentUser();
     if (!me) return Response.json({ ok: false, error: 'Not authenticated' }, { status: 401 });
 
@@ -172,31 +176,54 @@ export async function GET(_req: Request, { params }: Ctx) {
     // Block-Status in beide Richtungen
     const { viewerHasBlocked, isBlockedByOther } = await getBlockFlags(me.id, other.id);
 
+    // --- streng typisiert ohne `any`
+    type MessageBase = {
+      id: string;
+      createdAt: Date;
+      authorId: string;
+      text: string | null;
+      mediaUrl: string | null;
+      mediaType: string | null;
+    };
+    type MessageWithReads = MessageBase & { reads: { readerUserId: string }[] };
+    type MessageMaybeReads = MessageBase | MessageWithReads;
+
+    const baseSelect = {
+      id: true,
+      createdAt: true,
+      authorId: true,
+      text: true,
+      mediaUrl: true,
+      mediaType: true,
+    } as const;
+
     const messages = await prisma.message.findMany({
       where: { conversationId: id },
       orderBy: { createdAt: 'asc' },
-      take: 200,
-      select: {
-        id: true,
-        createdAt: true,
-        authorId: true,
-        text: true,
-        mediaUrl: true,
-        mediaType: true,
-        reads: { where: { readerUserId: me.id }, select: { readerUserId: true } },
-      },
-    });
+      take,
+      select: fast
+        ? baseSelect
+        : {
+            ...baseSelect,
+            reads: { where: { readerUserId: me.id }, select: { readerUserId: true } },
+          },
+    }) as unknown as MessageMaybeReads[];
 
-    // Gelesen markieren
-    const unreadIds = messages
-      .filter((m) => m.authorId !== me.id && m.reads.length === 0)
-      .map((m) => m.id);
+    // Type Guard für Messages mit Reads
+    const hasReads = (m: MessageMaybeReads): m is MessageWithReads =>
+      Object.prototype.hasOwnProperty.call(m, 'reads');
 
-    if (unreadIds.length) {
-      await prisma.messageRead.createMany({
-        data: unreadIds.map((mid) => ({ messageId: mid, readerUserId: me.id })),
-        skipDuplicates: true,
-      });
+    // Fast-Mode: keine DB-Writes (Reads); regulär wie gehabt
+    if (!fast) {
+      const unreadIds = messages
+        .filter((m) => hasReads(m) && m.authorId !== me.id && m.reads.length === 0)
+        .map((m) => m.id);
+      if (unreadIds.length) {
+        await prisma.messageRead.createMany({
+          data: unreadIds.map((mid) => ({ messageId: mid, readerUserId: me.id })),
+          skipDuplicates: true,
+        });
+      }
     }
 
     // otherTyping (letzte 8s)
@@ -215,19 +242,22 @@ export async function GET(_req: Request, { params }: Ctx) {
       me: { id: me.id, role: meRole ?? undefined, avatarUrl: meAvatarUrl },
       other,
       otherTyping,
-      messages: messages.map((m) => ([
-        m.id,
-        m.createdAt.toISOString(),
-        m.authorId,
-        m.text,
-        m.mediaUrl,
-        m.mediaType,
-        m.reads.length > 0 || m.authorId === me.id,
-      ])).map(([id, at, authorId, text, mediaUrl, mediaType, read]) => ({
-        id, at, authorId, text, mediaUrl, mediaType, read,
-      })),
       viewerHasBlocked,
       isBlockedByOther,
+      messages: messages
+        .map((m) => {
+          const read = fast ? m.authorId === me.id : (hasReads(m) ? m.reads.length > 0 : m.authorId === me.id);
+          return {
+            id: m.id,
+            at: m.createdAt.toISOString(),
+            authorId: m.authorId,
+            text: m.text,
+            mediaUrl: m.mediaUrl,
+            mediaType: m.mediaType,
+            read,
+          };
+        }),
+      pageSize: take,
     });
   } catch (e) {
     console.error('GET /api/chat/[id] failed:', e);

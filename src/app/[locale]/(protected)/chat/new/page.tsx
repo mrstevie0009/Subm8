@@ -79,7 +79,8 @@ export default async function ChatNewPage(props: PageProps) {
 
   // Wenn initialer Text vorhanden ist, reiche ihn via Query-Param in den Thread weiter.
   // Der Thread sendet ihn beim ersten Laden automatisch (und entfernt den Param).
-  const next = `/${locale}/chat/${convoId}${initialText ? `?text=${encodeURIComponent(initialText)}` : ''}`;
+  const hint = `&hint=${openedByDomme ? 'domme->sub' : 'sub->domme'}`;
+  const next = `/${locale}/chat/${convoId}${initialText ? `?text=${encodeURIComponent(initialText)}${hint}` : ''}`;
 
   redirect(next);
 }

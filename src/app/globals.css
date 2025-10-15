@@ -95,6 +95,16 @@ img, video, canvas, svg {
   padding-bottom: calc(var(--safe-bottom) + 12px); /* 12px = dein Extra-Spacing */
 }
 
+/* Komplett ausblenden, aber Scrollen zulassen */
+.no-scrollbar::-webkit-scrollbar { display: none; }          /* Chrome/Safari/Edge */
+.no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }  /* Firefox/IE */
+
+/* Optional: hübsch & dünn, falls du ihn irgendwann zeigen willst */
+.thin-scrollbar::-webkit-scrollbar { width: 8px; }
+.thin-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.thin-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,.16); border-radius: 8px; }
+.thin-scrollbar:hover::-webkit-scrollbar-thumb { background: rgba(255,255,255,.28); }
+
 /* Utility: fixierter Composer, der über der Tastatur sitzen soll */
 .fixed-safe {
   position: fixed;
