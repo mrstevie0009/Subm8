@@ -52,6 +52,17 @@ type Props = {
   onCreateReaction?: (p: { to: string; emoji: string; op?: 'add' | 'remove' }) => void;
 };
 
+function TipIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 50 50" fill="currentColor" aria-hidden {...props}>
+      {/* um den Mittelpunkt (25,25) skalieren */}
+      <g transform="translate(24 25) scale(1.45) translate(-25 -25)">
+        <path d="M 24 14 L 24 16.1875 C 22.398438 16.386719 19.5 17.789063 19.5 21.1875 C 19.5 27.585938 28.8125 24.292969 28.8125 29.09375 C 28.8125 30.695313 28.101563 32.1875 25 32.1875 C 21.898438 32.1875 21 29.800781 21 28.5 L 19 28.5 C 19.300781 32.800781 22.300781 33.792969 24 34.09375 L 24 36 L 26 36 L 26 34.09375 C 27.5 33.992188 31 32.90625 31 28.90625 C 31 25.605469 28.289063 24.695313 25.6875 24.09375 C 23.585938 23.59375 21.6875 23.101563 21.6875 21 C 21.6875 20.101563 22.09375 18.09375 25.09375 18.09375 C 27.195313 18.09375 28.199219 19.398438 28.5 21 L 30.5 21 C 29.898438 18.800781 28.898438 16.8125 26 16.3125 L 26 14 Z" />
+      </g>
+    </svg>
+  );
+}
+
 /* ---------- kleines Popover/ActionMenu via Portal ---------- */
 function ActionMenu({
   anchorRect,
@@ -848,8 +859,8 @@ export default function ChatComposer({
                   aria-label={t('actions.tip')}
                   title={t('actions.tip')}
                 >
-                  <DollarIcon />
-                </button>
+                      <TipIcon className="w-[30px] h-[30px]" />
+                    </button>
               ) : (
                 <>
                   <button
@@ -1067,18 +1078,7 @@ function PhotoIcon() {
     </svg>
   );
 }
-function DollarIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.8">
-      <path d="M12 2.5v19" strokeLinecap="round" />
-      <path
-        d="M16.5 7.5c0-2-2-3.5-4.5-3.5S7.5 5.5 7.5 7.5 9.6 10 12 10s4.5 1 4.5 3.5S14 17 12 17s-4.5-1-4.5-3.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
+
 function PlusIcon() {
   return (
     <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.8">

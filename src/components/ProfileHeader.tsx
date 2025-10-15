@@ -50,6 +50,28 @@ function Chip({
   );
 }
 
+// Tip-Icon ohne Kreis
+function TipIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 50 50" fill="currentColor" aria-hidden {...props}>
+      {/* um den Mittelpunkt (25,25) skalieren */}
+      <g transform="translate(24 25) scale(1.45) translate(-25 -25)">
+        <path d="M 24 14 L 24 16.1875 C 22.398438 16.386719 19.5 17.789063 19.5 21.1875 C 19.5 27.585938 28.8125 24.292969 28.8125 29.09375 C 28.8125 30.695313 28.101563 32.1875 25 32.1875 C 21.898438 32.1875 21 29.800781 21 28.5 L 19 28.5 C 19.300781 32.800781 22.300781 33.792969 24 34.09375 L 24 36 L 26 36 L 26 34.09375 C 27.5 33.992188 31 32.90625 31 28.90625 C 31 25.605469 28.289063 24.695313 25.6875 24.09375 C 23.585938 23.59375 21.6875 23.101563 21.6875 21 C 21.6875 20.101563 22.09375 18.09375 25.09375 18.09375 C 27.195313 18.09375 28.199219 19.398438 28.5 21 L 30.5 21 C 29.898438 18.800781 28.898438 16.8125 26 16.3125 L 26 14 Z" />
+      </g>
+    </svg>
+  );
+}
+
+
+function ChatGlyphIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 50 50" fill="currentColor" aria-hidden {...props}>
+      <path d="M 43 8 L 7 8 C 4.242188 8 2 10.242188 2 13 L 2 37 C 2 39.757813 4.242188 42 7 42 L 11.140625 42 C 11.480469 44.894531 10.625 46.859375 8.484375 48.144531 C 8.101563 48.375 7.917969 48.835938 8.035156 49.265625 C 8.15625 49.699219 8.550781 50 9 50 C 11.558594 50 17.707031 49.203125 20.683594 42 L 43 42 C 45.757813 42 48 39.757813 48 37 L 48 13 C 48 10.242188 45.757813 8 43 8 Z M 15 27 C 13.894531 27 13 26.105469 13 25 C 13 23.894531 13.894531 23 15 23 C 16.105469 23 17 23.894531 17 25 C 17 26.105469 16.105469 27 15 27 Z M 25 27 C 23.894531 27 23 26.105469 23 25 C 23 23.894531 23.894531 23 25 23 C 26.105469 23 27 23.894531 27 25 C 27 26.105469 26.105469 27 25 27 Z M 35 27 C 33.894531 27 33 26.105469 33 25 C 33 23.894531 33.894531 23 35 23 C 36.105469 23 37 23.894531 37 25 C 37 26.105469 36.105469 27 35 27 Z"/>
+    </svg>
+  );
+}
+
+
 function joinedMonthYear(iso?: string | Date) {
   if (!iso) return undefined;
   const d = typeof iso === 'string' ? new Date(iso) : iso;
@@ -201,14 +223,7 @@ export default function ProfileHeader({
       </svg>
     );
   }
-  function MessageIcon(props: React.SVGProps<SVGSVGElement>) {
-    return (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} {...props}>
-        <path d="M7 8h10M7 12h6" />
-        <path d="M20 12a8 8 0 1 0-3.08 6.3L20 20l-.7-2.92A7.96 7.96 0 0 0 20 12Z" />
-      </svg>
-    );
-  }
+
   function GiftIcon(props: React.SVGProps<SVGSVGElement>) {
     return (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} {...props}>
@@ -235,19 +250,6 @@ export default function ProfileHeader({
       <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth={2} {...props}>
         <path d="M10 13a5 5 0 0 0 7.07 0l2.83-2.83a5 5 0 0 0-7.07-7.07L11 4" strokeLinecap="round" />
         <path d="M14 11a5 5 0 0 0-7.07 0L4.1 13.83a5 5 0 1 0 7.07 7.07L13 20" strokeLinecap="round" />
-      </svg>
-    );
-  }
-  // Dollar icon (identisch zum ChatComposer)
-  function DollarIcon() {
-    return (
-      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.8">
-        <path d="M12 2.5v19" strokeLinecap="round" />
-        <path
-          d="M16.5 7.5c0-2-2-3.5-4.5-3.5S7.5 5.5 7.5 7.5 9.6 10 12 10s4.5 1 4.5 3.5S14 17 12 17s-4.5-1-4.5-3.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
       </svg>
     );
   }
@@ -738,7 +740,8 @@ export default function ProfileHeader({
                 title={tProf('message')}
                 className="inline-grid place-items-center rounded-full border border-white/20 hover:bg-white/5 h-8 w-8"
               >
-                <MessageIcon className="w-[16px] h-[16px]" />
+                {/* alt: <MessageIcon className="w-[16px] h-[16px]" /> */}
+                <ChatGlyphIcon className="w-[16px] h-[16px]" />
               </button>
             )}
 
@@ -832,13 +835,14 @@ export default function ProfileHeader({
                     <button
                       ref={tipBtnRef}
                       type="button"
-                      onClick={() => openTipMenu()}
+                      onClick={openTipMenu}
                       className="inline-grid place-items-center rounded-full border border-white/20 hover:bg-white/5 h-9 w-9"
                       aria-label={tProf('tipActions')}
                       title={tProf('tipActions')}
                     >
-                      <DollarIcon />
+                      <TipIcon className="w-[30px] h-[30px]" />
                     </button>
+
 
                     {tipMenuOpen && tipAnchorRect && (
                       <ActionMenu anchorRect={tipAnchorRect} onClose={() => setTipMenuOpen(false)}>
@@ -903,9 +907,9 @@ export default function ProfileHeader({
                     onClick={onMessageClick}
                     aria-label={tProf('message')}
                     title={tProf('message')}
-                    className="inline-grid place-items-center rounded-full border border-white/20 hover:bg-white/5 h-9 w-9"
+                    className="inline-grid place-items-center rounded-full border border-white/20 hover:bg-white/5 h-9 w-9 text-white"
                   >
-                    <MessageIcon className="w-[18px] h-[18px]" />
+                    <ChatGlyphIcon className="w-[18px] h-[18px]" />
                     <span className="sr-only">{tProf('message')}</span>
                   </button>
                 ) : (
@@ -914,7 +918,7 @@ export default function ProfileHeader({
                     title={tProf('messagingDisabled')}
                     className="inline-grid place-items-center rounded-full border border-white/20 text-white/60 h-9 w-9 cursor-not-allowed"
                   >
-                    <MessageIcon className="w-[18px] h-[18px] opacity-60" />
+                    <ChatGlyphIcon className="w-[18px] h-[18px] opacity-60" />
                   </span>
                 )}
 

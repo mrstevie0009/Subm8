@@ -111,6 +111,23 @@ function timeAgoShort(iso: string, tTime: ReturnType<typeof useTranslations>) {
   return tTime('time.d', { count: d });
 }
 
+function RepostIconFilled(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 512 512" fill="currentColor" aria-hidden {...props}>
+      <path d="m 492.51,213.14 a 29,29 0 0 0 -41,0 l -24.38,24.38 V 89.06 a 29,29 0 0 0 -29,-29 H 161.89 a 29,29 0 0 0 0,58 h 207.23 v 119.46 l -24.38,-24.38 a 29,29 0 1 0 -41,41 L 377.61,328 a 29,29 0 0 0 41,0 l 73.88,-73.88 a 29,29 0 0 0 0.02,-40.98 z m -142.4,180.8 H 142.88 V 274.48 l 24.38,24.38 a 29,29 0 0 0 41,-41 L 134.39,184 a 29,29 0 0 0 -41,0 l -73.9,73.85 a 29,29 0 0 0 41,41 l 24.38,-24.38 v 148.47 a 29,29 0 0 0 29,29 h 236.24 a 29,29 0 0 0 0,-58 z" />
+    </svg>
+  );
+}
+
+function RepostIconOutline(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 512 512" fill="currentColor" aria-hidden {...props}>
+      <path d="m 492.51,213.14 a 29,29 0 0 0 -41,0 l -24.38,24.38 V 89.06 a 29,29 0 0 0 -29,-29 H 161.89 a 29,29 0 0 0 0,58 h 207.23 v 119.46 l -24.38,-24.38 a 29,29 0 1 0 -41,41 L 377.61,328 a 29,29 0 0 0 41,0 l 73.88,-73.88 a 29,29 0 0 0 0.02,-40.98 z m -142.4,180.8 H 142.88 V 274.48 l 24.38,24.38 a 29,29 0 0 0 41,-41 L 134.39,184 a 29,29 0 0 0 -41,0 l -73.9,73.85 a 29,29 0 0 0 41,41 l 24.38,-24.38 v 148.47 a 29,29 0 0 0 29,29 h 236.24 a 29,29 0 0 0 0,-58 z" />
+    </svg>
+  );
+}
+
+
 /* ----------------------------- Icons ----------------------------- */
 function BanIcon({ size = 12 }: { size?: number }) {
   return (
@@ -126,28 +143,7 @@ function ShieldOffIcon({ size = 12 }: { size?: number }) {
     </svg>
   );
 }
-function RepostBadgeIcon({ size = 22, strokeWidth = 1.9 }: { size?: number; strokeWidth?: number }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      width={size}
-      height={size}
-      aria-hidden
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={strokeWidth}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M7 7h9" />
-      <path d="M16 7l-2-2" />
-      <path d="M16 7l-2 2" />
-      <path d="M17 17H8" />
-      <path d="M8 17l2-2" />
-      <path d="M8 17l2 2" />
-    </svg>
-  );
-}
+
 function ShareIcon({ size = 22 }: { size?: number }) {
   return (
     <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden fill="none" stroke="currentColor" strokeWidth="2">
@@ -1556,7 +1552,11 @@ export default function PostCard({
             }}
             aria-hidden
           >
-            <RepostBadgeIcon />
+            {hasReposted ? (
+              <RepostIconFilled className="w-full h-full" />
+            ) : (
+              <RepostIconOutline className="w-full h-full" />
+            )}
           </span>
           <Counter value={reposts} active={hasReposted} />
           <span className="sr-only">{tPost('repost')}</span>
@@ -1949,8 +1949,11 @@ export default function PostCard({
 
       {post.reposter && (
         <div className="mb-1 -mt-1 flex items-center gap-2 text-[12px] text-white/70">
-          <span className="inline-grid place-items-center w-4 h-4">
-            <RepostBadgeIcon />
+          <span
+            className="inline-grid place-items-center w-4 h-4 text-white"
+            aria-hidden
+          >
+            <RepostIconOutline className="w-full h-full" />
           </span>
           <span>{tPost('repostedBy', { name: post.reposter.displayName })}</span>
         </div>
