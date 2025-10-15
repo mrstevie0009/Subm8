@@ -258,7 +258,8 @@ export default function ProfileTabsContent({
         const res = await fetch(`/api/user/${handle}/posts`, { cache: 'no-store' });
         const json = await res.json();
         if (!json?.ok) throw new Error(json?.error || 'Failed to load posts');
-        if (!cancelled) setPosts(json.items as ApiPost[]);
+       const list = Array.isArray(json.posts) ? (json.posts as ApiPost[]) : [];
+       if (!cancelled) setPosts(list);
       } catch (e) {
         if (!cancelled) setErrPosts(e instanceof Error ? e.message : 'Failed to load posts');
       } finally {
@@ -297,7 +298,10 @@ export default function ProfileTabsContent({
   }, [handle, tab]);
 
   // Galerie zeigt nur Posts mit eigenem Media (Reposts mit fremdem Media bleiben draußen)
-  const gallery = React.useMemo(() => posts.filter((p) => !!p.mediaUrl), [posts]);
+  const gallery = React.useMemo(
+   () => (Array.isArray(posts) ? posts.filter((p) => !!p.mediaUrl) : []),
+   [posts]
+ );
 
   return (
     <div className="mt-4">

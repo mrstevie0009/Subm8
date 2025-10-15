@@ -2,150 +2,190 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
-type Params = { handle: string };
-
 export const dynamic = 'force-dynamic';
 
-function normalizeMediaUrl(url: string | null | undefined): string | undefined {
-  if (!url) return undefined;
-  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('/uploads/')) return url;
-  if (/^[a-f0-9-]+\.(png|jpe?g|webp|gif)$/i.test(url)) return `/uploads/${url}`;
-  if (url.startsWith('uploads/')) return `/${url}`;
-  return url;
+type Role = 'DOMME' | 'SUBMISSIVE' | null;
+
+function mapUploaded(
+  rows: Array<{ url: string; alt: string | null; type: string | null }> | null | undefined,
+) {
+  return (rows ?? []).map((u) => {
+    const mime = u.type ?? null;
+    const kind: 'image' | 'video' | 'gif' =
+      mime === 'image/gif' ? 'gif' : mime && mime.startsWith('video/') ? 'video' : 'image';
+    return { url: u.url, alt: u.alt ?? null, kind, mime };
+  });
 }
 
-// Hinweis: In Next 15 ist params asynchron → Promise abwarten.
-export async function GET(_req: Request, ctx: { params: Promise<Params> }) {
+export async function GET(req: Request, ctx: { params: { handle: string } }) {
   try {
-    const { handle } = await ctx.params; // ⇐ await!
-    const normalized = handle.toLowerCase();
+    const { handle } = await ctx.params;
 
-    const user = await prisma.user.findFirst({
+    const url = new URL(req.url);
+    const beforeISO = url.searchParams.get('before');
+    const sinceISO  = url.searchParams.get('since');
+    const onlyCount = url.searchParams.get('onlyCount') === '1';
+    const limitRaw  = Number(url.searchParams.get('limit'));
+    const limit = Number.isFinite(limitRaw) && limitRaw > 0 && limitRaw <= 50 ? limitRaw : 20;
+
+    const beforeDate = beforeISO ? new Date(beforeISO) : null;
+    if (beforeISO && Number.isNaN(beforeDate!.getTime())) {
+      return NextResponse.json({ ok: true, posts: [], hasMore: false, nextCursor: null });
+    }
+    const sinceDate = sinceISO ? new Date(sinceISO) : null;
+    if (sinceISO && Number.isNaN(sinceDate!.getTime())) {
+      return NextResponse.json({ ok: true, posts: [], count: 0 });
+    }
+
+    // Handle normalisieren: führendes @ entfernen, lowercased
+    const raw = handle.startsWith('@') ? handle.slice(1) : handle;
+    const normalized = raw.toLowerCase();
+
+    // User auflösen: zuerst Handle (case-insensitive), dann Fallback auf ID
+    let user = await prisma.user.findFirst({
       where: { handle: { equals: normalized, mode: 'insensitive' } },
       select: { id: true },
     });
-
+    if (!user && /^[a-f0-9-]{24,}$/.test(raw)) {
+      // Fallback: evtl. wurde eine ID übergeben
+      user = await prisma.user.findUnique({
+        where: { id: raw },
+        select: { id: true },
+      });
+    }
     if (!user) {
-      return NextResponse.json({ ok: false, error: 'User not found' }, { status: 404 });
+      return NextResponse.json({ ok: false, error: 'User not found', posts: [], hasMore: false, nextCursor: null }, { status: 404 });
     }
 
-    // Posts dieses Users – inkl. evtl. Reposts/Quotes
-    const posts = await prisma.post.findMany({
-      where: { authorId: user.id },
-      orderBy: { createdAt: 'desc' },
-      select: {
-        id: true,
-        createdAt: true,
-        text: true,
-        mediaUrl: true,
-        mediaAlt: true,
-        nsfw: true,
-        // Autor (Reposter bei Repost)
-        author: {
-          select: {
-            id: true,
-            handle: true,
-            displayName: true,
-            avatarUrl: true,
-            role: true,
-          },
+    // --- Nur zählen (Polling) ---
+    if (onlyCount) {
+      const rows = await prisma.post.findMany({
+        where: {
+          authorId: user.id,
+          ...(sinceDate ? { createdAt: { gt: sinceDate } } : {}),
         },
-        // Original bei Repost
+        select: { id: true },
+        orderBy: { createdAt: 'desc' },
+        take: 200,
+      });
+      return NextResponse.json({ ok: true, count: rows.length });
+    }
+
+    // --- Seite laden (Pagination nach unten) ---
+    const rows = await prisma.post.findMany({
+      where: {
+        authorId: user.id,
+        ...(beforeDate ? { createdAt: { lt: beforeDate } } : {}),
+      },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        author: {
+          select: { id: true, handle: true, displayName: true, role: true, avatarUrl: true },
+        },
+        uploaded: true,
         repostOf: {
           select: {
             id: true,
-            createdAt: true,
             text: true,
-            mediaUrl: true,
-            mediaAlt: true,
+            mediaUrl: true, mediaAlt: true,
+            uploaded: true,
+            createdAt: true,
             author: {
-              select: {
-                id: true,
-                handle: true,
-                displayName: true,
-                avatarUrl: true,
-                role: true,
-              },
+              select: { id: true, handle: true, displayName: true, role: true, avatarUrl: true },
             },
+            _count: { select: { Like: true, Comment: true, reposts: true } },
           },
         },
-        // Original bei Quote
         quoteOf: {
           select: {
             id: true,
-            createdAt: true,
             text: true,
-            mediaUrl: true,
-            mediaAlt: true,
+            mediaUrl: true, mediaAlt: true,
+            uploaded: true,
+            createdAt: true,
             author: {
-              select: {
-                id: true,
-                handle: true,
-                displayName: true,
-                avatarUrl: true,
-                role: true,
-              },
+              select: { id: true, handle: true, displayName: true, role: true, avatarUrl: true },
             },
           },
         },
+        _count: { select: { Like: true, Comment: true, reposts: true } },
       },
-      take: 50,
+      take: limit + 1, // +1 um "hasMore" zu bestimmen
     });
 
-    // Härtung + Normalisierung
-    const items = posts
-      .filter((p) => !!p.author) // zur Sicherheit
-      .map((p) => ({
-        id: p.id,
-        createdAt: p.createdAt.toISOString(),
-        text: p.text,
-        mediaUrl: normalizeMediaUrl(p.mediaUrl),
-        mediaAlt: p.mediaAlt ?? undefined,
-        nsfw: p.nsfw,
-        author: {
-          id: p.author!.id,
-          handle: p.author!.handle,
-          displayName: p.author!.displayName,
-          avatarUrl: p.author!.avatarUrl ?? undefined,
-          role: p.author!.role ?? null,
-        },
-        repostOf: p.repostOf
-          ? {
-              id: p.repostOf.id,
-              createdAt: p.repostOf.createdAt.toISOString(),
-              text: p.repostOf.text,
-              mediaUrl: normalizeMediaUrl(p.repostOf.mediaUrl),
-              mediaAlt: p.repostOf.mediaAlt ?? undefined,
-              author: {
-                id: p.repostOf.author.id,
-                handle: p.repostOf.author.handle,
-                displayName: p.repostOf.author.displayName,
-                avatarUrl: p.repostOf.author.avatarUrl ?? undefined,
-                role: p.repostOf.author.role ?? null,
-              },
-            }
-          : null,
-        quoteOf: p.quoteOf
-          ? {
-              id: p.quoteOf.id,
-              createdAt: p.quoteOf.createdAt.toISOString(),
-              text: p.quoteOf.text,
-              mediaUrl: normalizeMediaUrl(p.quoteOf.mediaUrl),
-              mediaAlt: p.quoteOf.mediaAlt ?? undefined,
-              author: {
-                id: p.quoteOf.author.id,
-                handle: p.quoteOf.author.handle,
-                displayName: p.quoteOf.author.displayName,
-                avatarUrl: p.quoteOf.author.avatarUrl ?? undefined,
-                role: p.quoteOf.author.role ?? null,
-              },
-            }
-          : null,
-      }));
+    const hasMore = rows.length > limit;
+    const pageRows = hasMore ? rows.slice(0, limit) : rows;
+    const nextCursor = hasMore ? pageRows[pageRows.length - 1]!.createdAt.toISOString() : null;
 
-    // Kein Shorthand, um Parser-/ESLint-Issue zu vermeiden
-    return NextResponse.json({ ok: true, items: items });
-  } catch {
+    const posts = pageRows.map((p) => {
+      const isRepost = !!p.repostOf;
+      const isQuote = !!p.quoteOf;
+      return {
+        id: p.id,
+        text: p.text ?? null,
+        mediaUrl: p.mediaUrl ?? null,
+        mediaAlt: p.mediaAlt ?? null,
+        uploaded: mapUploaded(p.uploaded),
+        createdAt: p.createdAt.toISOString(),
+        _count: {
+          Like: p._count.Like ?? 0,
+          Comment: p._count.Comment ?? 0,
+          reposts: p._count.reposts ?? 0,
+        },
+        author: {
+          id: p.author.id,
+          handle: p.author.handle,
+          displayName: p.author.displayName,
+          role: (p.author.role as Role) ?? null,
+          avatarUrl: p.author.avatarUrl,
+        },
+        repostOf: isRepost
+          ? {
+              id: p.repostOf!.id,
+              text: p.repostOf!.text ?? null,
+              mediaUrl: p.repostOf!.mediaUrl ?? null,
+              mediaAlt: p.repostOf!.mediaAlt ?? null,
+              uploaded: mapUploaded(p.repostOf!.uploaded),
+              createdAt: p.repostOf!.createdAt.toISOString(),
+              author: {
+                id: p.repostOf!.author.id,
+                handle: p.repostOf!.author.handle,
+                displayName: p.repostOf!.author.displayName,
+                role: (p.repostOf!.author.role as Role) ?? null,
+                avatarUrl: p.repostOf!.author.avatarUrl,
+              },
+            }
+          : null,
+        quoteOf: isQuote
+          ? {
+              id: p.quoteOf!.id,
+              text: p.quoteOf!.text ?? null,
+              mediaUrl: p.quoteOf!.mediaUrl ?? null,
+              mediaAlt: p.quoteOf!.mediaAlt ?? null,
+              uploaded: mapUploaded(p.quoteOf!.uploaded),
+              createdAt: p.quoteOf!.createdAt.toISOString(),
+              author: {
+                id: p.quoteOf!.author.id,
+                handle: p.quoteOf!.author.handle,
+                displayName: p.quoteOf!.author.displayName,
+                role: (p.quoteOf!.author.role as Role) ?? null,
+                avatarUrl: p.quoteOf!.author.avatarUrl,
+              },
+            }
+          : null,
+        viewer: {
+          liked: false,
+          bookmarked: false,
+          hasBlockedAuthor: false,
+          blockedByAuthor: false,
+        },
+        community: null,
+      };
+    });
+
+    return NextResponse.json({ ok: true, posts, hasMore, nextCursor });
+  } catch (err) {
+    console.error('GET /api/user/[handle]/posts failed:', err);
     return NextResponse.json({ ok: false, error: 'Failed to load posts' }, { status: 500 });
   }
 }

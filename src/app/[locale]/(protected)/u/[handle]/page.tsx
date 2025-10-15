@@ -11,8 +11,8 @@ function toUiRole(role: Role): 'domme' | 'sub' {
   return role === 'DOMME' ? 'domme' : 'sub';
 }
 
-export default async function ProfilePage({ params }: { params: Promise<Params> }) {
-  const { handle } = await params; // ← wichtig
+export default async function ProfilePage({ params }: { params: Params }) {
+  const { handle } = await params;
   const me = await getCurrentUser().catch(() => null);
 
   const user = await prisma.user.findUnique({

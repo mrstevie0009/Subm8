@@ -313,15 +313,10 @@ function useBodyLock(lock: boolean) {
 }
 
 /** Mosaik-Layout für reine Bilder (≤4) */
-function MediaMosaic({
-  items,
-  onOpen,
-}: {
-  items: ContentMedia[];
-  onOpen?: (startIndex: number) => void;
-}) {
+function MediaMosaic({ items, onOpen }: { items: ContentMedia[]; onOpen?: (i:number)=>void }) {
+  if (!Array.isArray(items) || items.length === 0) return null;
   const images = items.filter((m) => m.kind !== 'video');
-  if (images.length !== items.length || items.length === 0 || items.length > 4) return null;
+  if (images.length !== items.length || items.length > 4) return null;
 
   if (items.length === 1) return <SingleMedia m={items[0]} priority onOpen={onOpen} index={0} />;
 
@@ -372,14 +367,12 @@ function MediaMosaic({
 }
 
 /** Overlay-Grid 2x2 mit +N für >4 reine Bilder */
-function MediaMosaicOverflow({
-  items,
-  onOpen,
-}: {
-  items: ContentMedia[];
-  onOpen?: (startIndex: number) => void;
-}) {
-  const imageIndices = items.reduce<number[]>((acc, m, idx) => (m.kind !== 'video' ? (acc.push(idx), acc) : acc), []);
+function MediaMosaicOverflow({ items, onOpen }: { items: ContentMedia[]; onOpen?: (i:number)=>void }) {
+  if (!Array.isArray(items) || items.length === 0) return null;
+  const imageIndices = items.reduce<number[]>(
+    (acc, m, idx) => (m.kind !== 'video' ? (acc.push(idx), acc) : acc),
+    []
+  );
   if (imageIndices.length !== items.length || imageIndices.length <= 4) return null;
 
   const first4 = imageIndices.slice(0, 4);
@@ -412,13 +405,8 @@ function MediaMosaicOverflow({
 }
 
 /** Carousel nur wenn Video enthalten ist */
-function MediaCarousel({
-  items,
-  onOpen,
-}: {
-  items: ContentMedia[];
-  onOpen?: (startIndex: number) => void;
-}) {
+function MediaCarousel({ items, onOpen }: { items: ContentMedia[]; onOpen?: (i:number)=>void }) {
+  if (!Array.isArray(items) || items.length === 0) return null;
   const hasVideo = items.some((m) => m.kind === 'video');
   if (!hasVideo) return null;
 
@@ -1416,14 +1404,12 @@ export default function PostCard({
       setIsPinned(false);
     }
   }, [pinnedPostId, c.id]);
-  if (deleted) return null;
 
   const onProfileOfAuthor =
     typeof handle === 'string' &&
     handle.toLowerCase() === c.author.handle.toLowerCase();
 
   /* ---------- Actions ---------- */
-
   function LikeForm() {
     const action = liked ? unlikePostAction : likePostAction;
     const disabled = blockedByEither || pendingLike;
@@ -1873,10 +1859,17 @@ export default function PostCard({
     );
   };
 
+  const mediaItems = React.useMemo(() => normalizeMediaFields(c) ?? [], [c]);
+
+  if (deleted) return null;
+  
   function QuoteBox() {
-    if (!c.quote) return null;
+    // Hook-abhängige Werte zuerst (ohne Early-Return)
     const q = c.quote;
-    const qMedia = normalizeMediaFields(q);
+    const qMedia = React.useMemo(() => (q ? normalizeMediaFields(q) : []), [q]);
+
+    // erst jetzt ggf. aussteigen
+    if (!q) return null;
 
     const goQuote = (e: React.MouseEvent | React.KeyboardEvent) => {
       e.stopPropagation();
@@ -1915,7 +1908,6 @@ export default function PostCard({
             </div>
             <div className="mt-1 text-[0.95rem] whitespace-pre-wrap break-words">{q.text}</div>
 
-            {/* Quote-Medien */}
             {qMedia.length === 1 && <SingleMedia m={qMedia[0]} />}
             {qMedia.length > 1 && (
               <>
@@ -1929,8 +1921,6 @@ export default function PostCard({
       </div>
     );
   }
-
-  const mediaItems = normalizeMediaFields(c);
   
   return (
     <>
