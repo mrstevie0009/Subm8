@@ -122,9 +122,10 @@ type MiniPopupProps = {
   unreadCount: number;
   hidden: boolean;
   variant?: 'chat' | 'noti';
+  href: string;
 };
 
-function MiniPopup({ anchorEl, avatarUrl, unreadCount, hidden, variant = 'chat' }: MiniPopupProps) {
+function MiniPopup({ anchorEl, avatarUrl, unreadCount, hidden, variant = 'chat', href }: MiniPopupProps) {
   const [pos, setPos] = React.useState<{ left: number; top: number } | null>(null);
 
   const compute = React.useCallback(() => {
@@ -158,11 +159,13 @@ function MiniPopup({ anchorEl, avatarUrl, unreadCount, hidden, variant = 'chat' 
         top: pos.top,
         transform: 'translate(-50%, -120%)',
         zIndex: 2147483646,
-        pointerEvents: 'none',
+        pointerEvents: 'auto',
       }}
       aria-live="polite"
     >
-      <div className="relative">
+      {/* klickbar machen */}
+      <Link href={href} aria-label={variant === 'chat' ? 'Open chat' : 'Open notifications'}>
+        <div className="relative cursor-pointer" role="button" tabIndex={0}>
         <div
           className="rounded-full overflow-hidden border border-white/20 shadow-xl grid place-items-center"
           style={{
@@ -248,6 +251,7 @@ function MiniPopup({ anchorEl, avatarUrl, unreadCount, hidden, variant = 'chat' 
           />
         </div>
       </div>
+      </Link>
     </div>
   );
 
@@ -611,6 +615,11 @@ function NavContent() {
         avatarUrl={miniUser?.avatarUrl ?? null}
         unreadCount={miniUser?.unread ?? 0}
         hidden={!miniUser || !prefs.popup}
+        href={
+          miniUser?.conversationId
+            ? `/${locale}/chat/${miniUser.conversationId}`
+            : `/${locale}/chat`
+        }
       />
 
       <MiniPopup
@@ -619,6 +628,7 @@ function NavContent() {
         avatarUrl={null}
         unreadCount={miniNotiVisible ? 1 : 0}
         hidden={!miniNotiVisible || !prefs.popup}
+        href={`/${locale}/notifications`}
       />
     </>
   );
