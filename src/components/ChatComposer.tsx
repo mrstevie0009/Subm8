@@ -52,6 +52,21 @@ type Props = {
   onCreateReaction?: (p: { to: string; emoji: string; op?: 'add' | 'remove' }) => void;
 };
 
+function SendIcon({ size = 22 }: { size?: number }) {
+  return (
+    <svg
+      viewBox="0 0 72 72"
+      width={size}
+      height={size}
+      aria-hidden
+      fill="currentColor"
+    >
+      <path d="M59.83,12.17c1.12,1.12,1.47,2.79,0.9,4.27l-17,44c-0.59,1.52-2.07,2.54-3.7,2.56c-1.61,0-3.09-0.96-3.72-2.45l-3.699-8.788	c-0.737-1.75-0.601-3.745,0.365-5.38L40.64,33.41c0.79-1.33-0.72-2.84-2.05-2.05l-12.972,7.665c-1.635,0.966-3.63,1.101-5.38,0.364	L11.45,35.69C9.94,35.05,8.98,33.57,9,31.94s1.04-3.08,2.56-3.67l44-17C57.03,10.7,58.71,11.05,59.83,12.17z"></path>
+    </svg>
+  );
+}
+
+
 function TipIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 50 50" fill="currentColor" aria-hidden {...props}>
@@ -792,8 +807,13 @@ export default function ChatComposer({
               }}
               placeholder={disabled ? t('placeholders.closed') : t('placeholders.message')}
               className="w-full resize-none bg-transparent outline-none placeholder:text-muted
-                         text-[14px] leading-5 px-3 pt-1 pb-1 rounded-2xl"
-              style={{ minHeight: 40, overflow: 'hidden' }}
+                        text-[14px] leading-5 px-0 pt-1 pb-1 rounded-2xl no-scrollbar break-anywhere"
+              style={{
+                minHeight: 40,
+                maxHeight,                 // cap beibehalten
+                overflowY: 'auto',         // scrollen erlauben
+                WebkitOverflowScrolling: 'touch',
+              }}
             />
 
             <div className="mt-2 flex items-center gap-8 pl-2">
@@ -837,12 +857,12 @@ export default function ChatComposer({
                 type="button"
                 onClick={() => setGifOpen(true)}
                 disabled={disabled}
-                className="grid place-items-center rounded-md hover:bg-white/10 disabled:opacity-50"
+                className={`${circle} border border-white/12 bg-transparent hover:bg-white/10 disabled:opacity-50`}
                 style={{ width: toolSize, height: toolSize }}
                 aria-label={t('actions.gif')}
                 title={t('actions.gif')}
               >
-                <GifIcon />
+                <GifIcon size={22} />
               </button>
 
               {/* Sub: Tip Button / Domme: Plus-Menü */}
@@ -1049,32 +1069,16 @@ export default function ChatComposer({
   );
 }
 
-/* --------- Icons --------- */
-function SendIcon({ size = 18 }: { size?: number }) {
+function PhotoIcon({ size = 22 }: { size?: number }) {
   return (
-    <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden className="drop-shadow-[0_1px_2px_rgba(0,0,0,.35)]">
-      <path
-        d="M21.7 3.4c.7-.27 1.4.4 1.13 1.12l-6.9 18a1 1 0 0 1-1.85-.06l-2.15-6.13-6.13-2.15A1 1 0 0 1 5.64 12l18-6.9Z"
-        fill="currentColor"
-      />
-      <path
-        d="M11.8 14.3 21.1 5M9.4 11.9l11.3-4.2"
-        fill="none"
-        stroke="#000"
-        strokeOpacity=".22"
-        strokeWidth="1.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-function PhotoIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.8">
-      <rect x="3.5" y="5.5" width="17" height="13" rx="2" />
-      <path d="M8 12.5l2.5-2.5 4.5 5 2.5-2.5" />
-      <circle cx="9" cy="9.5" r="1.2" />
+    <svg
+      viewBox="0 0 72 72"
+      width={size}
+      height={size}
+      aria-hidden
+      fill="currentColor"  // statt style="fill:#FFFFFF"
+    >
+      <path d="M 13 12 C 9.686 12 7 14.686 7 18 L 7 54 C 7 57.314 9.686 60 13 60 L 59 60 C 62.314 60 65 57.314 65 54 L 65 18 C 65 14.686 62.314 12 59 12 L 13 12 z M 16 20 L 56 20 C 56.552 20 57 20.448 57 21 L 57 44.505859 L 49.166016 37.304688 C 47.102016 35.407688 43.926187 35.412453 41.867188 37.314453 L 32.861328 45.630859 L 27.927734 41.412109 C 25.906734 39.683109 22.927109 39.689781 20.912109 41.425781 L 15 46.519531 L 15 21 C 15 20.448 15.448 20 16 20 z M 27 24 C 24.791 24 23 25.791 23 28 C 23 30.209 24.791 32 27 32 C 29.209 32 31 30.209 31 28 C 31 25.791 29.209 24 27 24 z"></path>
     </svg>
   );
 }
@@ -1086,13 +1090,20 @@ function PlusIcon() {
     </svg>
   );
 }
-function MicIcon() {
+function MicIcon({ size = 18 }: { size?: number }) {
   return (
-    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden fill="currentColor">
-      <path d="M12 14a3 3 0 0 0 3-3V7a3 3 0 0 0-6 0v4a3 3 0 0 0 3 3Zm-7-3a7 7 0 0 0 14 0h-2a5 5 0 0 1-10 0H5Zm6 7v2h2v-2h-2Z" />
+    <svg
+      viewBox="0 0 72 72"
+      width={size}
+      height={size}
+      aria-hidden
+      fill="currentColor"
+    >
+      <path d="M 36 7 C 29.935 7 25 11.935 25 18 L 25 30 C 25 36.065 29.935 41 36 41 C 42.065 41 47 36.065 47 30 L 47 18 C 47 11.935 42.065 7 36 7 z M 17 29 C 14.791 29 13 30.791 13 33 C 13 42.173798 21.36238 50.061694 32 51.679688 L 32 53.25 C 32 53.506733 32.029944 53.756715 32.076172 54 L 29 54 C 26.791 54 25 55.791 25 58 C 25 60.209 26.791 62 29 62 L 43 62 C 45.209 62 47 60.209 47 58 C 47 55.791 45.209 54 43 54 L 39.923828 54 C 39.970056 53.756715 40 53.506733 40 53.25 L 40 51.679688 C 50.63762 50.061694 59 42.173798 59 33 C 59 30.791 57.209 29 55 29 C 52.791 29 51 30.791 51 33 C 51 38.203 44.84 44 36 44 C 27.16 44 21 38.203 21 33 C 21 30.791 19.209 29 17 29 z"></path>
     </svg>
   );
 }
+
 function MicWavesIcon() {
   return (
     <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden fill="none" stroke="currentColor" strokeWidth="2">
@@ -1100,11 +1111,18 @@ function MicWavesIcon() {
     </svg>
   );
 }
-function GifIcon({ size = 28 }: { size?: number }) {
+function GifIcon({ size = 22 }: { size?: number }) {
   return (
     <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden>
-      <rect x="1.5" y="1.5" width="21" height="21" rx="5" fill="none" stroke="currentColor" strokeWidth="1" />
-      <text x="12" y="15.6" textAnchor="middle" fontFamily="ui-sans-serif,system-ui" fontWeight="700" fontSize="9" fill="currentColor">
+      <text
+        x="12"
+        y="18"
+        textAnchor="middle"
+        fontFamily="ui-sans-serif,system-ui"
+        fontWeight="700"
+        fontSize="15"
+        fill="currentColor"
+      >
         GIF
       </text>
     </svg>
