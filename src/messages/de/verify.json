@@ -1,0 +1,42 @@
+{
+  "verify": {
+    "complete": {
+      "actions": {
+        "backNow": "Jetzt weiter",
+        "refresh": "Aktualisieren"
+      },
+      "elapsed": "{seconds, plural, =0 {0 Sek.} one {# Sek.} other {# Sek.}}",
+      "help": {
+        "items": {
+          "0": "Lass diese Seite geöffnet – der Status aktualisiert sich automatisch.",
+          "1": "Schließe den Verifizierungs-Tab erst, wenn du die Bestätigung gesehen hast.",
+          "2": "Wenn es länger dauert, klicke auf „Aktualisieren“ oder „Jetzt weiter“.",
+          "3": "Notfalls melde dich beim Support mit einem Screenshot der Bestätigung."
+        },
+        "title": "Probleme? So klappt’s:"
+      },
+      "redirect": "Du wirst automatisch weitergeleitet, sobald die Verifizierung bestätigt ist.",
+      "status": {
+        "stillWaiting": "Status: noch ausstehend",
+        "waiting": "Status: ausstehend"
+      },
+      "subtitle": "Wir warten auf die Bestätigung unseres Anbieters.",
+      "title": "Verifikation wird abgeschlossen…"
+    },
+    "errors": {
+      "start": "Die Verifizierung konnte nicht gestartet werden. Bitte versuche es erneut."
+    },
+    "modal": {
+      "cancel": "Abbrechen",
+      "confirm": "Jetzt verifizieren",
+      "message": "Verifiziere einmalig dein Alter, um diese Funktion zu nutzen.",
+      "title": "Altersnachweis erforderlich"
+    },
+    "overlay": {
+      "body": "Verifiziere dein Alter, um Medieninhalte zu sehen, Posts zu erstellen oder Nachrichten zu senden.",
+      "cta": "Alter verifizieren",
+      "heading": "Altersbeschränktes Medium",
+      "note": "Du wirst nach Abschluss automatisch zurückgeleitet."
+    }
+  }
+}

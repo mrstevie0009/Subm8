@@ -1,0 +1,205 @@
+{
+  "autoDrain": {
+    "actions": {
+      "cancel": "Abbrechen",
+      "create": "Anfrage erstellen"
+    },
+    "amount": {
+      "label": "Betrag pro Abbuchung",
+      "placeholder": "50"
+    },
+    "recurrence": {
+      "label": "Wiederholung",
+      "options": {
+        "daily": "Täglich",
+        "monthly": "Monatlich",
+        "weekly": "Wöchentlich"
+      }
+    },
+    "subtitle": "Betrag und Wiederholung festlegen.",
+    "title": "Autodrain-Anfrage erstellen"
+  },
+  "autoDrainAcceptModal": {
+    "acknowledge": "Ich verstehe, dass Geschenke freiwillig und endgültig sind. Es werden keine Leistungen zugesichert.",
+    "actions": {
+      "cancel": "Abbrechen",
+      "closeAria": "Schließen",
+      "enable": "Autodrain aktivieren",
+      "enabling": "Aktiviere…"
+    },
+    "cadence": {
+      "daily": "täglich",
+      "monthly": "monatlich",
+      "weekly": "wöchentlich"
+    },
+    "charge": {
+      "label": "Abbuchungsbetrag",
+      "recurringNote": "Wiederkehrende Abbuchung bis zur Kündigung."
+    },
+    "disclaimer": "Geschenke sind freiwillig und keine Bezahlung für Leistungen. Geschenke sind endgültig (keine Rückerstattung, außer gesetzlich vorgeschrieben).",
+    "errors": {
+      "generic": "Etwas ist schiefgelaufen"
+    },
+    "header": {
+      "title": "Autodrain aktivieren",
+      "to": "für {name}"
+    }
+  },
+  "paymentsPage": {
+    "ariaBack": "Zurück zum Feed",
+    "autodrain": {
+      "cadence": {
+        "daily": "Täglich",
+        "monthly": "Monatlich",
+        "weekly": "Wöchentlich"
+      },
+      "cancel": "Beenden",
+      "incoming": {
+        "title": "Eingehender Autodrain"
+      },
+      "none": "Keine aktiven Abos.",
+      "outgoing": {
+        "title": "Von dir aktiviert"
+      },
+      "th": {
+        "amount": "Betrag",
+        "avatar": "Avatar",
+        "cadence": "Rhythmus",
+        "domme": "Domme",
+        "next": "Nächste Abbuchung",
+        "sub": "Sub"
+      },
+      "title": "Aktiver Autodrain"
+    },
+    "avatarAlt": "{name} Avatar",
+    "balance": {
+      "export": "CSV-Export",
+      "title": "Aktueller Kontostand:"
+    },
+    "guestNote": "Bitte melde dich an, um deinen Zahlungsverlauf zu sehen.",
+    "payments": {
+      "amountPrefixReceived": "Eingegangen: {amount}",
+      "amountPrefixSent": "Gesendet: {amount}",
+      "received": {
+        "empty": "Keine eingegangenen Zahlungen.",
+        "title": "Eingänge"
+      },
+      "sent": {
+        "empty": "Keine ausgehenden Zahlungen.",
+        "title": "Du hast gesendet"
+      },
+      "status": {
+        "canceled": "Storniert",
+        "created": "Erstellt",
+        "failed": "Fehlgeschlagen",
+        "processing": "In Bearbeitung",
+        "succeeded": "Erfolgreich"
+      },
+      "th": {
+        "amount": "Betrag",
+        "avatar": "Avatar",
+        "date": "Datum",
+        "status": "Status",
+        "username": "Nutzername",
+        "what": "Verwendungszweck"
+      },
+      "what": {
+        "tip": "Trinkgeld"
+      }
+    },
+    "payoutBtn": "Auszahlung",
+    "payoutTooltip": "Auszahlung anfordern (bald verfügbar)",
+    "title": "Zahlungen & Verlauf"
+  },
+  "tipModal": {
+    "ack": {
+      "checkbox": "Ich verstehe, dass Geschenke freiwillig und endgültig sind."
+    },
+    "actions": {
+      "cancel": "Abbrechen",
+      "done": "Fertig",
+      "sendGift": "Geschenk senden",
+      "sending": "Sende…"
+    },
+    "amount": {
+      "label": "Betrag für die Creatorin/den Creator",
+      "placeholder": "50"
+    },
+    "aria": {
+      "close": "Schließen"
+    },
+    "breakdown": {
+      "amountToCreator": "Betrag (geht an Creator:in)",
+      "platformFeeTop": "Plattformgebühr (10% oben drauf)",
+      "youPay": "Du zahlst"
+    },
+    "disclaimer": {
+      "legal": "Mit der Bestätigung sendest du ein freiwilliges Geschenk. Es handelt sich nicht um eine Bezahlung für Dienstleistungen. Geschenke sind endgültig (keine Rückerstattung, außer gesetzlich vorgeschrieben).",
+      "top": "Geschenke sind freiwillig und keine Bezahlung für Dienstleistungen. Subm8 vermittelt nur die Übertragung."
+    },
+    "errors": {
+      "confirmFailed": "Bestätigung fehlgeschlagen",
+      "createFailed": "Zahlung konnte nicht erstellt werden",
+      "generic": "Etwas ist schiefgelaufen"
+    },
+    "header": {
+      "subtitleFinal": "Geschenke sind freiwillig und endgültig.",
+      "title": "Sende ein Geschenk an {name}"
+    },
+    "note": {
+      "label": "Notiz (optional)",
+      "placeholder": "Schreibe etwas Nettes…"
+    },
+    "roles": {
+      "domme": "Domme",
+      "sub": "Sub"
+    },
+    "success": {
+      "title": "Geschenk gesendet!",
+      "youPaid": "Du hast {amount} bezahlt"
+    }
+  },
+  "tipRequest": {
+    "actions": {
+      "cancel": "Abbrechen",
+      "create": "Anfrage erstellen"
+    },
+    "amount": {
+      "label": "Angeforderter Betrag",
+      "placeholder": "50"
+    },
+    "note": {
+      "label": "Notiz (optional)",
+      "placeholder": "Kurze Notiz hinzufügen…"
+    },
+    "subtitle": "Lege den Betrag fest, den der Sub zahlen soll.",
+    "title": "Trinkgeld-Anfrage erstellen"
+  },
+  "tipRequestAcceptModal": {
+    "actions": {
+      "cancel": "Abbrechen",
+      "closeAria": "Schließen",
+      "processing": "Verarbeite…",
+      "sendGiftAccept": "Geschenk senden & annehmen ({total})"
+    },
+    "breakdown": {
+      "amount": "Betrag",
+      "fee": "Plattformgebühr ({pct}%)",
+      "youPay": "Du zahlst"
+    },
+    "disclaimer": "Mit der Bestätigung sendest du ein freiwilliges Geschenk. Dies ist keine Bezahlung für Leistungen. Geschenke sind endgültig (keine Rückerstattung, außer gesetzlich vorgeschrieben).",
+    "errors": {
+      "confirm": "Bestätigung fehlgeschlagen",
+      "create": "Zahlung konnte nicht erstellt werden",
+      "generic": "Etwas ist schiefgelaufen"
+    },
+    "header": {
+      "title": "Geschenkanfrage annehmen",
+      "to": "an {name}"
+    },
+    "requested": {
+      "label": "Angeforderter Betrag",
+      "note": "Die Creatorin/der Creator sieht diesen Betrag. Auf deinen Zahlbetrag wird eine Plattformgebühr von {pct}% aufgeschlagen."
+    }
+  }
+}

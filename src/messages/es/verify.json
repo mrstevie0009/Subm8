@@ -1,0 +1,42 @@
+{
+  "verify": {
+    "complete": {
+      "actions": {
+        "backNow": "Continuar ahora",
+        "refresh": "Actualizar"
+      },
+      "elapsed": "{seconds, plural, =0 {0 s} one {# s} other {# s}}",
+      "help": {
+        "items": {
+          "0": "Deja esta página abierta: el estado se actualiza automáticamente.",
+          "1": "No cierres la pestaña de verificación hasta ver la confirmación.",
+          "2": "Si tarda más, haz clic en “Actualizar” o “Continuar ahora”.",
+          "3": "En caso necesario, contacta con soporte con una captura de la confirmación."
+        },
+        "title": "¿Problemas? Prueba esto:"
+      },
+      "redirect": "Se te redirigirá automáticamente cuando la verificación se confirme.",
+      "status": {
+        "stillWaiting": "Estado: aún pendiente",
+        "waiting": "Estado: pendiente"
+      },
+      "subtitle": "Estamos esperando la confirmación de nuestro proveedor.",
+      "title": "Completando verificación…"
+    },
+    "errors": {
+      "start": "No se pudo iniciar la verificación. Inténtalo de nuevo."
+    },
+    "modal": {
+      "cancel": "Cancelar",
+      "confirm": "Verificar ahora",
+      "message": "Verifica tu edad una sola vez para usar esta función.",
+      "title": "Se requiere verificación de edad"
+    },
+    "overlay": {
+      "body": "Verifica tu edad para ver medios, crear publicaciones o enviar mensajes.",
+      "cta": "Verificar edad",
+      "heading": "Contenido con restricción de edad",
+      "note": "Se te redirigirá automáticamente al finalizar."
+    }
+  }
+}

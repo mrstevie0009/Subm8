@@ -1,0 +1,227 @@
+{
+  "communities": {
+    "create": {
+      "actions": {
+        "cancel": "Cancel",
+        "create": "Create",
+        "creating": "Creating…"
+      },
+      "aria": {
+        "close": "Close"
+      },
+      "banner": {
+        "choose": "Choose image",
+        "help": "PNG/JPG/WebP/GIF, max ~10 MB. Drag & drop supported.",
+        "label": "Banner (optional)"
+      },
+      "button": "New community",
+      "errors": {
+        "generic": "Something went wrong. Please try again."
+      },
+      "fields": {
+        "banner": {
+          "button": "Choose image",
+          "hint": "PNG/JPG/WebP/GIF, max ~10 MB. Drag & drop supported.",
+          "label": "Banner (optional)",
+          "previewAlt": "Banner preview",
+          "removeAria": "Remove image"
+        },
+        "description": {
+          "label": "Description (optional)",
+          "placeholder": "Describe your community…"
+        },
+        "handle": {
+          "example": "your-handle",
+          "helperPreview": "Will appear as: @{handle}",
+          "label": "Handle (optional)",
+          "placeholder": "e.g. eu-fetish-scene"
+        },
+        "name": {
+          "label": "Name",
+          "placeholder": "KinkyGroupFun"
+        },
+        "policy": {
+          "label": "Join policy",
+          "options": {
+            "dommeOnly": "Dommes only",
+            "invite": "Invite only",
+            "open": "Open",
+            "subOnly": "Subs only"
+          }
+        }
+      },
+      "title": "Create community"
+    },
+    "detail": {
+      "members": "{count} members",
+      "policyPrefix": "Policy"
+    },
+    "invite": {
+      "button": "Invite",
+      "title": "Invite members"
+    },
+    "join": {
+      "actions": {
+        "join": "Join",
+        "leave": "Leave",
+        "loading": "…"
+      },
+      "errors": {
+        "creatorCannotLeave": "The creator cannot leave their own community.",
+        "generic": "Something went wrong. Please try again.",
+        "inviteOnly": "This community is invite-only.",
+        "joinFailed": "Join failed. Please try again later.",
+        "roleNotAllowed": {
+          "dommeOnly": "Only Dommes can join this community.",
+          "generic": "You are not allowed to join this community.",
+          "subOnly": "Only Subs can join this community."
+        }
+      },
+      "hints": {
+        "dommeOnly": "Dommes only",
+        "inviteOnly": "Invite only",
+        "subOnly": "Subs only"
+      },
+      "members": "{count} members"
+    },
+    "page": {
+      "blocked": {
+        "dommeOnly": "Dommes only",
+        "inviteOnly": "Invite only — invitation required",
+        "subOnly": "Subs only"
+      },
+      "empty": {
+        "discover": "No communities found yet.",
+        "yours": "You haven’t joined any communities yet."
+      },
+      "loading": "Loading…",
+      "members": "{count} members",
+      "policyBadge": {
+        "dommeOnly": "Dommes only",
+        "invite": "Invite only",
+        "open": "Open",
+        "subOnly": "Subs only"
+      },
+      "tabs": {
+        "discover": "Discover",
+        "yours": "Your communities"
+      },
+      "title": "Communities"
+    },
+    "share": {
+      "aria": {
+        "button": "Share",
+        "copy": "Copy link",
+        "dm": "Share in direct message",
+        "system": "Share on device"
+      },
+      "menu": {
+        "copied": "Copied!",
+        "copy": "Copy link",
+        "dm": "Send via direct message",
+        "system": "Share on device…"
+      },
+      "overlay": {
+        "cancel": "Cancel",
+        "empty": "No conversations found.",
+        "error": "Could not load chats",
+        "loading": "Loading chats…",
+        "notePlaceholder": "Add a comment (optional)…",
+        "search": "Search for people/chats",
+        "send": "Send",
+        "sending": "Sending…",
+        "title": "Send via direct message"
+      }
+    }
+  },
+  "communitiesPage": {
+    "blocked": {
+      "dommesOnly": "Dommes only",
+      "inviteOnly": "Invite only — invitation required",
+      "subsOnly": "Subs only"
+    },
+    "empty": {
+      "discover": "No communities found yet.",
+      "yours": "You haven’t joined any communities yet."
+    },
+    "loading": "Loading…",
+    "members": "{count} members",
+    "policy": {
+      "dommesOnly": "Dommes only",
+      "inviteOnly": "Invite only",
+      "open": "Open",
+      "subsOnly": "Subs only"
+    },
+    "tabs": {
+      "discover": "Discover",
+      "yours": "Your communities"
+    },
+    "title": "Communities"
+  },
+  "community": {
+    "composer": {
+      "errors": {
+        "generic": "Posting failed.",
+        "onlyImageOrVideo": "Only image or video files are allowed."
+      },
+      "gif": "GIF",
+      "gifSearchTitle": "Search GIF",
+      "media": "Media",
+      "placeholder": "What’s new?",
+      "post": {
+        "buttonPost": "Post",
+        "buttonPosting": "Posting…"
+      },
+      "remove": "Remove"
+    },
+    "gifPicker": {
+      "closeButton": "Close",
+      "errors": {
+        "loadGifs": "Could not load GIFs."
+      },
+      "loadingGifs": "Loading GIFs…",
+      "searchButton": "Search",
+      "searchPlaceholder": "Search GIFs…",
+      "select": "Select"
+    }
+  },
+  "compose": {
+    "actions": {
+      "close": "Close",
+      "post": "Post",
+      "removeImage": "Remove image",
+      "removeVideo": "Remove video"
+    },
+    "aria": {
+      "modalLabel": "Compose post"
+    },
+    "fields": {
+      "gifLabel": "GIF",
+      "mediaLabel": "Media",
+      "textPlaceholder": "What’s new?"
+    },
+    "header": {
+      "newPost": "New post"
+    },
+    "states": {
+      "gifLoadError": "Could not load GIF."
+    },
+    "titles": {
+      "gifSearch": "Search GIFs"
+    }
+  },
+  "gifPicker": {
+    "actions": {
+      "close": "Close",
+      "pick": "Select",
+      "search": "Search"
+    },
+    "fields": {
+      "searchPlaceholder": "Search GIFs…"
+    },
+    "states": {
+      "loadError": "Could not load GIFs.",
+      "loading": "Loading GIFs…"
+    }
+  }
+}

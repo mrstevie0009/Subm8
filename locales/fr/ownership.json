@@ -1,0 +1,49 @@
+{
+  "ownershipRequest": {
+    "actions": {
+      "cancel": "Abbrechen",
+      "send": "Anfrage senden",
+      "uploading": "Lade hoch…"
+    },
+    "aria": {
+      "close": "Schließen"
+    },
+    "emptySaved": "Noch kein lokales „Ownership-Profil“ gespeichert (Profil bearbeiten → Ownership-Tab).",
+    "errors": {
+      "createFailed": "Ownership-Anfrage konnte nicht erstellt werden"
+    },
+    "fields": {
+      "avatar": "Avatar",
+      "banner": "Banner",
+      "bio": "Bio"
+    },
+    "subtitle": "für @{handle}",
+    "title": "Ownership-Anfrage"
+  },
+  "ownershipRequestAcceptModal": {
+    "actions": {
+      "apply": "Übernehmen",
+      "applying": "Übernehme…",
+      "cancel": "Abbrechen"
+    },
+    "avatar": {
+      "noAssetRequested": "Kein Avatar-Asset in der Anfrage",
+      "notRequested": "Avatar nicht angefordert",
+      "previewAlt": "Avatar-Vorschau"
+    },
+    "banner": {
+      "noAssetRequested": "Kein Banner-Asset in der Anfrage",
+      "notRequested": "Banner nicht angefordert",
+      "previewAlt": "Banner-Vorschau"
+    },
+    "bio": {
+      "none": "Keine Bio enthalten"
+    },
+    "errors": {
+      "applyFail": "Ownership-Anfrage konnte nicht übernommen werden"
+    },
+    "header": {
+      "title": "Ownership-Anfrage akzeptieren"
+    }
+  }
+}

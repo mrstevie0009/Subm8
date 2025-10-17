@@ -1,0 +1,135 @@
+{
+  "monetizationPage": {
+    "ariaBack": "Back",
+    "fees": {
+      "bullets": [
+        "Direct tips: the Domme receives the full amount; the platform fee is paid by the Sub.",
+        "Other features (PPV, communities, etc.) may have their own fee models. You’ll see details directly in the flow.",
+        "Payouts: documented transparently in your wallet."
+      ],
+      "title": "Fees — short & sweet"
+    },
+    "hero": {
+      "clearTransparent": {
+        "text": "Clear rules on fees and payouts (SEPA, more to come).",
+        "title": "Clear & transparent"
+      },
+      "flexibleSources": {
+        "text": "Direct tips, pay-per-view, custom tributes & paid communities.",
+        "title": "Flexible revenue streams"
+      },
+      "walletRealtime": {
+        "text": "Earnings land instantly in the Domme wallet and history.",
+        "title": "Wallet in real time"
+      }
+    },
+    "links": {
+      "feed": "To feed",
+      "profile": "Optimize profile",
+      "security": "Security & access"
+    },
+    "methodCard": {
+      "featureHint": "Use this feature where it fits your audience — pricing and messaging are key.",
+      "howItWorks": "How it works",
+      "whatIsThis": "What is this?"
+    },
+    "methods": {
+      "customTributes": {
+        "badge": "Recurring",
+        "bullets": [
+          "Subs set up regular payments (e.g., €5 daily, €20 weekly).",
+          "Runs automatically until stopped — full control with the Sub.",
+          "Dommes can actively “request” such drainers."
+        ],
+        "number": 3,
+        "steps": [
+          "Create a clear “request” (amount + interval + duration).",
+          "Use deadlines & rewards (badges, exclusive clips).",
+          "Track durations and proactively renew before expiry."
+        ],
+        "title": "Custom tributes (drainer / tribute timer)"
+      },
+      "leaderboardBadges": {
+        "badge": "Visibility",
+        "bullets": [
+          "Dommes with high earnings are prominently listed.",
+          "Badges & milestones increase social proof.",
+          "More visibility → more Sub motivation → more revenue."
+        ],
+        "number": 6,
+        "steps": [
+          "Keep activity & content quality high.",
+          "Use events/challenges to create peaks.",
+          "Show badges on your profile & in communities."
+        ],
+        "title": "Leaderboard & badges (gamification)"
+      },
+      "paidCommunities": {
+        "badge": "Group upsell",
+        "bullets": [
+          "Create a community with paid access.",
+          "Subs pay monthly or one-time to join.",
+          "Exclusivity + group dynamics = higher lifetime value."
+        ],
+        "ctaOpenCommunities": "Open communities",
+        "number": 4,
+        "steps": [
+          "Define clear value (e.g., weekly drops, live Q&A, polls).",
+          "Set a price and cap slots for scarcity.",
+          "Promote invites on profile & in chat."
+        ],
+        "title": "Community memberships (paid communities)"
+      },
+      "payouts": {
+        "badge": "Wallet",
+        "bullets": [
+          "All earnings collect in the Domme wallet (export available for bookkeeping).",
+          "Payout via SEPA/bank transfer (later: PayPal, crypto).",
+          "Clear overview in “Earnings & history.”"
+        ],
+        "note": "Note: payout options may vary by region.",
+        "number": 5,
+        "steps": [
+          "Add recipient details (IBAN).",
+          "Start a payout from your wallet.",
+          "Download CSV/export for accounting if needed."
+        ],
+        "title": "Payouts"
+      },
+      "ppv": {
+        "badge": "Optional",
+        "bullets": [
+          "Premium content (e.g., NSFW media) visible only for a micropayment.",
+          "Ideal for high chat volume or exclusive drops.",
+          "Granular pricing possible (e.g., per image/clip)."
+        ],
+        "number": 2,
+        "steps": [
+          "Mark content as “PPV.”",
+          "Set a fair price and tease the content.",
+          "Use story/feed/chat to drive traffic to PPV."
+        ],
+        "title": "Pay-per-view (optional)"
+      },
+      "tips": {
+        "badge": "Basic",
+        "bullets": [
+          "Sub sends any amount via the tip button in chat or on profile.",
+          "Domme receives the full amount.",
+          "Platform fee is borne by the Sub.",
+          "Visible instantly in wallet & earnings history."
+        ],
+        "ctaBackToSettings": "Back to settings",
+        "number": 1,
+        "steps": [
+          "Enable tips on your profile (if disabled).",
+          "Mention your tip button in chat.",
+          "Thank publicly — social proof boosts follow-up tips."
+        ],
+        "title": "Direct tips (tributes)"
+      }
+    },
+    "subtitle": "How to earn on Subm8 — overview & best practices",
+    "title": "Monetization"
+  }
+}

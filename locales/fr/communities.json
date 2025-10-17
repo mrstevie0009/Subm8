@@ -1,0 +1,227 @@
+{
+  "communities": {
+    "create": {
+      "actions": {
+        "cancel": "Abbrechen",
+        "create": "Erstellen",
+        "creating": "Erstelle…"
+      },
+      "aria": {
+        "close": "Schließen"
+      },
+      "banner": {
+        "choose": "Bild auswählen",
+        "help": "PNG/JPG/WebP/GIF, max. ~10 MB. Drag & Drop wird unterstützt.",
+        "label": "Banner (optional)"
+      },
+      "button": "Neue Community",
+      "errors": {
+        "generic": "Etwas ist schiefgelaufen. Bitte versuche es erneut."
+      },
+      "fields": {
+        "banner": {
+          "button": "Bild auswählen",
+          "hint": "PNG/JPG/WebP/GIF, max. ~10 MB. Drag & Drop wird unterstützt.",
+          "label": "Banner (optional)",
+          "previewAlt": "Banner-Vorschau",
+          "removeAria": "Bild entfernen"
+        },
+        "description": {
+          "label": "Beschreibung (optional)",
+          "placeholder": "Beschreibe deine Community…"
+        },
+        "handle": {
+          "example": "your-handle",
+          "helperPreview": "So erscheint es: @{handle}",
+          "label": "Handle (optional)",
+          "placeholder": "z. B. eu-fetish-scene"
+        },
+        "name": {
+          "label": "Name",
+          "placeholder": "KinkyGroupFun"
+        },
+        "policy": {
+          "label": "Beitrittsregel",
+          "options": {
+            "dommeOnly": "Nur Dommes",
+            "invite": "Nur mit Einladung",
+            "open": "Offen",
+            "subOnly": "Nur Subs"
+          }
+        }
+      },
+      "title": "Community erstellen"
+    },
+    "detail": {
+      "members": "{count} Mitglieder",
+      "policyPrefix": "Regel"
+    },
+    "invite": {
+      "button": "Einladen",
+      "title": "Mitglieder einladen"
+    },
+    "join": {
+      "actions": {
+        "join": "Beitreten",
+        "leave": "Verlassen",
+        "loading": "…"
+      },
+      "errors": {
+        "creatorCannotLeave": "Der/die Ersteller:in kann die eigene Community nicht verlassen.",
+        "generic": "Etwas ist schiefgelaufen. Bitte versuche es erneut.",
+        "inviteOnly": "Diese Community ist nur mit Einladung zugänglich.",
+        "joinFailed": "Beitritt fehlgeschlagen. Bitte versuche es später erneut.",
+        "roleNotAllowed": {
+          "dommeOnly": "Nur Dommes können dieser Community beitreten.",
+          "generic": "Du darfst dieser Community nicht beitreten.",
+          "subOnly": "Nur Subs können dieser Community beitreten."
+        }
+      },
+      "hints": {
+        "dommeOnly": "Nur Dommes",
+        "inviteOnly": "Nur mit Einladung",
+        "subOnly": "Nur Subs"
+      },
+      "members": "{count} Mitglieder"
+    },
+    "page": {
+      "blocked": {
+        "dommeOnly": "Nur Dommes",
+        "inviteOnly": "Nur mit Einladung — erfordert eine Einladung",
+        "subOnly": "Nur Subs"
+      },
+      "empty": {
+        "discover": "Noch keine Communities gefunden.",
+        "yours": "Du bist noch keiner Community beigetreten."
+      },
+      "loading": "Lade…",
+      "members": "{count} Mitglieder",
+      "policyBadge": {
+        "dommeOnly": "Nur Dommes",
+        "invite": "Nur mit Einladung",
+        "open": "Offen",
+        "subOnly": "Nur Subs"
+      },
+      "tabs": {
+        "discover": "Entdecken",
+        "yours": "Deine Communities"
+      },
+      "title": "Communities"
+    },
+    "share": {
+      "aria": {
+        "button": "Teilen",
+        "copy": "Link kopieren",
+        "dm": "In Direktnachricht teilen",
+        "system": "Auf Gerät teilen"
+      },
+      "menu": {
+        "copied": "Kopiert!",
+        "copy": "Link kopieren",
+        "dm": "Per Direktnachricht senden",
+        "system": "Auf Gerät teilen…"
+      },
+      "overlay": {
+        "cancel": "Abbrechen",
+        "empty": "Keine Konversationen gefunden.",
+        "error": "Chats konnten nicht geladen werden",
+        "loading": "Lade Chats…",
+        "notePlaceholder": "Kommentar hinzufügen (optional)…",
+        "search": "Nach Personen/Chats suchen",
+        "send": "Senden",
+        "sending": "Senden…",
+        "title": "Per Direktnachricht senden"
+      }
+    }
+  },
+  "communitiesPage": {
+    "blocked": {
+      "dommesOnly": "Nur Dommes",
+      "inviteOnly": "Nur mit Einladung — Einladung erforderlich",
+      "subsOnly": "Nur Subs"
+    },
+    "empty": {
+      "discover": "Noch keine Communities gefunden.",
+      "yours": "Du bist noch keiner Community beigetreten."
+    },
+    "loading": "Lade…",
+    "members": "{count} Mitglieder",
+    "policy": {
+      "dommesOnly": "Nur Dommes",
+      "inviteOnly": "Nur mit Einladung",
+      "open": "Offen",
+      "subsOnly": "Nur Subs"
+    },
+    "tabs": {
+      "discover": "Entdecken",
+      "yours": "Deine Communities"
+    },
+    "title": "Communities"
+  },
+  "community": {
+    "composer": {
+      "errors": {
+        "generic": "Posten fehlgeschlagen.",
+        "onlyImageOrVideo": "Nur Bild- oder Videodateien sind erlaubt."
+      },
+      "gif": "GIF",
+      "gifSearchTitle": "GIF suchen",
+      "media": "Media",
+      "placeholder": "Was gibt's Neues?",
+      "post": {
+        "buttonPost": "Posten",
+        "buttonPosting": "Poste…"
+      },
+      "remove": "Entfernen"
+    },
+    "gifPicker": {
+      "closeButton": "Schließen",
+      "errors": {
+        "loadGifs": "Konnte GIFs nicht laden."
+      },
+      "loadingGifs": "Lade GIFs…",
+      "searchButton": "Suchen",
+      "searchPlaceholder": "Nach GIFs suchen…",
+      "select": "Auswählen"
+    }
+  },
+  "compose": {
+    "actions": {
+      "close": "Schließen",
+      "post": "Posten",
+      "removeImage": "Bild entfernen",
+      "removeVideo": "Video entfernen"
+    },
+    "aria": {
+      "modalLabel": "Beitrag verfassen"
+    },
+    "fields": {
+      "gifLabel": "GIF",
+      "mediaLabel": "Medien",
+      "textPlaceholder": "Was gibt’s Neues?"
+    },
+    "header": {
+      "newPost": "Neuer Beitrag"
+    },
+    "states": {
+      "gifLoadError": "GIF konnte nicht geladen werden."
+    },
+    "titles": {
+      "gifSearch": "GIFs suchen"
+    }
+  },
+  "gifPicker": {
+    "actions": {
+      "close": "Schließen",
+      "pick": "Auswählen",
+      "search": "Suchen"
+    },
+    "fields": {
+      "searchPlaceholder": "Nach GIFs suchen…"
+    },
+    "states": {
+      "loadError": "Konnte GIFs nicht laden.",
+      "loading": "Lade GIFs…"
+    }
+  }
+}

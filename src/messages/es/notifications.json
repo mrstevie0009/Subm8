@@ -1,0 +1,86 @@
+{
+  "notifications": {
+    "actions": {
+      "cancel": "Cancelar",
+      "reset": "Restablecer a los valores predeterminados",
+      "resetTitle": "Restaurar configuración de fábrica",
+      "save": "Guardar ajustes",
+      "saved": "Guardado",
+      "savedAria": "Los ajustes se han guardado.",
+      "saving": "Guardando…"
+    },
+    "ariaBack": "Atrás",
+    "cards": {
+      "dm": {
+        "messages": "Mensajes directos",
+        "reactions": "Reacciones a tus mensajes",
+        "title": "Mensajes directos"
+      },
+      "email": {
+        "digest": "Resumen semanal por correo",
+        "messages": "Correo cuando haya mensajes nuevos",
+        "note": "Solo enviamos correos puntuales y relevantes. Puedes darte de baja en cualquier momento.",
+        "title": "Correo electrónico"
+      },
+      "feed": {
+        "comments": "Comentarios en tus publicaciones",
+        "likes": "Me gusta en tus publicaciones",
+        "mentions": "Menciones (@handle)",
+        "newFollowers": "Nuevos seguidores",
+        "photoTags": "Etiquetas en fotos",
+        "title": "Feed y actividad"
+      },
+      "filters": {
+        "emailUnverified": "… cuya dirección de correo no esté verificada",
+        "newAccounts": "… con una cuenta nueva",
+        "noAvatar": "… que tengan una foto de perfil predeterminada",
+        "notFollowers": "… que no te siguen",
+        "notFollowing": "… a quienes no sigues",
+        "note": "Estos filtros solo afectan a desconocidos. Los contactos/seguidos no se ven afectados.",
+        "phoneUnverified": "… cuyo número de teléfono no esté verificado",
+        "title": "Silenciar notificaciones de personas"
+      },
+      "push": {
+        "note": "Controla todas las notificaciones push en tu dispositivo.",
+        "title": "Notificaciones push",
+        "toggleActive": "Notificaciones push activas"
+      },
+      "ui": {
+        "note": "Si ambos están desactivados, solo se mostrarán pequeños avisos en el icono.",
+        "popup": "Mostrar mini-popup",
+        "sound": "Reproducir sonido",
+        "title": "Visualización y sonido"
+      }
+    },
+    "intro": "Administra notificaciones push, correos y filtros.",
+    "notSignedInIntro": "Esta página gestiona tus ajustes de push, correo y filtros.",
+    "notSignedInNote": "Inicia sesión, por favor.",
+    "title": "Notificaciones"
+  },
+  "notificationsPage": {
+    "actions": {
+      "follow": "Seguir",
+      "following": "Siguiendo",
+      "view": "Ver"
+    },
+    "empty": {
+      "desc": "Actualmente no tienes notificaciones.",
+      "title": "Todo al día"
+    },
+    "messages": {
+      "commentedOnYourPost": "comentó tu publicación:",
+      "followedYou": "te siguió",
+      "likedYourComment": "le gustó tu comentario:",
+      "likedYourPost": "le gustó tu publicación:",
+      "mentionedYou": "te mencionó:",
+      "repliedToYourComment": "respondió a tu comentario:",
+      "timeSep": "· {time}"
+    },
+    "tabs": {
+      "all": "Todas",
+      "comments": "Comentarios",
+      "mentions": "Menciones"
+    },
+    "title": "Notificaciones"
+  }
+}

@@ -15,12 +15,19 @@ type LayoutProps = {
 export default async function RootLayout({ children, params }: LayoutProps) {
   const { locale } = await params
 
-  let messages: Record<string, unknown>
-  try {
-    messages = (await import(`../../messages/${locale}/common.json`)).default
-  } catch {
-    notFound()
-  }
+  let messages: Record<string, unknown>;
+    try {
+      const postFile   = (await import(`../../messages/${locale}/post.json`)).default;   // { post: {...} }
+      const verifyFile = (await import(`../../messages/${locale}/verify.json`)).default; // { verify: {...} }
+
+
+      messages = {
+        post: postFile.post,         
+        verify: verifyFile.verify
+      };
+    } catch {
+      notFound();
+    }
 
   return (
     <html lang={locale}>

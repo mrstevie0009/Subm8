@@ -1,0 +1,205 @@
+{
+  "autoDrain": {
+    "actions": {
+      "cancel": "Cancel",
+      "create": "Create request"
+    },
+    "amount": {
+      "label": "Amount per charge",
+      "placeholder": "50"
+    },
+    "recurrence": {
+      "label": "Recurrence",
+      "options": {
+        "daily": "Daily",
+        "monthly": "Monthly",
+        "weekly": "Weekly"
+      }
+    },
+    "subtitle": "Set amount and recurrence.",
+    "title": "Create autodrain request"
+  },
+  "autoDrainAcceptModal": {
+    "acknowledge": "I understand that gifts are voluntary and final. No services are promised.",
+    "actions": {
+      "cancel": "Cancel",
+      "closeAria": "Close",
+      "enable": "Enable autodrain",
+      "enabling": "Enabling…"
+    },
+    "cadence": {
+      "daily": "daily",
+      "monthly": "monthly",
+      "weekly": "weekly"
+    },
+    "charge": {
+      "label": "Charge amount",
+      "recurringNote": "Recurring charge until canceled."
+    },
+    "disclaimer": "Gifts are voluntary and not payment for services. Gifts are final (no refunds, unless required by law).",
+    "errors": {
+      "generic": "Something went wrong"
+    },
+    "header": {
+      "title": "Enable autodrain",
+      "to": "for {name}"
+    }
+  },
+  "paymentsPage": {
+    "ariaBack": "Back to feed",
+    "autodrain": {
+      "cadence": {
+        "daily": "Daily",
+        "monthly": "Monthly",
+        "weekly": "Weekly"
+      },
+      "cancel": "End",
+      "incoming": {
+        "title": "Incoming autodrain"
+      },
+      "none": "No active subscriptions.",
+      "outgoing": {
+        "title": "Enabled by you"
+      },
+      "th": {
+        "amount": "Amount",
+        "avatar": "Avatar",
+        "cadence": "Cadence",
+        "domme": "Domme",
+        "next": "Next charge",
+        "sub": "Sub"
+      },
+      "title": "Active autodrain"
+    },
+    "avatarAlt": "{name} avatar",
+    "balance": {
+      "export": "CSV export",
+      "title": "Current balance:"
+    },
+    "guestNote": "Please sign in to see your payment history.",
+    "payments": {
+      "amountPrefixReceived": "Received: {amount}",
+      "amountPrefixSent": "Sent: {amount}",
+      "received": {
+        "empty": "No incoming payments.",
+        "title": "Received"
+      },
+      "sent": {
+        "empty": "No outgoing payments.",
+        "title": "You sent"
+      },
+      "status": {
+        "canceled": "Canceled",
+        "created": "Created",
+        "failed": "Failed",
+        "processing": "Processing",
+        "succeeded": "Succeeded"
+      },
+      "th": {
+        "amount": "Amount",
+        "avatar": "Avatar",
+        "date": "Date",
+        "status": "Status",
+        "username": "Username",
+        "what": "Purpose"
+      },
+      "what": {
+        "tip": "Tip"
+      }
+    },
+    "payoutBtn": "Payout",
+    "payoutTooltip": "Request payout (coming soon)",
+    "title": "Payments & history"
+  },
+  "tipModal": {
+    "ack": {
+      "checkbox": "I understand that gifts are voluntary and final."
+    },
+    "actions": {
+      "cancel": "Cancel",
+      "done": "Done",
+      "sendGift": "Send gift",
+      "sending": "Sending…"
+    },
+    "amount": {
+      "label": "Amount for the creator",
+      "placeholder": "50"
+    },
+    "aria": {
+      "close": "Close"
+    },
+    "breakdown": {
+      "amountToCreator": "Amount (goes to creator)",
+      "platformFeeTop": "Platform fee (10% on top)",
+      "youPay": "You pay"
+    },
+    "disclaimer": {
+      "legal": "By confirming you send a voluntary gift. It is not a payment for services. Gifts are final (no refunds, unless required by law).",
+      "top": "Gifts are voluntary and not payment for services. Subm8 only facilitates the transfer."
+    },
+    "errors": {
+      "confirmFailed": "Confirmation failed",
+      "createFailed": "Could not create payment",
+      "generic": "Something went wrong"
+    },
+    "header": {
+      "subtitleFinal": "Gifts are voluntary and final.",
+      "title": "Send a gift to {name}"
+    },
+    "note": {
+      "label": "Note (optional)",
+      "placeholder": "Write something nice…"
+    },
+    "roles": {
+      "domme": "Domme",
+      "sub": "Sub"
+    },
+    "success": {
+      "title": "Gift sent!",
+      "youPaid": "You paid {amount}"
+    }
+  },
+  "tipRequest": {
+    "actions": {
+      "cancel": "Cancel",
+      "create": "Create request"
+    },
+    "amount": {
+      "label": "Requested amount",
+      "placeholder": "50"
+    },
+    "note": {
+      "label": "Note (optional)",
+      "placeholder": "Add a short note…"
+    },
+    "subtitle": "Set the amount the Sub should pay.",
+    "title": "Create tip request"
+  },
+  "tipRequestAcceptModal": {
+    "actions": {
+      "cancel": "Cancel",
+      "closeAria": "Close",
+      "processing": "Processing…",
+      "sendGiftAccept": "Send gift & accept ({total})"
+    },
+    "breakdown": {
+      "amount": "Amount",
+      "fee": "Platform fee ({pct}%)",
+      "youPay": "You pay"
+    },
+    "disclaimer": "By confirming you send a voluntary gift. This is not a payment for services. Gifts are final (no refunds, unless required by law).",
+    "errors": {
+      "confirm": "Confirmation failed",
+      "create": "Could not create payment",
+      "generic": "Something went wrong"
+    },
+    "header": {
+      "title": "Accept gift request",
+      "to": "to {name}"
+    },
+    "requested": {
+      "label": "Requested amount",
+      "note": "The creator sees this amount. A platform fee of {pct}% will be added to your payment."
+    }
+  }
+}

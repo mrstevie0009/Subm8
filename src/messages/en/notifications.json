@@ -1,0 +1,86 @@
+{
+  "notifications": {
+    "actions": {
+      "cancel": "Cancel",
+      "reset": "Reset to defaults",
+      "resetTitle": "Restore factory settings",
+      "save": "Save settings",
+      "saved": "Saved",
+      "savedAria": "Settings have been saved.",
+      "saving": "Saving…"
+    },
+    "ariaBack": "Back",
+    "cards": {
+      "dm": {
+        "messages": "Direct messages",
+        "reactions": "Reactions to your messages",
+        "title": "Direct messages"
+      },
+      "email": {
+        "digest": "Weekly email digest",
+        "messages": "Email on new messages",
+        "note": "We send rarely and purposefully. You can unsubscribe anytime.",
+        "title": "Email"
+      },
+      "feed": {
+        "comments": "Comments on your posts",
+        "likes": "Likes on your posts",
+        "mentions": "Mentions (@handle)",
+        "newFollowers": "New followers",
+        "photoTags": "Photo tags",
+        "title": "Feed & activity"
+      },
+      "filters": {
+        "emailUnverified": "… whose email is not verified",
+        "newAccounts": "… with a new account",
+        "noAvatar": "… who have a default profile photo",
+        "notFollowers": "… who don’t follow you",
+        "notFollowing": "… you don’t follow",
+        "note": "These filters only affect unknown users. Contacts/followings remain unaffected.",
+        "phoneUnverified": "… whose phone number is not verified",
+        "title": "Mute notifications from people"
+      },
+      "push": {
+        "note": "Controls all push notifications on your device.",
+        "title": "Push notifications",
+        "toggleActive": "Push notifications active"
+      },
+      "ui": {
+        "note": "If both are disabled, only small hints appear on the icon.",
+        "popup": "Show mini popup",
+        "sound": "Play sound",
+        "title": "Display & sound"
+      }
+    },
+    "intro": "Manage push notifications, emails & filters.",
+    "notSignedInIntro": "This page manages your push, email, and filter settings.",
+    "notSignedInNote": "Please sign in.",
+    "title": "Notifications"
+  },
+  "notificationsPage": {
+    "actions": {
+      "follow": "Follow",
+      "following": "Following",
+      "view": "View"
+    },
+    "empty": {
+      "desc": "You currently have no notifications.",
+      "title": "All caught up"
+    },
+    "messages": {
+      "commentedOnYourPost": "commented on your post:",
+      "followedYou": "followed you",
+      "likedYourComment": "liked your comment:",
+      "likedYourPost": "liked your post:",
+      "mentionedYou": "mentioned you:",
+      "repliedToYourComment": "replied to your comment:",
+      "timeSep": "· {time}"
+    },
+    "tabs": {
+      "all": "All",
+      "comments": "Comments",
+      "mentions": "Mentions"
+    },
+    "title": "Notifications"
+  }
+}

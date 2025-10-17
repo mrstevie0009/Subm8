@@ -1,0 +1,227 @@
+{
+  "communities": {
+    "create": {
+      "actions": {
+        "cancel": "Annuler",
+        "create": "Créer",
+        "creating": "Création…"
+      },
+      "aria": {
+        "close": "Fermer"
+      },
+      "banner": {
+        "choose": "Choisir une image",
+        "help": "PNG/JPG/WebP/GIF, max ~10 Mo. Glisser-déposer pris en charge.",
+        "label": "Bannière (optionnel)"
+      },
+      "button": "Nouvelle communauté",
+      "errors": {
+        "generic": "Un problème est survenu. Réessayez."
+      },
+      "fields": {
+        "banner": {
+          "button": "Choisir une image",
+          "hint": "PNG/JPG/WebP/GIF, max ~10 Mo. Glisser-déposer pris en charge.",
+          "label": "Bannière (optionnel)",
+          "previewAlt": "Aperçu de la bannière",
+          "removeAria": "Supprimer l’image"
+        },
+        "description": {
+          "label": "Description (optionnel)",
+          "placeholder": "Décrivez votre communauté…"
+        },
+        "handle": {
+          "example": "your-handle",
+          "helperPreview": "S’affichera comme : @{handle}",
+          "label": "Handle (optionnel)",
+          "placeholder": "ex. eu-fetish-scene"
+        },
+        "name": {
+          "label": "Nom",
+          "placeholder": "KinkyGroupFun"
+        },
+        "policy": {
+          "label": "Politique d’accès",
+          "options": {
+            "dommeOnly": "Dommes uniquement",
+            "invite": "Sur invitation",
+            "open": "Ouverte",
+            "subOnly": "Subs uniquement"
+          }
+        }
+      },
+      "title": "Créer une communauté"
+    },
+    "detail": {
+      "members": "{count} membres",
+      "policyPrefix": "Politique"
+    },
+    "invite": {
+      "button": "Inviter",
+      "title": "Inviter des membres"
+    },
+    "join": {
+      "actions": {
+        "join": "Rejoindre",
+        "leave": "Quitter",
+        "loading": "…"
+      },
+      "errors": {
+        "creatorCannotLeave": "Le créateur ne peut pas quitter sa propre communauté.",
+        "generic": "Un problème est survenu. Réessayez.",
+        "inviteOnly": "Cette communauté est sur invitation.",
+        "joinFailed": "Échec de la demande. Réessayez plus tard.",
+        "roleNotAllowed": {
+          "dommeOnly": "Seules les Dommes peuvent rejoindre cette communauté.",
+          "generic": "Vous n’êtes pas autorisé à rejoindre cette communauté.",
+          "subOnly": "Seuls les Subs peuvent rejoindre cette communauté."
+        }
+      },
+      "hints": {
+        "dommeOnly": "Dommes uniquement",
+        "inviteOnly": "Sur invitation",
+        "subOnly": "Subs uniquement"
+      },
+      "members": "{count} membres"
+    },
+    "page": {
+      "blocked": {
+        "dommeOnly": "Dommes uniquement",
+        "inviteOnly": "Sur invitation — invitation requise",
+        "subOnly": "Subs uniquement"
+      },
+      "empty": {
+        "discover": "Aucune communauté trouvée pour le moment.",
+        "yours": "Vous n’avez encore rejoint aucune communauté."
+      },
+      "loading": "Chargement…",
+      "members": "{count} membres",
+      "policyBadge": {
+        "dommeOnly": "Dommes uniquement",
+        "invite": "Sur invitation",
+        "open": "Ouverte",
+        "subOnly": "Subs uniquement"
+      },
+      "tabs": {
+        "discover": "Découvrir",
+        "yours": "Vos communautés"
+      },
+      "title": "Communautés"
+    },
+    "share": {
+      "aria": {
+        "button": "Partager",
+        "copy": "Copier le lien",
+        "dm": "Partager en message privé",
+        "system": "Partager sur l’appareil"
+      },
+      "menu": {
+        "copied": "Copié !",
+        "copy": "Copier le lien",
+        "dm": "Envoyer en message privé",
+        "system": "Partager sur l’appareil…"
+      },
+      "overlay": {
+        "cancel": "Annuler",
+        "empty": "Aucune conversation trouvée.",
+        "error": "Impossible de charger les chats",
+        "loading": "Chargement des chats…",
+        "notePlaceholder": "Ajouter un commentaire (optionnel)…",
+        "search": "Rechercher des personnes/chats",
+        "send": "Envoyer",
+        "sending": "Envoi…",
+        "title": "Envoyer en message privé"
+      }
+    }
+  },
+  "communitiesPage": {
+    "blocked": {
+      "dommesOnly": "Dommes uniquement",
+      "inviteOnly": "Sur invitation — invitation requise",
+      "subsOnly": "Subs uniquement"
+    },
+    "empty": {
+      "discover": "Aucune communauté trouvée pour le moment.",
+      "yours": "Vous n’avez encore rejoint aucune communauté."
+    },
+    "loading": "Chargement…",
+    "members": "{count} membres",
+    "policy": {
+      "dommesOnly": "Dommes uniquement",
+      "inviteOnly": "Sur invitation",
+      "open": "Ouverte",
+      "subsOnly": "Subs uniquement"
+    },
+    "tabs": {
+      "discover": "Découvrir",
+      "yours": "Vos communautés"
+    },
+    "title": "Communautés"
+  },
+  "community": {
+    "composer": {
+      "errors": {
+        "generic": "Échec de la publication.",
+        "onlyImageOrVideo": "Seuls les fichiers image ou vidéo sont autorisés."
+      },
+      "gif": "GIF",
+      "gifSearchTitle": "Rechercher un GIF",
+      "media": "Médias",
+      "placeholder": "Quoi de neuf ?",
+      "post": {
+        "buttonPost": "Publier",
+        "buttonPosting": "Publication…"
+      },
+      "remove": "Supprimer"
+    },
+    "gifPicker": {
+      "closeButton": "Fermer",
+      "errors": {
+        "loadGifs": "Impossible de charger les GIF."
+      },
+      "loadingGifs": "Chargement des GIF…",
+      "searchButton": "Rechercher",
+      "searchPlaceholder": "Rechercher des GIF…",
+      "select": "Sélectionner"
+    }
+  },
+  "compose": {
+    "actions": {
+      "close": "Fermer",
+      "post": "Publier",
+      "removeImage": "Retirer l’image",
+      "removeVideo": "Retirer la vidéo"
+    },
+    "aria": {
+      "modalLabel": "Rédiger une publication"
+    },
+    "fields": {
+      "gifLabel": "GIF",
+      "mediaLabel": "Médias",
+      "textPlaceholder": "Quoi de neuf ?"
+    },
+    "header": {
+      "newPost": "Nouvelle publication"
+    },
+    "states": {
+      "gifLoadError": "Impossible de charger le GIF."
+    },
+    "titles": {
+      "gifSearch": "Rechercher des GIF"
+    }
+  },
+  "gifPicker": {
+    "actions": {
+      "close": "Fermer",
+      "pick": "Sélectionner",
+      "search": "Rechercher"
+    },
+    "fields": {
+      "searchPlaceholder": "Rechercher des GIF…"
+    },
+    "states": {
+      "loadError": "Impossible de charger les GIF.",
+      "loading": "Chargement des GIF…"
+    }
+  }
+}

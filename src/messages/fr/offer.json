@@ -1,0 +1,39 @@
+{
+  "offerEditor": {
+    "actions": {
+      "addBg": "Ajouter un arrière-plan",
+      "cancel": "Annuler",
+      "changeBg": "Changer l’arrière-plan",
+      "remove": "Retirer",
+      "save": "Enregistrer",
+      "saving": "Enregistrement…"
+    },
+    "controls": {
+      "color": "Couleur",
+      "dim": "Assombrir",
+      "font": "Police",
+      "hex": "Hex",
+      "textColor": "Couleur du texte"
+    },
+    "placeholders": {
+      "text": "Texte…",
+      "title": "Titre…"
+    }
+  },
+  "offerViewer": {
+    "actions": {
+      "close": "Fermer"
+    },
+    "aria": {
+      "modalLabel": "Offre"
+    },
+    "placeholders": {
+      "noContent": "Aucun contenu.",
+      "noTitle": "Sans titre"
+    },
+    "states": {
+      "loadError": "Échec du chargement.",
+      "loading": "Chargement…"
+    }
+  }
+}

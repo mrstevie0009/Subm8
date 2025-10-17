@@ -1,0 +1,99 @@
+{
+  "editProfileForm": {
+    "actions": {
+      "changeAvatar": "Changer l’avatar",
+      "changeBanner": "Changer la bannière",
+      "editOfferMenu": "Modifier le menu d’offres",
+      "save": "Enregistrer"
+    },
+    "fields": {
+      "bio": "Bio",
+      "location": "Lieu",
+      "name": "Nom",
+      "role": "Rôle",
+      "username": "Nom d’utilisateur",
+      "website": "Site / lien"
+    },
+    "header": {
+      "title": "Modifier le profil"
+    },
+    "hints": {
+      "maxChars": "Max. {count} caractères",
+      "roleFixed": "Le rôle est fixé",
+      "usernamePattern": "3–20 caractères, a–z, 0–9, _"
+    },
+    "media": {
+      "avatarAlt": "Avatar",
+      "bannerAlt": "Bannière"
+    },
+    "placeholders": {
+      "website": "p. ex. https://example.com"
+    },
+    "roles": {
+      "domme": "Domme",
+      "submissive": "Submissive"
+    }
+  },
+  "editTabs": {
+    "tabs": {
+      "general": "Général",
+      "ownership": "Ownership"
+    }
+  },
+  "ownershipTab": {
+    "actions": {
+      "addAvatar": "Ajouter un avatar",
+      "changeBanner": "Changer la bannière",
+      "reset": "Réinitialiser",
+      "save": "Enregistrer",
+      "saving": "Enregistrement…"
+    },
+    "errors": {
+      "readAvatar": "Impossible de lire l’avatar.",
+      "readBanner": "Impossible de lire la bannière.",
+      "readFile": "Impossible de lire le fichier.",
+      "save": "Enregistrement impossible.",
+      "tooLarge": "Fichier trop volumineux (max. 4 Mo pour l’aperçu local)."
+    },
+    "header": {
+      "clearTitle": "Supprimer le profil d’ownership local",
+      "title": "Profil d’ownership"
+    },
+    "labels": {
+      "bio": "Bio d’ownership",
+      "counter": "{n}/{max}",
+      "savedAt": "Enregistré le {ts}"
+    },
+    "placeholders": {
+      "avatar": "Avatar",
+      "banner": "Bannière d’ownership",
+      "bio": "Cette bio sera appliquée lorsque l’ownership sera accepté…"
+    }
+  },
+  "profile": {
+    "autodrain": "Autodrain",
+    "blockUser": "Bloquer l’utilisateur",
+    "blockedBy": "Cet utilisateur t’a bloqué·e",
+    "copyProfileLink": "Copier le lien du profil",
+    "editProfile": "Modifier le profil",
+    "follow": "Suivre",
+    "joined": "Membre depuis",
+    "message": "Message",
+    "messagingDisabled": "Messages désactivés en raison d’un blocage",
+    "more": "Plus",
+    "offer": "Offre",
+    "offerMenu": "Menu d’offres",
+    "reportUser": "Signaler l’utilisateur",
+    "sendTip": "Envoyer un pourboire",
+    "shareProfileViaDm": "Partager le profil par message direct",
+    "tabs": {
+      "gallery": "Galerie",
+      "leaderboard": "Classement",
+      "posts": "Posts"
+    },
+    "tipActions": "Actions de pourboire",
+    "unblockUser": "Débloquer l’utilisateur",
+    "unfollow": "Se désabonner",
+    "youBlocked": "Tu as bloqué cet utilisateur"
+  }
+}

@@ -1,9 +1,11 @@
-// src/app/[locale]/u/[handle]/page.tsx
+import * as React from 'react';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/currentUser';
 import ClientProfile from './ClientProfile';
 import { notFound } from 'next/navigation';
 import type { Role } from '@prisma/client';
+
+export const dynamic = 'force-dynamic';
 
 type Params = { locale: string; handle: string };
 
@@ -11,12 +13,19 @@ function toUiRole(role: Role): 'domme' | 'sub' {
   return role === 'DOMME' ? 'domme' : 'sub';
 }
 
-export default async function ProfilePage({ params }: { params: Params }) {
+export default async function ProfilePage({
+  params,
+}: {
+  params: Promise<Params>;
+}) {
   const { handle } = await params;
-  const me = await getCurrentUser().catch(() => null);
 
-  const user = await prisma.user.findUnique({
-    where: { handle: handle.toLowerCase() },
+  // User möglichst robust auflösen (case-insensitive Handle, @ erlauben)
+  const raw = handle.startsWith('@') ? handle.slice(1) : handle;
+  const normalized = raw.toLowerCase();
+
+  const user = await prisma.user.findFirst({
+    where: { handle: { equals: normalized, mode: 'insensitive' } },
     select: {
       id: true,
       handle: true,
@@ -29,12 +38,14 @@ export default async function ProfilePage({ params }: { params: Params }) {
       createdAt: true,
       websiteUrl: true,
       pinnedPostId: true,
-      // Achtung: In deinem Schema heißt die Relation offenbar "Post" (großes P)
       _count: { select: { followers: true, following: true, Post: true } },
     },
   });
 
-  if (!user) return notFound();
+  if (!user) notFound();
+
+  // Viewer parallel bestimmen + Relation-Flags parallel holen
+  const me = await getCurrentUser().catch(() => null);
 
   const [viewerHasBlocked, isBlockedByProfile, isFollowing] = await Promise.all([
     me
@@ -78,7 +89,6 @@ export default async function ProfilePage({ params }: { params: Params }) {
     stats: {
       followers: user._count.followers ?? 0,
       following: user._count.following ?? 0,
-      // entspricht dem Select weiter oben ("Post" mit großem P)
       posts: user._count.Post ?? 0,
     },
     author: {
@@ -90,13 +100,16 @@ export default async function ProfilePage({ params }: { params: Params }) {
     },
   };
 
+  // Sofort Seiten-Shell rendern; Details/Posts laden per Client (Tabs)
   return (
-    <ClientProfile
-      profile={profile}
-      isOwner={!!me && me.id === user.id}
-      initialIsFollowing={isFollowing}
-      viewerHasBlocked={viewerHasBlocked}
-      isBlockedByProfile={isBlockedByProfile}
-    />
+    <React.Suspense fallback={null /* Route-level loading.tsx zeigt Skeleton */}>
+      <ClientProfile
+        profile={profile}
+        isOwner={!!me && me.id === user.id}
+        initialIsFollowing={isFollowing}
+        viewerHasBlocked={viewerHasBlocked}
+        isBlockedByProfile={isBlockedByProfile}
+      />
+    </React.Suspense>
   );
 }

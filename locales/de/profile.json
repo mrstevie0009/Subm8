@@ -1,0 +1,99 @@
+{
+  "editProfileForm": {
+    "actions": {
+      "changeAvatar": "Avatar ändern",
+      "changeBanner": "Banner ändern",
+      "editOfferMenu": "Offer-Menü bearbeiten",
+      "save": "Speichern"
+    },
+    "fields": {
+      "bio": "Bio",
+      "location": "Ort",
+      "name": "Name",
+      "role": "Rolle",
+      "username": "Benutzername",
+      "website": "Webseite / Link"
+    },
+    "header": {
+      "title": "Profil bearbeiten"
+    },
+    "hints": {
+      "maxChars": "Max. {count} Zeichen",
+      "roleFixed": "Rolle ist festgelegt",
+      "usernamePattern": "3–20 Zeichen, a–z, 0–9, _"
+    },
+    "media": {
+      "avatarAlt": "Avatar",
+      "bannerAlt": "Banner"
+    },
+    "placeholders": {
+      "website": "z. B. https://example.com"
+    },
+    "roles": {
+      "domme": "Domme",
+      "submissive": "Submissive"
+    }
+  },
+  "editTabs": {
+    "tabs": {
+      "general": "Allgemein",
+      "ownership": "Ownership"
+    }
+  },
+  "ownershipTab": {
+    "actions": {
+      "addAvatar": "Avatar hinzufügen",
+      "changeBanner": "Banner ändern",
+      "reset": "Zurücksetzen",
+      "save": "Speichern",
+      "saving": "Speichere…"
+    },
+    "errors": {
+      "readAvatar": "Avatar konnte nicht gelesen werden.",
+      "readBanner": "Banner konnte nicht gelesen werden.",
+      "readFile": "Datei konnte nicht gelesen werden.",
+      "save": "Konnte nicht speichern.",
+      "tooLarge": "Datei zu groß (max. 4 MB für lokale Vorschau)."
+    },
+    "header": {
+      "clearTitle": "Lokales Ownership-Profil löschen",
+      "title": "Ownership-Profil"
+    },
+    "labels": {
+      "bio": "Ownership-Bio",
+      "counter": "{n}/{max}",
+      "savedAt": "Gespeichert {ts}"
+    },
+    "placeholders": {
+      "avatar": "Avatar",
+      "banner": "Ownership-Banner",
+      "bio": "Diese Bio wird bei akzeptierten Ownerships übernommen…"
+    }
+  },
+  "profile": {
+    "autodrain": "Autodrain",
+    "blockUser": "Nutzer blockieren",
+    "blockedBy": "Dieser Nutzer hat dich blockiert",
+    "copyProfileLink": "Profil-Link kopieren",
+    "editProfile": "Profil bearbeiten",
+    "follow": "Folgen",
+    "joined": "Dabei seit",
+    "message": "Nachricht",
+    "messagingDisabled": "Nachrichten sind wegen Blockierung deaktiviert",
+    "more": "Mehr",
+    "offer": "Angebot",
+    "offerMenu": "Angebotsmenü",
+    "reportUser": "Nutzer melden",
+    "sendTip": "Trinkgeld senden",
+    "shareProfileViaDm": "Profil per Direktnachricht teilen",
+    "tabs": {
+      "gallery": "Galerie",
+      "leaderboard": "Leaderboard",
+      "posts": "Posts"
+    },
+    "tipActions": "Trinkgeld-Aktionen",
+    "unblockUser": "Nutzer entblocken",
+    "unfollow": "Entfolgen",
+    "youBlocked": "Du hast diesen Nutzer blockiert"
+  }
+}

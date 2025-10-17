@@ -1,0 +1,57 @@
+{
+  "post": {
+    "ariaBack": "Zurück",
+    "ariaOpen": "Post öffnen",
+    "block": "Account blockieren",
+    "blockStatus": {
+      "blocksYou": "Blockiert dich",
+      "youBlock": "Du blockierst"
+    },
+    "cantInteract": "Du kannst mit diesem Account nicht interagieren.",
+    "comment": "Kommentieren",
+    "communityPost": "Community-Post",
+    "copyText": "Post-Text kopieren",
+    "delete": {
+      "button": "Beitrag löschen",
+      "confirm": "Diesen Beitrag für alle löschen? Dadurch werden auch alle Reposts entfernt.",
+      "failed": "Der Beitrag konnte nicht gelöscht werden.",
+      "title": "Beitrag löschen"
+    },
+    "headerTitle": "Post",
+    "interactionBlocked": "Interaktionen sind blockiert",
+    "like": "Gefällt mir",
+    "more": "Mehr",
+    "pinToProfile": "Auf Profil anpinnen",
+    "pinned": "Gepinnt",
+    "quotePost": "Post zitieren",
+    "report": "Post melden",
+    "repost": "Repost",
+    "repostedBy": "{name} hat repostet",
+    "role": {
+      "domme": "Domme",
+      "submissive": "Sub"
+    },
+    "share": {
+      "cancel": "Abbrechen",
+      "copied": "Kopiert!",
+      "copy": "Link kopieren",
+      "dm": "Per Direktnachricht senden",
+      "dmTitle": "Per Direktnachricht senden",
+      "empty": "Keine Konversationen gefunden.",
+      "label": "Teilen",
+      "loadingChats": "Lade Chats…",
+      "notePlaceholder": "Kommentar hinzufügen (optional)…",
+      "searchPlaceholder": "Nach Personen/Chats suchen",
+      "send": "Senden",
+      "sending": "Senden…",
+      "shareInDm": "In Direktnachricht teilen",
+      "system": "Auf Gerät teilen…",
+      "systemText": "Sieh dir diesen Post auf {brand} an",
+      "systemTitle": "{name} auf {brand}",
+      "title": "Teilen"
+    },
+    "unblock": "Account entblocken",
+    "unlike": "Gefällt mir nicht mehr",
+    "unpinFromProfile": "Pin entfernen"
+  }
+}

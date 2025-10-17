@@ -1,0 +1,63 @@
+{
+  "post": {
+    "time": {
+      "now": "now",
+      "m": "{count}m",
+      "h": "{count}h",
+      "d": "{count}d"
+    },
+    "ariaBack": "Back",
+    "ariaOpen": "Open post",
+    "block": "Block account",
+    "blockStatus": {
+      "blocksYou": "Blocks you",
+      "youBlock": "You block"
+    },
+    "cantInteract": "You cannot interact with this account.",
+    "comment": "Comment",
+    "communityPost": "Community post",
+    "copyText": "Copy post text",
+    "delete": {
+      "button": "Delete post",
+      "confirm": "Delete this post for everyone? This will also remove all reposts.",
+      "failed": "The post could not be deleted.",
+      "title": "Delete post"
+    },
+    "headerTitle": "Post",
+    "interactionBlocked": "Interactions are blocked",
+    "like": "Like",
+    "more": "More",
+    "pinToProfile": "Pin to profile",
+    "pinned": "Pinned",
+    "quotePost": "Quote post",
+    "report": "Report post",
+    "repost": "Repost",
+    "repostedBy": "Reposted by {name}",
+    "role": {
+      "domme": "Domme",
+      "submissive": "Sub"
+    },
+    "share": {
+      "cancel": "Cancel",
+      "copied": "Copied!",
+      "copy": "Copy link",
+      "dm": "Send via direct message",
+      "dmTitle": "Send via direct message",
+      "empty": "No conversations found.",
+      "label": "Share",
+      "loadingChats": "Loading chats…",
+      "notePlaceholder": "Add a comment (optional)…",
+      "searchPlaceholder": "Search for people/chats",
+      "send": "Send",
+      "sending": "Sending…",
+      "shareInDm": "Share in DM",
+      "system": "Share on device…",
+      "systemText": "Check out this post on {brand}",
+      "systemTitle": "{name} on {brand}",
+      "title": "Share"
+    },
+    "unblock": "Unblock account",
+    "unlike": "Unlike",
+    "unpinFromProfile": "Remove pin"
+  }
+}

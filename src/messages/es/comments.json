@@ -1,0 +1,23 @@
+{
+  "comments": {
+    "addGif": "Añadir GIF",
+    "attachImage": "Adjuntar imagen",
+    "close": "Cerrar",
+    "errorGifs": "No se pudieron cargar los GIFs.",
+    "errorLoading": "No se pudieron cargar los comentarios.",
+    "like": "Me gusta",
+    "loadMore": "Cargar más",
+    "loading": "Cargando…",
+    "noComments": "Aún no hay comentarios.",
+    "pick": "Seleccionar",
+    "placeholder": "Escribe un comentario…",
+    "remove": "Eliminar",
+    "reply": "Responder",
+    "replyPlaceholder": "Escribe una respuesta…",
+    "search": "Buscar",
+    "searchGifs": "Buscar GIFs…",
+    "send": "Enviar",
+    "sending": "Enviando…",
+    "unlike": "Ya no me gusta"
+  }
+}

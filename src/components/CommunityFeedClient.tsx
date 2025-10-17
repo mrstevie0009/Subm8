@@ -16,6 +16,9 @@ export default function CommunityFeedClient({ initialItems, slug }: Props) {
   const [loadingNew, setLoadingNew] = React.useState(false);
   const [atTop, setAtTop] = React.useState(true);
   const topSentinelRef = React.useRef<HTMLDivElement | null>(null);
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => { setMounted(true); }, []);
+
 
   // Button-Top: unter globalem ODER kompaktem Community-Header (je nachdem, was tiefer ist)
   const [buttonTop, setButtonTop] = React.useState(12);
@@ -248,6 +251,7 @@ export default function CommunityFeedClient({ initialItems, slug }: Props) {
         className={`
           fixed left-1/2 -translate-x-1/2 z-[70]
           ${newCount > 0 && !atTop ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}
+          ${mounted ? '' : 'opacity-0 pointer-events-none'}
           transition-opacity duration-200
         `}
         style={{ top: buttonTop }}
@@ -261,7 +265,19 @@ export default function CommunityFeedClient({ initialItems, slug }: Props) {
           {loadingNew ? 'Loading…' : `${newCount} New ${newCount === 1 ? 'post' : 'posts'}`}
         </button>
       </div>
-
+      
+      {loadingNew && (
+        <div className="rounded-app border border-sub shadow-app p-4">
+          <div className="flex items-start gap-3">
+            <div className="size-10 rounded-full bg-white/10 animate-pulse" />
+            <div className="min-w-0 flex-1">
+              <div className="h-3 w-40 bg-white/10 rounded animate-pulse" />
+              <div className="mt-2 h-3 w-[90%] bg-white/10 rounded animate-pulse" />
+              <div className="mt-2 h-3 w-[70%] bg-white/10 rounded animate-pulse" />
+            </div>
+          </div>
+        </div>
+      )}
       {/* FEED */}
       <div className="grid gap-3">
         {items.map((p) => <PostCard key={p.id} post={p} />)}

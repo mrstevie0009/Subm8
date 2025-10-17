@@ -1,0 +1,36 @@
+{
+  "search": {
+    "loading": "Loading…",
+    "people": {
+      "empty": "No people found",
+      "followers": "Followers",
+      "title": "People"
+    },
+    "placeholder": "Search Subm8",
+    "posts": {
+      "empty": "No posts found",
+      "latestTitle": "Latest posts",
+      "title": "Posts"
+    },
+    "recent": {
+      "remove": "Remove",
+      "removeAria": "Remove {query}",
+      "title": "Recent"
+    },
+    "suggestions": {
+      "empty": "No suggestions at the moment.",
+      "title": "People you might like"
+    },
+    "tabs": {
+      "latest": "Latest",
+      "people": "People",
+      "top": "Top"
+    },
+    "trending": {
+      "empty": "No trends right now.",
+      "posts": "Posts",
+      "title": "Trending now",
+      "topic": "Topic"
+    }
+  }
+}

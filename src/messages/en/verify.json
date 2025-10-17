@@ -1,0 +1,42 @@
+{
+  "verify": {
+    "complete": {
+      "actions": {
+        "backNow": "Continue now",
+        "refresh": "Refresh"
+      },
+      "elapsed": "{seconds, plural, =0 {0 sec} one {# sec} other {# sec}}",
+      "help": {
+        "items": {
+          "0": "Keep this page open — the status updates automatically.",
+          "1": "Do not close the verification tab until you see the confirmation.",
+          "2": "If it takes longer, click “Refresh” or “Continue now.”",
+          "3": "If issues persist, contact support with a screenshot of the confirmation."
+        },
+        "title": "Problems? Try this:"
+      },
+      "redirect": "You’ll be redirected automatically once verification is confirmed.",
+      "status": {
+        "stillWaiting": "Status: still pending",
+        "waiting": "Status: pending"
+      },
+      "subtitle": "We’re waiting for confirmation from our provider.",
+      "title": "Completing verification…"
+    },
+    "errors": {
+      "start": "Verification could not be started. Please try again."
+    },
+    "modal": {
+      "cancel": "Cancel",
+      "confirm": "Verify now",
+      "message": "Verify your age once to use this feature.",
+      "title": "Age verification required"
+    },
+    "overlay": {
+      "body": "Verify your age to view media content, create posts, or send messages.",
+      "cta": "Verify age",
+      "heading": "Age-restricted content",
+      "note": "You’ll be redirected automatically after completion."
+    }
+  }
+}

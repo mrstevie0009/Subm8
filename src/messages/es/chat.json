@@ -1,0 +1,230 @@
+{
+  "chat": {
+    "empty": {
+      "subtitle": "Inicia un chat nuevo desde un perfil.",
+      "title": "Sin conversaciones"
+    },
+    "header": {
+      "subtitle": "{total} conversaciones • {unread} sin leer",
+      "title": "Mensajes"
+    },
+    "loading": "Cargando…",
+    "loadingError": "No se pudieron cargar los chats",
+    "row": {
+      "badges": {
+        "muted": "Silenciado",
+        "pinned": "Fijado"
+      },
+      "menu": {
+        "block": "Bloquear usuario",
+        "delete": "Eliminar chat",
+        "mute": "Silenciar chat",
+        "pin": "Fijar chat",
+        "report": "Reportar usuario",
+        "unmute": "Quitar silencio",
+        "unpin": "Desfijar"
+      },
+      "preview": {
+        "audio": "Audio",
+        "file": "Archivo",
+        "image": "Foto",
+        "video": "Video"
+      }
+    },
+    "system": {
+      "ownershipAccepted": "Propiedad confirmada",
+      "ownershipRequest": "Solicitud de propiedad",
+      "ownershipRequestWithParts": "Solicitud de propiedad: {parts}",
+      "part": {
+        "avatar": "Avatar",
+        "banner": "Banner",
+        "bio": "Bio"
+      },
+      "reaction": {
+        "added": "{user} reaccionó con {emoji}",
+        "removed": "{user} quitó la reacción {emoji}"
+      },
+      "shared": {
+        "link": "Enlace compartido",
+        "post": "Publicación compartida",
+        "profile": "Perfil @{handle} compartido"
+      },
+      "tipPaid": "Propina pagada: {amount}",
+      "tipRequest": "Solicitud de propina: {amount}"
+    },
+    "toolbar": {
+      "filters": {
+        "all": "Todas",
+        "pinned": "Fijadas",
+        "unread": "Sin leer"
+      },
+      "searchPlaceholder": "Buscar mensajes…",
+      "settingsAria": "Ajustes"
+    },
+    "you": "Tú"
+  },
+  "chatComposer": {
+    "actions": {
+      "actions": "Acciones",
+      "gif": "Buscar GIFs",
+      "openActions": "Abrir acciones",
+      "remove": "Eliminar",
+      "send": "Enviar",
+      "sendMessageAria": "Enviar mensaje",
+      "tip": "Enviar propina",
+      "upload": "Subir medios",
+      "voice": {
+        "holdAria": "Mensaje de voz (mantén para grabar)",
+        "holdTitle": "Mensaje de voz (mantener)"
+      }
+    },
+    "disabled": {
+      "default": "Esta conversación está bloqueada."
+    },
+    "errors": {
+      "gif": {
+        "loadList": "No se pudieron cargar los GIFs.",
+        "loadOne": "No se pudo cargar el GIF."
+      },
+      "voice": {
+        "denied": "Sin acceso al micrófono (denegado o bloqueado).",
+        "unsupported": "Este navegador no admite mensajes de voz."
+      }
+    },
+    "gif": {
+      "close": "Cerrar",
+      "loading": "Cargando GIFs…",
+      "search": {
+        "button": "Buscar",
+        "placeholder": "Buscar GIFs…"
+      },
+      "selectTitle": "Seleccionar"
+    },
+    "menu": {
+      "autodrainRequest": "Solicitud de autodrain",
+      "ownershipRequest": "Solicitud de propiedad",
+      "tipRequest": "Solicitud de propina"
+    },
+    "placeholders": {
+      "closed": "Los MD están cerrados",
+      "message": "Mensaje…"
+    },
+    "protocol": {
+      "tipRequestLabel": "Solicitud de propina"
+    },
+    "recording": {
+      "inProgress": "Grabación en curso"
+    },
+    "voice": {
+      "preview": {
+        "discard": "Descartar",
+        "send": "Enviar"
+      }
+    }
+  },
+  "chatHeader": {
+    "aria": {
+      "back": "Atrás",
+      "more": "Más",
+      "profile": "Perfil de {name}"
+    },
+    "badges": {
+      "blockedYou": "Te ha bloqueado",
+      "youBlocked": "Bloqueado por ti"
+    },
+    "menu": {
+      "block": "Bloquear usuario",
+      "mute": "Silenciar conversación",
+      "muteSoon": "Silenciar conversación — próximamente",
+      "reportConversation": "Reportar conversación",
+      "unblock": "Desbloquear",
+      "viewProfile": "Ver perfil"
+    },
+    "role": {
+      "domme": "Domme",
+      "sub": "Sub"
+    }
+  },
+  "chatThread": {
+    "actions": {
+      "accept": "Aceptar",
+      "decline": "Rechazar",
+      "moreEmojis": "Más emojis",
+      "reply": "Responder"
+    },
+    "audio": {
+      "pause": "Pausar",
+      "play": "Reproducir"
+    },
+    "community": {
+      "members": "{count} miembros"
+    },
+    "disabled": {
+      "byOther": "Ya no puedes enviar mensajes directos a esta persona.",
+      "youBlocked": "Has bloqueado a esta persona. Envío deshabilitado."
+    },
+    "emoji": {
+      "close": "Cerrar",
+      "recent": "Usados recientemente",
+      "searchPlaceholder": "Buscar emojis",
+      "sheetTitle": "Emojis y reacciones"
+    },
+    "envelopes": {
+      "autodrainEnabled": {
+        "title": "AUTODRAIN ACTIVADO"
+      },
+      "autodrainRequest": {
+        "cadence": {
+          "daily": "Diario",
+          "monthly": "Mensual",
+          "weekly": "Semanal"
+        },
+        "declinedMsg": "❌ Solicitud de autodrain rechazada",
+        "recurrenceLabel": "Recurrencia: {cadence}",
+        "title": "SOLICITUD DE AUTODRAIN"
+      },
+      "ownershipAccepted": {
+        "applied": "Los cambios se aplicaron al perfil Sub.",
+        "title": "PROPIEDAD CONFIRMADA"
+      },
+      "ownershipRequest": {
+        "declinedMsg": "❌ Solicitud de propiedad rechazada",
+        "items": {
+          "avatar": "Avatar",
+          "banner": "Banner",
+          "bio": "Bio"
+        },
+        "legacy": {
+          "avatarPreview": "🖼 Vista previa de avatar incluida.",
+          "bannerPreview": "🏞 Vista previa de banner incluida."
+        },
+        "title": "SOLICITUD DE PROPIEDAD"
+      },
+      "tipPaid": {
+        "title": "PROPINA PAGADA"
+      },
+      "tipRequest": {
+        "declinedMsg": "❌ Solicitud de propina rechazada",
+        "title": "SOLICITUD DE PROPINA"
+      }
+    },
+    "invite": {
+      "expires": "Expira: {date}",
+      "usesLeft": "Usos restantes: {count}"
+    },
+    "loading": "Cargando…",
+    "media": {
+      "attachment": "📎 Adjunto",
+      "audio": "🎙 Audio",
+      "image": "📷 Imagen",
+      "video": "🎞 Video"
+    },
+    "quoted": {
+      "notFound": "Mensaje no encontrado"
+    },
+    "verify": {
+      "redirectNote": "Serás redirigido automáticamente al finalizar."
+    },
+    "you": "Tú"
+  }
+}

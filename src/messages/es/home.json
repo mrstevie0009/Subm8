@@ -1,0 +1,42 @@
+{
+  "bookmarksPage": {
+    "ariaBack": "Volver al feed",
+    "emptyDesc": "Guarda publicaciones para acceder a ellas aquí en cualquier momento.",
+    "emptyTitle": "Aún no hay marcadores",
+    "guestDesc": "Añade marcadores a las publicaciones para encontrarlas rápido más tarde.",
+    "guestTitle": "Guardar publicaciones para después",
+    "title": "Marcadores"
+  },
+  "feedFilter": {
+    "apply": "Aplicar",
+    "following": "Siguiendo",
+    "newPosts": "Publicaciones más recientes",
+    "onlyDommes": "Solo Dommes",
+    "onlySubs": "Solo Subs",
+    "reset": "Restablecer",
+    "title": "Filtra tu feed",
+    "toggleAria": "Filtro del feed",
+    "topPosts": "Publicaciones destacadas"
+  },
+  "toast": {
+    "comment": {
+      "failedTitle": "Error al enviar",
+      "sent": "Comentario enviado"
+    },
+    "community": {
+      "createFailedTitle": "Error al crear",
+      "created": "Comunidad creada"
+    },
+    "generic": {
+      "tryAgain": "Inténtalo de nuevo más tarde"
+    },
+    "media": {
+      "maxReached": "Se alcanzó el máximo de {max} medios por publicación",
+      "onlyRemaining": "Solo {remaining} {remaining, plural, one {elemento} other {elementos}} más posibles (máx. {max})."
+    },
+    "post": {
+      "failedTitle": "Error al publicar",
+      "published": "Publicación publicada"
+    }
+  }
+}

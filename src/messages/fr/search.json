@@ -1,0 +1,36 @@
+{
+  "search": {
+    "loading": "Chargement…",
+    "people": {
+      "empty": "Aucune personne trouvée",
+      "followers": "Abonnés",
+      "title": "Personnes"
+    },
+    "placeholder": "Rechercher sur Subm8",
+    "posts": {
+      "empty": "Aucun post trouvé",
+      "latestTitle": "Posts récents",
+      "title": "Posts"
+    },
+    "recent": {
+      "remove": "Supprimer",
+      "removeAria": "Supprimer {query}",
+      "title": "Récents"
+    },
+    "suggestions": {
+      "empty": "Aucune suggestion pour le moment.",
+      "title": "Personnes à suivre"
+    },
+    "tabs": {
+      "latest": "Récents",
+      "people": "Personnes",
+      "top": "Top"
+    },
+    "trending": {
+      "empty": "Aucune tendance pour l’instant.",
+      "posts": "Posts",
+      "title": "Tendance",
+      "topic": "Sujet"
+    }
+  }
+}

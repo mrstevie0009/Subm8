@@ -1,0 +1,42 @@
+{
+  "bookmarksPage": {
+    "ariaBack": "Back to feed",
+    "emptyDesc": "Save posts to access them here anytime.",
+    "emptyTitle": "No bookmarks yet",
+    "guestDesc": "Add bookmarks to posts so you can quickly find them later.",
+    "guestTitle": "Save posts for later",
+    "title": "Bookmarks"
+  },
+  "feedFilter": {
+    "apply": "Apply",
+    "following": "Following",
+    "newPosts": "Latest posts",
+    "onlyDommes": "Dommes only",
+    "onlySubs": "Subs only",
+    "reset": "Reset",
+    "title": "Filter your feed",
+    "toggleAria": "Feed filter",
+    "topPosts": "Top posts"
+  },
+  "toast": {
+    "comment": {
+      "failedTitle": "Sending failed",
+      "sent": "Comment sent"
+    },
+    "community": {
+      "createFailedTitle": "Creation failed",
+      "created": "Community created"
+    },
+    "generic": {
+      "tryAgain": "Please try again later"
+    },
+    "media": {
+      "maxReached": "Max {max} media per post reached",
+      "onlyRemaining": "Only {remaining} more {remaining, plural, one {item} other {items}} possible (max {max})."
+    },
+    "post": {
+      "failedTitle": "Posting failed",
+      "published": "Post published"
+    }
+  }
+}

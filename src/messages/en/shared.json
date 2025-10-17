@@ -1,0 +1,52 @@
+{
+  "twofa": {
+    "active": "Active: App-based 2FA is enabled.",
+    "confirm": "Confirm",
+    "disable": "Disable",
+    "extraPassword": {
+      "desc": "When resetting the password, email or phone must also be confirmed.",
+      "title": "Extra password protection",
+      "toggle": {
+        "disable": "Disable protection",
+        "enable": "Enable protection",
+        "title": "Toggle password reset protection"
+      }
+    },
+    "intro": "Protect your account with a second login step. Use app (TOTP), SMS or passkeys.",
+    "passkeyActiveMsg": "Passkey is active. You can use it to log in.",
+    "passkeysActiveNote": "Passkey is set up and stored for 2-step authentication.",
+    "passkeysDisable": "Disable passkeys",
+    "passkeysNote": "Set up a passkey for faster, safer sign-ins.",
+    "passkeysRemoveAllTitle": "Remove all passkeys",
+    "passkeysTitle": "Security keys / passkeys",
+    "qrAlt": "TOTP QR code",
+    "resend": "Resend",
+    "resendTitle": "Resend code",
+    "scanIntro": "Scan the QR code with your authenticator app, then enter the 6-digit code.",
+    "sessions": {
+      "desc": "Ends all active sessions on all devices and logs you out.",
+      "endAll": "End all sessions",
+      "title": "End sessions"
+    },
+    "setup": "Set up",
+    "sms": {
+      "disable2fa": "Disable SMS 2FA",
+      "disable2faTitle": "Disable SMS 2FA (phone number remains saved)",
+      "loginSendsToPrefix": "At login, we send a code to",
+      "removeNumber": "Remove number",
+      "removeNumberTitle": "Remove phone number",
+      "request": "Request SMS code"
+    },
+    "smsActiveMsg": "Two-factor login via SMS is active.",
+    "smsAddPhoneFirst": "Add a phone number in your profile settings first.",
+    "smsAddPhoneHintEnd": "and add a phone number.",
+    "smsAddPhoneHintStart": "Open your",
+    "smsChangeNumber": "Change number",
+    "smsPhoneReady": "Phone number saved. You can now set up SMS codes.",
+    "smsTitle": "SMS codes",
+    "title": "Two-factor authentication",
+    "tokenAria": "6-digit verification code",
+    "tokenPlaceholder": "123456",
+    "totpTitle": "Authenticator app (TOTP)"
+  }
+}

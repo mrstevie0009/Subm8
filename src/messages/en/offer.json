@@ -1,0 +1,39 @@
+{
+  "offerEditor": {
+    "actions": {
+      "addBg": "Add background",
+      "cancel": "Cancel",
+      "changeBg": "Change background",
+      "remove": "Remove",
+      "save": "Save",
+      "saving": "Saving…"
+    },
+    "controls": {
+      "color": "Color",
+      "dim": "Dim",
+      "font": "Font",
+      "hex": "Hex",
+      "textColor": "Text color"
+    },
+    "placeholders": {
+      "text": "Text…",
+      "title": "Title…"
+    }
+  },
+  "offerViewer": {
+    "actions": {
+      "close": "Close"
+    },
+    "aria": {
+      "modalLabel": "Offer"
+    },
+    "placeholders": {
+      "noContent": "No content.",
+      "noTitle": "No title"
+    },
+    "states": {
+      "loadError": "Failed to load.",
+      "loading": "Loading…"
+    }
+  }
+}

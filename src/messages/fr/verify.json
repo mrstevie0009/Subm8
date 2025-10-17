@@ -1,0 +1,42 @@
+{
+  "verify": {
+    "complete": {
+      "actions": {
+        "backNow": "Continuer maintenant",
+        "refresh": "Actualiser"
+      },
+      "elapsed": "{seconds, plural, =0 {0 s} one {# s} other {# s}}",
+      "help": {
+        "items": {
+          "0": "Laisse cette page ouverte — le statut se met à jour automatiquement.",
+          "1": "Ne ferme l’onglet de vérification qu’après avoir vu la confirmation.",
+          "2": "Si cela prend plus de temps, clique sur « Actualiser » ou « Continuer maintenant ».",
+          "3": "En dernier recours, contacte le support avec une capture de la confirmation."
+        },
+        "title": "Un souci ? Voici comment faire :"
+      },
+      "redirect": "Tu seras redirigé·e automatiquement dès que la vérification sera confirmée.",
+      "status": {
+        "stillWaiting": "Statut : en attente",
+        "waiting": "Statut : en attente"
+      },
+      "subtitle": "Nous attendons la confirmation de notre prestataire.",
+      "title": "Finalisation de la vérification…"
+    },
+    "errors": {
+      "start": "La vérification n’a pas pu démarrer. Réessaie."
+    },
+    "modal": {
+      "cancel": "Annuler",
+      "confirm": "Vérifier maintenant",
+      "message": "Vérifie une fois ton âge pour utiliser cette fonctionnalité.",
+      "title": "Justificatif d’âge requis"
+    },
+    "overlay": {
+      "body": "Vérifie ton âge pour voir des contenus médias, créer des posts ou envoyer des messages.",
+      "cta": "Vérifier l’âge",
+      "heading": "Média soumis à une limite d’âge",
+      "note": "Tu seras automatiquement redirigé·e après la fin."
+    }
+  }
+}

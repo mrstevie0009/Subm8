@@ -1,4 +1,3 @@
-// src/components/HomeFeedClient.tsx
 'use client';
 
 import * as React from 'react';
@@ -11,38 +10,53 @@ type Props = {
 };
 
 // Shape, das /api/feed liefert
-type ApiMedia = { url: string; alt?: string | null; kind: 'image' | 'video' | 'gif'; mime?: string | null };
+type ApiMedia = {
+  url: string;
+  alt?: string | null;
+  kind: 'image' | 'video' | 'gif';
+  mime?: string | null;
+};
 type ApiPost = {
   id: string;
   text: string | null;
-  mediaUrl: string | null;      // legacy
-  mediaAlt: string | null;      // legacy
-  uploaded?: ApiMedia[];        // neu
+  mediaUrl: string | null; // legacy
+  mediaAlt: string | null; // legacy
+  uploaded?: ApiMedia[]; // neu
   createdAt: string;
   _count: { Like: number; Comment: number; reposts: number };
   author: {
-    id: string; handle: string; displayName: string;
+    id: string;
+    handle: string;
+    displayName: string;
     role: 'DOMME' | 'SUBMISSIVE' | null;
     avatarUrl: string | null;
   };
   repostOf: null | {
-    id: string; text: string;
-    mediaUrl: string | null; mediaAlt: string | null;
-    uploaded?: ApiMedia[];      // neu
+    id: string;
+    text: string;
+    mediaUrl: string | null;
+    mediaAlt: string | null;
+    uploaded?: ApiMedia[];
     createdAt: string;
     author: {
-      id: string; handle: string; displayName: string;
+      id: string;
+      handle: string;
+      displayName: string;
       role: 'DOMME' | 'SUBMISSIVE' | null;
       avatarUrl: string | null;
     };
   };
   quoteOf: null | {
-    id: string; text: string;
-    mediaUrl: string | null; mediaAlt: string | null;
-    uploaded?: ApiMedia[];      // neu
+    id: string;
+    text: string;
+    mediaUrl: string | null;
+    mediaAlt: string | null;
+    uploaded?: ApiMedia[];
     createdAt: string;
     author: {
-      id: string; handle: string; displayName: string;
+      id: string;
+      handle: string;
+      displayName: string;
       role: 'DOMME' | 'SUBMISSIVE' | null;
       avatarUrl: string | null;
     };
@@ -140,23 +154,44 @@ function dedupeById<T extends { id: string }>(arr: T[]): T[] {
   return out;
 }
 
+// Schöne Lade-Skeletons
+function FeedSkeleton() {
+  return (
+    <div className="grid gap-3">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <div key={i} className="rounded-app border border-sub shadow-app p-4">
+          <div className="flex items-start gap-3">
+            <div className="h-10 w-10 rounded-full bg-white/10 animate-pulse" />
+            <div className="min-w-0 flex-1">
+              <div className="h-3 w-40 bg-white/10 rounded animate-pulse" />
+              <div className="mt-2 h-3 w-[90%] bg-white/10 rounded animate-pulse" />
+              <div className="mt-2 h-3 w-[70%] bg-white/10 rounded animate-pulse" />
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function HomeFeedClient({ initialItems }: Props) {
   const searchParams = useSearchParams();
 
-  const PAGE_SIZE = 20; // Batch-Größe pro Nachlade-Request
+  const PAGE_SIZE = 12; // kleinere erste Ladung für schnellere Wahrnehmung
 
-  // Nur die relevanten Query-Keys für den Feed übernehmen
+  // Nur relevante Query-Keys übernehmen
   const feedQuery = React.useMemo(() => {
     const sp = new URLSearchParams();
     const feed = searchParams.get('feed');
     const role = searchParams.get('role');
     if (feed) sp.set('feed', feed);
     if (role) sp.set('role', role);
-    return sp.toString(); // z.B. "feed=following,top&role=dommes"
+    return sp.toString();
   }, [searchParams]);
 
   // State
   const [items, setItems] = React.useState<FeedPost[]>(() => dedupeById(initialItems));
+  const [firstLoading, setFirstLoading] = React.useState(items.length === 0);
   const [newCount, setNewCount] = React.useState(0);
   const [loadingNew, setLoadingNew] = React.useState(false);
   const [atTop, setAtTop] = React.useState(true);
@@ -217,7 +252,7 @@ export default function HomeFeedClient({ initialItems }: Props) {
     return () => io.disconnect();
   }, [headerHeight]);
 
-  // Initial laden bei Filterwechsel (und End-Flag resetten)
+  // Initial laden bei Filterwechsel
   React.useEffect(() => {
     let cancelled = false;
     const load = async () => {
@@ -232,14 +267,17 @@ export default function HomeFeedClient({ initialItems }: Props) {
         setItems(dedupeById(mapped));
         setNewCount(0);
         setEndReached(false);
+        setFirstLoading(false);
         window.scrollTo({ top: 0 });
       }
     };
     load();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [feedQuery]);
 
-  // Polling: nur zählen – Filter mitgeben
+  // Polling: nur zählen
   React.useEffect(() => {
     let active = true;
     const tick = async () => {
@@ -261,7 +299,7 @@ export default function HomeFeedClient({ initialItems }: Props) {
     };
   }, [latestISO, feedQuery]);
 
-  // Neue Posts laden – Filter mitgeben
+  // Neue Posts laden
   const loadNewPosts = React.useCallback(async () => {
     setLoadingNew(true);
     try {
@@ -296,7 +334,7 @@ export default function HomeFeedClient({ initialItems }: Props) {
           try {
             const sp = new URLSearchParams(feedQuery);
             sp.set('before', oldestISO);
-            sp.set('limit', String(PAGE_SIZE));
+            sp.set('limit', String(20)); // Nachläufe ruhig größer
             const res = await fetch(`/api/feed?${sp.toString()}`, { cache: 'no-store' });
             if (!res.ok) return;
             const data = (await res.json()) as { posts: ApiPost[] };
@@ -305,7 +343,7 @@ export default function HomeFeedClient({ initialItems }: Props) {
             if (mapped.length === 0) {
               setEndReached(true);
             } else {
-              setItems(prev => dedupeById([...prev, ...mapped]));
+              setItems((prev) => dedupeById([...prev, ...mapped]));
             }
           } finally {
             setLoadingMore(false);
@@ -320,7 +358,9 @@ export default function HomeFeedClient({ initialItems }: Props) {
 
   function handleClickNew() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
-    setTimeout(() => { void loadNewPosts(); }, 150);
+    setTimeout(() => {
+      void loadNewPosts();
+    }, 150);
   }
 
   return (
@@ -333,7 +373,7 @@ export default function HomeFeedClient({ initialItems }: Props) {
         className={`
           fixed left-1/2 -translate-x-1/2 z-[70]
           ${newCount > 0 && !atTop ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}
-          transition-opacity duration-200
+          transition-opacity duration-300
         `}
         style={{ top: buttonTop }}
       >
@@ -349,29 +389,35 @@ export default function HomeFeedClient({ initialItems }: Props) {
 
       {/* Feed */}
       <section className="grid gap-3">
-        {items.map((post) => (
-          <PostCard key={post.id} post={post} />
-        ))}
+        {firstLoading ? (
+          <FeedSkeleton />
+        ) : (
+          items.map((post) => <PostCard key={post.id} post={post} />)
+        )}
 
-        {/* Bottom-Sentinel + Mini-Loader */}
+        {/* Bottom-Sentinel + hübscher Mini-Skeleton statt nur Spinner */}
         {!endReached && (
-          <div ref={bottomSentinelRef} className="flex justify-center py-6">
+          <div ref={bottomSentinelRef} className="flex justify-center py-6 w-full">
             {loadingMore ? (
-              <div
-                className="h-5 w-5 rounded-full border-2 border-white/30 border-t-white animate-spin"
-                aria-label="Loading more"
-              />
+              <div className="w-full grid gap-3">
+                <div className="rounded-app border border-sub shadow-app p-4">
+                  <div className="h-3 w-48 bg-white/10 rounded animate-pulse" />
+                  <div className="mt-2 h-3 w-[85%] bg-white/10 rounded animate-pulse" />
+                </div>
+                <div className="rounded-app border border-sub shadow-app p-4">
+                  <div className="h-3 w-56 bg-white/10 rounded animate-pulse" />
+                  <div className="mt-2 h-3 w-[70%] bg-white/10 rounded animate-pulse" />
+                </div>
+              </div>
             ) : (
               <div className="h-5" />
             )}
           </div>
         )}
 
-        {/* Optional: Ende-Hinweis */}
+        {/* Ende-Hinweis */}
         {endReached && (
-          <div className="text-center text-sm opacity-60 py-6">
-            Keine weiteren Posts.
-          </div>
+          <div className="text-center text-sm opacity-60 py-6">Keine weiteren Posts.</div>
         )}
       </section>
     </>

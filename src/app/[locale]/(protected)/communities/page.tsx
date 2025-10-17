@@ -6,6 +6,24 @@ import { useLocale, useTranslations } from 'next-intl';
 import CommunityJoinButton from '@/components/CommunityJoinButton';
 import CreateCommunityButton from '@/components/CreateCommunityButton';
 
+const COMMS_CACHE_DISCOVER = 'communities:discover:v1';
+const COMMS_CACHE_YOURS    = 'communities:yours:v1';
+function readCachedCommunities(key: string) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const { ts, items } = JSON.parse(raw) as { ts: number; items: CommunityItem[] };
+    // bis 3 Minuten frisch
+    if (Date.now() - ts > 3 * 60 * 1000) return null;
+    return items as CommunityItem[];
+  } catch { return null; }
+}
+function writeCachedCommunities(key: string, items: CommunityItem[]) {
+  try {
+    localStorage.setItem(key, JSON.stringify({ ts: Date.now(), items }));
+  } catch {}
+}
+
 const BANNER_PH = '/images/banner-placeholder.png';
 
 type JoinPolicy = 'OPEN' | 'INVITE_ONLY' | 'DOMME_ONLY' | 'SUB_ONLY';
@@ -46,6 +64,29 @@ function canJoinByRole(policy: JoinPolicy, role: Role): boolean {
   return true; // OPEN
 }
 
+function CommunityCardSkeleton() {
+  return (
+    <article className="relative rounded-app border border-sub shadow-app overflow-hidden">
+      <div className="h-28 bg-white/10 animate-pulse" />
+      <div className="p-3">
+        <div className="flex items-start gap-3">
+          <div className="size-10 rounded-full bg-white/10 border border-white/20 animate-pulse" />
+          <div className="min-w-0 flex-1">
+            <div className="h-3 w-44 bg-white/10 rounded animate-pulse" />
+            <div className="mt-2 h-3 w-28 bg-white/10 rounded animate-pulse" />
+            <div className="mt-3 h-5 w-24 bg-white/10 rounded-full animate-pulse" />
+          </div>
+        </div>
+        <div className="mt-3 h-3 w-[85%] bg-white/10 rounded animate-pulse" />
+        <div className="mt-2 h-3 w-[60%] bg-white/10 rounded animate-pulse" />
+        <div className="mt-4 flex items-center justify-between">
+          <div className="h-3 w-24 bg-white/10 rounded animate-pulse" />
+          <div className="h-8 w-24 bg-white/10 rounded-full animate-pulse" />
+        </div>
+      </div>
+    </article>
+  );
+}
 export default function CommunitiesPage() {
   const locale = useLocale();
   const t = useTranslations('common.communitiesPage');
@@ -70,6 +111,8 @@ export default function CommunitiesPage() {
 
   // Viewer-Rolle (für Ausgrauen/Disable)
   const [viewerRole, setViewerRole] = React.useState<Role>(null);
+  const latestReqRef = React.useRef(0);
+  const pollRef = React.useRef<number | null>(null);
   React.useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -92,29 +135,93 @@ export default function CommunitiesPage() {
 
   React.useEffect(() => {
     let cancelled = false;
+    const myReq = ++latestReqRef.current;
 
-    async function load() {
+    (async () => {
       setLoading(true);
-      try {
-        if (tab === 'discover') {
-          const r = await fetch('/api/communities?limit=24', { cache: 'no-store' });
-          const j = (await r.json()) as { ok: boolean; items: CommunityItem[] };
-          if (!cancelled && j?.ok) setDiscover(j.items);
-        } else {
-          const r = await fetch('/api/communities?mine=1&limit=48', { cache: 'no-store' });
-          const j = (await r.json()) as { ok: boolean; items: CommunityItem[] };
-          if (!cancelled && j?.ok) setMine(j.items);
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
 
-    load();
-    return () => {
-      cancelled = true;
-    };
+      // 1) Cache sofort anzeigen
+      const cacheKey = tab === 'discover' ? COMMS_CACHE_DISCOVER : COMMS_CACHE_YOURS;
+      const cached = readCachedCommunities(cacheKey);
+      if (!cancelled && cached) {
+        if (tab === 'discover') setDiscover(cached);
+        else setMine(cached);
+        setLoading(false); // UI sofort sichtbar
+      }
+
+      // 2) Netzwerk – frische Daten
+      try {
+        const ctrl = new AbortController();
+        const tmo = setTimeout(() => ctrl.abort(), 12000);
+
+        const url =
+          tab === 'discover'
+            ? '/api/communities?limit=24'
+            : '/api/communities?mine=1&limit=48';
+
+        const res = await fetch(url, { cache: 'no-store', signal: ctrl.signal });
+        clearTimeout(tmo);
+
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const j = (await res.json()) as { ok: boolean; items: CommunityItem[] };
+        if (!j?.ok) throw new Error('Bad payload');
+
+        if (cancelled || myReq !== latestReqRef.current) return;
+
+        if (tab === 'discover') setDiscover(j.items);
+        else setMine(j.items);
+
+        writeCachedCommunities(cacheKey, j.items);
+      } catch {
+        /* leise: wir haben evtl. Cache gezeigt */
+      } finally {
+        if (!cancelled && myReq === latestReqRef.current) setLoading(false);
+      }
+    })();
+
+    return () => { cancelled = true; };
   }, [tab]);
+
+  React.useEffect(() => {
+    const tick = async () => {
+      const myReq = ++latestReqRef.current;
+      try {
+        const url =
+          tab === 'discover'
+            ? '/api/communities?limit=24'
+            : '/api/communities?mine=1&limit=48';
+
+        const res = await fetch(url, { cache: 'no-store' });
+        const j = await res.json().catch(() => null);
+        if (!j?.ok || myReq !== latestReqRef.current) return;
+
+        const fresh = j.items as CommunityItem[];
+        const before = (tab === 'discover' ? discover : mine)
+          .map(i => `${i.id}:${i.members}:${i.joined}`)
+          .join('|');
+        const after = fresh.map(i => `${i.id}:${i.members}:${i.joined}`).join('|');
+
+        if (before !== after) {
+          if (tab === 'discover') setDiscover(fresh);
+          else setMine(fresh);
+          writeCachedCommunities(tab === 'discover' ? COMMS_CACHE_DISCOVER : COMMS_CACHE_YOURS, fresh);
+        }
+      } catch {}
+    };
+
+    const onVis = () => { if (!document.hidden) tick(); };
+    document.addEventListener('visibilitychange', onVis);
+
+    pollRef.current = window.setInterval(() => {
+      if (!document.hidden) tick();
+    }, 15000);
+
+    return () => {
+      document.removeEventListener('visibilitychange', onVis);
+      if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+    };
+
+  }, [tab, discover, mine]);
 
   const list = tab === 'discover' ? discover : mine;
 
@@ -145,7 +252,11 @@ export default function CommunitiesPage() {
 
       {/* Grid */}
       <div className="p-4 grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {loading && <div className="col-span-full text-center opacity-70 py-8">{t('loading')}</div>}
+        {loading && (
+          <>
+            {Array.from({ length: 9 }).map((_, i) => <CommunityCardSkeleton key={i} />)}
+          </>
+        )}
 
         {!loading && list.length === 0 && (
           <div className="col-span-full text-center opacity-70 py-10">

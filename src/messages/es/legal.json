@@ -1,0 +1,201 @@
+{
+  "legal": {
+    "age": {
+      "content": {
+        "callout_body": "Las violaciones de las leyes de protección de menores se perseguirán de forma consistente — incluido informar a las autoridades competentes cuando corresponda.",
+        "callout_title": "Tolerancia cero",
+        "p_access": "El uso de Subm8 está permitido solo para adultos. Al registrarte confirmas que tienes al menos 18 años.",
+        "proof_li_1": "Podemos exigir verificación (p. ej., carga de identificación o proveedores externos).",
+        "proof_li_2": "Sin una verificación exitosa, el acceso a ciertas funciones puede estar restringido.",
+        "protection_li_1": "La información falsa de edad conlleva la suspensión inmediata de la cuenta.",
+        "protection_li_2": "El contenido que involucre a menores está estrictamente prohibido y será reportado y eliminado de inmediato."
+      },
+      "sections": {
+        "access": "1. Acceso solo a partir de 18 años",
+        "proof": "2. Verificación de edad",
+        "protection": "3. Protección de menores"
+      },
+      "subtitle": "Acceso solo para adultos.",
+      "title": "Política de verificación de edad"
+    },
+    "guidelines": {
+      "callout_body": "Usa la función de reporte si se cruzan límites. Nuestro equipo revisa los reportes con prontitud y proporcionalidad.",
+      "callout_title": "Mantente seguro",
+      "list": {
+        "li_1": "Solo 18+ — sin menores, sin contenido que involucre a menores.",
+        "li_2": "Consentimiento — sin acoso, sin coerción.",
+        "li_3": "Conducta respetuosa — sin discursos de odio, sin discriminación, sin bullying.",
+        "li_4": "Contenido NSFW — permitido, pero correctamente etiquetado (p. ej., bandera NSFW).",
+        "li_5": "Privacidad — no compartas datos privados sin consentimiento.",
+        "li_6": "Spam y publicidad — prohibidos salvo que estén claramente etiquetados y cumplan las normas.",
+        "li_7": "Reporta abusos — las infracciones pueden reportarse; la reiteración conlleva medidas."
+      },
+      "subtitle": "Respeto, consentimiento y seguridad ante todo.",
+      "title": "Normas de la comunidad"
+    },
+    "imprint": {
+      "content": {
+        "adult_note": "Nota: Esta plataforma es exclusivamente para usuarios adultos. El contenido puede ser NSFW/adulto.",
+        "contact_label": "Contacto",
+        "line_1": "Plataforma Subm8",
+        "represented_by_label": "Representada por",
+        "vat_label": "ID de IVA"
+      },
+      "subtitle": "Identificación del proveedor según § 5 TMG / derecho de la UE.",
+      "title": "Aviso legal"
+    },
+    "overview": {
+      "content": {
+        "audience_li_1": "Uso restringido a mayores de 18 años.",
+        "audience_li_2": "El contenido puede incluir material NSFW / para adultos.",
+        "audience_li_3": "Nos reservamos el derecho de solicitar verificación de identidad o edad.",
+        "callout_body": "Documentos complementarios: Política de privacidad, Aviso legal, Normas de la comunidad, Política de reembolsos, Verificación de edad.",
+        "callout_title": "Nota",
+        "liability_li_1": "No somos responsables del comportamiento de los usuarios.",
+        "liability_li_2": "El uso es bajo tu propio riesgo.",
+        "p_changes": "Nos reservamos el derecho de adaptar estos términos. Te informaremos oportunamente sobre cambios materiales.",
+        "p_roles": "Subm8 permite interacciones entre Dommes y Subs.",
+        "p_scope": "Estos Términos de servicio se aplican al uso de la plataforma Subm8 («plataforma», «nosotros») por usuarios registrados («usuarios», «tú»). Al registrarte, aceptas estos términos.",
+        "payments_li_1": "Las Dommes pueden recibir pagos (propinas, suscripciones, comunidades).",
+        "payments_li_2": "Subm8 cobra una comisión de plataforma además de posibles comisiones del proveedor.",
+        "payments_li_3": "Retiros a partir de un importe mínimo (mostrado en el panel).",
+        "payments_li_4": "Sin responsabilidad por contracargos o problemas de pago externos.",
+        "roles_li_1": "Solo subes contenido sobre el que posees los derechos.",
+        "roles_li_2": "Sin violaciones de la ley aplicable.",
+        "roles_li_3": "Prohibido: apología de la violencia, contenido no consensuado, menores, discriminación.",
+        "termination_li_1": "Puedes eliminar tu cuenta en cualquier momento.",
+        "termination_li_2": "Podemos suspender cuentas o eliminar contenido si se violan leyes o estos términos."
+      },
+      "sections": {
+        "audience": "2. Audiencia",
+        "changes": "7. Cambios",
+        "liability": "6. Responsabilidad",
+        "payments": "4. Pagos y wallet",
+        "roles": "3. Roles y contenido",
+        "scope": "1. Ámbito",
+        "termination": "5. Terminación y suspensión"
+      },
+      "subtitle": "Reglas vinculantes para usar Subm8.",
+      "title": "Términos de servicio"
+    },
+    "privacy": {
+      "content": {
+        "callout_body": "Detallamos proveedores y ubicaciones de almacenamiento en la documentación técnica y en el panel («Legal y Privacidad»).",
+        "callout_title": "Transparencia",
+        "data_li_1": "Datos de registro (handle, correo, contraseña, rol)",
+        "data_li_2": "Datos de perfil (avatar, banner, bio, membresías de comunidad)",
+        "data_li_3": "Datos de pago (propinas, suscripciones, saldos de wallet, retiros)",
+        "data_li_4": "Datos de uso (inicios de sesión, interacciones del feed, metadatos de mensajes)",
+        "legal_li_1": "Ejecución del contrato (art. 6(1)(b) RGPD)",
+        "legal_li_2": "Intereses legítimos (art. 6(1)(f) RGPD)",
+        "legal_li_3": "Consentimiento (art. 6(1)(a) RGPD) — p. ej., boletines",
+        "p_controller": "Subm8 (Operador: [Tu nombre / empresa], [dirección], [correo]) es responsable del tratamiento de datos personales en esta plataforma.",
+        "p_cookies": "Subm8 usa cookies necesarias para inicio de sesión y seguridad. La analítica — si existe — se realiza de forma anonimizada/pseudonimizada.",
+        "p_retention": "Se conserva mientras tu cuenta esté activa. Tras la eliminación: borrado o anonimización salvo obligaciones legales de conservación.",
+        "purpose_li_1": "Prestación de la plataforma y servicios",
+        "purpose_li_2": "Procesamiento de pagos y wallet",
+        "purpose_li_3": "Comunicación (chats, notificaciones)",
+        "purpose_li_4": "Seguridad, detección de abusos y prevención de fraude",
+        "rights_li_1": "Acceso, rectificación, supresión, limitación",
+        "rights_li_2": "Oposición al tratamiento, portabilidad",
+        "rights_li_3": "Derecho a presentar reclamación ante una autoridad de control",
+        "sharing_li_1": "Proveedores de pago (p. ej., Stripe, PayPal u otros PSP)",
+        "sharing_li_2": "Partners de hosting e infraestructura (p. ej., Vercel, NeonDB)",
+        "sharing_li_3": "Sin cesión a terceros con fines publicitarios"
+      },
+      "sections": {
+        "controller": "1. Responsable",
+        "cookies": "8. Cookies y seguimiento",
+        "data": "2. Datos recopilados",
+        "legal": "4. Bases jurídicas",
+        "purpose": "3. Finalidad del tratamiento",
+        "retention": "6. Conservación",
+        "rights": "7. Derechos del interesado",
+        "sharing": "5. Cesión a terceros"
+      },
+      "subtitle": "Cómo procesamos los datos — transparente y con finalidad determinada.",
+      "title": "Política de privacidad (RGPD)"
+    },
+    "refund": {
+      "content": {
+        "callout_body": "Los pagos también están sujetos a las condiciones/políticas de los proveedores de pago (comisiones, plazos, procesos de revisión). Subm8 facilita los pagos pero no vende servicios por sí misma.",
+        "callout_title": "Importante",
+        "gifts_li_1": "Los obsequios son transferencias voluntarias entre usuarios y, por regla general, son definitivos (no reembolsables).",
+        "gifts_li_2": "Excepciones: obligación legal, error técnico claro (p. ej., doble cargo) o fraude verificado.",
+        "p_chargebacks": "En caso de contracargos/fraude, podemos suspender temporalmente la cuenta y retener pagos hasta aclaración. Los contracargos abusivos pueden conllevar suspensión.",
+        "p_tech": "En dobles cargos o asientos incorrectos, reembolsamos tras revisión. Contáctanos dentro de 14 días desde que lo detectes con ID de transacción y evidencias.",
+        "process_li_1": "Contacta con soporte (ver aviso legal) con la documentación.",
+        "process_li_2": "Revisamos en un plazo razonable y te informamos del resultado y del canal de reembolso, si aplica.",
+        "process_li_3": "Los reembolsos se realizan, por regla general, por el mismo medio de pago.",
+        "subs_li_1": "Las suscripciones pueden cancelarse en cualquier momento, con efecto en el siguiente ciclo de facturación.",
+        "subs_li_2": "Los importes ya pagados del periodo en curso no se reembolsan proporcionalmente salvo obligación legal."
+      },
+      "sections": {
+        "gifts": "1. Obsequios (propinas) y pagos únicos",
+        "process": "5. Proceso de reembolso",
+        "subs": "2. Suscripciones / membresías",
+        "tech": "3. Errores técnicos",
+        "unauth": "4. Pagos no autorizados y contracargos"
+      },
+      "subtitle": "Reglas de reembolso para obsequios, suscripciones y errores.",
+      "title": "Política de reembolsos"
+    },
+    "shared": {
+      "danger": "Advertencia",
+      "info": "Info",
+      "note": "Nota",
+      "updated": "Actualizado",
+      "warn": "Importante"
+    },
+    "terms": {
+      "content": {
+        "audience_li_1": "Uso restringido a mayores de 18; podemos requerir verificación de edad/identidad.",
+        "audience_li_2": "La plataforma puede contener contenido NSFW/adulto. Menores y contenido no consensuado están prohibidos.",
+        "callout_body": "Los obsequios son voluntarios, no reembolsables y no están ligados a servicios. Subm8 solo facilita. Eres responsable de los servicios acordados aparte (incl. impuestos).",
+        "callout_title": "Obsequios — versión corta",
+        "fees_li_1": "Subm8 cobra una comisión de plataforma (p. ej., 10 %) y posibles comisiones del proveedor.",
+        "fees_li_2": "Para obsequios, puede mostrarse un recargo al pagador («encima»). El «importe para el creador» mostrado es el importe base acreditado al receptor.",
+        "fees_li_3": "Los pagos se realizan a partir de un importe mínimo y tras controles internos (incl. riesgo/cumplimiento).",
+        "fees_li_4": "Contracargos/fraude: podemos suspender temporalmente cuentas y retener fondos hasta aclaración.",
+        "liability_li_1": "No somos responsables de acciones/servicios de terceros (otros usuarios, proveedores de pago).",
+        "liability_li_2": "La plataforma se ofrece «tal cual»; úsala bajo tu propio riesgo en la medida permitida por la ley.",
+        "p_changes": "Podemos modificar estos términos; te notificaremos cambios materiales en la app/web oportunamente.",
+        "p_law": "Rige la ley del domicilio del operador (ver aviso legal), excluyendo normas de conflicto, salvo que el derecho de consumo obligatorio disponga lo contrario.",
+        "p_roles": "Subm8 permite interacciones entre Dommes y Subs.",
+        "p_scope": "Estos Términos de servicio se aplican al uso de la plataforma Subm8 («plataforma», «nosotros») por usuarios registrados («usuarios», «tú»). Al registrarte, aceptas estos términos.",
+        "roles_li_1": "Posees los derechos sobre tu contenido y no violas leyes ni derechos de terceros.",
+        "roles_li_2": "Prohibido: entre otros, representaciones no consensuadas, menores, apología de la violencia, odio/discriminación.",
+        "roles_li_3": "Podemos moderar, bloquear o eliminar contenido para hacer cumplir las leyes y estos términos.",
+        "tax_li_1": "Eres responsable de tu situación fiscal (p. ej., IRPF, posible IVA) en tu país, cuando aplique.",
+        "tax_li_2": "Subm8 no es parte de los servicios acordados separadamente entre usuarios.",
+        "tax_li_3": "Donde la ley exija a Subm8 informar/retener, lo haremos.",
+        "termination_li_1": "Puedes eliminar tu cuenta en cualquier momento (las obligaciones legales de conservación permanecen).",
+        "termination_li_2": "Podemos suspender/eliminar cuentas y retrasar/denegar pagos si se violan leyes, estos términos o políticas de seguridad.",
+        "tips_li_1": "Obsequios voluntarios: las propinas son transferencias voluntarias entre usuarios.",
+        "tips_li_2": "No es pago por servicio: las propinas no son pagos por bienes/servicios y no generan derecho a contenido, respuestas o acciones específicas.",
+        "tips_li_3": "Rol de la plataforma: Subm8 solo intermedia la transferencia y no determina cómo usan las propinas los receptores.",
+        "tips_li_4": "Finalidad: tras la confirmación, los obsequios son generalmente definitivos y no reembolsables (excepciones: obligación legal o error técnico claro; ver Política de reembolsos).",
+        "tips_li_5": "Servicios ≠ obsequios: los servicios acordados aparte (p. ej., coaching, contenido a medida) no son «obsequios». Tales servicios pueden requerir impuestos/protección al consumidor (responsabilidad del proveedor)."
+      },
+      "sections": {
+        "audience": "2. Audiencia y límite de edad",
+        "changes": "9. Cambios",
+        "fees": "5. Pagos, comisiones y retiros",
+        "law": "10. Ley aplicable y jurisdicción",
+        "liability": "8. Responsabilidad",
+        "roles": "3. Roles y contenido",
+        "scope": "1. Ámbito",
+        "tax": "6. Impuestos y obligaciones del usuario",
+        "termination": "7. Terminación y aplicación",
+        "tips": "4. Propinas («obsequios»)"
+      },
+      "subtitle": "Reglas vinculantes para usar Subm8.",
+      "title": "Términos de servicio"
+    }
+  },
+  "legalPage": {
+    "ariaBack": "Atrás",
+    "subtitle": "Información legal y políticas",
+    "title": "Legal y Privacidad"
+  }
+}

@@ -232,57 +232,73 @@ export default async function CommunityPage({ params }: { params: Promise<Params
 
   return (
     <section className="grid gap-4 max-w-2xl mx-auto">
-      {/* --- GROSSER HEADER --- */}
-      <header className="rounded-app border border-sub shadow-app p-4 overflow-hidden">
-        {community.bannerUrl && (
-          <div className="-mx-4 -mt-4 mb-3 h-28 relative">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={community.bannerUrl} alt="" className="object-cover w-full h-full" />
-            <div className="absolute inset-0 bg-gradient-to-b from-black/0 to-black/30" />
-          </div>
-        )}
+      {/* --- BANNER NUR ALS BILD --- */}
+      <div className="[--banner-h:clamp(140px,28vw,200px)]">
+        <figure className="relative rounded-app border border-sub shadow-app overflow-hidden isolate">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={community.bannerUrl ?? '/images/banner-placeholder.png'}
+            alt=""
+            className="block w-full h-[var(--banner-h)] object-cover select-none"
+          />
+          {/* leichter Fade für Lesbarkeit – fängt nicht die Pointer ab */}
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/0 to-black/35" />
+        </figure>
+      </div>
 
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0 relative pl-10">
-            <div className="absolute left-0 top-0.5">
-              <BackButton
-                fallbackHref={`/${locale}/communities`}
-                forceFallback
-                replaceOnFallback
+      {/* --- INFO-KARTE, ÜBERLAPPT DAS BILD --- */}
+      <div className="relative z-10 -mt-6 sm:-mt-8 px-1 sm:px-0">
+        <div
+          className={`
+            relative bg-black
+            border-x border-b border-white/12 
+            rounded-b-app rounded-t-none    
+            shadow-app
+            p-4
+            before:content-[''] before:absolute before:inset-x-0
+            before:-top-3 sm:before:-top-4     /* sitzt knapp im Banner */
+            before:h-4 sm:before:h-5
+            before:pointer-events-none
+          `}
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 relative pl-10">
+              <div className="absolute left-0 top-0.5">
+                <BackButton
+                  fallbackHref={`/${locale}/communities`}
+                  forceFallback
+                  replaceOnFallback
+                />
+              </div>
+
+              <div className="text-xl font-bold truncate">{community.name}</div>
+              <div className="text-sm opacity-70 truncate">@{community.slug}</div>
+              {community.description && (
+                <p className="mt-1 text-sm opacity-90">{community.description}</p>
+              )}
+              <div className="mt-2 text-sm opacity-80">
+                {membersLabel} · {policyPrefix} <span className="uppercase">{policyLabel}</span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <CommunityJoinButton
+                slug={community.slug}
+                initialJoined={joined}
+                initialMembers={community._count.CommunityMember}
               />
+              <CommunityInviteButton
+                locale={locale}
+                slug={community.slug}
+                name={community.name}
+                joined={joined}
+                joinPolicy={community.joinPolicy}
+              />
+              <CommunityShareButton locale={locale} name={community.name} slug={community.slug} />
             </div>
-
-            <div className="text-xl font-bold truncate">{community.name}</div>
-            <div className="text-sm opacity-70 truncate">@{community.slug}</div>
-            {community.description && <p className="mt-1 text-sm opacity-90">{community.description}</p>}
-            <div className="mt-2 text-sm opacity-80">
-              {membersLabel} · {policyPrefix}{' '}
-              <span className="uppercase">{policyLabel}</span>
-            </div>
-          </div>
-
-          {/* Join/Leave + Invite + Share */}
-          <div className="flex items-center gap-2">
-            <CommunityJoinButton
-              slug={community.slug}
-              initialJoined={joined}
-              initialMembers={community._count.CommunityMember}
-            />
-            <CommunityInviteButton
-              locale={locale}
-              slug={community.slug}
-              name={community.name}
-              joined={joined}
-              joinPolicy={community.joinPolicy}
-            />
-            <CommunityShareButton
-              locale={locale}
-              name={community.name}
-              slug={community.slug}
-            />
           </div>
         </div>
-      </header>
+      </div>
 
       <CommunityCompactHeader
         locale={locale}

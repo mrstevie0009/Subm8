@@ -23,6 +23,24 @@ const ADREQ_PREFIX   = 'ADREQ::';
 const ADACC_PREFIX   = 'ADACC::';
 const REACT_PREFIX   = 'REACT::';
 const REPLY_PREFIX   = 'REPLY::';
+const CHAT_CACHE_KEY = 'chat:list:v1';
+
+function readCachedItems(): Item[] | null {
+  try {
+    const raw = localStorage.getItem(CHAT_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { ts: number; items: Item[] };
+    // max 3 Minuten gültig
+    if (Date.now() - parsed.ts > 3 * 60 * 1000) return null;
+    return parsed.items || null;
+  } catch { return null; }
+}
+
+function writeCachedItems(items: Item[]) {
+  try {
+    localStorage.setItem(CHAT_CACHE_KEY, JSON.stringify({ ts: Date.now(), items }));
+  } catch {}
+}
 
 function fmtCurrency(cents: number, currency = 'EUR') {
   return new Intl.NumberFormat(undefined, { style: 'currency', currency }).format((cents || 0) / 100);
@@ -607,8 +625,35 @@ function ChatRow({
   );
 }
 
+
+function ChatRowSkeleton() {
+  return (
+    <div className="grid grid-cols-[3.2em_1fr_auto] items-center gap-3 rounded-app border border-sub bg-card p-3">
+      <div className="shrink-0 w-[3.2em]">
+        <div className="size-[3.2em] rounded-full bg-white/10 animate-pulse" />
+      </div>
+      <div className="min-w-0">
+        <div className="flex items-baseline gap-2">
+          <div className="h-3 w-40 bg-white/10 rounded animate-pulse" />
+          <div className="h-3 w-20 bg-white/10 rounded animate-pulse" />
+        </div>
+        <div className="mt-2 h-3 w-[75%] bg-white/10 rounded animate-pulse" />
+      </div>
+      <div className="flex flex-col items-end gap-1">
+        <div className="h-3 w-10 bg-white/10 rounded animate-pulse" />
+        <div className="h-4 w-6 bg-white/10 rounded-full animate-pulse" />
+      </div>
+    </div>
+  );
+}
+
 /* ------------ Seite ------------ */
 export default function ChatListPage() {
+  React.useEffect(() => {
+    if ('scrollRestoration' in window.history) {
+      window.history.scrollRestoration = 'manual';
+    }
+  }, []);
   const t = useTranslations('common.chat');
   const locale = useLocale();
   const router = useRouter();
@@ -617,6 +662,11 @@ export default function ChatListPage() {
 
   const [items, setItems] = React.useState<Item[]>([]);
   const [q, setQ] = React.useState('');
+  const [qLive, setQLive] = React.useState('');
+  React.useEffect(() => {
+    const t = setTimeout(() => setQ(qLive), 120);
+    return () => clearTimeout(t);
+  }, [qLive]);
   const [error, setError] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(true);
 
@@ -640,27 +690,78 @@ export default function ChatListPage() {
   }, []);
 
   React.useEffect(() => {
-    let cancelled = false;
-    (async () => {
+  let cancelled = false;
+  const myReq = ++latestReqRef.current;
+
+  (async () => {
+    // 1) Erst Cache (wenn vorhanden) → sofort rendern
+    const cached = readCachedItems();
+    if (!cancelled && cached && cached.length) {
+      setItems(cached);
+      setLoading(false); // sofort UI zeigen
+    }
+
+    // 2) Netz → frische Daten
+    try {
+      setError(null);
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 12000); // Safety-Timeout
+      const res = await fetch('/api/chat', { cache: 'no-store', signal: ctrl.signal });
+      clearTimeout(timer);
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      if (!json?.ok) throw new Error(json?.error || 'Unknown error');
+
+      if (cancelled || myReq !== latestReqRef.current) return;
+
+      const fresh = json.items as Item[];
+      setItems(fresh);
+      writeCachedItems(fresh);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : t('loadingError');
+      if (!cancelled && myReq === latestReqRef.current) setError(msg);
+    } finally {
+      if (!cancelled && myReq === latestReqRef.current) setLoading(false);
+    }
+  })();
+
+  return () => { cancelled = true; };
+}, [t]);
+
+  // 🔹 Leichtes Polling (sichtbar = true)
+  React.useEffect(() => {
+    const tick = async () => {
+      // wenn gerade getippt/gefiltert → trotzdem leise aktualisieren
+      const myReq = ++latestReqRef.current;
       try {
-        setLoading(true);
-        setError(null);
         const res = await fetch('/api/chat', { cache: 'no-store' });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const json = await res.json();
-        if (!json?.ok) throw new Error(json?.error || 'Unknown error');
-        if (!cancelled) setItems(json.items as Item[]);
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : t('loadingError');
-        if (!cancelled) setError(msg);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
+        const j = await res.json().catch(() => null);
+        if (!j?.ok || myReq !== latestReqRef.current) return;
+        const fresh = j.items as Item[];
+
+        // nur updaten wenn sich wirklich was ändert (len oder IDs/Zeitstempel)
+        const before = items.map(i => `${i.id}:${i.lastMessageAt}:${i.unread}`).join('|');
+        const after  = fresh.map(i => `${i.id}:${i.lastMessageAt}:${i.unread}`).join('|');
+        if (before !== after) {
+          setItems(fresh);
+          writeCachedItems(fresh);
+        }
+      } catch {}
     };
-  }, [t]);
+
+    const onVis = () => { if (!document.hidden) tick(); };
+    document.addEventListener('visibilitychange', onVis);
+
+    pollRef.current = window.setInterval(() => {
+      if (!document.hidden) tick();
+    }, 8000);
+
+    return () => {
+      document.removeEventListener('visibilitychange', onVis);
+      if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+    };
+  }, [items]);
 
   React.useEffect(() => {
     if (items.length === 0) return;
@@ -688,7 +789,11 @@ export default function ChatListPage() {
     else next.delete(id);
     persistPins(next);
   };
+  // 🔹 letzte Request-ID (verhindert Re-Race älterer Antworten)
+  const latestReqRef = React.useRef(0);
 
+  // 🔹 Polling-Timer
+  const pollRef = React.useRef<number | null>(null);
   const totalConversations = items.length;
   const unreadConversations = React.useMemo(
     () => items.filter((i) => i.unread > 0).length,
@@ -761,8 +866,8 @@ export default function ChatListPage() {
               </svg>
             </span>
             <input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
+              value={qLive}
+              onChange={(e) => setQLive(e.target.value)}
               placeholder={t('toolbar.searchPlaceholder')}
               className="w-full rounded-xl bg-white/[.06] border border-white/10 pl-9 pr-3 py-2 outline-none focus:ring-2 focus:ring-[var(--purple)]/30"
             />
@@ -807,7 +912,9 @@ export default function ChatListPage() {
       {error && <div className="my-2 text-sm text-red-500">{error}</div>}
 
       {loading ? (
-        <div className="py-8 text-sm text-muted">{t('loading')}</div>
+        <div className="space-y-2 mt-2 pb-4">
+          {Array.from({ length: 8 }).map((_, i) => <ChatRowSkeleton key={i} />)}
+        </div>
       ) : filtered.length === 0 ? (
         <div className="flex items-center justify-center" style={{ minHeight: '50vh' }}>
           <div className="text-center">

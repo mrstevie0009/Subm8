@@ -1,0 +1,99 @@
+{
+  "editProfileForm": {
+    "actions": {
+      "changeAvatar": "Change avatar",
+      "changeBanner": "Change banner",
+      "editOfferMenu": "Edit offer menu",
+      "save": "Save"
+    },
+    "fields": {
+      "bio": "Bio",
+      "location": "Location",
+      "name": "Name",
+      "role": "Role",
+      "username": "Username",
+      "website": "Website / link"
+    },
+    "header": {
+      "title": "Edit profile"
+    },
+    "hints": {
+      "maxChars": "Max. {count} characters",
+      "roleFixed": "Role is fixed",
+      "usernamePattern": "3–20 characters, a–z, 0–9, _"
+    },
+    "media": {
+      "avatarAlt": "Avatar",
+      "bannerAlt": "Banner"
+    },
+    "placeholders": {
+      "website": "e.g. https://example.com"
+    },
+    "roles": {
+      "domme": "Domme",
+      "submissive": "Submissive"
+    }
+  },
+  "editTabs": {
+    "tabs": {
+      "general": "General",
+      "ownership": "Ownership"
+    }
+  },
+  "ownershipTab": {
+    "actions": {
+      "addAvatar": "Add avatar",
+      "changeBanner": "Change banner",
+      "reset": "Reset",
+      "save": "Save",
+      "saving": "Saving…"
+    },
+    "errors": {
+      "readAvatar": "Could not read avatar.",
+      "readBanner": "Could not read banner.",
+      "readFile": "Could not read file.",
+      "save": "Could not save.",
+      "tooLarge": "File too large (max. 4 MB for local preview)."
+    },
+    "header": {
+      "clearTitle": "Delete local ownership profile",
+      "title": "Ownership profile"
+    },
+    "labels": {
+      "bio": "Ownership bio",
+      "counter": "{n}/{max}",
+      "savedAt": "Saved {ts}"
+    },
+    "placeholders": {
+      "avatar": "Avatar",
+      "banner": "Ownership banner",
+      "bio": "This bio will be applied when ownerships are accepted…"
+    }
+  },
+  "profile": {
+    "autodrain": "Autodrain",
+    "blockUser": "Block user",
+    "blockedBy": "This user has blocked you",
+    "copyProfileLink": "Copy profile link",
+    "editProfile": "Edit profile",
+    "follow": "Follow",
+    "joined": "Joined",
+    "message": "Message",
+    "messagingDisabled": "Messaging disabled due to blocking",
+    "more": "More",
+    "offer": "Offer",
+    "offerMenu": "Offer menu",
+    "reportUser": "Report user",
+    "sendTip": "Send tip",
+    "shareProfileViaDm": "Share profile via direct message",
+    "tabs": {
+      "gallery": "Gallery",
+      "leaderboard": "Leaderboard",
+      "posts": "Posts"
+    },
+    "tipActions": "Tip actions",
+    "unblockUser": "Unblock user",
+    "unfollow": "Unfollow",
+    "youBlocked": "You have blocked this user"
+  }
+}

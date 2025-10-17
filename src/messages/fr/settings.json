@@ -1,0 +1,165 @@
+{
+  "links": {
+    "settings": "Paramètres"
+  },
+  "profileSettings": {
+    "alreadyDeactivated": "Le compte est désactivé",
+    "ariaBack": "Retour",
+    "changePassword": "Changer le mot de passe",
+    "countryLabel": "Pays",
+    "countryMissing": "Colonne manquante dans la base",
+    "countryPlaceholder": "DE, AT, CH, US",
+    "currentPasswordLabel": "Mot de passe actuel",
+    "dangerZoneDesc": "La désactivation verrouille ton profil et met fin à tes sessions.",
+    "dangerZoneTitle": "Zone à risque",
+    "deactivateButton": "Désactiver le compte",
+    "deactivateNotAvailable": "Désactivation indisponible",
+    "deleteButton": "Supprimer définitivement le compte",
+    "deleteButtonTitle": "Supprimer définitivement le compte",
+    "deleteHint": "Supprime ton compte et les données associées. S’il existe des comptes liés, tu seras redirigé vers le flux d’accueil ; sinon vers la page de connexion.",
+    "emailLabel": "E-mail",
+    "emailPlaceholder": "toi@example.com",
+    "handleHelp": "3–20 caractères ; a–z, 0–9, « _ » et « . » autorisés.",
+    "handleLabel": "Handle",
+    "handlePlaceholder": "ton.handle",
+    "headerTitle": "Gérer le profil & le compte",
+    "languageButton": "Changer",
+    "languageHelp": "Choisis ta langue préférée pour l’interface.",
+    "languageLabel": "Langue",
+    "logoutButton": "Se déconnecter",
+    "logoutSectionTitle": "Déconnexion",
+    "newPassword2Label": "Nouveau mot de passe (répéter)",
+    "newPassword2Placeholder": "saisir à nouveau",
+    "newPasswordLabel": "Nouveau mot de passe",
+    "newPasswordPlaceholder": "min. 8 caractères",
+    "notSignedInMessage": "Connecte-toi pour modifier les paramètres.",
+    "passwordSectionTitle": "Mot de passe",
+    "phoneLabel": "Numéro de téléphone",
+    "phoneMissing": "Colonne manquante dans la base",
+    "phonePlaceholder": "+33 6 12 34 56 78",
+    "profileSectionTitle": "Profil",
+    "saveProfile": "Enregistrer le profil"
+  },
+  "securityPage": {
+    "ariaBack": "Retour",
+    "extraPassword": {
+      "desc": "Lors de la réinitialisation du mot de passe, l’e-mail ou le numéro de téléphone doit également être confirmé.",
+      "title": "Protection supplémentaire du mot de passe",
+      "toggle": {
+        "disable": "Désactiver la protection",
+        "enable": "Activer la protection",
+        "title": "Basculer la protection de réinitialisation du mot de passe"
+      }
+    },
+    "notSignedInMessage": "Connecte-toi pour gérer les options de sécurité.",
+    "sessions": {
+      "desc": "Met fin à toutes les sessions actives sur tous les appareils et te déconnecte.",
+      "endAll": "Terminer toutes les sessions",
+      "title": "Terminer les sessions"
+    },
+    "status": {
+      "active": "Actif",
+      "notSetup": "Non configuré",
+      "ready": "Prêt"
+    },
+    "title": "Sécurité & accès",
+    "twofa": {
+      "active": "Actif : 2FA par application est activée.",
+      "confirm": "Confirmer",
+      "disable": "Désactiver",
+      "intro": "Protège ton compte avec une seconde étape de connexion. Utilise une app (TOTP), SMS ou passkeys.",
+      "passkeyActiveMsg": "Passkey activé. Tu peux l’utiliser à la connexion.",
+      "passkeysActiveNote": "Le passkey est configuré et enregistré pour la connexion à 2 étapes.",
+      "passkeysDisable": "Désactiver les passkeys",
+      "passkeysNote": "Configure un passkey pour te connecter plus vite et plus sûrement.",
+      "passkeysRemoveAllTitle": "Supprimer tous les passkeys",
+      "passkeysTitle": "Clés de sécurité / Passkeys",
+      "qrAlt": "QR code TOTP",
+      "resend": "Renvoyer",
+      "resendTitle": "Renvoyer le code",
+      "scanIntro": "Scanne le QR code avec ton application d’authentification puis saisis le code à 6 chiffres.",
+      "setup": "Configurer",
+      "sms": {
+        "disable2fa": "Désactiver la 2FA SMS",
+        "disable2faTitle": "Désactiver la 2FA SMS (le numéro reste enregistré)",
+        "loginSendsToPrefix": "À la connexion, nous envoyons un code à",
+        "removeNumber": "Supprimer le numéro",
+        "removeNumberTitle": "Supprimer le numéro de téléphone",
+        "request": "Demander un code SMS"
+      },
+      "smsActiveMsg": "La double authentification par SMS est activée.",
+      "smsAddPhoneFirst": "Ajoute d’abord un numéro de téléphone dans tes paramètres de profil.",
+      "smsAddPhoneHintEnd": "et ajoute un numéro de téléphone.",
+      "smsAddPhoneHintStart": "Ouvre tes",
+      "smsChangeNumber": "Changer de numéro",
+      "smsPhoneReady": "Le numéro de téléphone est enregistré. Tu peux maintenant configurer les codes SMS.",
+      "smsTitle": "Codes SMS",
+      "title": "Authentification à deux facteurs",
+      "tokenAria": "Code de confirmation à 6 chiffres",
+      "tokenPlaceholder": "123456",
+      "totpTitle": "Application d’authentification (TOTP)"
+    }
+  },
+  "settings": {
+    "aria": "Paramètres",
+    "avatarAlt": "Photo de profil",
+    "follow": "Suivre",
+    "guest": "Invité",
+    "loading": "Chargement…",
+    "menu": {
+      "bookmarks": "Signets",
+      "payments": "Paiements",
+      "premium": "Premium",
+      "profile": "Profil",
+      "settings": "Paramètres"
+    },
+    "noHandle": "—",
+    "recommended": "Profils recommandés",
+    "roleDomme": "Domina",
+    "roleSub": "Sub",
+    "signIn": "Se connecter",
+    "signOut": "Se déconnecter",
+    "statsError": "Erreur lors du chargement des statistiques",
+    "statsFollowers": "Abonnés",
+    "statsFollowing": "Abonnements",
+    "suggestionsEmpty": "Aucune suggestion pour le moment.",
+    "switchToHandle": "Basculer vers @{handle}",
+    "switchToName": "Basculer vers {name}",
+    "unfollow": "Se désabonner"
+  },
+  "settingsPage": {
+    "ariaBack": "Retour au flux",
+    "items": {
+      "account": {
+        "desc": "Voir et modifier les infos du profil (nom, bio, avatar, bannière), exporter les données et options du compte.",
+        "title": "Ton compte"
+      },
+      "bookmarks": {
+        "desc": "Gérer les posts enregistrés.",
+        "title": "Signets"
+      },
+      "monetization": {
+        "desc": "Du pourboire à la communauté. Toutes les voies vers des revenus stables.",
+        "title": "Monétisation"
+      },
+      "notifications": {
+        "desc": "Choisis les activités, recommandations et messages pour lesquels tu es averti·e.",
+        "title": "Notifications"
+      },
+      "premium": {
+        "desc": "Voir les avantages et gérer tes réglages Premium.",
+        "title": "Premium"
+      },
+      "privacy": {
+        "desc": "Contrôle ce que tu vois et partages, et ajuste ta confidentialité.",
+        "title": "Confidentialité"
+      },
+      "security": {
+        "desc": "Vérifier la sécurité de connexion, gérer les apps liées et surveiller l’accès.",
+        "title": "Sécurité & accès"
+      }
+    },
+    "searchPlaceholder": "Rechercher dans les paramètres",
+    "title": "Paramètres"
+  }
+}

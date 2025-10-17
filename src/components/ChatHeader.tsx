@@ -14,6 +14,7 @@ type Props = {
   viewerHasBlocked?: boolean;
   isBlockedByOther?: boolean;
   onBlockStateChange?: (blockedEither: boolean) => void;
+  loading?: boolean;
 };
 
 export default function ChatHeader({
@@ -21,6 +22,7 @@ export default function ChatHeader({
   viewerHasBlocked = false,
   isBlockedByOther = false,
   onBlockStateChange,
+  loading = false,
 }: Props) {
   const locale = useLocale();
   const t = useTranslations('common.chatHeader');
@@ -45,7 +47,7 @@ export default function ChatHeader({
 
   // Block-UI-State
   const [iBlocked, setIBlocked] = React.useState<boolean>(!!viewerHasBlocked);
-  const blockedEither = iBlocked || isBlockedByOther;
+  const blockedEither = loading ? false : (iBlocked || isBlockedByOther);
 
   React.useEffect(() => {
     onBlockStateChange?.(blockedEither);
@@ -89,36 +91,48 @@ export default function ChatHeader({
           </Link>
 
           {/* Avatar → Profil */}
-          <Link
-            href={profileHref}
-            prefetch={false}
-            aria-label={t('aria.profile', { name: other.displayName })}
-            className="relative overflow-hidden rounded-full border border-white/15 bg-white/10 block"
-            style={{ width: avatar, height: avatar }}
-          >
-            <Image
-              src={other.avatarUrl || '/images/avatar-placeholder.png'}
-              alt=""
-              fill
-              className="object-cover"
-              sizes={avatar}
+          {loading ? ( // NEW
+            <div
+              className="relative overflow-hidden rounded-full border border-white/15 bg-white/10 animate-pulse block"
+              style={{ width: avatar, height: avatar }}
+              aria-hidden
             />
-          </Link>
+          ) : (
+            <Link
+              href={profileHref}
+              prefetch={false}
+              aria-label={t('aria.profile', { name: other.displayName })}
+              className="relative overflow-hidden rounded-full border border-white/15 bg-white/10 block"
+              style={{ width: avatar, height: avatar }}
+            >
+              <Image
+                src={other.avatarUrl || '/images/avatar-placeholder.png'}
+                alt=""
+                fill
+                className="object-cover"
+                sizes={avatar}
+              />
+            </Link>
+          )}
 
           {/* Name + Handle + Badges */}
           <div className="min-w-0 flex-1 leading-tight">
             <div className="flex items-center gap-2">
               {/* Displayname → Profil */}
-              <h1 className="font-semibold truncate" style={{ fontSize: titleSz, lineHeight: 1.1 }}>
-                <Link
-                  href={profileHref}
-                  prefetch={false}
-                  className="hover:underline truncate"
-                  rel="author"
-                >
-                  {other.displayName}
-                </Link>
-              </h1>
+              {loading ? ( // NEW
+                <div className="h-[18px] w-40 max-w-[55vw] rounded bg-white/10 animate-pulse" aria-hidden />
+              ) : (
+                <h1 className="font-semibold truncate" style={{ fontSize: titleSz, lineHeight: 1.1 }}>
+                  <Link
+                    href={profileHref}
+                    prefetch={false}
+                    className="hover:underline truncate"
+                    rel="author"
+                  >
+                    {other.displayName}
+                  </Link>
+                </h1>
+              )}
 
               {/* Rolle */}
               <span
@@ -127,50 +141,56 @@ export default function ChatHeader({
                   color: 'var(--purple)',
                   background: 'rgba(139,92,246,.18)',
                   border: '1px solid rgba(139,92,246,.28)',
+                  opacity: loading ? 0.5 : 1,
                 }}
               >
                 {roleLabel}
               </span>
 
               {/* Block-Badges */}
-              {isBlockedByOther && (
+              {!loading && isBlockedByOther && ( // NEW condition
                 <Badge tone="danger">{t('badges.blockedYou')}</Badge>
               )}
-              {!isBlockedByOther && iBlocked && (
+              {!loading && !isBlockedByOther && iBlocked && ( // NEW condition
                 <Badge tone="danger">{t('badges.youBlocked')}</Badge>
               )}
             </div>
 
             {/* Handle → Profil */}
-            <div className="truncate" style={{ fontSize: metaSz }}>
-              <Link
-                href={profileHref}
-                prefetch={false}
-                className="text-muted hover:underline"
-                rel="author"
-              >
-                @{other.username}
-              </Link>
-            </div>
+            {loading ? ( // NEW
+              <div className="mt-1 h-[14px] w-24 rounded bg-white/10 animate-pulse" aria-hidden />
+            ) : (
+              <div className="truncate" style={{ fontSize: metaSz }}>
+                <Link
+                  href={profileHref}
+                  prefetch={false}
+                  className="text-muted hover:underline"
+                  rel="author"
+                >
+                  @{other.username}
+                </Link>
+              </div>
+            )}
           </div>
 
           {/* More */}
           <div className="relative" ref={menuRef}>
             <button
               aria-label={t('aria.more')}
-              className="inline-grid place-items-center rounded hover:bg-white/5"
+              className="inline-grid place-items-center rounded hover:bg-white/5 disabled:opacity-50" // NEW disabled style
               style={{ width: iconSize, height: iconSize }}
               onClick={() => setMenuOpen(v => !v)}
+              disabled={loading} // NEW
             >
               <svg viewBox="0 0 24 24" fill="currentColor"
-                   style={{ width: '56%', height: '56%', color: 'rgba(255,255,255,.95)' }}>
+                  style={{ width: '56%', height: '56%', color: 'rgba(255,255,255,.95)' }}>
                 <circle cx="12" cy="5" r="2" />
                 <circle cx="12" cy="12" r="2" />
                 <circle cx="12" cy="19" r="2" />
               </svg>
             </button>
 
-            {menuOpen && (
+            {menuOpen && !loading && ( // NEW: Menü nie zeigen, wenn loading
               <div
                 className="absolute right-0 mt-2 w-56 rounded-xl border border-white/10 bg-black/85 backdrop-blur shadow-lg p-1 z-50"
                 role="menu"

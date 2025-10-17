@@ -92,21 +92,21 @@ model User {
 
   smsChallenges SmsChallenge[]
 
-  ageVerified   Boolean @default(false)
-  dob           DateTime?
-  veriffId      String?   // letzte Veriff-Verification-ID
-  verifiedAt    DateTime?
+  ageVerified Boolean   @default(false)
+  dob         DateTime?
+  veriffId    String? // letzte Veriff-Verification-ID
+  verifiedAt  DateTime?
 }
 
 model SmsChallenge {
-  id         String              @id @default(cuid())
-  userId     String
-  user       User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  purpose    SmsChallengePurpose
-  codeHash   String              // hash(6-stelliger Code)
-  expiresAt  DateTime
-  attempts   Int                 @default(0)
-  createdAt  DateTime            @default(now())
+  id        String              @id @default(cuid())
+  userId    String
+  user      User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  purpose   SmsChallengePurpose
+  codeHash  String // hash(6-stelliger Code)
+  expiresAt DateTime
+  attempts  Int                 @default(0)
+  createdAt DateTime            @default(now())
 }
 
 model SmsCode {
@@ -184,18 +184,21 @@ model Conversation {
   messages      Message[]
   tips          Tip[]
 
-  updatedAt       DateTime @updatedAt                // für Sortierung
-  lastMessageId   String?   @unique                  // direkte Join auf Message
-  lastMessageAt   DateTime?                          // falls du Zeit ohne Join brauchst
+  updatedAt     DateTime  @updatedAt // für Sortierung
+  lastMessageId String?   @unique // direkte Join auf Message
+  lastMessageAt DateTime? // falls du Zeit ohne Join brauchst
 
   // (optional) Unread pro Seite:
-  unreadForDomme  Int       @default(0)
-  unreadForSub    Int       @default(0)
+  unreadForDomme Int @default(0)
+  unreadForSub   Int @default(0)
 
   @@unique([dommeId, subId])
   @@index([dommeId])
   @@index([subId])
-  @@index([updatedAt(sort: Desc)])                   // super schnell für Liste
+  @@index([updatedAt(sort: Desc)]) // super schnell für Liste
+  @@index([dommeId, updatedAt(sort: Desc)], name: "Conversation_domme_updated_idx")
+  @@index([subId, updatedAt(sort: Desc)], name: "Conversation_sub_updated_idx")
+  @@index([lastMessageAt(sort: Desc)], name: "Conversation_lastMessageAt_desc_idx")
 }
 
 model Message {
@@ -211,9 +214,20 @@ model Message {
   conversation   Conversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   reads          MessageRead[]
 
-  @@index([conversationId, createdAt(sort: Desc)])  // „letzte Nachricht je Konvo“
-  @@index([authorId, createdAt(sort: Desc)])        // eigene Nachrichten/Unread schneller
-  @@index([conversationId, authorId])               // Unread-Filter (author != me)
+  @@index([conversationId, createdAt(sort: Desc)]) // „letzte Nachricht je Konvo“
+  @@index([authorId, createdAt(sort: Desc)]) // eigene Nachrichten/Unread schneller
+  @@index([conversationId, authorId]) // Unread-Filter (author != me)
+  @@index([conversationId, createdAt(sort: Desc), id(sort: Desc)], name: "Message_conv_created_id_desc_idx")
+}
+
+model ConversationTypingState {
+  conversationId String
+  userId         String
+  updatedAt      DateTime @default(now())
+
+  @@id([conversationId, userId])
+  @@index([updatedAt], name: "ConversationTypingState_updated_idx")
+  @@map("ConversationTypingState") // exakter Tabellenname wie im Code
 }
 
 model MessageRead {
@@ -222,12 +236,11 @@ model MessageRead {
   readAt       DateTime @default(now())
   message      Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
   readerUser   User     @relation(fields: [readerUserId], references: [id], onDelete: Cascade)
-
-@@id([messageId, readerUserId])
-  // 🔑 Für „reads none where readerUserId = me“
-  @@index([readerUserId, messageId])
   // (PK ist (messageId, readerUserId); für unsere Abfrage-Reihenfolge bringt obiger Index viel)
 
+  @@id([messageId, readerUserId])
+  // 🔑 Für „reads none where readerUserId = me“
+  @@index([readerUserId, messageId])
 }
 
 model Tip {
@@ -698,8 +711,8 @@ model AutoDrainCharge {
  */
 
 enum SmsChallengePurpose {
-  SETUP   // Eigentumsnachweis beim Einrichten
-  LOGIN   // Code beim Anmelden
+  SETUP // Eigentumsnachweis beim Einrichten
+  LOGIN // Code beim Anmelden
 }
 
 enum TwoFactorType {

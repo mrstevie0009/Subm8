@@ -1,0 +1,63 @@
+{
+  "post": {
+    "time": {
+      "now": "ahora",
+      "m": "{count} min",
+      "h": "{count} h",
+      "d": "{count} d"
+    },
+    "ariaBack": "Atrás",
+    "ariaOpen": "Abrir publicación",
+    "block": "Bloquear cuenta",
+    "blockStatus": {
+      "blocksYou": "Te ha bloqueado",
+      "youBlock": "Bloqueas"
+    },
+    "cantInteract": "No puedes interactuar con esta cuenta.",
+    "comment": "Comentar",
+    "communityPost": "Publicación de comunidad",
+    "copyText": "Copiar texto de la publicación",
+    "delete": {
+      "button": "Eliminar publicación",
+      "confirm": "¿Eliminar esta publicación para todos? También se eliminarán todos los reposts.",
+      "failed": "No se pudo eliminar la publicación.",
+      "title": "Eliminar publicación"
+    },
+    "headerTitle": "Publicación",
+    "interactionBlocked": "Las interacciones están bloqueadas",
+    "like": "Me gusta",
+    "more": "Más",
+    "pinToProfile": "Fijar en el perfil",
+    "pinned": "Fijado",
+    "quotePost": "Citar publicación",
+    "report": "Denunciar publicación",
+    "repost": "Repostear",
+    "repostedBy": "Reposteado por {name}",
+    "role": {
+      "domme": "Domme",
+      "submissive": "Sub"
+    },
+    "share": {
+      "cancel": "Cancelar",
+      "copied": "¡Copiado!",
+      "copy": "Copiar enlace",
+      "dm": "Enviar por mensaje directo",
+      "dmTitle": "Enviar por mensaje directo",
+      "empty": "No se encontraron conversaciones.",
+      "label": "Compartir",
+      "loadingChats": "Cargando chats…",
+      "notePlaceholder": "Añadir un comentario (opcional)…",
+      "searchPlaceholder": "Buscar personas/chats",
+      "send": "Enviar",
+      "sending": "Enviando…",
+      "shareInDm": "Compartir en mensaje directo",
+      "system": "Compartir en el dispositivo…",
+      "systemText": "Mira esta publicación en {brand}",
+      "systemTitle": "{name} en {brand}",
+      "title": "Compartir"
+    },
+    "unblock": "Desbloquear cuenta",
+    "unlike": "Ya no me gusta",
+    "unpinFromProfile": "Quitar fijado"
+  }
+}

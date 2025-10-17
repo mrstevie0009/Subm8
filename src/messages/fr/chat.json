@@ -1,0 +1,188 @@
+{
+  "accountSheet": {
+    "btnConnect": "Connecter et basculer",
+    "btnCreate": "Créer et basculer",
+    "close": "Fermer",
+    "phEmail": "E-mail",
+    "phHandle": "handle",
+    "phIdentifier": "E-mail ou @handle",
+    "phPassword": "Mot de passe",
+    "phPwMin": "Mot de passe (min. {min})",
+    "roleDomme": "Domme",
+    "roleSub": "Sub",
+    "tabExisting": "Connecter un compte",
+    "tabNew": "Créer un nouveau",
+    "title": "Ajouter un compte"
+  },
+  "auth": {
+    "resetPage": {
+      "buttons": {
+        "save": "Enregistrer le mot de passe",
+        "saving": "Enregistrement…"
+      },
+      "errors": {
+        "failed": "Échec de la réinitialisation.",
+        "mismatch": "Les mots de passe ne correspondent pas."
+      },
+      "fields": {
+        "newPw": "Nouveau mot de passe",
+        "repeatPw": "Répéter le mot de passe"
+      },
+      "title": "Réinitialiser le mot de passe"
+    },
+    "signin": {
+      "alerts": {
+        "registered": "Inscription réussie. Veuillez vous connecter.",
+      "resetSuccess": "Mot de passe enregistré. Vous pouvez vous connecter."
+      },
+      "buttons": {
+        "google": "Se connecter avec Google",
+        "submit": "Se connecter",
+        "submitLoading": "Connexion…"
+      },
+      "errors": {
+        "invalidCredentials": "E-mail/handle ou mot de passe incorrect."
+      },
+      "fields": {
+        "identifier": {
+          "label": "E-mail ou handle",
+          "placeholder": "E-mail ou handle"
+        },
+        "password": {
+          "label": "Mot de passe"
+        }
+      },
+      "forgot": {
+        "back": "Retour à la connexion",
+        "emailLabel": "Votre e-mail",
+        "emailPlaceholder": "you@example.com",
+        "link": "Mot de passe oublié ?",
+        "submit": "Envoyer le lien",
+        "submitLoading": "Envoi…",
+        "success": "Si un compte existe, nous avons envoyé un lien à votre e-mail."
+      },
+      "or": "ou",
+      "reset": {
+        "cancel": "Annuler",
+        "emailLabel": "Votre e-mail",
+        "errors": {
+          "failed": "Impossible de demander la réinitialisation."
+        },
+        "link": "Mot de passe oublié ?",
+        "sent": "Si un compte existe, nous vous avons envoyé un e-mail.",
+        "submit": "Envoyer le lien"
+      },
+      "signup": {
+        "cta": "Pas encore de compte ?",
+        "link": "Inscrivez-vous"
+      },
+      "title": "Connexion",
+      "welcome": "Bon retour sur {brand}"
+    },
+    "signin2fa": {
+      "chooseMethod": "Choisir une méthode :",
+      "confirmPasskey": "Confirmer avec passkey",
+      "passkeyButton": "Passkey",
+      "passkeyIntro": "Une fenêtre système s’ouvrira pour confirmer avec votre passkey.",
+      "resendSms": "Renvoyer",
+      "sendSms": "Envoyer le code SMS",
+      "smsButton": "Code SMS",
+      "smsCodeLabel": "Code SMS",
+      "smsCodePlaceholder": "123456",
+      "subtitle": "Veuillez confirmer votre connexion.",
+      "title": "Deuxième étape requise",
+      "verifySms": "Vérifier",
+      "verifying": "Vérification…"
+    },
+    "signinPasskey": {
+      "backToPassword": "Retour à la connexion par mot de passe",
+      "buttons": {
+        "usePasskey": "Utiliser la passkey",
+        "verifying": "Vérification…"
+      },
+      "errors": {
+        "generic": "Impossible de vérifier.",
+        "prefix": "Erreur :"
+      },
+      "hint": "Confirmez la connexion avec votre appareil ou votre clé de sécurité.",
+      "subtitle": "Deuxième étape",
+      "title": "Vérifier avec passkey"
+    },
+    "signup": {
+      "chooseUsername": "Choisissez un nom d’utilisateur pour commencer.",
+      "enterToContinue": "Appuyez sur",
+      "errors": {
+        "checkFailed": "Impossible de vérifier la disponibilité. Réessayez.",
+        "handleTaken": "Ce nom d’utilisateur est déjà pris.",
+        "network": "Erreur réseau. Réessayez.",
+        "selectTypeRequired": "Veuillez choisir votre type de compte.",
+        "startFailed": "Impossible de démarrer l’inscription."
+      },
+      "fields": {
+        "username": {
+          "checking": "Vérification de la disponibilité…",
+          "formatHelp": "3–20 caractères, a–z, 0–9, soulignement.",
+          "placeholder": "Nom d’utilisateur"
+        }
+      },
+      "login": {
+        "cta": "Vous avez déjà un compte ?",
+        "link": "Login"
+      },
+      "roleCard": {
+        "domme": {
+          "desc": "J’aime diriger et fixer les règles.",
+          "title": "Je suis Domme"
+        },
+        "sub": {
+          "desc": "Je trouve l’épanouissement dans le service et l’obéissance.",
+          "title": "Je suis Sub"
+        }
+      },
+      "selectTypeTitle": "Choisissez votre type de compte",
+      "welcome": "Bienvenue sur {brand}"
+    },
+    "signupAccount": {
+      "agree": "J’accepte les Conditions d’utilisation et la Politique de confidentialité.",
+      "buttons": {
+        "create": "Créer le compte",
+        "creating": "Création…",
+        "google": "Continuer avec Google"
+      },
+      "dommeDisclaimer": {
+        "checkbox": "Je comprends que les pourboires sur Subm8 sont des dons volontaires et non liés à des services.",
+        "li1": "Les pourboires sur Subm8 sont des dons volontaires, pas des paiements pour des services.",
+        "li2": "Vous ne devez pas annoncer ni garantir des services contre des pourboires.",
+        "li3": "Si vous proposez des services ailleurs, vous êtes seul responsable de la conformité juridique et fiscale.",
+        "li4": "Tout abus peut entraîner la suspension du compte.",
+        "readLess": "Afficher moins",
+        "readMore": "En savoir plus",
+        "title": "Important : comment fonctionnent les pourboires sur Subm8"
+      },
+      "errors": {
+        "passwordMismatch": "Les mots de passe ne correspondent pas",
+        "signupFailed": "Échec de l’inscription"
+      },
+      "fields": {
+        "email": {
+          "label": "E-mail",
+          "placeholder": "you@example.com"
+        },
+        "password": {
+          "help": "Utilisez au moins 8 caractères.",
+          "label": "Mot de passe",
+          "placeholder": "Au moins 8 caractères"
+        },
+        "password2": {
+          "label": "Confirmer le mot de passe"
+        }
+      },
+      "headerTitle": "Presque terminé",
+      "headerTop": "Créez votre compte",
+      "login": {
+        "cta": "Vous avez déjà un compte ?",
+        "link": "Login"
+      }
+    }
+  }
+}

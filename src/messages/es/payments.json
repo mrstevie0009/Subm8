@@ -1,0 +1,205 @@
+{
+  "autoDrain": {
+    "actions": {
+      "cancel": "Cancelar",
+      "create": "Crear solicitud"
+    },
+    "amount": {
+      "label": "Importe por cargo",
+      "placeholder": "50"
+    },
+    "recurrence": {
+      "label": "Repetición",
+      "options": {
+        "daily": "Diario",
+        "monthly": "Mensual",
+        "weekly": "Semanal"
+      }
+    },
+    "subtitle": "Define el importe y la repetición.",
+    "title": "Crear solicitud de Autodrain"
+  },
+  "autoDrainAcceptModal": {
+    "acknowledge": "Entiendo que los regalos son voluntarios y definitivos. No se prometen prestaciones.",
+    "actions": {
+      "cancel": "Cancelar",
+      "closeAria": "Cerrar",
+      "enable": "Activar Autodrain",
+      "enabling": "Activando…"
+    },
+    "cadence": {
+      "daily": "diario",
+      "monthly": "mensual",
+      "weekly": "semanal"
+    },
+    "charge": {
+      "label": "Importe del cargo",
+      "recurringNote": "Cargo recurrente hasta la cancelación."
+    },
+    "disclaimer": "Los regalos son voluntarios y no un pago por servicios. Los regalos son definitivos (sin reembolso salvo obligación legal).",
+    "errors": {
+      "generic": "Algo salió mal"
+    },
+    "header": {
+      "title": "Activar Autodrain",
+      "to": "para {name}"
+    }
+  },
+  "paymentsPage": {
+    "ariaBack": "Volver al feed",
+    "autodrain": {
+      "cadence": {
+        "daily": "Diario",
+        "monthly": "Mensual",
+        "weekly": "Semanal"
+      },
+      "cancel": "Finalizar",
+      "incoming": {
+        "title": "Autodrain entrante"
+      },
+      "none": "No hay suscripciones activas.",
+      "outgoing": {
+        "title": "Activados por ti"
+      },
+      "th": {
+        "amount": "Importe",
+        "avatar": "Avatar",
+        "cadence": "Ritmo",
+        "domme": "Domme",
+        "next": "Próximo cargo",
+        "sub": "Sub"
+      },
+      "title": "Autodrain activo"
+    },
+    "avatarAlt": "Avatar de {name}",
+    "balance": {
+      "export": "Exportar CSV",
+      "title": "Saldo actual:"
+    },
+    "guestNote": "Inicia sesión para ver tu historial de pagos.",
+    "payments": {
+      "amountPrefixReceived": "Recibido: {amount}",
+      "amountPrefixSent": "Enviado: {amount}",
+      "received": {
+        "empty": "No hay pagos recibidos.",
+        "title": "Entradas"
+      },
+      "sent": {
+        "empty": "No hay pagos enviados.",
+        "title": "Has enviado"
+      },
+      "status": {
+        "canceled": "Cancelado",
+        "created": "Creado",
+        "failed": "Fallido",
+        "processing": "Procesando",
+        "succeeded": "Correcto"
+      },
+      "th": {
+        "amount": "Importe",
+        "avatar": "Avatar",
+        "date": "Fecha",
+        "status": "Estado",
+        "username": "Usuario",
+        "what": "Concepto"
+      },
+      "what": {
+        "tip": "Propina"
+      }
+    },
+    "payoutBtn": "Retirar",
+    "payoutTooltip": "Solicitar retiro (próximamente)",
+    "title": "Pagos e historial"
+  },
+  "tipModal": {
+    "ack": {
+      "checkbox": "Entiendo que los regalos son voluntarios y definitivos."
+    },
+    "actions": {
+      "cancel": "Cancelar",
+      "done": "Listo",
+      "sendGift": "Enviar regalo",
+      "sending": "Enviando…"
+    },
+    "amount": {
+      "label": "Importe para la creadora/el creador",
+      "placeholder": "50"
+    },
+    "aria": {
+      "close": "Cerrar"
+    },
+    "breakdown": {
+      "amountToCreator": "Importe (para la persona creadora)",
+      "platformFeeTop": "Comisión de la plataforma (10% añadido)",
+      "youPay": "Pagas"
+    },
+    "disclaimer": {
+      "legal": "Al confirmar envías un regalo voluntario. No es un pago por servicios. Los regalos son definitivos (sin reembolso salvo obligación legal).",
+      "top": "Los regalos son voluntarios y no un pago por servicios. Subm8 solo intermedia la transferencia."
+    },
+    "errors": {
+      "confirmFailed": "La confirmación ha fallado",
+      "createFailed": "No se pudo crear el pago",
+      "generic": "Algo salió mal"
+    },
+    "header": {
+      "subtitleFinal": "Los regalos son voluntarios y definitivos.",
+      "title": "Envía un regalo a {name}"
+    },
+    "note": {
+      "label": "Nota (opcional)",
+      "placeholder": "Escribe algo agradable…"
+    },
+    "roles": {
+      "domme": "Domme",
+      "sub": "Sub"
+    },
+    "success": {
+      "title": "¡Regalo enviado!",
+      "youPaid": "Has pagado {amount}"
+    }
+  },
+  "tipRequest": {
+    "actions": {
+      "cancel": "Cancelar",
+      "create": "Crear solicitud"
+    },
+    "amount": {
+      "label": "Importe solicitado",
+      "placeholder": "50"
+    },
+    "note": {
+      "label": "Nota (opcional)",
+      "placeholder": "Añadir una nota breve…"
+    },
+    "subtitle": "Define el importe que debe pagar el Sub.",
+    "title": "Crear solicitud de propina"
+  },
+  "tipRequestAcceptModal": {
+    "actions": {
+      "cancel": "Cancelar",
+      "closeAria": "Cerrar",
+      "processing": "Procesando…",
+      "sendGiftAccept": "Enviar regalo y aceptar ({total})"
+    },
+    "breakdown": {
+      "amount": "Importe",
+      "fee": "Comisión de la plataforma ({pct}%)",
+      "youPay": "Pagas"
+    },
+    "disclaimer": "Al confirmar envías un regalo voluntario. No es un pago por servicios. Los regalos son definitivos (sin reembolso salvo obligación legal).",
+    "errors": {
+      "confirm": "Falló la confirmación",
+      "create": "No se pudo crear el pago",
+      "generic": "Algo salió mal"
+    },
+    "header": {
+      "title": "Aceptar solicitud de regalo",
+      "to": "a {name}"
+    },
+    "requested": {
+      "label": "Importe solicitado",
+      "note": "La creadora/el creador ve este importe. A tu pago se añadirá una comisión de plataforma del {pct}%."
+    }
+  }
+}

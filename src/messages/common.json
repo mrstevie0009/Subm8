@@ -1,0 +1,1838 @@
+{
+  "common": {
+    "nav": { "home": "Start", "search": "Suche", "communities": "Communities", "chat": "Chat" },
+    "brand": { "name": "Subm8" },
+    "time": { "now": "jetzt", "m": "{count}m", "h": "{count}h", "d": "{count}d" },
+
+
+    "community": {
+    "composer": {
+      "placeholder": "Was gibt's Neues?",
+      "remove": "Entfernen",
+      "media": "Media",
+      "gif": "GIF",
+      "gifSearchTitle": "GIF suchen",
+      "post": {
+        "buttonPosting": "Poste…",
+        "buttonPost": "Posten"
+      },
+      "errors": {
+        "onlyImageOrVideo": "Nur Bild- oder Videodateien sind erlaubt.",
+        "generic": "Posten fehlgeschlagen."
+      }
+    },
+    "gifPicker": {
+      "searchPlaceholder": "Nach GIFs suchen…",
+      "searchButton": "Suchen",
+      "closeButton": "Schließen",
+      "loadingGifs": "Lade GIFs…",
+      "select": "Auswählen",
+      "errors": {
+        "loadGifs": "Konnte GIFs nicht laden."
+      }
+    }
+  },
+
+    "toast": {
+      "generic": {
+        "tryAgain": "Bitte später erneut versuchen"
+      },
+      "comment": {
+        "sent": "Kommentar wurde gesendet",
+        "failedTitle": "Senden fehlgeschlagen"
+      },
+      "community": {
+        "created": "Community erstellt",
+        "createFailedTitle": "Erstellen fehlgeschlagen"
+      },
+      "post": {
+        "published": "Beitrag wurde veröffentlicht",
+        "failedTitle": "Posten fehlgeschlagen"
+      },
+      "media": {
+        "maxReached": "Max. {max} Medien pro Post erreicht",
+        "onlyRemaining": "Nur {remaining} weitere {remaining, plural, one {Medium} other {Medien}} möglich (max. {max})."
+      }
+    },
+
+    "feedFilter": {
+      "toggleAria": "Feed-Filter",
+      "title": "Deinen Feed filtern",
+      "following": "Gefolgte",
+      "newPosts": "Neueste Beiträge",
+      "topPosts": "Top-Beiträge",
+      "onlyDommes": "Nur Dommes",
+      "onlySubs": "Nur Subs",
+      "reset": "Zurücksetzen",
+      "apply": "Übernehmen"
+    },
+
+    "verify": {
+      "complete": {
+        "title": "Verifikation wird abgeschlossen…",
+        "subtitle": "Wir warten auf die Bestätigung unseres Anbieters.",
+        "status": {
+          "waiting": "Status: ausstehend",
+          "stillWaiting": "Status: noch ausstehend"
+        },
+        "elapsed": "{seconds, plural, =0 {0 Sek.} one {# Sek.} other {# Sek.}}",
+        "redirect": "Du wirst automatisch weitergeleitet, sobald die Verifizierung bestätigt ist.",
+        "actions": {
+          "backNow": "Jetzt weiter",
+          "refresh": "Aktualisieren"
+        },
+        "help": {
+          "title": "Probleme? So klappt’s:",
+          "items": {
+            "0": "Lass diese Seite geöffnet – der Status aktualisiert sich automatisch.",
+            "1": "Schließe den Verifizierungs-Tab erst, wenn du die Bestätigung gesehen hast.",
+            "2": "Wenn es länger dauert, klicke auf „Aktualisieren“ oder „Jetzt weiter“.",
+            "3": "Notfalls melde dich beim Support mit einem Screenshot der Bestätigung."
+          }
+        }
+      },
+      "modal": {
+        "title": "Altersnachweis erforderlich",
+        "message": "Verifiziere einmalig dein Alter, um diese Funktion zu nutzen.",
+        "confirm": "Jetzt verifizieren",
+        "cancel": "Abbrechen"
+      },
+      "overlay": {
+        "heading": "Altersbeschränktes Medium",
+        "body": "Verifiziere dein Alter, um Medieninhalte zu sehen, Posts zu erstellen oder Nachrichten zu senden.",
+        "cta": "Alter verifizieren",
+        "note": "Du wirst nach Abschluss automatisch zurückgeleitet."
+      },
+      "errors": {
+        "start": "Die Verifizierung konnte nicht gestartet werden. Bitte versuche es erneut."
+      }
+    },
+
+    "actions": {"cancel": "Abbrechen"},
+      "twofa": {
+        "title": "Zwei-Faktor-Authentifizierung",
+        "intro": "Schütze deinen Account mit einer zweiten Anmeldestufe. Nutze App (TOTP), SMS oder Passkeys.",
+        "passkeysTitle": "Sicherheitsschlüssel / Passkeys",
+        "passkeyActiveMsg": "Passkey ist aktiviert. Du kannst ihn beim Login verwenden.",
+        "passkeysActiveNote": "Passkey ist eingerichtet und für die 2-Stufen-Anmeldung gespeichert.",
+        "passkeysNote": "Richte einen Passkey ein, um dich schneller und sicherer anzumelden.",
+        "passkeysRemoveAllTitle": "Alle Passkeys entfernen",
+        "passkeysDisable": "Passkeys deaktivieren",
+        "totpTitle": "Authenticator-App (TOTP)",
+        "active": "Aktiv: App-basierte 2FA ist eingeschaltet.",
+        "scanIntro": "Scanne den QR-Code mit deiner Authenticator-App und gib anschließend den 6-stelligen Code ein.",
+        "qrAlt": "TOTP-QR-Code",
+        "tokenPlaceholder": "123456",
+        "tokenAria": "6-stelliger Bestätigungscode",
+        "confirm": "Bestätigen",
+        "resend": "Neu senden",
+        "resendTitle": "Code erneut senden",
+        "setup": "Einrichten",
+        "disable": "Deaktivieren",
+        "smsTitle": "SMS-Codes",
+        "smsActiveMsg": "Zwei-Faktor-Anmeldung per SMS ist aktiviert.",
+        "smsPhoneReady": "Telefonnummer ist hinterlegt. Du kannst SMS-Codes jetzt einrichten.",
+        "smsChangeNumber": "Nummer ändern",
+        "smsAddPhoneFirst": "Hinterlege zuerst eine Telefonnummer in deinen Profileinstellungen.",
+        "smsAddPhoneHintStart": "Öffne deine",
+        "smsAddPhoneHintEnd": "und füge eine Telefonnummer hinzu.",
+        "sms": {
+          "request": "SMS-Code anfordern",
+          "disable2faTitle": "SMS-2FA deaktivieren (Telefonnummer bleibt gespeichert)",
+          "disable2fa": "SMS-2FA deaktivieren",
+          "removeNumberTitle": "Telefonnummer entfernen",
+          "removeNumber": "Nummer entfernen",
+          "loginSendsToPrefix": "Beim Login senden wir einen Code an"
+        },
+      "extraPassword": {
+        "title": "Zusätzlicher Passwortschutz",
+        "desc": "Beim Zurücksetzen des Passworts muss zusätzlich E-Mail oder Telefonnummer bestätigt werden.",
+        "toggle": {
+          "title": "Passwort-Zurücksetzungsschutz umschalten",
+          "enable": "Schutz aktivieren",
+          "disable": "Schutz deaktivieren"
+        }
+      },
+      "sessions": {
+        "title": "Sitzungen beenden",
+        "desc": "Beendet alle aktiven Sitzungen auf allen Geräten und meldet dich ab.",
+        "endAll": "Alle Sitzungen beenden"
+      }
+    },
+
+    "accountSheet": {
+      "title": "Account hinzufügen",
+      "close": "Schließen",
+      "tabExisting": "Bestehend verbinden",
+      "tabNew": "Neu erstellen",
+      "phIdentifier": "E-Mail oder @handle",
+      "phPassword": "Passwort",
+      "btnConnect": "Verbinden & wechseln",
+      "phEmail": "E-Mail",
+      "phHandle": "handle",
+      "roleSub": "Sub",
+      "roleDomme": "Domme",
+      "phPwMin": "Passwort (min. {min})",
+      "btnCreate": "Neu erstellen & wechseln"
+    },
+
+    "compose": {
+    "aria": { "modalLabel": "Beitrag verfassen" },
+    "header": { "newPost": "Neuer Beitrag" },
+    "fields": {
+      "textPlaceholder": "Was gibt’s Neues?",
+      "mediaLabel": "Medien",
+      "gifLabel": "GIF"
+    },
+    "titles": { "gifSearch": "GIFs suchen" },
+    "actions": {
+      "close": "Schließen",
+      "post": "Posten",
+      "removeImage": "Bild entfernen",
+      "removeVideo": "Video entfernen"
+    },
+    "states": {
+      "gifLoadError": "GIF konnte nicht geladen werden."
+    }
+  },
+  "gifPicker": {
+    "fields": { "searchPlaceholder": "Nach GIFs suchen…" },
+    "actions": { "search": "Suchen", "close": "Schließen", "pick": "Auswählen" },
+    "states": { "loading": "Lade GIFs…", "loadError": "Konnte GIFs nicht laden." }
+  },
+
+    "offerViewer": {
+    "actions": {
+      "close": "Schließen"
+    },
+    "states": {
+      "loading": "Lade…",
+      "loadError": "Laden fehlgeschlagen."
+    },
+    "placeholders": {
+      "noTitle": "Kein Titel",
+      "noContent": "Kein Inhalt."
+    },
+    "aria": {
+      "modalLabel": "Angebot"
+    }
+  },
+
+    "editTabs": {
+    "tabs": {
+      "general": "Allgemein",
+      "ownership": "Ownership"
+    }
+  },
+  "ownershipTab": {
+    "header": {
+      "title": "Ownership-Profil",
+      "clearTitle": "Lokales Ownership-Profil löschen"
+    },
+    "actions": {
+      "reset": "Zurücksetzen",
+      "save": "Speichern",
+      "saving": "Speichere…",
+      "changeBanner": "Banner ändern",
+      "addAvatar": "Avatar hinzufügen"
+    },
+    "placeholders": {
+      "banner": "Ownership-Banner",
+      "avatar": "Avatar",
+      "bio": "Diese Bio wird bei akzeptierten Ownerships übernommen…"
+    },
+    "labels": {
+      "savedAt": "Gespeichert {ts}",
+      "bio": "Ownership-Bio",
+      "counter": "{n}/{max}"
+    },
+    "errors": {
+      "tooLarge": "Datei zu groß (max. 4 MB für lokale Vorschau).",
+      "readFile": "Datei konnte nicht gelesen werden.",
+      "readBanner": "Banner konnte nicht gelesen werden.",
+      "readAvatar": "Avatar konnte nicht gelesen werden.",
+      "save": "Konnte nicht speichern."
+    }
+  },
+
+    "editProfileForm": {
+    "header": { "title": "Profil bearbeiten" },
+    "actions": {
+      "save": "Speichern",
+      "changeBanner": "Banner ändern",
+      "changeAvatar": "Avatar ändern",
+      "editOfferMenu": "Offer-Menü bearbeiten"
+    },
+    "media": {
+      "bannerAlt": "Banner",
+      "avatarAlt": "Avatar"
+    },
+    "fields": {
+      "name": "Name",
+      "username": "Benutzername",
+      "bio": "Bio",
+      "location": "Ort",
+      "website": "Webseite / Link",
+      "role": "Rolle"
+    },
+    "roles": {
+      "domme": "Domme",
+      "submissive": "Submissive"
+    },
+    "placeholders": {
+      "website": "z. B. https://example.com"
+    },
+    "hints": {
+      "usernamePattern": "3–20 Zeichen, a–z, 0–9, _",
+      "maxChars": "Max. {count} Zeichen",
+      "roleFixed": "Rolle ist festgelegt"
+    }
+  },
+  "offerEditor": {
+    "controls": {
+      "font": "Schriftart",
+      "color": "Farbe",
+      "textColor": "Textfarbe",
+      "hex": "Hex",
+      "dim": "Abdunkeln"
+    },
+    "placeholders": {
+      "title": "Titel…",
+      "text": "Text…"
+    },
+    "actions": {
+      "addBg": "Hintergrund hinzufügen",
+      "changeBg": "Hintergrund ändern",
+      "remove": "Entfernen",
+      "cancel": "Abbrechen",
+      "save": "Speichern",
+      "saving": "Speichere…"
+    }
+  },
+
+    "ownershipRequestAcceptModal": {
+    "header": {
+      "title": "Ownership-Anfrage akzeptieren"
+    },
+    "banner": {
+      "previewAlt": "Banner-Vorschau",
+      "noAssetRequested": "Kein Banner-Asset in der Anfrage",
+      "notRequested": "Banner nicht angefordert"
+    },
+    "avatar": {
+      "previewAlt": "Avatar-Vorschau",
+      "noAssetRequested": "Kein Avatar-Asset in der Anfrage",
+      "notRequested": "Avatar nicht angefordert"
+    },
+    "bio": {
+      "none": "Keine Bio enthalten"
+    },
+    "actions": {
+      "cancel": "Abbrechen",
+      "apply": "Übernehmen",
+      "applying": "Übernehme…"
+    },
+    "errors": {
+      "applyFail": "Ownership-Anfrage konnte nicht übernommen werden"
+    }
+  },
+
+    "tipRequestAcceptModal": {
+    "header": {
+      "title": "Geschenkanfrage annehmen",
+      "to": "an {name}"
+    },
+    "disclaimer": "Mit der Bestätigung sendest du ein freiwilliges Geschenk. Dies ist keine Bezahlung für Leistungen. Geschenke sind endgültig (keine Rückerstattung, außer gesetzlich vorgeschrieben).",
+    "requested": {
+      "label": "Angeforderter Betrag",
+      "note": "Die Creatorin/der Creator sieht diesen Betrag. Auf deinen Zahlbetrag wird eine Plattformgebühr von {pct}% aufgeschlagen."
+    },
+    "breakdown": {
+      "amount": "Betrag",
+      "fee": "Plattformgebühr ({pct}%)",
+      "youPay": "Du zahlst"
+    },
+    "actions": {
+      "cancel": "Abbrechen",
+      "processing": "Verarbeite…",
+      "sendGiftAccept": "Geschenk senden & annehmen ({total})",
+      "closeAria": "Schließen"
+    },
+    "errors": {
+      "create": "Zahlung konnte nicht erstellt werden",
+      "confirm": "Bestätigung fehlgeschlagen",
+      "generic": "Etwas ist schiefgelaufen"
+    }
+  },
+
+    "autoDrainAcceptModal": {
+    "header": {
+      "title": "Autodrain aktivieren",
+      "to": "für {name}"
+    },
+    "disclaimer": "Geschenke sind freiwillig und keine Bezahlung für Leistungen. Geschenke sind endgültig (keine Rückerstattung, außer gesetzlich vorgeschrieben).",
+    "charge": {
+      "label": "Abbuchungsbetrag",
+      "recurringNote": "Wiederkehrende Abbuchung bis zur Kündigung."
+    },
+    "cadence": {
+      "daily": "täglich",
+      "weekly": "wöchentlich",
+      "monthly": "monatlich"
+    },
+    "acknowledge": "Ich verstehe, dass Geschenke freiwillig und endgültig sind. Es werden keine Leistungen zugesichert.",
+    "actions": {
+      "cancel": "Abbrechen",
+      "enable": "Autodrain aktivieren",
+      "enabling": "Aktiviere…",
+      "closeAria": "Schließen"
+    },
+    "errors": {
+      "generic": "Etwas ist schiefgelaufen"
+    }
+  },
+
+    "chatThread": {
+    "loading": "Lade…",
+    "you": "Du",
+    "disabled": {
+      "byOther": "Du kannst dieser Person keine Direktnachrichten mehr senden.",
+      "youBlocked": "Du hast diese Person blockiert. Senden ist deaktiviert."
+    },
+    "audio": {
+      "play": "Abspielen",
+      "pause": "Pause"
+    },
+    "actions": {
+      "accept": "Akzeptieren",
+      "decline": "Ablehnen",
+      "reply": "Antworten",
+      "moreEmojis": "Weitere Emojis"
+    },
+    "media": {
+      "image": "📷 Bild",
+      "video": "🎞 Video",
+      "audio": "🎙 Audio",
+      "attachment": "📎 Anhang"
+    },
+    "quoted": {
+      "notFound": "Nachricht nicht gefunden"
+    },
+    "emoji": {
+      "searchPlaceholder": "Emojis durchsuchen",
+      "close": "Schließen",
+      "recent": "Kürzlich benutzt",
+      "sheetTitle": "Smileys & Reaktionen"
+    },
+    "verify": {
+      "redirectNote": "Du wirst nach Abschluss automatisch zurückgeleitet."
+    },
+    "community": {
+      "members": "{count} Mitglieder"
+    },
+    "invite": {
+      "expires": "Läuft ab: {date}",
+      "usesLeft": "Verbleibende Nutzungen: {count}"
+    },
+    "envelopes": {
+      "tipRequest": {
+        "title": "TRINKGELD-ANFRAGE",
+        "declinedMsg": "❌ Trinkgeld-Anfrage abgelehnt"
+      },
+      "tipPaid": {
+        "title": "TRINKGELD BEZAHLT"
+      },
+      "autodrainRequest": {
+        "title": "AUTODRAIN-ANFRAGE",
+        "recurrenceLabel": "Wiederholung: {cadence}",
+        "cadence": {
+          "daily": "Täglich",
+          "weekly": "Wöchentlich",
+          "monthly": "Monatlich"
+        },
+        "declinedMsg": "❌ Autodrain-Anfrage abgelehnt"
+      },
+      "autodrainEnabled": {
+        "title": "AUTODRAIN AKTIVIERT"
+      },
+      "ownershipRequest": {
+        "title": "OWNERSHIP-ANFRAGE",
+        "items": {
+          "avatar": "Avatar",
+          "banner": "Banner",
+          "bio": "Bio"
+        },
+        "legacy": {
+          "avatarPreview": "🖼 Avatar-Vorschau enthalten.",
+          "bannerPreview": "🏞 Banner-Vorschau enthalten."
+        },
+        "declinedMsg": "❌ Ownership-Anfrage abgelehnt"
+      },
+      "ownershipAccepted": {
+        "title": "OWNERSHIP BESTÄTIGT",
+        "applied": "Änderungen wurden im Sub-Profil übernommen."
+      }
+    }
+  },
+
+    "ownershipRequest": {
+    "title": "Ownership-Anfrage",
+    "subtitle": "für @{handle}",
+    "aria": {
+      "close": "Schließen"
+    },
+    "emptySaved": "Noch kein lokales „Ownership-Profil“ gespeichert (Profil bearbeiten → Ownership-Tab).",
+    "fields": {
+      "avatar": "Avatar",
+      "banner": "Banner",
+      "bio": "Bio"
+    },
+    "actions": {
+      "cancel": "Abbrechen",
+      "send": "Anfrage senden",
+      "uploading": "Lade hoch…"
+    },
+    "errors": {
+      "createFailed": "Ownership-Anfrage konnte nicht erstellt werden"
+    }
+  },
+
+    "tipRequest": {
+    "title": "Trinkgeld-Anfrage erstellen",
+    "subtitle": "Lege den Betrag fest, den der Sub zahlen soll.",
+    "amount": {
+      "label": "Angeforderter Betrag",
+      "placeholder": "50"
+    },
+    "note": {
+      "label": "Notiz (optional)",
+      "placeholder": "Kurze Notiz hinzufügen…"
+    },
+    "actions": {
+      "cancel": "Abbrechen",
+      "create": "Anfrage erstellen"
+    }
+  },
+
+    "autoDrain": {
+    "title": "Autodrain-Anfrage erstellen",
+    "subtitle": "Betrag und Wiederholung festlegen.",
+    "amount": {
+      "label": "Betrag pro Abbuchung",
+      "placeholder": "50"
+    },
+    "recurrence": {
+      "label": "Wiederholung",
+      "options": {
+        "daily": "Täglich",
+        "weekly": "Wöchentlich",
+        "monthly": "Monatlich"
+      }
+    },
+    "actions": {
+      "cancel": "Abbrechen",
+      "create": "Anfrage erstellen"
+    }
+  },
+
+    "tipModal": {
+    "roles": {
+      "domme": "Domme",
+      "sub": "Sub"
+    },
+    "aria": {
+      "close": "Schließen"
+    },
+    "header": {
+      "title": "Sende ein Geschenk an {name}",
+      "subtitleFinal": "Geschenke sind freiwillig und endgültig."
+    },
+    "disclaimer": {
+      "top": "Geschenke sind freiwillig und keine Bezahlung für Dienstleistungen. Subm8 vermittelt nur die Übertragung.",
+      "legal": "Mit der Bestätigung sendest du ein freiwilliges Geschenk. Es handelt sich nicht um eine Bezahlung für Dienstleistungen. Geschenke sind endgültig (keine Rückerstattung, außer gesetzlich vorgeschrieben)."
+    },
+    "amount": {
+      "label": "Betrag für die Creatorin/den Creator",
+      "placeholder": "50"
+    },
+    "note": {
+      "label": "Notiz (optional)",
+      "placeholder": "Schreibe etwas Nettes…"
+    },
+    "breakdown": {
+      "amountToCreator": "Betrag (geht an Creator:in)",
+      "platformFeeTop": "Plattformgebühr (10% oben drauf)",
+      "youPay": "Du zahlst"
+    },
+    "ack": {
+      "checkbox": "Ich verstehe, dass Geschenke freiwillig und endgültig sind."
+    },
+    "actions": {
+      "cancel": "Abbrechen",
+      "sendGift": "Geschenk senden",
+      "sending": "Sende…",
+      "done": "Fertig"
+    },
+    "success": {
+      "title": "Geschenk gesendet!",
+      "youPaid": "Du hast {amount} bezahlt"
+    },
+    "errors": {
+      "generic": "Etwas ist schiefgelaufen",
+      "createFailed": "Zahlung konnte nicht erstellt werden",
+      "confirmFailed": "Bestätigung fehlgeschlagen"
+    }
+  },
+
+    "chatComposer": {
+    "disabled": {
+      "default": "Diese Unterhaltung ist blockiert."
+    },
+    "errors": {
+      "voice": {
+        "unsupported": "Sprachnachrichten werden von diesem Browser nicht unterstützt.",
+        "denied": "Kein Mikrofonzugriff (abgelehnt oder blockiert)."
+      },
+      "gif": {
+        "loadList": "Konnte GIFs nicht laden.",
+        "loadOne": "GIF konnte nicht geladen werden."
+      }
+    },
+    "recording": {
+      "inProgress": "Aufnahme läuft"
+    },
+    "gif": {
+      "search": {
+        "placeholder": "Nach GIFs suchen…",
+        "button": "Suchen"
+      },
+      "close": "Schließen",
+      "loading": "Lade GIFs…",
+      "selectTitle": "Auswählen"
+    },
+    "actions": {
+      "remove": "Entfernen",
+      "upload": "Medien hochladen",
+      "gif": "GIFs suchen",
+      "tip": "Trinkgeld senden",
+      "openActions": "Aktionen öffnen",
+      "actions": "Aktionen",
+      "voice": {
+        "holdAria": "Sprachnachricht (halten zum Aufnehmen)",
+        "holdTitle": "Sprachnachricht (halten)"
+      },
+      "sendMessageAria": "Nachricht senden",
+      "send": "Senden"
+    },
+    "menu": {
+      "tipRequest": "Trinkgeld-Anfrage",
+      "autodrainRequest": "Autodrain-Anfrage",
+      "ownershipRequest": "Ownership-Anfrage"
+    },
+    "placeholders": {
+      "closed": "DMs sind geschlossen",
+      "message": "Nachricht…"
+    },
+    "voice": {
+      "preview": {
+        "send": "Senden",
+        "discard": "Verwerfen"
+      }
+    },
+    "protocol": {
+      "tipRequestLabel": "Trinkgeld-Anfrage"
+    }
+  },
+
+    "chatHeader": {
+    "aria": {
+      "back": "Zurück",
+      "more": "Mehr",
+      "profile": "Profil von {name}"
+    },
+    "role": {
+      "domme": "Domme",
+      "sub": "Sub"
+    },
+    "badges": {
+      "blockedYou": "Hat dich blockiert",
+      "youBlocked": "Von dir blockiert"
+    },
+    "menu": {
+      "viewProfile": "Profil ansehen",
+      "mute": "Unterhaltung stummschalten",
+      "muteSoon": "Unterhaltung stummschalten — bald verfügbar",
+      "block": "Nutzer blockieren",
+      "unblock": "Blockierung aufheben",
+      "reportConversation": "Unterhaltung melden"
+    }
+  },
+
+    "chat": {
+    "header": {
+      "title": "Nachrichten",
+      "subtitle": "{total} Unterhaltungen • {unread} ungelesen"
+    },
+    "toolbar": {
+      "searchPlaceholder": "Nachrichten durchsuchen…",
+      "settingsAria": "Einstellungen",
+      "filters": {
+        "all": "Alle",
+        "unread": "Ungelesen",
+        "pinned": "Angeheftet"
+      }
+    },
+    "row": {
+      "preview": {
+      "image": "Foto",
+      "video": "Video",
+      "audio": "Audio",
+      "file": "Datei"
+    },
+      "badges": {
+        "muted": "Stumm",
+        "pinned": "Angeheftet"
+      },
+      "menu": {
+        "pin": "Chat anheften",
+        "unpin": "Chat lösen",
+        "mute": "Chat stummschalten",
+        "unmute": "Stummschaltung aufheben",
+        "report": "Nutzer melden",
+        "block": "Nutzer blockieren",
+        "delete": "Chat löschen"
+      }
+    },
+    "you": "Du",
+    "loading": "Lade…",
+    "empty": {
+      "title": "Keine Unterhaltungen",
+      "subtitle": "Starte einen neuen Chat über ein Profil."
+    },
+    "loadingError": "Chats konnten nicht geladen werden",
+    "system": {
+      "ownershipAccepted": "Ownership bestätigt",
+      "ownershipRequest": "Ownership-Anfrage",
+      "ownershipRequestWithParts": "Ownership-Anfrage: {parts}",
+      "part": {
+        "avatar": "Avatar",
+        "banner": "Banner",
+        "bio": "Bio"
+      },
+      "tipRequest": "Trinkgeld-Anfrage: {amount}",
+      "tipPaid": "Trinkgeld bezahlt: {amount}",
+      "shared": {
+        "post": "Beitrag geteilt",
+        "profile": "Profil @{handle} geteilt",
+        "link": "Link geteilt"
+      },
+      "reaction": {
+        "added": "{user} hat mit {emoji} reagiert",
+        "removed": "{user} hat die Reaktion {emoji} entfernt"
+      }
+    }
+  },
+
+    "communities": {
+      "invite": {
+      "button": "Einladen",
+      "title": "Mitglieder einladen"
+    },
+      "share": {
+      "aria": {
+        "button": "Teilen",
+        "dm": "In Direktnachricht teilen",
+        "copy": "Link kopieren",
+        "system": "Auf Gerät teilen"
+      },
+      "menu": {
+        "dm": "Per Direktnachricht senden",
+        "copy": "Link kopieren",
+        "copied": "Kopiert!",
+        "system": "Auf Gerät teilen…"
+      },
+      "overlay": {
+        "title": "Per Direktnachricht senden",
+        "search": "Nach Personen/Chats suchen",
+        "loading": "Lade Chats…",
+        "error": "Chats konnten nicht geladen werden",
+        "empty": "Keine Konversationen gefunden.",
+        "notePlaceholder": "Kommentar hinzufügen (optional)…",
+        "cancel": "Abbrechen",
+        "send": "Senden",
+        "sending": "Senden…"
+      }
+    },
+      "detail": {
+      "members": "{count} Mitglieder",
+      "policyPrefix": "Regel"
+    },
+    "page": {
+      "title": "Communities",
+      "tabs": {
+        "discover": "Entdecken",
+        "yours": "Deine Communities"
+      },
+      "loading": "Lade…",
+      "empty": {
+        "discover": "Noch keine Communities gefunden.",
+        "yours": "Du bist noch keiner Community beigetreten."
+      },
+      "members": "{count} Mitglieder",
+      "policyBadge": {
+        "open": "Offen",
+        "invite": "Nur mit Einladung",
+        "dommeOnly": "Nur Dommes",
+        "subOnly": "Nur Subs"
+      },
+      "blocked": {
+        "inviteOnly": "Nur mit Einladung — erfordert eine Einladung",
+        "dommeOnly": "Nur Dommes",
+        "subOnly": "Nur Subs"
+      }
+    },
+    "create": {
+      "banner": {
+        "choose": "Bild auswählen",
+        "label": "Banner (optional)",
+        "help": "PNG/JPG/WebP/GIF, max. ~10 MB. Drag & Drop wird unterstützt."
+      },
+      "button": "Neue Community",
+      "title": "Community erstellen",
+      "aria": {
+        "close": "Schließen"
+      },
+      "fields": {
+        "name": {
+          "label": "Name",
+          "placeholder": "KinkyGroupFun"
+        },
+        "handle": {
+          "label": "Handle (optional)",
+          "placeholder": "z. B. eu-fetish-scene",
+          "helperPreview": "So erscheint es: @{handle}",
+          "example": "your-handle"
+        },
+        "description": {
+          "label": "Beschreibung (optional)",
+          "placeholder": "Beschreibe deine Community…"
+        },
+        "policy": {
+          "label": "Beitrittsregel",
+          "options": {
+            "open": "Offen",
+            "invite": "Nur mit Einladung",
+            "dommeOnly": "Nur Dommes",
+            "subOnly": "Nur Subs"
+          }
+        },
+        "banner": {
+          "label": "Banner (optional)",
+          "button": "Bild auswählen",
+          "hint": "PNG/JPG/WebP/GIF, max. ~10 MB. Drag & Drop wird unterstützt.",
+          "previewAlt": "Banner-Vorschau",
+          "removeAria": "Bild entfernen"
+        }
+      },
+      "errors": {
+        "generic": "Etwas ist schiefgelaufen. Bitte versuche es erneut."
+      },
+      "actions": {
+        "cancel": "Abbrechen",
+        "create": "Erstellen",
+        "creating": "Erstelle…"
+      }
+    },
+    "join": {
+      "actions": {
+        "join": "Beitreten",
+        "leave": "Verlassen",
+        "loading": "…"
+      },
+      "hints": {
+        "inviteOnly": "Nur mit Einladung",
+        "dommeOnly": "Nur Dommes",
+        "subOnly": "Nur Subs"
+      },
+      "members": "{count} Mitglieder",
+      "errors": {
+        "inviteOnly": "Diese Community ist nur mit Einladung zugänglich.",
+        "roleNotAllowed": {
+          "generic": "Du darfst dieser Community nicht beitreten.",
+          "dommeOnly": "Nur Dommes können dieser Community beitreten.",
+          "subOnly": "Nur Subs können dieser Community beitreten."
+        },
+        "joinFailed": "Beitritt fehlgeschlagen. Bitte versuche es später erneut.",
+        "creatorCannotLeave": "Der/die Ersteller:in kann die eigene Community nicht verlassen.",
+        "generic": "Etwas ist schiefgelaufen. Bitte versuche es erneut."
+      }
+    }
+  },
+
+    "communitiesPage": {
+  "title": "Communities",
+  "tabs": {
+    "discover": "Entdecken",
+    "yours": "Deine Communities"
+  },
+  "loading": "Lade…",
+  "empty": {
+    "discover": "Noch keine Communities gefunden.",
+    "yours": "Du bist noch keiner Community beigetreten."
+  },
+  "policy": {
+    "open": "Offen",
+    "inviteOnly": "Nur mit Einladung",
+    "dommesOnly": "Nur Dommes",
+    "subsOnly": "Nur Subs"
+  },
+  "members": "{count} Mitglieder",
+  "blocked": {
+    "inviteOnly": "Nur mit Einladung — Einladung erforderlich",
+    "dommesOnly": "Nur Dommes",
+    "subsOnly": "Nur Subs"
+  }
+},
+
+
+    "notificationsPage": {
+  "title": "Benachrichtigungen",
+  "tabs": { "all": "Alle", "mentions": "Erwähnungen", "comments": "Kommentare" },
+  "empty": {
+    "title": "Alles erledigt",
+    "desc": "Du hast derzeit keine Benachrichtigungen."
+  },
+  "actions": {
+    "view": "Ansehen",
+    "follow": "Folgen",
+    "following": "Folgt"
+  },
+  "messages": {
+    "followedYou": "folgt dir",
+    "mentionedYou": "hat dich erwähnt:",
+    "likedYourPost": "hat deinen Beitrag geliked:",
+    "commentedOnYourPost": "hat deinen Beitrag kommentiert:",
+    "repliedToYourComment": "hat auf deinen Kommentar geantwortet:",
+    "likedYourComment": "hat deinen Kommentar geliked:",
+    "timeSep": "· {time}"
+  }
+},
+
+
+    "search": {
+  "placeholder": "Suche Subm8",
+  "recent": {
+    "title": "Zuletzt",
+    "remove": "Entfernen",
+    "removeAria": "{query} entfernen"
+  },
+  "trending": {
+    "title": "Gerade im Trend",
+    "empty": "Zurzeit keine Trends.",
+    "topic": "Thema",
+    "posts": "Beiträge"
+  },
+  "suggestions": {
+    "title": "Leute, denen du folgen könntest",
+    "empty": "Keine Vorschläge im Moment."
+  },
+  "tabs": {
+    "top": "Top",
+    "latest": "Neueste",
+    "people": "Personen"
+  },
+  "loading": "Lade…",
+  "people": {
+    "title": "Personen",
+    "followers": "Follower",
+    "empty": "Keine Personen gefunden"
+  },
+  "posts": {
+    "title": "Beiträge",
+    "latestTitle": "Neueste Beiträge",
+    "empty": "Keine Beiträge gefunden"
+  }
+}
+,
+
+    "auth": {
+      "signin2fa": {
+        "title": "Zweite Stufe erforderlich",
+        "subtitle": "Bitte bestätige deine Anmeldung.",
+        "chooseMethod": "Methode wählen:",
+        "passkeyButton": "Passkey",
+        "smsButton": "SMS-Code",
+        "passkeyIntro": "Es öffnet sich ein Systemdialog zur Bestätigung mit deinem Passkey.",
+        "confirmPasskey": "Mit Passkey bestätigen",
+        "verifying": "Prüfe…",
+        "sendSms": "SMS-Code senden",
+        "smsCodeLabel": "SMS-Code",
+        "smsCodePlaceholder": "123456",
+        "verifySms": "Bestätigen",
+        "resendSms": "Neu senden"
+      },
+        "signinPasskey": {
+        "title": "Mit Passkey verifizieren",
+        "subtitle": "Zweiter Schritt",
+        "hint": "Bestätige die Anmeldung mit deinem Gerät oder Sicherheitsschlüssel.",
+        "buttons": {
+          "usePasskey": "Passkey verwenden",
+          "verifying": "Wird überprüft…"
+        },
+        "backToPassword": "Zur Anmeldung mit Passwort",
+        "errors": {
+          "prefix": "Fehler:",
+          "generic": "Konnte nicht verifizieren."
+        }
+      },
+        "resetPage": {
+          "title": "Passwort zurücksetzen",
+          "fields": { "newPw": "Neues Passwort", "repeatPw": "Passwort wiederholen" },
+          "buttons": { "save": "Passwort speichern", "saving": "Speichern…" },
+          "errors": { "mismatch": "Passwörter stimmen nicht überein.", "failed": "Zurücksetzen fehlgeschlagen." }
+        },
+        "signin": {
+          "forgot": {
+            "link": "Passwort vergessen?",
+            "emailLabel": "Deine E-Mail",
+            "emailPlaceholder": "du@example.com",
+            "submit": "Link zusenden",
+            "submitLoading": "Sende…",
+            "back": "Zurück zur Anmeldung",
+            "success": "Falls ein Konto existiert, haben wir einen Link an deine E-Mail gesendet."
+          },
+          "alerts": {
+            "registered": "Registrierung erfolgreich. Bitte anmelden.",
+            "resetSuccess": "Passwort gespeichert. Du kannst dich jetzt anmelden."
+          },
+          "reset": {
+            "link": "Passwort vergessen?",
+            "emailLabel": "Deine E-Mail",
+            "submit": "Link zusenden",
+            "cancel": "Abbrechen",
+            "sent": "Falls ein Konto existiert, haben wir dir eine Mail gesendet.",
+            "errors": { "failed": "Zurücksetzen konnte nicht angefordert werden." }
+          },
+          "welcome": "Willkommen zurück bei {brand}",
+          "title": "Anmelden",
+          "fields": {
+            "identifier": {
+              "label": "E-Mail oder Handle",
+              "placeholder": "E-Mail oder Handle"
+            },
+            "password": {
+              "label": "Passwort"
+            }
+          },
+          "errors": {
+            "invalidCredentials": "E-Mail/Handle oder Passwort ist falsch."
+          },
+          "buttons": {
+            "submit": "Anmelden",
+            "submitLoading": "Anmelden…",
+            "google": "Mit Google anmelden"
+          },
+          "or": "oder",
+          "signup": {
+            "cta": "Noch kein Konto?",
+            "link": "Jetzt registrieren"
+          }
+        },
+        "signup": {
+          "welcome": "Willkommen bei {brand}",
+          "chooseUsername": "Wähle einen Benutzernamen, um zu starten.",
+          "fields": {
+            "username": {
+              "placeholder": "Benutzername",
+              "formatHelp": "3–20 Zeichen, a–z, 0–9, Unterstrich.",
+              "checking": "Verfügbarkeit wird geprüft…"
+            }
+          },
+          "roleCard": {
+            "sub": {
+              "title": "Ich bin Sub",
+              "desc": "Erfüllung finde ich im Dienen und Folgen."
+            },
+            "domme": {
+              "title": "Ich bin Domme",
+              "desc": "Ich führe gerne und setze die Regeln."
+            }
+          },
+          "selectTypeTitle": "Wähle deinen Account-Typ",
+          "enterToContinue": "Drücke",
+          "login": {
+            "cta": "Schon ein Konto?",
+            "link": "Login"
+          },
+          "errors": {
+            "handleTaken": "Dieser Benutzername ist bereits vergeben.",
+            "checkFailed": "Verfügbarkeit konnte nicht geprüft werden. Bitte erneut versuchen.",
+            "startFailed": "Registrierung konnte nicht gestartet werden.",
+            "network": "Netzwerkfehler. Bitte versuche es erneut.",
+            "selectTypeRequired": "Bitte wähle deinen Account-Typ."
+          }
+        },
+        "signupAccount": {
+          "headerTop": "Erstelle dein Konto",
+          "headerTitle": "Fast geschafft",
+          "dommeDisclaimer": {
+            "title": "Wichtig: So funktionieren Tipps auf Subm8",
+            "li1": "Tipps auf Subm8 sind freiwillige Geschenke, keine Zahlungen für Leistungen.",
+            "li2": "Du darfst keine Leistungen für Tipps bewerben oder garantieren.",
+            "li3": "Wenn du anderswo Leistungen anbietest, bist du allein für Rechts- und Steuerkonformität verantwortlich.",
+            "li4": "Missbrauch kann zur Kontosperrung führen.",
+            "checkbox": "Ich verstehe, dass Tipps auf Subm8 freiwillige Geschenke sind und nicht an Leistungen geknüpft.",
+            "readMore": "Weiterlesen",
+            "readLess": "Weniger anzeigen"
+          },
+          "fields": {
+            "email": {
+              "label": "E-Mail",
+              "placeholder": "you@example.com"
+            },
+            "password": {
+              "label": "Passwort",
+              "placeholder": "Mindestens 8 Zeichen",
+              "help": "Verwende mindestens 8 Zeichen."
+            },
+            "password2": {
+              "label": "Passwort bestätigen"
+            }
+          },
+          "agree": "Ich stimme den Nutzungsbedingungen & der Datenschutzerklärung zu.",
+          "buttons": {
+            "create": "Konto erstellen",
+            "creating": "Erstelle…",
+            "google": "Mit Google fortfahren"
+          },
+          "login": {
+            "cta": "Schon ein Konto?",
+            "link": "Login"
+          },
+          "errors": {
+            "signupFailed": "Registrierung fehlgeschlagen",
+            "passwordMismatch": "Passwort stimmen nicht überein"
+          }
+        }
+      },
+
+    "paymentsPage": {
+    "ariaBack": "Zurück zum Feed",
+    "title": "Zahlungen & Verlauf",
+    "guestNote": "Bitte melde dich an, um deinen Zahlungsverlauf zu sehen.",
+    "payoutBtn": "Auszahlung",
+    "payoutTooltip": "Auszahlung anfordern (bald verfügbar)",
+    "avatarAlt": "{name} Avatar",
+    "balance": {
+      "title": "Aktueller Kontostand:",
+      "export": "CSV-Export"
+    },
+    "autodrain": {
+      "title": "Aktiver Autodrain",
+      "outgoing": { "title": "Von dir aktiviert" },
+      "incoming": { "title": "Eingehender Autodrain" },
+      "none": "Keine aktiven Abos.",
+      "th": {
+        "avatar": "Avatar",
+        "domme": "Domme",
+        "sub": "Sub",
+        "amount": "Betrag",
+        "cadence": "Rhythmus",
+        "next": "Nächste Abbuchung"
+      },
+      "cancel": "Beenden",
+      "cadence": {
+        "daily": "Täglich",
+        "weekly": "Wöchentlich",
+        "monthly": "Monatlich"
+      }
+    },
+    "payments": {
+      "received": {
+        "title": "Eingänge",
+        "empty": "Keine eingegangenen Zahlungen."
+      },
+      "sent": {
+        "title": "Du hast gesendet",
+        "empty": "Keine ausgehenden Zahlungen."
+      },
+      "th": {
+        "avatar": "Avatar",
+        "date": "Datum",
+        "username": "Nutzername",
+        "amount": "Betrag",
+        "what": "Verwendungszweck",
+        "status": "Status"
+      },
+      "amountPrefixReceived": "Eingegangen: {amount}",
+      "amountPrefixSent": "Gesendet: {amount}",
+      "what": {
+        "tip": "Trinkgeld"
+      },
+      "status": {
+        "created": "Erstellt",
+        "processing": "In Bearbeitung",
+        "succeeded": "Erfolgreich",
+        "failed": "Fehlgeschlagen",
+        "canceled": "Storniert"
+      }
+    }
+  },
+
+    "bookmarksPage": {
+    "ariaBack": "Zurück zum Feed",
+    "title": "Lesezeichen",
+    "guestTitle": "Beiträge für später speichern",
+    "guestDesc": "Füge Beiträgen Lesezeichen hinzu, damit du sie später schnell wiederfindest.",
+    "emptyTitle": "Noch keine Lesezeichen",
+    "emptyDesc": "Speichere Beiträge, um sie hier jederzeit wieder aufzurufen."
+  },
+
+    "monetizationPage": {
+      "ariaBack": "Zurück",
+      "title": "Monetarisierung",
+      "subtitle": "So verdienst du Geld auf Subm8 – Überblick & Best Practices",
+
+      "hero": {
+        "walletRealtime": {
+          "title": "Wallet in Echtzeit",
+          "text": "Einnahmen landen sofort im Domme-Wallet und in der Historie."
+        },
+        "flexibleSources": {
+          "title": "Flexible Einnahmequellen",
+          "text": "Direkte Tips, Pay-per-View, Custom Tributes & Paid Communities."
+        },
+        "clearTransparent": {
+          "title": "Klar & Transparent",
+          "text": "Eindeutige Regeln zu Gebühren und Auszahlungen (SEPA, später mehr)."
+        }
+      },
+
+      "methodCard": {
+        "whatIsThis": "Was ist das?",
+        "howItWorks": "So funktioniert’s",
+        "featureHint": "Nutze dieses Feature, wenn es zu deiner Audience passt – Preisgestaltung und Messaging sind entscheidend."
+      },
+
+      "methods": {
+        "tips": {
+          "number": 1,
+          "title": "Direkte Tips (Tributes)",
+          "badge": "Basis",
+          "bullets": [
+            "Sub sendet beliebigen Betrag im Chat oder Profil über den Tip-Button.",
+            "Domme erhält den vollen Betrag.",
+            "Plattformgebühr wird vom Sub getragen.",
+            "Sofort sichtbar im Wallet & Einnahmen-Historie."
+          ],
+          "steps": [
+            "Aktiviere Tips im Profil (falls deaktiviert).",
+            "Verweise im Chat auf deinen Tip-Button.",
+            "Bedanke dich öffentlich – Social Proof steigert Folge-Tips."
+          ],
+          "ctaBackToSettings": "Zurück zu Settings"
+        },
+
+        "ppv": {
+          "number": 2,
+          "title": "Pay-per-View (optional)",
+          "badge": "Optional",
+          "bullets": [
+            "Premium-Content (z. B. NSFW-Medien) nur gegen Micropayment sichtbar.",
+            "Ideal bei hohem Chat-Volumen oder exklusiven Drops.",
+            "Feingranulare Preise möglich (z. B. pro Bild/Clip)."
+          ],
+          "steps": [
+            "Markiere Inhalte als „PPV“.",
+            "Setze einen fairen Preis und tease den Content an.",
+            "Nutze Story/Feed/Chat, um Traffic auf PPV zu lenken."
+          ]
+        },
+
+        "customTributes": {
+          "number": 3,
+          "title": "Custom Tributes (Drainer / Tribute-Timer)",
+          "badge": "Wiederkehrend",
+          "bullets": [
+            "Subs richten regelmäßige Zahlungen ein (z. B. 5 € täglich, 20 € wöchentlich).",
+            "Läuft automatisch bis zum Stopp – volle Kontrolle beim Sub.",
+            "Dommes können solche Drainer aktiv „anfordern“."
+          ],
+          "steps": [
+            "Erzeuge eine klare „Anforderung“ (Betrag + Intervall + Dauer).",
+            "Nutze Deadlines & Belohnungen (Badges, exklusive Clips).",
+            "Tracke Laufzeiten und erneuere aktiv vor Ablauf."
+          ]
+        },
+
+        "paidCommunities": {
+          "number": 4,
+          "title": "Community-Beiträge (Paid Communities)",
+          "badge": "Gruppen-Upsell",
+          "bullets": [
+            "Erstelle eine Community mit kostenpflichtigem Zugang.",
+            "Subs zahlen monatlich oder einmalig für den Beitritt.",
+            "Exklusivität + Gruppendynamik = höherer Lifetime-Value."
+          ],
+          "steps": [
+            "Definiere klaren Mehrwert (z. B. Wochen-Drops, Live-Q&A, Votings).",
+            "Setze einen Preis und begrenze Slots für Knappheit.",
+            "Promote Einladungen im Profil & Chat."
+          ],
+          "ctaOpenCommunities": "Communities öffnen"
+        },
+
+        "payouts": {
+          "number": 5,
+          "title": "Payouts (Auszahlungen)",
+          "badge": "Wallet",
+          "bullets": [
+            "Alle Einnahmen sammeln sich im Domme-Wallet (Export für Buchhaltung möglich).",
+            "Auszahlung via SEPA/Banküberweisung (später: PayPal, Crypto).",
+            "Klare Übersicht in „Einnahmen & Verlauf“."
+          ],
+          "steps": [
+            "Hinterlege Empfängerdaten (IBAN).",
+            "Starte eine Auszahlung aus deinem Wallet.",
+            "Lade bei Bedarf CSV/Export für die Buchhaltung."
+          ],
+          "note": "Hinweis: Auszahlungsoptionen können je nach Region variieren."
+        },
+
+        "leaderboardBadges": {
+          "number": 6,
+          "title": "Leaderboard & Badges (Gamification)",
+          "badge": "Sichtbarkeit",
+          "bullets": [
+            "Dommes mit hohen Einnahmen werden prominent gelistet.",
+            "Badges & Meilensteine erhöhen Social Proof.",
+            "Mehr Sichtbarkeit → mehr Motivation bei Subs → mehr Umsatz."
+          ],
+          "steps": [
+            "Halte Aktivität & Content-Qualität hoch.",
+            "Nutze Events/Challenges, um Peaks zu erzeugen.",
+            "Zeige Badges im Profil & in Communities."
+          ]
+        }
+      },
+
+      "fees": {
+        "title": "Gebühren – kurz & bündig",
+        "bullets": [
+          "Direkte Tips: Domme erhält den vollen Betrag; die Plattformgebühr trägt der Sub.",
+          "Weitere Features (PPV, Communities, etc.) können eigene Gebührenmodelle haben. Details siehst du direkt im jeweiligen Flow.",
+          "Auszahlungen: transparent in deinem Wallet dokumentiert."
+        ]
+      },
+
+      "links": {
+        "security": "Sicherheit & Zugriff",
+        "profile": "Profil optimieren",
+        "feed": "Zum Feed"
+      }
+    },
+
+    "comments": {
+      "placeholder": "Kommentar schreiben…",
+      "replyPlaceholder": "Antwort schreiben…",
+      "noComments": "Noch keine Kommentare.",
+      "loadMore": "Mehr laden",
+      "loading": "Lade…",
+      "reply": "Antworten",
+      "like": "Gefällt mir",
+      "unlike": "Gefällt mir nicht mehr",
+      "remove": "Entfernen",
+      "addGif": "GIF hinzufügen",
+      "attachImage": "Bild anhängen",
+      "send": "Senden",
+      "sending": "Senden…",
+      "searchGifs": "GIFs suchen…",
+      "search": "Suchen",
+      "close": "Schließen",
+      "pick": "Auswählen",
+      "errorLoading": "Kommentare konnten nicht geladen werden.",
+      "errorGifs": "GIFs konnten nicht geladen werden."
+    },
+
+    "post": {
+      "delete": {
+        "title": "Beitrag löschen",
+        "confirm": "Diesen Beitrag für alle löschen? Dadurch werden auch alle Reposts entfernt.",
+        "button": "Beitrag löschen",
+        "failed": "Der Beitrag konnte nicht gelöscht werden."
+      },
+      "communityPost": "Community-Post",
+      "repostedBy": "{name} hat repostet",
+      "pinned": "Gepinnt",
+      "ariaOpen": "Post öffnen",
+      "ariaBack": "Zurück",
+      "headerTitle": "Post",
+      "interactionBlocked": "Interaktionen sind blockiert",
+      "like": "Gefällt mir",
+      "unlike": "Gefällt mir nicht mehr",
+      "comment": "Kommentieren",
+      "repost": "Repost",
+      "quotePost": "Post zitieren",
+      "more": "Mehr",
+      "copyText": "Post-Text kopieren",
+      "block": "Account blockieren",
+      "unblock": "Account entblocken",
+      "report": "Post melden",
+      "pinToProfile": "Auf Profil anpinnen",
+      "unpinFromProfile": "Pin entfernen",
+      "role": { "domme": "Domme", "submissive": "Sub" },
+      "blockStatus": { "youBlock": "Du blockierst", "blocksYou": "Blockiert dich" },
+
+      "share": {
+        "title": "Teilen",
+        "label": "Teilen",
+        "dm": "Per Direktnachricht senden",
+        "shareInDm": "In Direktnachricht teilen",
+        "copy": "Link kopieren",
+        "copied": "Kopiert!",
+        "system": "Auf Gerät teilen…",
+        "systemTitle": "{name} auf {brand}",
+        "systemText": "Sieh dir diesen Post auf {brand} an",
+        "dmTitle": "Per Direktnachricht senden",
+        "searchPlaceholder": "Nach Personen/Chats suchen",
+        "loadingChats": "Lade Chats…",
+        "empty": "Keine Konversationen gefunden.",
+        "notePlaceholder": "Kommentar hinzufügen (optional)…",
+        "cancel": "Abbrechen",
+        "send": "Senden",
+        "sending": "Senden…"
+      },
+
+      "cantInteract": "Du kannst mit diesem Account nicht interagieren."
+    },
+
+    "settings": {
+      "switchToHandle": "Wechseln zu @{handle}",
+      "switchToName": "Zu {name} wechseln",
+      "aria": "Einstellungen",
+      "guest": "Gast",
+      "roleDomme": "Domina",
+      "roleSub": "Sub",
+      "statsFollowing": "Folge ich",
+      "statsFollowers": "Follower",
+      "statsError": "Fehler beim Laden der Statistiken",
+      "menu": { "profile": "Profil", "settings": "Einstellungen", "bookmarks": "Lesezeichen", "premium": "Premium", "payments": "Zahlungen" },
+      "recommended": "Empfohlene Profile",
+      "suggestionsEmpty": "Derzeit keine Vorschläge.",
+      "follow": "Folgen",
+      "unfollow": "Entfolgen",
+      "signIn": "Anmelden",
+      "signOut": "Abmelden",
+      "loading": "Laden…",
+      "noHandle": "—",
+      "avatarAlt": "Profilbild"
+    },
+
+    "profile": {
+      "more": "Mehr",
+      "shareProfileViaDm": "Profil per Direktnachricht teilen",
+      "copyProfileLink": "Profil-Link kopieren",
+      "blockUser": "Nutzer blockieren",
+      "unblockUser": "Nutzer entblocken",
+      "reportUser": "Nutzer melden",
+      "message": "Nachricht",
+      "tabs": { "posts": "Posts", "gallery": "Galerie", "leaderboard": "Leaderboard" },
+      "editProfile": "Profil bearbeiten",
+      "tipActions": "Trinkgeld-Aktionen",
+      "sendTip": "Trinkgeld senden",
+      "autodrain": "Autodrain",
+      "offer": "Angebot",
+      "offerMenu": "Angebotsmenü",
+      "follow": "Folgen",
+      "unfollow": "Entfolgen",
+      "blockedBy": "Dieser Nutzer hat dich blockiert",
+      "youBlocked": "Du hast diesen Nutzer blockiert",
+      "messagingDisabled": "Nachrichten sind wegen Blockierung deaktiviert",
+      "joined": "Dabei seit"
+    },
+
+    "settingsPage": {
+      "ariaBack": "Zurück zum Feed",
+      "title": "Einstellungen",
+      "searchPlaceholder": "Einstellungen durchsuchen",
+      "items": {
+        "account": { "title": "Dein Account", "desc": "Profilinfo ansehen und bearbeiten (Name, Bio, Avatar, Banner), Daten exportieren und Account-Optionen." },
+        "security": { "title": "Sicherheit & Zugriff", "desc": "Login-Sicherheit prüfen, verbundene Apps verwalten und Zugriff überwachen." },
+        "premium": { "title": "Premium", "desc": "Vorteile ansehen und deine Premium-Einstellungen verwalten." },
+        "monetization": { "title": "Monetarisierung", "desc": "Vom Tip bis zur Community. Alle Wege zu stabilen Einnahmen." },
+        "privacy": { "title": "Datenschutz", "desc": "Steuere, welche Informationen du siehst und teilst, und passe deine Privatsphäre an." },
+        "notifications": { "title": "Mitteilungen", "desc": "Lege fest, über welche Aktivitäten, Empfehlungen und Nachrichten du benachrichtigt wirst." },
+        "bookmarks": { "title": "Bookmarks", "desc": "Gespeicherte Posts verwalten." }
+      }
+    },
+
+    "profileSettings": {
+      "deleteButton": "Account endgültig löschen",
+      "deleteButtonTitle": "Account endgültig löschen",
+      "deleteHint": "Löscht deinen Account und die zugehörigen Daten. Falls verknüpfte Accounts existieren, wechselst du zum Home-Feed; sonst geht es zur Anmeldeseite.",
+      "languageLabel": "Sprache",
+      "languageHelp": "Wähle deine bevorzugte Sprache für die Oberfläche.",
+      "languageButton": "Ändern",
+      "ariaBack": "Zurück",
+      "headerTitle": "Profil & Account verwalten",
+      "notSignedInMessage": "Bitte melde dich an, um Einstellungen zu ändern.",
+      "profileSectionTitle": "Profil",
+      "passwordSectionTitle": "Passwort",
+      "logoutSectionTitle": "Abmelden",
+      "dangerZoneTitle": "Gefahrenbereich",
+      "handleLabel": "Handle",
+      "handlePlaceholder": "dein.handle",
+      "handleHelp": "3–20 Zeichen; a–z, 0–9, „_“ und „.“ erlaubt.",
+      "emailLabel": "E-Mail",
+      "emailPlaceholder": "du@example.com",
+      "phoneLabel": "Telefonnummer",
+      "phonePlaceholder": "+49 170 1234567",
+      "phoneMissing": "Spalte fehlt in DB",
+      "countryLabel": "Land",
+      "countryPlaceholder": "DE, AT, CH, US",
+      "countryMissing": "Spalte fehlt in DB",
+      "saveProfile": "Profil speichern",
+      "currentPasswordLabel": "Aktuelles Passwort",
+      "newPasswordLabel": "Neues Passwort",
+      "newPasswordPlaceholder": "mind. 8 Zeichen",
+      "newPassword2Label": "Neues Passwort (Wiederholen)",
+      "newPassword2Placeholder": "nochmal eingeben",
+      "changePassword": "Passwort ändern",
+      "logoutButton": "Abmelden",
+      "dangerZoneDesc": "Das Deaktivieren sperrt dein Profil und beendet deine Sitzungen.",
+      "deactivateButton": "Account deaktivieren",
+      "deactivateNotAvailable": "Deaktivieren nicht verfügbar",
+      "alreadyDeactivated": "Account ist deaktiviert"
+    },
+    "links": {
+      "settings": "Einstellungen"
+    },
+    "securityPage": {
+      "ariaBack": "Zurück",
+      "title": "Sicherheit & Zugriff",
+      "notSignedInMessage": "Bitte melde dich an, um Sicherheitsoptionen zu verwalten.",
+      "status": {
+        "active": "Aktiv",
+        "ready": "Bereit",
+        "notSetup": "Nicht eingerichtet"
+      },
+      "twofa": {
+        "title": "Zwei-Faktor-Authentifizierung",
+        "intro": "Schütze deinen Account mit einer zweiten Anmeldestufe. Nutze App (TOTP), SMS oder Passkeys.",
+        "passkeysTitle": "Sicherheitsschlüssel / Passkeys",
+        "passkeyActiveMsg": "Passkey ist aktiviert. Du kannst ihn beim Login verwenden.",
+        "passkeysActiveNote": "Passkey ist eingerichtet und für die 2-Stufen-Anmeldung gespeichert.",
+        "passkeysNote": "Richte einen Passkey ein, um dich schneller und sicherer anzumelden.",
+        "passkeysRemoveAllTitle": "Alle Passkeys entfernen",
+        "passkeysDisable": "Passkeys deaktivieren",
+        "totpTitle": "Authenticator-App (TOTP)",
+        "active": "Aktiv: App-basierte 2FA ist eingeschaltet.",
+        "scanIntro": "Scanne den QR-Code mit deiner Authenticator-App und gib anschließend den 6-stelligen Code ein.",
+        "qrAlt": "TOTP-QR-Code",
+        "tokenPlaceholder": "123456",
+        "tokenAria": "6-stelliger Bestätigungscode",
+        "confirm": "Bestätigen",
+        "resend": "Neu senden",
+        "resendTitle": "Code erneut senden",
+        "setup": "Einrichten",
+        "disable": "Deaktivieren",
+        "smsTitle": "SMS-Codes",
+        "smsActiveMsg": "Zwei-Faktor-Anmeldung per SMS ist aktiviert.",
+        "smsPhoneReady": "Telefonnummer ist hinterlegt. Du kannst SMS-Codes jetzt einrichten.",
+        "smsChangeNumber": "Nummer ändern",
+        "smsAddPhoneFirst": "Hinterlege zuerst eine Telefonnummer in deinen Profileinstellungen.",
+        "smsAddPhoneHintStart": "Öffne deine",
+        "smsAddPhoneHintEnd": "und füge eine Telefonnummer hinzu.",
+        "sms": {
+          "request": "SMS-Code anfordern",
+          "disable2faTitle": "SMS-2FA deaktivieren (Telefonnummer bleibt gespeichert)",
+          "disable2fa": "SMS-2FA deaktivieren",
+          "removeNumberTitle": "Telefonnummer entfernen",
+          "removeNumber": "Nummer entfernen",
+          "loginSendsToPrefix": "Beim Login senden wir einen Code an"
+        }
+      },
+      "extraPassword": {
+        "title": "Zusätzlicher Passwortschutz",
+        "desc": "Beim Zurücksetzen des Passworts muss zusätzlich E-Mail oder Telefonnummer bestätigt werden.",
+        "toggle": {
+          "title": "Passwort-Zurücksetzungsschutz umschalten",
+          "enable": "Schutz aktivieren",
+          "disable": "Schutz deaktivieren"
+        }
+      },
+      "sessions": {
+        "title": "Sitzungen beenden",
+        "desc": "Beendet alle aktiven Sitzungen auf allen Geräten und meldet dich ab.",
+        "endAll": "Alle Sitzungen beenden"
+      }
+    },
+
+    "notifications": {
+    "ariaBack": "Zurück",
+    "title": "Benachrichtigungen",
+    "notSignedInNote": "Bitte melde dich an.",
+    "notSignedInIntro": "Diese Seite verwaltet deine Push-, E-Mail- und Filter-Einstellungen.",
+    "intro": "Verwalte Push-Mitteilungen, E-Mails & Filter.",
+    "cards": {
+      "ui": {
+        "title": "Anzeige & Sound",
+        "popup": "Mini-Popup anzeigen",
+        "sound": "Signalton abspielen",
+        "note": "Wenn beides deaktiviert ist, werden nur kleine Hinweise am Icon angezeigt."
+      },
+      "push": {
+        "title": "Push-Mitteilungen",
+        "toggleActive": "Push-Mitteilungen aktiv",
+        "note": "Steuert alle Push-Benachrichtigungen auf deinem Gerät."
+      },
+      "dm": {
+        "title": "Direktnachrichten",
+        "messages": "Direktnachrichten",
+        "reactions": "Reaktionen auf deine Nachrichten"
+      },
+      "feed": {
+        "title": "Feed & Aktivitäten",
+        "mentions": "Erwähnungen (@handle)",
+        "comments": "Kommentare auf deine Posts",
+        "likes": "Likes auf deine Posts",
+        "newFollowers": "Neue Follower",
+        "photoTags": "Foto-Markierungen"
+      },
+      "email": {
+        "title": "E-Mail",
+        "messages": "E-Mail bei neuen Nachrichten",
+        "digest": "Wöchentliche Zusammenfassung per E-Mail",
+        "note": "Wir senden nur selten & zielgerichtet. Du kannst jederzeit abbestellen."
+      },
+      "filters": {
+        "title": "Mitteilungen stummschalten von Personen",
+        "notFollowing": "… denen du nicht folgst",
+        "notFollowers": "… die dir nicht folgen",
+        "newAccounts": "… mit einem neuen Account",
+        "noAvatar": "… die ein Standard-Profilfoto haben",
+        "emailUnverified": "… deren E-Mail nicht bestätigt ist",
+        "phoneUnverified": "… deren Telefonnummer nicht bestätigt ist",
+        "note": "Diese Filter betreffen nur Unbekannte. Kontakte/Followings bleiben unberührt."
+      }
+    },
+    "actions": {
+      "cancel": "Abbrechen",
+      "save": "Einstellungen speichern",
+      "saving": "Speichern…",
+      "saved": "Gespeichert",
+      "savedAria": "Einstellungen wurden gespeichert.",
+      "reset": "Auf Standardwerte zurücksetzen",
+      "resetTitle": "Werkseinstellungen wiederherstellen"
+    }
+  },
+
+    "legalPage": {
+      "ariaBack": "Zurück",
+      "title": "Recht & Datenschutz",
+      "subtitle": "Rechtliche Informationen und Richtlinien"
+    },
+    
+    "legal": {
+      "shared": {
+        "updated": "Aktualisiert",
+        "note": "Hinweis",
+        "info": "Info",
+        "warn": "Wichtig",
+        "danger": "Achtung"
+      },
+
+      "overview": {
+        "title": "Terms of Service (Nutzungsbedingungen)",
+        "subtitle": "Verbindliche Regeln für die Nutzung von Subm8.",
+        "sections": {
+          "scope": "1. Geltungsbereich",
+          "audience": "2. Zielgruppe",
+          "roles": "3. Rollen & Inhalte",
+          "payments": "4. Zahlungen & Wallet",
+          "termination": "5. Kündigung & Sperre",
+          "liability": "6. Haftung",
+          "changes": "7. Änderungen"
+        },
+        "content": {
+          "p_scope": "Diese Nutzungsbedingungen gelten für die Nutzung der Plattform Subm8 („Plattform“, „wir“) durch registrierte Nutzer*innen („User“, „du“). Mit der Registrierung erklärst du dich mit diesen Bedingungen einverstanden.",
+          "audience_li_1": "Nutzung ausschließlich ab 18 Jahren.",
+          "audience_li_2": "Inhalte können NSFW / Adult Content enthalten.",
+          "audience_li_3": "Wir behalten uns vor, Identitäts- oder Altersnachweise zu verlangen.",
+          "p_roles": "Subm8 ermöglicht Interaktionen zwischen Dommes und Subs.",
+          "roles_li_1": "Du lädst nur Inhalte hoch, an denen du die Rechte besitzt.",
+          "roles_li_2": "Keine Verstöße gegen geltendes Recht.",
+          "roles_li_3": "Verboten: Gewaltverherrlichung, nicht-einvernehmliche Inhalte, Minderjährige, Diskriminierung.",
+          "payments_li_1": "Dommes können Zahlungen (Tips, Abos, Communities) erhalten.",
+          "payments_li_2": "Subm8 erhebt eine Plattformgebühr zzgl. ggf. Provider-Fees.",
+          "payments_li_3": "Auszahlungen ab Mindestbetrag (im Dashboard ausgewiesen).",
+          "payments_li_4": "Keine Haftung für Rückbuchungen oder externe Zahlungsprobleme.",
+          "termination_li_1": "Du kannst dein Konto jederzeit löschen.",
+          "termination_li_2": "Wir können Accounts sperren oder Inhalte entfernen, wenn Gesetze oder diese Bedingungen verletzt werden.",
+          "liability_li_1": "Wir haften nicht für das Verhalten von Usern.",
+          "liability_li_2": "Die Nutzung erfolgt auf eigene Verantwortung.",
+          "p_changes": "Wir behalten uns vor, diese Bedingungen anzupassen. Über wesentliche Änderungen informieren wir rechtzeitig.",
+          "callout_title": "Hinweis",
+          "callout_body": "Ergänzende Dokumente: Datenschutzerklärung, Impressum, Community Guidelines, Refund Policy, Age Verification."
+        }
+      },
+
+      "terms": {
+        "title": "Terms of Service (Nutzungsbedingungen)",
+        "subtitle": "Verbindliche Regeln für die Nutzung von Subm8.",
+        "sections": {
+          "scope": "1. Geltungsbereich",
+          "audience": "2. Zielgruppe & Altersgrenze",
+          "roles": "3. Rollen & Inhalte",
+          "tips": "4. Tips („Gifts“)",
+          "fees": "5. Zahlungen, Fees & Payouts",
+          "tax": "6. Steuern & Rechtspflichten der User",
+          "termination": "7. Kündigung & Enforcement",
+          "liability": "8. Haftung",
+          "changes": "9. Änderungen",
+          "law": "10. Anwendbares Recht & Gerichtsstand"
+        },
+        "content": {
+          "p_scope": "Diese Nutzungsbedingungen gelten für die Nutzung der Plattform Subm8 („Plattform“, „wir“) durch registrierte Nutzer*innen („User“, „du“). Mit der Registrierung erklärst du dich mit diesen Bedingungen einverstanden.",
+          "audience_li_1": "Nutzung ausschließlich ab 18 Jahren; wir können Alters-/Identitätsnachweise verlangen.",
+          "audience_li_2": "Plattform kann NSFW-/Adult-Inhalte enthalten. Verboten sind Minderjährige & nicht-einvernehmliche Inhalte.",
+          "p_roles": "Subm8 ermöglicht Interaktionen zwischen Dommes und Subs.",
+          "roles_li_1": "Du besitzt die Rechte an deinen Inhalten und verletzt keine Gesetze oder Rechte Dritter.",
+          "roles_li_2": "Verboten: u. a. nicht-einvernehmliche Darstellungen, Minderjährige, Gewaltverherrlichung, Hetze/Diskriminierung.",
+          "roles_li_3": "Wir können Inhalte moderieren, sperren oder entfernen, um Gesetze und diese Terms durchzusetzen.",
+          "tips_li_1": "Freiwillige Geschenke: Tips sind freiwillige Zuwendungen von User zu User.",
+          "tips_li_2": "Kein Service-Entgelt: Tips sind keine Bezahlung für Waren/Dienstleistungen und begründen keinen Anspruch auf konkrete Inhalte, Antworten oder Handlungen.",
+          "tips_li_3": "Plattformrolle: Subm8 vermittelt lediglich die Übertragung (Intermediär) und bestimmt nicht, wie Empfänger*innen Tips verwenden.",
+          "tips_li_4": "Finalität: Nach Bestätigung sind Gifts grundsätzlich final und nicht erstattbar (Ausnahme: gesetzlich zwingend oder klarer technischer Fehler, siehe Refund Policy).",
+          "tips_li_5": "Services ≠ Gifts: Separat vereinbarte Services (z. B. Coaching, Custom Content) fallen nicht unter „Gifts“. Für solche Leistungen sind ggf. Steuern/Verbraucherschutz zu beachten (Eigenverantwortung der Anbieter*innen).",
+          "fees_li_1": "Subm8 erhebt eine Plattformgebühr (z. B. 10 %) sowie ggf. Provider-Fees.",
+          "fees_li_2": "Bei Gifts wird für Zahler*innen ggf. ein Aufschlag angezeigt („on top“). Der ausgewiesene „Amount to creator“ ist der Basisbetrag, der Empfänger*innen gutgeschrieben wird.",
+          "fees_li_3": "Auszahlungen erfolgen ab Mindestbetrag und nach internen Prüfungen (u. a. Risiko/Compliance).",
+          "fees_li_4": "Chargebacks/Fraud: Wir können Accounts temporär sperren und Beträge zurückhalten, bis Sachverhalte geklärt sind.",
+          "tax_li_1": "Du trägst Verantwortung für deine steuerliche Behandlung (z. B. Einkommensteuer, ggf. USt/VAT) in deinem Land, soweit anwendbar.",
+          "tax_li_2": "Subm8 ist nicht Vertragspartei von zwischen Usern separat vereinbarten Services.",
+          "tax_li_3": "Wo Subm8 rechtlich zur Meldung/Einbehaltung verpflichtet ist, werden wir das tun.",
+          "termination_li_1": "Du kannst dein Konto jederzeit löschen (gesetzliche Aufbewahrungen bleiben unberührt).",
+          "termination_li_2": "Wir können Accounts sperren/entfernen und Auszahlungen verzögern/ablehnen, wenn Gesetze, diese Terms oder Sicherheitsvorgaben verletzt werden.",
+          "liability_li_1": "Wir haften nicht für Verhalten/Leistungen Dritter (andere User, Zahlungsdienstleister).",
+          "liability_li_2": "Plattform wird „as is“ bereitgestellt; Nutzung auf eigene Verantwortung, soweit gesetzlich zulässig.",
+          "p_changes": "Wir können diese Terms anpassen; über wesentliche Änderungen informieren wir rechtzeitig innerhalb der App/Web.",
+          "p_law": "Es gilt das Recht des Sitzlandes der Betreiberin (Details im Impressum), unter Ausschluss kollisionsrechtlicher Normen, soweit zwingendes Verbraucherschutzrecht nicht entgegensteht.",
+          "callout_title": "Kurzfassung „Gifts“",
+          "callout_body": "Gifts sind freiwillig, nicht erstattbar und nicht an Services geknüpft. Subm8 vermittelt nur. Für separat vereinbarte Leistungen bist du selbst verantwortlich (inkl. Steuern)."
+        }
+      },
+
+      "refund": {
+        "title": "Refund Policy",
+        "subtitle": "Regeln zu Erstattungen für Gifts, Abos und Fehler.",
+        "sections": {
+          "gifts": "1. Gifts (Tips) & Einmalzahlungen",
+          "subs": "2. Abonnements / Mitgliedschaften",
+          "tech": "3. Technische Fehler",
+          "unauth": "4. Unautorisierte Zahlungen & Chargebacks",
+          "process": "5. Ablauf bei Erstattungen"
+        },
+        "content": {
+          "gifts_li_1": "Gifts sind freiwillige Zuwendungen zwischen Usern und grundsätzlich final (nicht erstattbar).",
+          "gifts_li_2": "Ausnahmen: gesetzlich zwingend, klarer technischer Fehler (z. B. Doppelbelastung) oder verifizierter Betrug.",
+          "subs_li_1": "Abos können jederzeit gekündigt werden, wirksam zum nächsten Abrechnungszeitpunkt.",
+          "subs_li_2": "Bereits gezahlte Beträge laufender Perioden werden nicht anteilig erstattet, sofern gesetzlich nicht anders verlangt.",
+          "p_tech": "Bei Doppelbelastungen oder Fehlbuchungen erstatten wir nach Prüfung. Bitte melde dich innerhalb von 14 Tagen nach Feststellung mit Transaktions-ID und Nachweisen.",
+          "p_chargebacks": "Bei Chargebacks/Fraud können wir den Account vorübergehend sperren und Auszahlungen zurückhalten, bis der Sachverhalt geklärt ist. Missbräuchliche Rückbuchungen können zur Sperre führen.",
+          "process_li_1": "Support kontaktieren (siehe Impressum) mit Belegen.",
+          "process_li_2": "Wir prüfen binnen angemessener Frist und informieren dich über Ergebnis und ggf. Rückzahlungskanal.",
+          "process_li_3": "Erstattungen erfolgen grundsätzlich über denselben Zahlungsweg.",
+          "callout_title": "Wichtig",
+          "callout_body": "Für Zahlungen gelten zusätzlich die AGB/Policies der Zahlungsdienstleister (Provider-Fees, Fristen, Prüfprozesse). Subm8 vermittelt Zahlungen, verkauft aber selbst keine Services."
+        }
+      },
+
+      "privacy": {
+        "title": "Datenschutzerklärung (Privacy Policy / DSGVO)",
+        "subtitle": "Wie wir Daten verarbeiten – transparent und zweckgebunden.",
+        "sections": {
+          "controller": "1. Verantwortlicher",
+          "data": "2. Erhobene Daten",
+          "purpose": "3. Zweck der Verarbeitung",
+          "legal": "4. Rechtsgrundlagen",
+          "sharing": "5. Weitergabe an Dritte",
+          "retention": "6. Speicherdauer",
+          "rights": "7. Betroffenenrechte",
+          "cookies": "8. Cookies & Tracking"
+        },
+        "content": {
+          "p_controller": "Subm8 (Betreiber: [Dein Name / Firma], [Adresse], [E-Mail]) ist verantwortlich für die Verarbeitung personenbezogener Daten auf dieser Plattform.",
+          "data_li_1": "Registrierungsdaten (Handle, E-Mail, Passwort, Rolle)",
+          "data_li_2": "Profildaten (Avatar, Banner, Bio, Community-Mitgliedschaften)",
+          "data_li_3": "Zahlungsdaten (Tipps, Abos, Wallet-Salden, Auszahlungen)",
+          "data_li_4": "Nutzungsdaten (Logins, Feed-Interaktionen, Nachrichten-Metadaten)",
+          "purpose_li_1": "Bereitstellung der Plattform und Services",
+          "purpose_li_2": "Abwicklung von Zahlungen & Wallet",
+          "purpose_li_3": "Kommunikation (Chats, Benachrichtigungen)",
+          "purpose_li_4": "Sicherheit, Missbrauchserkennung & Betrugsprävention",
+          "legal_li_1": "Vertragserfüllung (Art. 6 Abs. 1 lit. b DSGVO)",
+          "legal_li_2": "Berechtigtes Interesse (Art. 6 Abs. 1 lit. f DSGVO)",
+          "legal_li_3": "Einwilligung (Art. 6 Abs. 1 lit. a DSGVO) – z. B. Newsletter",
+          "sharing_li_1": "Zahlungsdienstleister (z. B. Stripe, PayPal oder andere PSPs)",
+          "sharing_li_2": "Hosting- & Infrastruktur-Partner (z. B. Vercel, NeonDB)",
+          "sharing_li_3": "Keine Weitergabe an Dritte zu Werbezwecken",
+          "p_retention": "Speicherung, solange dein Konto aktiv ist. Nach Löschung: Löschung oder Anonymisierung, sofern keine gesetzlichen Aufbewahrungspflichten bestehen.",
+          "rights_li_1": "Auskunft, Berichtigung, Löschung, Einschränkung",
+          "rights_li_2": "Widerspruch gegen Verarbeitung, Datenübertragbarkeit",
+          "rights_li_3": "Beschwerderecht bei einer Aufsichtsbehörde",
+          "p_cookies": "Subm8 nutzt notwendige Cookies für Login und Sicherheit. Analytics – sofern vorhanden – erfolgt anonymisiert/pseudonymisiert.",
+          "callout_title": "Transparenz",
+          "callout_body": "Details zu eingesetzten Anbietern und Speicherorten listen wir in der technischen Dokumentation und im Dashboard („Recht & Datenschutz“) auf."
+        }
+      },
+
+      "imprint": {
+        "title": "Impressum",
+        "subtitle": "Anbieterkennzeichnung gemäß § 5 TMG / EU-Recht.",
+        "content": {
+          "line_1": "Subm8 Plattform",
+          "contact_label": "Kontakt",
+          "represented_by_label": "Vertreten durch",
+          "vat_label": "Umsatzsteuer-ID",
+          "adult_note": "Hinweis: Diese Plattform ist ausschließlich für volljährige Nutzer*innen. Inhalte können NSFW/Adult sein."
+        }
+      },
+
+      "guidelines": {
+        "title": "Community Guidelines",
+        "subtitle": "Respekt, Einvernehmlichkeit und Sicherheit zuerst.",
+        "list": {
+          "li_1": "Nur 18+ – keine Minderjährigen, keine Inhalte mit Bezug zu Minderjährigen.",
+          "li_2": "Einvernehmlichkeit – keine Belästigung, kein Zwang.",
+          "li_3": "Respektvoller Umgang – kein Hate Speech, keine Diskriminierung, kein Mobbing.",
+          "li_4": "NSFW-Inhalte – erlaubt, aber korrekt gekennzeichnet (z. B. NSFW-Flag).",
+          "li_5": "Privatsphäre – keine Weitergabe privater Daten ohne Zustimmung.",
+          "li_6": "Spam & Werbung – verboten, außer klar gekennzeichnet und regelkonform.",
+          "li_7": "Missbrauch melden – Verstöße können gemeldet werden; Wiederholung führt zu Maßnahmen."
+        },
+        "callout_title": "Sicher bleiben",
+        "callout_body": "Nutze die Meldefunktion bei Grenzverletzungen. Unser Team prüft Meldungen zügig und verhältnismäßig."
+      },
+
+      "age": {
+        "title": "Age Verification Policy",
+        "subtitle": "Zugang nur für Volljährige.",
+        "sections": {
+          "access": "1. Zugang nur ab 18 Jahren",
+          "proof": "2. Altersnachweis",
+          "protection": "3. Schutz Minderjähriger"
+        },
+        "content": {
+          "p_access": "Die Nutzung von Subm8 ist ausschließlich Volljährigen gestattet. Mit der Registrierung bestätigst du, mindestens 18 Jahre alt zu sein.",
+          "proof_li_1": "Wir können eine Verifizierung (z. B. Ausweis-Upload oder externe Anbieter) verlangen.",
+          "proof_li_2": "Ohne erfolgreiche Verifizierung kann der Zugang zu bestimmten Funktionen eingeschränkt werden.",
+          "protection_li_1": "Falsche Altersangaben führen zur sofortigen Sperrung des Accounts.",
+          "protection_li_2": "Inhalte mit Bezug zu Minderjährigen sind strikt verboten und werden umgehend gemeldet und entfernt.",
+          "callout_title": "Null-Toleranz",
+          "callout_body": "Verstöße gegen Jugendschutzbestimmungen werden konsequent verfolgt – inklusive Meldung an zuständige Stellen, wo erforderlich."
+        }
+      }
+    }
+  }
+}

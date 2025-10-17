@@ -1,3 +1,4 @@
+//src/app/api/user/[handle]/posts/leaderboard/route.ts
 import { prisma } from '@/lib/prisma';
 
 type Params = { handle: string };

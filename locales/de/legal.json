@@ -1,0 +1,201 @@
+{
+  "legal": {
+    "age": {
+      "content": {
+        "callout_body": "Verstöße gegen Jugendschutzbestimmungen werden konsequent verfolgt – inklusive Meldung an zuständige Stellen, wo erforderlich.",
+        "callout_title": "Null-Toleranz",
+        "p_access": "Die Nutzung von Subm8 ist ausschließlich Volljährigen gestattet. Mit der Registrierung bestätigst du, mindestens 18 Jahre alt zu sein.",
+        "proof_li_1": "Wir können eine Verifizierung (z. B. Ausweis-Upload oder externe Anbieter) verlangen.",
+        "proof_li_2": "Ohne erfolgreiche Verifizierung kann der Zugang zu bestimmten Funktionen eingeschränkt werden.",
+        "protection_li_1": "Falsche Altersangaben führen zur sofortigen Sperrung des Accounts.",
+        "protection_li_2": "Inhalte mit Bezug zu Minderjährigen sind strikt verboten und werden umgehend gemeldet und entfernt."
+      },
+      "sections": {
+        "access": "1. Zugang nur ab 18 Jahren",
+        "proof": "2. Altersnachweis",
+        "protection": "3. Schutz Minderjähriger"
+      },
+      "subtitle": "Zugang nur für Volljährige.",
+      "title": "Age Verification Policy"
+    },
+    "guidelines": {
+      "callout_body": "Nutze die Meldefunktion bei Grenzverletzungen. Unser Team prüft Meldungen zügig und verhältnismäßig.",
+      "callout_title": "Sicher bleiben",
+      "list": {
+        "li_1": "Nur 18+ – keine Minderjährigen, keine Inhalte mit Bezug zu Minderjährigen.",
+        "li_2": "Einvernehmlichkeit – keine Belästigung, kein Zwang.",
+        "li_3": "Respektvoller Umgang – kein Hate Speech, keine Diskriminierung, kein Mobbing.",
+        "li_4": "NSFW-Inhalte – erlaubt, aber korrekt gekennzeichnet (z. B. NSFW-Flag).",
+        "li_5": "Privatsphäre – keine Weitergabe privater Daten ohne Zustimmung.",
+        "li_6": "Spam & Werbung – verboten, außer klar gekennzeichnet und regelkonform.",
+        "li_7": "Missbrauch melden – Verstöße können gemeldet werden; Wiederholung führt zu Maßnahmen."
+      },
+      "subtitle": "Respekt, Einvernehmlichkeit und Sicherheit zuerst.",
+      "title": "Community Guidelines"
+    },
+    "imprint": {
+      "content": {
+        "adult_note": "Hinweis: Diese Plattform ist ausschließlich für volljährige Nutzer*innen. Inhalte können NSFW/Adult sein.",
+        "contact_label": "Kontakt",
+        "line_1": "Subm8 Plattform",
+        "represented_by_label": "Vertreten durch",
+        "vat_label": "Umsatzsteuer-ID"
+      },
+      "subtitle": "Anbieterkennzeichnung gemäß § 5 TMG / EU-Recht.",
+      "title": "Impressum"
+    },
+    "overview": {
+      "content": {
+        "audience_li_1": "Nutzung ausschließlich ab 18 Jahren.",
+        "audience_li_2": "Inhalte können NSFW / Adult Content enthalten.",
+        "audience_li_3": "Wir behalten uns vor, Identitäts- oder Altersnachweise zu verlangen.",
+        "callout_body": "Ergänzende Dokumente: Datenschutzerklärung, Impressum, Community Guidelines, Refund Policy, Age Verification.",
+        "callout_title": "Hinweis",
+        "liability_li_1": "Wir haften nicht für das Verhalten von Usern.",
+        "liability_li_2": "Die Nutzung erfolgt auf eigene Verantwortung.",
+        "p_changes": "Wir behalten uns vor, diese Bedingungen anzupassen. Über wesentliche Änderungen informieren wir rechtzeitig.",
+        "p_roles": "Subm8 ermöglicht Interaktionen zwischen Dommes und Subs.",
+        "p_scope": "Diese Nutzungsbedingungen gelten für die Nutzung der Plattform Subm8 („Plattform“, „wir“) durch registrierte Nutzer*innen („User“, „du“). Mit der Registrierung erklärst du dich mit diesen Bedingungen einverstanden.",
+        "payments_li_1": "Dommes können Zahlungen (Tips, Abos, Communities) erhalten.",
+        "payments_li_2": "Subm8 erhebt eine Plattformgebühr zzgl. ggf. Provider-Fees.",
+        "payments_li_3": "Auszahlungen ab Mindestbetrag (im Dashboard ausgewiesen).",
+        "payments_li_4": "Keine Haftung für Rückbuchungen oder externe Zahlungsprobleme.",
+        "roles_li_1": "Du lädst nur Inhalte hoch, an denen du die Rechte besitzt.",
+        "roles_li_2": "Keine Verstöße gegen geltendes Recht.",
+        "roles_li_3": "Verboten: Gewaltverherrlichung, nicht-einvernehmliche Inhalte, Minderjährige, Diskriminierung.",
+        "termination_li_1": "Du kannst dein Konto jederzeit löschen.",
+        "termination_li_2": "Wir können Accounts sperren oder Inhalte entfernen, wenn Gesetze oder diese Bedingungen verletzt werden."
+      },
+      "sections": {
+        "audience": "2. Zielgruppe",
+        "changes": "7. Änderungen",
+        "liability": "6. Haftung",
+        "payments": "4. Zahlungen & Wallet",
+        "roles": "3. Rollen & Inhalte",
+        "scope": "1. Geltungsbereich",
+        "termination": "5. Kündigung & Sperre"
+      },
+      "subtitle": "Verbindliche Regeln für die Nutzung von Subm8.",
+      "title": "Terms of Service (Nutzungsbedingungen)"
+    },
+    "privacy": {
+      "content": {
+        "callout_body": "Details zu eingesetzten Anbietern und Speicherorten listen wir in der technischen Dokumentation und im Dashboard („Recht & Datenschutz“) auf.",
+        "callout_title": "Transparenz",
+        "data_li_1": "Registrierungsdaten (Handle, E-Mail, Passwort, Rolle)",
+        "data_li_2": "Profildaten (Avatar, Banner, Bio, Community-Mitgliedschaften)",
+        "data_li_3": "Zahlungsdaten (Tipps, Abos, Wallet-Salden, Auszahlungen)",
+        "data_li_4": "Nutzungsdaten (Logins, Feed-Interaktionen, Nachrichten-Metadaten)",
+        "legal_li_1": "Vertragserfüllung (Art. 6 Abs. 1 lit. b DSGVO)",
+        "legal_li_2": "Berechtigtes Interesse (Art. 6 Abs. 1 lit. f DSGVO)",
+        "legal_li_3": "Einwilligung (Art. 6 Abs. 1 lit. a DSGVO) – z. B. Newsletter",
+        "p_controller": "Subm8 (Betreiber: [Dein Name / Firma], [Adresse], [E-Mail]) ist verantwortlich für die Verarbeitung personenbezogener Daten auf dieser Plattform.",
+        "p_cookies": "Subm8 nutzt notwendige Cookies für Login und Sicherheit. Analytics – sofern vorhanden – erfolgt anonymisiert/pseudonymisiert.",
+        "p_retention": "Speicherung, solange dein Konto aktiv ist. Nach Löschung: Löschung oder Anonymisierung, sofern keine gesetzlichen Aufbewahrungspflichten bestehen.",
+        "purpose_li_1": "Bereitstellung der Plattform und Services",
+        "purpose_li_2": "Abwicklung von Zahlungen & Wallet",
+        "purpose_li_3": "Kommunikation (Chats, Benachrichtigungen)",
+        "purpose_li_4": "Sicherheit, Missbrauchserkennung & Betrugsprävention",
+        "rights_li_1": "Auskunft, Berichtigung, Löschung, Einschränkung",
+        "rights_li_2": "Widerspruch gegen Verarbeitung, Datenübertragbarkeit",
+        "rights_li_3": "Beschwerderecht bei einer Aufsichtsbehörde",
+        "sharing_li_1": "Zahlungsdienstleister (z. B. Stripe, PayPal oder andere PSPs)",
+        "sharing_li_2": "Hosting- & Infrastruktur-Partner (z. B. Vercel, NeonDB)",
+        "sharing_li_3": "Keine Weitergabe an Dritte zu Werbezwecken"
+      },
+      "sections": {
+        "controller": "1. Verantwortlicher",
+        "cookies": "8. Cookies & Tracking",
+        "data": "2. Erhobene Daten",
+        "legal": "4. Rechtsgrundlagen",
+        "purpose": "3. Zweck der Verarbeitung",
+        "retention": "6. Speicherdauer",
+        "rights": "7. Betroffenenrechte",
+        "sharing": "5. Weitergabe an Dritte"
+      },
+      "subtitle": "Wie wir Daten verarbeiten – transparent und zweckgebunden.",
+      "title": "Datenschutzerklärung (Privacy Policy / DSGVO)"
+    },
+    "refund": {
+      "content": {
+        "callout_body": "Für Zahlungen gelten zusätzlich die AGB/Policies der Zahlungsdienstleister (Provider-Fees, Fristen, Prüfprozesse). Subm8 vermittelt Zahlungen, verkauft aber selbst keine Services.",
+        "callout_title": "Wichtig",
+        "gifts_li_1": "Gifts sind freiwillige Zuwendungen zwischen Usern und grundsätzlich final (nicht erstattbar).",
+        "gifts_li_2": "Ausnahmen: gesetzlich zwingend, klarer technischer Fehler (z. B. Doppelbelastung) oder verifizierter Betrug.",
+        "p_chargebacks": "Bei Chargebacks/Fraud können wir den Account vorübergehend sperren und Auszahlungen zurückhalten, bis der Sachverhalt geklärt ist. Missbräuchliche Rückbuchungen können zur Sperre führen.",
+        "p_tech": "Bei Doppelbelastungen oder Fehlbuchungen erstatten wir nach Prüfung. Bitte melde dich innerhalb von 14 Tagen nach Feststellung mit Transaktions-ID und Nachweisen.",
+        "process_li_1": "Support kontaktieren (siehe Impressum) mit Belegen.",
+        "process_li_2": "Wir prüfen binnen angemessener Frist und informieren dich über Ergebnis und ggf. Rückzahlungskanal.",
+        "process_li_3": "Erstattungen erfolgen grundsätzlich über denselben Zahlungsweg.",
+        "subs_li_1": "Abos können jederzeit gekündigt werden, wirksam zum nächsten Abrechnungszeitpunkt.",
+        "subs_li_2": "Bereits gezahlte Beträge laufender Perioden werden nicht anteilig erstattet, sofern gesetzlich nicht anders verlangt."
+      },
+      "sections": {
+        "gifts": "1. Gifts (Tips) & Einmalzahlungen",
+        "process": "5. Ablauf bei Erstattungen",
+        "subs": "2. Abonnements / Mitgliedschaften",
+        "tech": "3. Technische Fehler",
+        "unauth": "4. Unautorisierte Zahlungen & Chargebacks"
+      },
+      "subtitle": "Regeln zu Erstattungen für Gifts, Abos und Fehler.",
+      "title": "Refund Policy"
+    },
+    "shared": {
+      "danger": "Achtung",
+      "info": "Info",
+      "note": "Hinweis",
+      "updated": "Aktualisiert",
+      "warn": "Wichtig"
+    },
+    "terms": {
+      "content": {
+        "audience_li_1": "Nutzung ausschließlich ab 18 Jahren; wir können Alters-/Identitätsnachweise verlangen.",
+        "audience_li_2": "Plattform kann NSFW-/Adult-Inhalte enthalten. Verboten sind Minderjährige & nicht-einvernehmliche Inhalte.",
+        "callout_body": "Gifts sind freiwillig, nicht erstattbar und nicht an Services geknüpft. Subm8 vermittelt nur. Für separat vereinbarte Leistungen bist du selbst verantwortlich (inkl. Steuern).",
+        "callout_title": "Kurzfassung „Gifts“",
+        "fees_li_1": "Subm8 erhebt eine Plattformgebühr (z. B. 10 %) sowie ggf. Provider-Fees.",
+        "fees_li_2": "Bei Gifts wird für Zahler*innen ggf. ein Aufschlag angezeigt („on top“). Der ausgewiesene „Amount to creator“ ist der Basisbetrag, der Empfänger*innen gutgeschrieben wird.",
+        "fees_li_3": "Auszahlungen erfolgen ab Mindestbetrag und nach internen Prüfungen (u. a. Risiko/Compliance).",
+        "fees_li_4": "Chargebacks/Fraud: Wir können Accounts temporär sperren und Beträge zurückhalten, bis Sachverhalte geklärt sind.",
+        "liability_li_1": "Wir haften nicht für Verhalten/Leistungen Dritter (andere User, Zahlungsdienstleister).",
+        "liability_li_2": "Plattform wird „as is“ bereitgestellt; Nutzung auf eigene Verantwortung, soweit gesetzlich zulässig.",
+        "p_changes": "Wir können diese Terms anpassen; über wesentliche Änderungen informieren wir rechtzeitig innerhalb der App/Web.",
+        "p_law": "Es gilt das Recht des Sitzlandes der Betreiberin (Details im Impressum), unter Ausschluss kollisionsrechtlicher Normen, soweit zwingendes Verbraucherschutzrecht nicht entgegensteht.",
+        "p_roles": "Subm8 ermöglicht Interaktionen zwischen Dommes und Subs.",
+        "p_scope": "Diese Nutzungsbedingungen gelten für die Nutzung der Plattform Subm8 („Plattform“, „wir“) durch registrierte Nutzer*innen („User“, „du“). Mit der Registrierung erklärst du dich mit diesen Bedingungen einverstanden.",
+        "roles_li_1": "Du besitzt die Rechte an deinen Inhalten und verletzt keine Gesetze oder Rechte Dritter.",
+        "roles_li_2": "Verboten: u. a. nicht-einvernehmliche Darstellungen, Minderjährige, Gewaltverherrlichung, Hetze/Diskriminierung.",
+        "roles_li_3": "Wir können Inhalte moderieren, sperren oder entfernen, um Gesetze und diese Terms durchzusetzen.",
+        "tax_li_1": "Du trägst Verantwortung für deine steuerliche Behandlung (z. B. Einkommensteuer, ggf. USt/VAT) in deinem Land, soweit anwendbar.",
+        "tax_li_2": "Subm8 ist nicht Vertragspartei von zwischen Usern separat vereinbarten Services.",
+        "tax_li_3": "Wo Subm8 rechtlich zur Meldung/Einbehaltung verpflichtet ist, werden wir das tun.",
+        "termination_li_1": "Du kannst dein Konto jederzeit löschen (gesetzliche Aufbewahrungen bleiben unberührt).",
+        "termination_li_2": "Wir können Accounts sperren/entfernen und Auszahlungen verzögern/ablehnen, wenn Gesetze, diese Terms oder Sicherheitsvorgaben verletzt werden.",
+        "tips_li_1": "Freiwillige Geschenke: Tips sind freiwillige Zuwendungen von User zu User.",
+        "tips_li_2": "Kein Service-Entgelt: Tips sind keine Bezahlung für Waren/Dienstleistungen und begründen keinen Anspruch auf konkrete Inhalte, Antworten oder Handlungen.",
+        "tips_li_3": "Plattformrolle: Subm8 vermittelt lediglich die Übertragung (Intermediär) und bestimmt nicht, wie Empfänger*innen Tips verwenden.",
+        "tips_li_4": "Finalität: Nach Bestätigung sind Gifts grundsätzlich final und nicht erstattbar (Ausnahme: gesetzlich zwingend oder klarer technischer Fehler, siehe Refund Policy).",
+        "tips_li_5": "Services ≠ Gifts: Separat vereinbarte Services (z. B. Coaching, Custom Content) fallen nicht unter „Gifts“. Für solche Leistungen sind ggf. Steuern/Verbraucherschutz zu beachten (Eigenverantwortung der Anbieter*innen)."
+      },
+      "sections": {
+        "audience": "2. Zielgruppe & Altersgrenze",
+        "changes": "9. Änderungen",
+        "fees": "5. Zahlungen, Fees & Payouts",
+        "law": "10. Anwendbares Recht & Gerichtsstand",
+        "liability": "8. Haftung",
+        "roles": "3. Rollen & Inhalte",
+        "scope": "1. Geltungsbereich",
+        "tax": "6. Steuern & Rechtspflichten der User",
+        "termination": "7. Kündigung & Enforcement",
+        "tips": "4. Tips („Gifts“)"
+      },
+      "subtitle": "Verbindliche Regeln für die Nutzung von Subm8.",
+      "title": "Terms of Service (Nutzungsbedingungen)"
+    }
+  },
+  "legalPage": {
+    "ariaBack": "Zurück",
+    "subtitle": "Rechtliche Informationen und Richtlinien",
+    "title": "Recht & Datenschutz"
+  }
+}

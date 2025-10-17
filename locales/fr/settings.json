@@ -1,0 +1,165 @@
+{
+  "links": {
+    "settings": "Einstellungen"
+  },
+  "profileSettings": {
+    "alreadyDeactivated": "Account ist deaktiviert",
+    "ariaBack": "Zurück",
+    "changePassword": "Passwort ändern",
+    "countryLabel": "Land",
+    "countryMissing": "Spalte fehlt in DB",
+    "countryPlaceholder": "DE, AT, CH, US",
+    "currentPasswordLabel": "Aktuelles Passwort",
+    "dangerZoneDesc": "Das Deaktivieren sperrt dein Profil und beendet deine Sitzungen.",
+    "dangerZoneTitle": "Gefahrenbereich",
+    "deactivateButton": "Account deaktivieren",
+    "deactivateNotAvailable": "Deaktivieren nicht verfügbar",
+    "deleteButton": "Account endgültig löschen",
+    "deleteButtonTitle": "Account endgültig löschen",
+    "deleteHint": "Löscht deinen Account und die zugehörigen Daten. Falls verknüpfte Accounts existieren, wechselst du zum Home-Feed; sonst geht es zur Anmeldeseite.",
+    "emailLabel": "E-Mail",
+    "emailPlaceholder": "du@example.com",
+    "handleHelp": "3–20 Zeichen; a–z, 0–9, „_“ und „.“ erlaubt.",
+    "handleLabel": "Handle",
+    "handlePlaceholder": "dein.handle",
+    "headerTitle": "Profil & Account verwalten",
+    "languageButton": "Ändern",
+    "languageHelp": "Wähle deine bevorzugte Sprache für die Oberfläche.",
+    "languageLabel": "Sprache",
+    "logoutButton": "Abmelden",
+    "logoutSectionTitle": "Abmelden",
+    "newPassword2Label": "Neues Passwort (Wiederholen)",
+    "newPassword2Placeholder": "nochmal eingeben",
+    "newPasswordLabel": "Neues Passwort",
+    "newPasswordPlaceholder": "mind. 8 Zeichen",
+    "notSignedInMessage": "Bitte melde dich an, um Einstellungen zu ändern.",
+    "passwordSectionTitle": "Passwort",
+    "phoneLabel": "Telefonnummer",
+    "phoneMissing": "Spalte fehlt in DB",
+    "phonePlaceholder": "+49 170 1234567",
+    "profileSectionTitle": "Profil",
+    "saveProfile": "Profil speichern"
+  },
+  "securityPage": {
+    "ariaBack": "Zurück",
+    "extraPassword": {
+      "desc": "Beim Zurücksetzen des Passworts muss zusätzlich E-Mail oder Telefonnummer bestätigt werden.",
+      "title": "Zusätzlicher Passwortschutz",
+      "toggle": {
+        "disable": "Schutz deaktivieren",
+        "enable": "Schutz aktivieren",
+        "title": "Passwort-Zurücksetzungsschutz umschalten"
+      }
+    },
+    "notSignedInMessage": "Bitte melde dich an, um Sicherheitsoptionen zu verwalten.",
+    "sessions": {
+      "desc": "Beendet alle aktiven Sitzungen auf allen Geräten und meldet dich ab.",
+      "endAll": "Alle Sitzungen beenden",
+      "title": "Sitzungen beenden"
+    },
+    "status": {
+      "active": "Aktiv",
+      "notSetup": "Nicht eingerichtet",
+      "ready": "Bereit"
+    },
+    "title": "Sicherheit & Zugriff",
+    "twofa": {
+      "active": "Aktiv: App-basierte 2FA ist eingeschaltet.",
+      "confirm": "Bestätigen",
+      "disable": "Deaktivieren",
+      "intro": "Schütze deinen Account mit einer zweiten Anmeldestufe. Nutze App (TOTP), SMS oder Passkeys.",
+      "passkeyActiveMsg": "Passkey ist aktiviert. Du kannst ihn beim Login verwenden.",
+      "passkeysActiveNote": "Passkey ist eingerichtet und für die 2-Stufen-Anmeldung gespeichert.",
+      "passkeysDisable": "Passkeys deaktivieren",
+      "passkeysNote": "Richte einen Passkey ein, um dich schneller und sicherer anzumelden.",
+      "passkeysRemoveAllTitle": "Alle Passkeys entfernen",
+      "passkeysTitle": "Sicherheitsschlüssel / Passkeys",
+      "qrAlt": "TOTP-QR-Code",
+      "resend": "Neu senden",
+      "resendTitle": "Code erneut senden",
+      "scanIntro": "Scanne den QR-Code mit deiner Authenticator-App und gib anschließend den 6-stelligen Code ein.",
+      "setup": "Einrichten",
+      "sms": {
+        "disable2fa": "SMS-2FA deaktivieren",
+        "disable2faTitle": "SMS-2FA deaktivieren (Telefonnummer bleibt gespeichert)",
+        "loginSendsToPrefix": "Beim Login senden wir einen Code an",
+        "removeNumber": "Nummer entfernen",
+        "removeNumberTitle": "Telefonnummer entfernen",
+        "request": "SMS-Code anfordern"
+      },
+      "smsActiveMsg": "Zwei-Faktor-Anmeldung per SMS ist aktiviert.",
+      "smsAddPhoneFirst": "Hinterlege zuerst eine Telefonnummer in deinen Profileinstellungen.",
+      "smsAddPhoneHintEnd": "und füge eine Telefonnummer hinzu.",
+      "smsAddPhoneHintStart": "Öffne deine",
+      "smsChangeNumber": "Nummer ändern",
+      "smsPhoneReady": "Telefonnummer ist hinterlegt. Du kannst SMS-Codes jetzt einrichten.",
+      "smsTitle": "SMS-Codes",
+      "title": "Zwei-Faktor-Authentifizierung",
+      "tokenAria": "6-stelliger Bestätigungscode",
+      "tokenPlaceholder": "123456",
+      "totpTitle": "Authenticator-App (TOTP)"
+    }
+  },
+  "settings": {
+    "aria": "Einstellungen",
+    "avatarAlt": "Profilbild",
+    "follow": "Folgen",
+    "guest": "Gast",
+    "loading": "Laden…",
+    "menu": {
+      "bookmarks": "Lesezeichen",
+      "payments": "Zahlungen",
+      "premium": "Premium",
+      "profile": "Profil",
+      "settings": "Einstellungen"
+    },
+    "noHandle": "—",
+    "recommended": "Empfohlene Profile",
+    "roleDomme": "Domina",
+    "roleSub": "Sub",
+    "signIn": "Anmelden",
+    "signOut": "Abmelden",
+    "statsError": "Fehler beim Laden der Statistiken",
+    "statsFollowers": "Follower",
+    "statsFollowing": "Folge ich",
+    "suggestionsEmpty": "Derzeit keine Vorschläge.",
+    "switchToHandle": "Wechseln zu @{handle}",
+    "switchToName": "Zu {name} wechseln",
+    "unfollow": "Entfolgen"
+  },
+  "settingsPage": {
+    "ariaBack": "Zurück zum Feed",
+    "items": {
+      "account": {
+        "desc": "Profilinfo ansehen und bearbeiten (Name, Bio, Avatar, Banner), Daten exportieren und Account-Optionen.",
+        "title": "Dein Account"
+      },
+      "bookmarks": {
+        "desc": "Gespeicherte Posts verwalten.",
+        "title": "Bookmarks"
+      },
+      "monetization": {
+        "desc": "Vom Tip bis zur Community. Alle Wege zu stabilen Einnahmen.",
+        "title": "Monetarisierung"
+      },
+      "notifications": {
+        "desc": "Lege fest, über welche Aktivitäten, Empfehlungen und Nachrichten du benachrichtigt wirst.",
+        "title": "Mitteilungen"
+      },
+      "premium": {
+        "desc": "Vorteile ansehen und deine Premium-Einstellungen verwalten.",
+        "title": "Premium"
+      },
+      "privacy": {
+        "desc": "Steuere, welche Informationen du siehst und teilst, und passe deine Privatsphäre an.",
+        "title": "Datenschutz"
+      },
+      "security": {
+        "desc": "Login-Sicherheit prüfen, verbundene Apps verwalten und Zugriff überwachen.",
+        "title": "Sicherheit & Zugriff"
+      }
+    },
+    "searchPlaceholder": "Einstellungen durchsuchen",
+    "title": "Einstellungen"
+  }
+}

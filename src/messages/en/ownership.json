@@ -1,0 +1,49 @@
+{
+  "ownershipRequest": {
+    "actions": {
+      "cancel": "Cancel",
+      "send": "Send request",
+      "uploading": "Uploading…"
+    },
+    "aria": {
+      "close": "Close"
+    },
+    "emptySaved": "No local “ownership profile” saved yet (Edit profile → Ownership tab).",
+    "errors": {
+      "createFailed": "Could not create ownership request"
+    },
+    "fields": {
+      "avatar": "Avatar",
+      "banner": "Banner",
+      "bio": "Bio"
+    },
+    "subtitle": "for @{handle}",
+    "title": "Ownership request"
+  },
+  "ownershipRequestAcceptModal": {
+    "actions": {
+      "apply": "Apply",
+      "applying": "Applying…",
+      "cancel": "Cancel"
+    },
+    "avatar": {
+      "noAssetRequested": "No avatar asset in the request",
+      "notRequested": "Avatar not requested",
+      "previewAlt": "Avatar preview"
+    },
+    "banner": {
+      "noAssetRequested": "No banner asset in the request",
+      "notRequested": "Banner not requested",
+      "previewAlt": "Banner preview"
+    },
+    "bio": {
+      "none": "No bio included"
+    },
+    "errors": {
+      "applyFail": "Could not apply ownership request"
+    },
+    "header": {
+      "title": "Accept ownership request"
+    }
+  }
+}

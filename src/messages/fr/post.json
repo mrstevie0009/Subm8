@@ -1,0 +1,63 @@
+{
+  "post": {
+    "time": {
+      "now": "maintenant",
+      "m": "{count} min",
+      "h": "{count} h",
+      "d": "{count} j"
+    },
+    "ariaBack": "Retour",
+    "ariaOpen": "Ouvrir le post",
+    "block": "Bloquer le compte",
+    "blockStatus": {
+      "blocksYou": "Te bloque",
+      "youBlock": "Tu bloques"
+    },
+    "cantInteract": "Tu ne peux pas interagir avec ce compte.",
+    "comment": "Commenter",
+    "communityPost": "Post de communauté",
+    "copyText": "Copier le texte du post",
+    "delete": {
+      "button": "Supprimer le post",
+      "confirm": "Supprimer ce post pour tout le monde ? Tous les reposts seront également retirés.",
+      "failed": "Le post n’a pas pu être supprimé.",
+      "title": "Supprimer le post"
+    },
+    "headerTitle": "Post",
+    "interactionBlocked": "Interactions bloquées",
+    "like": "J’aime",
+    "more": "Plus",
+    "pinToProfile": "Épingler au profil",
+    "pinned": "Épinglé",
+    "quotePost": "Citer le post",
+    "report": "Signaler le post",
+    "repost": "Reposter",
+    "repostedBy": "Reposté par {name}",
+    "role": {
+      "domme": "Domme",
+      "submissive": "Sub"
+    },
+    "share": {
+      "cancel": "Annuler",
+      "copied": "Copié !",
+      "copy": "Copier le lien",
+      "dm": "Envoyer en message direct",
+      "dmTitle": "Envoyer en message direct",
+      "empty": "Aucune conversation trouvée.",
+      "label": "Partager",
+      "loadingChats": "Chargement des chats…",
+      "notePlaceholder": "Ajouter un commentaire (optionnel)…",
+      "searchPlaceholder": "Rechercher des personnes/chats",
+      "send": "Envoyer",
+      "sending": "Envoi…",
+      "shareInDm": "Partager en message direct",
+      "system": "Partager sur l’appareil…",
+      "systemText": "Regarde ce post sur {brand}",
+      "systemTitle": "{name} sur {brand}",
+      "title": "Partager"
+    },
+    "unblock": "Débloquer le compte",
+    "unlike": "Je n’aime plus",
+    "unpinFromProfile": "Retirer l’épingle"
+  }
+}

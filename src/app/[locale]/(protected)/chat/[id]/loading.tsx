@@ -1,3 +1,4 @@
+//src/app/[locale]/(protected)/chat/[id]/loading.tsx
 import Skeleton from "@/components/ui/Skeleton";
 
 export default function ChatThreadLoading() {

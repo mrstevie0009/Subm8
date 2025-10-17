@@ -1,0 +1,49 @@
+{
+  "ownershipRequest": {
+    "actions": {
+      "cancel": "Cancelar",
+      "send": "Enviar solicitud",
+      "uploading": "Subiendo…"
+    },
+    "aria": {
+      "close": "Cerrar"
+    },
+    "emptySaved": "Aún no hay un \"perfil de ownership\" local guardado (Editar perfil → pestaña Ownership).",
+    "errors": {
+      "createFailed": "No se pudo crear la solicitud de ownership"
+    },
+    "fields": {
+      "avatar": "Avatar",
+      "banner": "Banner",
+      "bio": "Bio"
+    },
+    "subtitle": "para @{handle}",
+    "title": "Solicitud de ownership"
+  },
+  "ownershipRequestAcceptModal": {
+    "actions": {
+      "apply": "Aplicar",
+      "applying": "Aplicando…",
+      "cancel": "Cancelar"
+    },
+    "avatar": {
+      "noAssetRequested": "No se solicitó recurso de avatar",
+      "notRequested": "Avatar no solicitado",
+      "previewAlt": "Vista previa del avatar"
+    },
+    "banner": {
+      "noAssetRequested": "No se solicitó recurso de banner",
+      "notRequested": "Banner no solicitado",
+      "previewAlt": "Vista previa del banner"
+    },
+    "bio": {
+      "none": "No se incluyó bio"
+    },
+    "errors": {
+      "applyFail": "No se pudo aplicar la solicitud de ownership"
+    },
+    "header": {
+      "title": "Aceptar solicitud de ownership"
+    }
+  }
+}

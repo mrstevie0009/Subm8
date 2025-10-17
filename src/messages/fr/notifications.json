@@ -1,0 +1,86 @@
+{
+  "notifications": {
+    "actions": {
+      "cancel": "Annuler",
+      "reset": "Rétablir les valeurs par défaut",
+      "resetTitle": "Restaurer les paramètres d’usine",
+      "save": "Enregistrer les réglages",
+      "saved": "Enregistré",
+      "savedAria": "Les réglages ont été enregistrés.",
+      "saving": "Enregistrement…"
+    },
+    "ariaBack": "Retour",
+    "cards": {
+      "dm": {
+        "messages": "Messages directs",
+        "reactions": "Réactions à tes messages",
+        "title": "Messages directs"
+      },
+      "email": {
+        "digest": "Résumé hebdomadaire par e-mail",
+        "messages": "E-mail lors de nouveaux messages",
+        "note": "Nous envoyons rarement et de manière ciblée. Tu peux te désabonner à tout moment.",
+        "title": "E-mail"
+      },
+      "feed": {
+        "comments": "Commentaires sur tes posts",
+        "likes": "J’aime sur tes posts",
+        "mentions": "Mentions (@handle)",
+        "newFollowers": "Nouveaux abonnés",
+        "photoTags": "Identifications photo",
+        "title": "Flux & activités"
+      },
+      "filters": {
+        "emailUnverified": "… dont l’e-mail n’est pas vérifié",
+        "newAccounts": "… avec un nouveau compte",
+        "noAvatar": "… qui ont une photo de profil par défaut",
+        "notFollowers": "… qui ne te suivent pas",
+        "notFollowing": "… que tu ne suis pas",
+        "note": "Ces filtres ne concernent que les inconnus. Les contacts/abonnements ne sont pas affectés.",
+        "phoneUnverified": "… dont le numéro n’est pas vérifié",
+        "title": "Mettre en sourdine les notifications de"
+      },
+      "push": {
+        "note": "Contrôle toutes les notifications push sur ton appareil.",
+        "title": "Notifications push",
+        "toggleActive": "Notifications push actives"
+      },
+      "ui": {
+        "note": "Si les deux sont désactivés, seuls de petits indicateurs s’affichent sur l’icône.",
+        "popup": "Afficher un mini pop-up",
+        "sound": "Jouer un son",
+        "title": "Affichage & son"
+      }
+    },
+    "intro": "Gère les notifications push, e-mails & filtres.",
+    "notSignedInIntro": "Cette page gère tes réglages push, e-mail et filtres.",
+    "notSignedInNote": "Veuillez vous connecter.",
+    "title": "Notifications"
+  },
+  "notificationsPage": {
+    "actions": {
+      "follow": "Suivre",
+      "following": "Suivi",
+      "view": "Voir"
+    },
+    "empty": {
+      "desc": "Tu n’as aucune notification pour le moment.",
+      "title": "Tout est à jour"
+    },
+    "messages": {
+      "commentedOnYourPost": "a commenté ton post :",
+      "followedYou": "t’a suivi",
+      "likedYourComment": "a aimé ton commentaire :",
+      "likedYourPost": "a aimé ton post :",
+      "mentionedYou": "t’a mentionné·e :",
+      "repliedToYourComment": "a répondu à ton commentaire :",
+      "timeSep": "· {time}"
+    },
+    "tabs": {
+      "all": "Tout",
+      "comments": "Commentaires",
+      "mentions": "Mentions"
+    },
+    "title": "Notifications"
+  }
+}

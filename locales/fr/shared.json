@@ -1,0 +1,52 @@
+{
+  "twofa": {
+    "active": "Aktiv: App-basierte 2FA ist eingeschaltet.",
+    "confirm": "Bestätigen",
+    "disable": "Deaktivieren",
+    "extraPassword": {
+      "desc": "Beim Zurücksetzen des Passworts muss zusätzlich E-Mail oder Telefonnummer bestätigt werden.",
+      "title": "Zusätzlicher Passwortschutz",
+      "toggle": {
+        "disable": "Schutz deaktivieren",
+        "enable": "Schutz aktivieren",
+        "title": "Passwort-Zurücksetzungsschutz umschalten"
+      }
+    },
+    "intro": "Schütze deinen Account mit einer zweiten Anmeldestufe. Nutze App (TOTP), SMS oder Passkeys.",
+    "passkeyActiveMsg": "Passkey ist aktiviert. Du kannst ihn beim Login verwenden.",
+    "passkeysActiveNote": "Passkey ist eingerichtet und für die 2-Stufen-Anmeldung gespeichert.",
+    "passkeysDisable": "Passkeys deaktivieren",
+    "passkeysNote": "Richte einen Passkey ein, um dich schneller und sicherer anzumelden.",
+    "passkeysRemoveAllTitle": "Alle Passkeys entfernen",
+    "passkeysTitle": "Sicherheitsschlüssel / Passkeys",
+    "qrAlt": "TOTP-QR-Code",
+    "resend": "Neu senden",
+    "resendTitle": "Code erneut senden",
+    "scanIntro": "Scanne den QR-Code mit deiner Authenticator-App und gib anschließend den 6-stelligen Code ein.",
+    "sessions": {
+      "desc": "Beendet alle aktiven Sitzungen auf allen Geräten und meldet dich ab.",
+      "endAll": "Alle Sitzungen beenden",
+      "title": "Sitzungen beenden"
+    },
+    "setup": "Einrichten",
+    "sms": {
+      "disable2fa": "SMS-2FA deaktivieren",
+      "disable2faTitle": "SMS-2FA deaktivieren (Telefonnummer bleibt gespeichert)",
+      "loginSendsToPrefix": "Beim Login senden wir einen Code an",
+      "removeNumber": "Nummer entfernen",
+      "removeNumberTitle": "Telefonnummer entfernen",
+      "request": "SMS-Code anfordern"
+    },
+    "smsActiveMsg": "Zwei-Faktor-Anmeldung per SMS ist aktiviert.",
+    "smsAddPhoneFirst": "Hinterlege zuerst eine Telefonnummer in deinen Profileinstellungen.",
+    "smsAddPhoneHintEnd": "und füge eine Telefonnummer hinzu.",
+    "smsAddPhoneHintStart": "Öffne deine",
+    "smsChangeNumber": "Nummer ändern",
+    "smsPhoneReady": "Telefonnummer ist hinterlegt. Du kannst SMS-Codes jetzt einrichten.",
+    "smsTitle": "SMS-Codes",
+    "title": "Zwei-Faktor-Authentifizierung",
+    "tokenAria": "6-stelliger Bestätigungscode",
+    "tokenPlaceholder": "123456",
+    "totpTitle": "Authenticator-App (TOTP)"
+  }
+}

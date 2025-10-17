@@ -1,0 +1,205 @@
+{
+  "autoDrain": {
+    "actions": {
+      "cancel": "Annuler",
+      "create": "Créer la demande"
+    },
+    "amount": {
+      "label": "Montant par prélèvement",
+      "placeholder": "50"
+    },
+    "recurrence": {
+      "label": "Récurrence",
+      "options": {
+        "daily": "Quotidien",
+        "monthly": "Mensuel",
+        "weekly": "Hebdomadaire"
+      }
+    },
+    "subtitle": "Définir le montant et la répétition.",
+    "title": "Créer une demande d’autodrain"
+  },
+  "autoDrainAcceptModal": {
+    "acknowledge": "Je comprends que les cadeaux sont volontaires et définitifs. Aucune prestation n’est garantie.",
+    "actions": {
+      "cancel": "Annuler",
+      "closeAria": "Fermer",
+      "enable": "Activer l’autodrain",
+      "enabling": "Activation…"
+    },
+    "cadence": {
+      "daily": "quotidien",
+      "monthly": "mensuel",
+      "weekly": "hebdomadaire"
+    },
+    "charge": {
+      "label": "Montant du prélèvement",
+      "recurringNote": "Prélèvement récurrent jusqu’à résiliation."
+    },
+    "disclaimer": "Les cadeaux sont volontaires et ne constituent pas un paiement pour des services. Les cadeaux sont définitifs (pas de remboursement, sauf obligation légale).",
+    "errors": {
+      "generic": "Une erreur est survenue"
+    },
+    "header": {
+      "title": "Activer l’autodrain",
+      "to": "pour {name}"
+    }
+  },
+  "paymentsPage": {
+    "ariaBack": "Retour au flux",
+    "autodrain": {
+      "cadence": {
+        "daily": "Quotidien",
+        "monthly": "Mensuel",
+        "weekly": "Hebdomadaire"
+      },
+      "cancel": "Arrêter",
+      "incoming": {
+        "title": "Autodrain entrant"
+      },
+      "none": "Aucun abonnement actif.",
+      "outgoing": {
+        "title": "Activés par toi"
+      },
+      "th": {
+        "amount": "Montant",
+        "avatar": "Avatar",
+        "cadence": "Rythme",
+        "domme": "Domme",
+        "next": "Prochain prélèvement",
+        "sub": "Sub"
+      },
+      "title": "Autodrain actif"
+    },
+    "avatarAlt": "Avatar de {name}",
+    "balance": {
+      "export": "Export CSV",
+      "title": "Solde actuel :"
+    },
+    "guestNote": "Connecte-toi pour voir ton historique de paiements.",
+    "payments": {
+      "amountPrefixReceived": "Reçu : {amount}",
+      "amountPrefixSent": "Envoyé : {amount}",
+      "received": {
+        "empty": "Aucun paiement reçu.",
+        "title": "Entrées"
+      },
+      "sent": {
+        "empty": "Aucun paiement envoyé.",
+        "title": "Tu as envoyé"
+      },
+      "status": {
+        "canceled": "Annulé",
+        "created": "Créé",
+        "failed": "Échec",
+        "processing": "En cours",
+        "succeeded": "Réussi"
+      },
+      "th": {
+        "amount": "Montant",
+        "avatar": "Avatar",
+        "date": "Date",
+        "status": "Statut",
+        "username": "Nom d’utilisateur",
+        "what": "Objet"
+      },
+      "what": {
+        "tip": "Pourboire"
+      }
+    },
+    "payoutBtn": "Virement",
+    "payoutTooltip": "Demander un virement (bientôt disponible)",
+    "title": "Paiements & historique"
+  },
+  "tipModal": {
+    "ack": {
+      "checkbox": "Je comprends que les cadeaux sont volontaires et définitifs."
+    },
+    "actions": {
+      "cancel": "Annuler",
+      "done": "Terminé",
+      "sendGift": "Envoyer un cadeau",
+      "sending": "Envoi…"
+    },
+    "amount": {
+      "label": "Montant pour la créatrice/le créateur",
+      "placeholder": "50"
+    },
+    "aria": {
+      "close": "Fermer"
+    },
+    "breakdown": {
+      "amountToCreator": "Montant (versé au/à la créateur·rice)",
+      "platformFeeTop": "Frais de plateforme (10 % ajoutés)",
+      "youPay": "Tu paies"
+    },
+    "disclaimer": {
+      "legal": "En confirmant, tu envoies un cadeau volontaire. Il ne s’agit pas d’un paiement pour des services. Les cadeaux sont définitifs (pas de remboursement, sauf obligation légale).",
+      "top": "Les cadeaux sont volontaires et ne rémunèrent pas des services. Subm8 ne fait qu’intermédier le transfert."
+    },
+    "errors": {
+      "confirmFailed": "Échec de la confirmation",
+      "createFailed": "Impossible de créer le paiement",
+      "generic": "Une erreur est survenue"
+    },
+    "header": {
+      "subtitleFinal": "Les cadeaux sont volontaires et définitifs.",
+      "title": "Envoyer un cadeau à {name}"
+    },
+    "note": {
+      "label": "Note (optionnel)",
+      "placeholder": "Écris un mot gentil…"
+    },
+    "roles": {
+      "domme": "Domme",
+      "sub": "Sub"
+    },
+    "success": {
+      "title": "Cadeau envoyé !",
+      "youPaid": "Tu as payé {amount}"
+    }
+  },
+  "tipRequest": {
+    "actions": {
+      "cancel": "Annuler",
+      "create": "Créer la demande"
+    },
+    "amount": {
+      "label": "Montant demandé",
+      "placeholder": "50"
+    },
+    "note": {
+      "label": "Note (optionnel)",
+      "placeholder": "Ajouter une courte note…"
+    },
+    "subtitle": "Définis le montant que le Sub doit payer.",
+    "title": "Créer une demande de pourboire"
+  },
+  "tipRequestAcceptModal": {
+    "actions": {
+      "cancel": "Annuler",
+      "closeAria": "Fermer",
+      "processing": "Traitement…",
+      "sendGiftAccept": "Envoyer le cadeau & accepter ({total})"
+    },
+    "breakdown": {
+      "amount": "Montant",
+      "fee": "Frais de plateforme ({pct}%)",
+      "youPay": "Tu paies"
+    },
+    "disclaimer": "En confirmant, tu envoies un cadeau volontaire. Ce n’est pas un paiement pour des services. Les cadeaux sont définitifs (pas de remboursement, sauf obligation légale).",
+    "errors": {
+      "confirm": "Échec de la confirmation",
+      "create": "Impossible de créer le paiement",
+      "generic": "Une erreur est survenue"
+    },
+    "header": {
+      "title": "Accepter la demande de cadeau",
+      "to": "à {name}"
+    },
+    "requested": {
+      "label": "Montant demandé",
+      "note": "La créatrice/le créateur voit ce montant. Des frais de plateforme de {pct}% seront ajoutés à ton paiement."
+    }
+  }
+}

@@ -1,0 +1,86 @@
+{
+  "notifications": {
+    "actions": {
+      "cancel": "Abbrechen",
+      "reset": "Auf Standardwerte zurücksetzen",
+      "resetTitle": "Werkseinstellungen wiederherstellen",
+      "save": "Einstellungen speichern",
+      "saved": "Gespeichert",
+      "savedAria": "Einstellungen wurden gespeichert.",
+      "saving": "Speichern…"
+    },
+    "ariaBack": "Zurück",
+    "cards": {
+      "dm": {
+        "messages": "Direktnachrichten",
+        "reactions": "Reaktionen auf deine Nachrichten",
+        "title": "Direktnachrichten"
+      },
+      "email": {
+        "digest": "Wöchentliche Zusammenfassung per E-Mail",
+        "messages": "E-Mail bei neuen Nachrichten",
+        "note": "Wir senden nur selten & zielgerichtet. Du kannst jederzeit abbestellen.",
+        "title": "E-Mail"
+      },
+      "feed": {
+        "comments": "Kommentare auf deine Posts",
+        "likes": "Likes auf deine Posts",
+        "mentions": "Erwähnungen (@handle)",
+        "newFollowers": "Neue Follower",
+        "photoTags": "Foto-Markierungen",
+        "title": "Feed & Aktivitäten"
+      },
+      "filters": {
+        "emailUnverified": "… deren E-Mail nicht bestätigt ist",
+        "newAccounts": "… mit einem neuen Account",
+        "noAvatar": "… die ein Standard-Profilfoto haben",
+        "notFollowers": "… die dir nicht folgen",
+        "notFollowing": "… denen du nicht folgst",
+        "note": "Diese Filter betreffen nur Unbekannte. Kontakte/Followings bleiben unberührt.",
+        "phoneUnverified": "… deren Telefonnummer nicht bestätigt ist",
+        "title": "Mitteilungen stummschalten von Personen"
+      },
+      "push": {
+        "note": "Steuert alle Push-Benachrichtigungen auf deinem Gerät.",
+        "title": "Push-Mitteilungen",
+        "toggleActive": "Push-Mitteilungen aktiv"
+      },
+      "ui": {
+        "note": "Wenn beides deaktiviert ist, werden nur kleine Hinweise am Icon angezeigt.",
+        "popup": "Mini-Popup anzeigen",
+        "sound": "Signalton abspielen",
+        "title": "Anzeige & Sound"
+      }
+    },
+    "intro": "Verwalte Push-Mitteilungen, E-Mails & Filter.",
+    "notSignedInIntro": "Diese Seite verwaltet deine Push-, E-Mail- und Filter-Einstellungen.",
+    "notSignedInNote": "Bitte melde dich an.",
+    "title": "Benachrichtigungen"
+  },
+  "notificationsPage": {
+    "actions": {
+      "follow": "Folgen",
+      "following": "Folgt",
+      "view": "Ansehen"
+    },
+    "empty": {
+      "desc": "Du hast derzeit keine Benachrichtigungen.",
+      "title": "Alles erledigt"
+    },
+    "messages": {
+      "commentedOnYourPost": "hat deinen Beitrag kommentiert:",
+      "followedYou": "folgt dir",
+      "likedYourComment": "hat deinen Kommentar geliked:",
+      "likedYourPost": "hat deinen Beitrag geliked:",
+      "mentionedYou": "hat dich erwähnt:",
+      "repliedToYourComment": "hat auf deinen Kommentar geantwortet:",
+      "timeSep": "· {time}"
+    },
+    "tabs": {
+      "all": "Alle",
+      "comments": "Kommentare",
+      "mentions": "Erwähnungen"
+    },
+    "title": "Benachrichtigungen"
+  }
+}

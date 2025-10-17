@@ -1,0 +1,135 @@
+{
+  "monetizationPage": {
+    "ariaBack": "Retour",
+    "fees": {
+      "bullets": [
+        "Pourboires directs : la Domme reçoit le montant total ; les frais de plateforme sont payés par le Sub.",
+        "D’autres fonctionnalités (PPV, communautés, etc.) peuvent avoir leurs propres modèles de frais. Vous verrez les détails directement dans le flux.",
+        "Versements : documentés de façon transparente dans votre wallet."
+      ],
+      "title": "Frais — court et clair"
+    },
+    "hero": {
+      "clearTransparent": {
+        "text": "Règles claires sur les frais et les versements (SEPA, et plus à venir).",
+        "title": "Clair & transparent"
+      },
+      "flexibleSources": {
+        "text": "Pourboires directs, pay-per-view, tributs personnalisés & communautés payantes.",
+        "title": "Sources de revenus flexibles"
+      },
+      "walletRealtime": {
+        "text": "Les gains arrivent instantanément dans le wallet de la Domme et dans l’historique.",
+        "title": "Wallet en temps réel"
+      }
+    },
+    "links": {
+      "feed": "Aller au fil",
+      "profile": "Optimiser le profil",
+      "security": "Sécurité & accès"
+    },
+    "methodCard": {
+      "featureHint": "Utilisez cette fonctionnalité lorsqu’elle convient à votre audience — le pricing et le messaging sont essentiels.",
+      "howItWorks": "Comment ça marche",
+      "whatIsThis": "Qu’est-ce que c’est ?"
+    },
+    "methods": {
+      "customTributes": {
+        "badge": "Récurrent",
+        "bullets": [
+          "Les Subs configurent des paiements réguliers (p. ex., 5 € par jour, 20 € par semaine).",
+          "Fonctionne automatiquement jusqu’à l’arrêt — contrôle total côté Sub.",
+          "Les Dommes peuvent « demander » activement ces drainers."
+        ],
+        "number": 3,
+        "steps": [
+          "Créer une « demande » claire (montant + intervalle + durée).",
+          "Utiliser des échéances & des récompenses (badges, clips exclusifs).",
+          "Suivre les durées et renouveler de manière proactive avant l’expiration."
+        ],
+        "title": "Tributs personnalisés (drainer / minuteur de tribut)"
+      },
+      "leaderboardBadges": {
+        "badge": "Visibilité",
+        "bullets": [
+          "Les Dommes à forts revenus sont mises en avant.",
+          "Badges & jalons renforcent la preuve sociale.",
+          "Plus de visibilité → plus de motivation des Subs → plus de revenus."
+        ],
+        "number": 6,
+        "steps": [
+          "Maintenir une forte activité & qualité de contenu.",
+          "Utiliser des événements/défis pour créer des pics.",
+          "Afficher les badges sur votre profil & dans les communautés."
+        ],
+        "title": "Classement & badges (gamification)"
+      },
+      "paidCommunities": {
+        "badge": "Upsell de groupe",
+        "bullets": [
+          "Créez une communauté avec accès payant.",
+          "Les Subs paient mensuellement ou une fois pour rejoindre.",
+          "Exclusivité + dynamique de groupe = valeur vie client plus élevée."
+        ],
+        "ctaOpenCommunities": "Ouvrir les communautés",
+        "number": 4,
+        "steps": [
+          "Définir une valeur claire (p. ex., drops hebdos, Q&R en direct, sondages).",
+          "Fixer un prix et limiter les places pour créer la rareté.",
+          "Promouvoir les invitations sur le profil & en chat."
+        ],
+        "title": "Adhésions à la communauté (communautés payantes)"
+      },
+      "payouts": {
+        "badge": "Wallet",
+        "bullets": [
+          "Tous les gains se cumulent dans le wallet de la Domme (export disponible pour la comptabilité).",
+          "Versement via SEPA/virement bancaire (plus tard : PayPal, crypto).",
+          "Vue claire dans « Gains & historique »."
+        ],
+        "note": "Remarque : les options de versement peuvent varier selon la région.",
+        "number": 5,
+        "steps": [
+          "Ajouter les coordonnées du bénéficiaire (IBAN).",
+          "Lancer un versement depuis votre wallet.",
+          "Télécharger un CSV/export pour la comptabilité si besoin."
+        ],
+        "title": "Versements"
+      },
+      "ppv": {
+        "badge": "Optionnel",
+        "bullets": [
+          "Contenu premium (p. ex., médias NSFW) visible uniquement contre micropaiement.",
+          "Idéal en cas de fort volume de chat ou de drops exclusifs.",
+          "Tarification granulaire possible (p. ex., par image/clip)."
+        ],
+        "number": 2,
+        "steps": [
+          "Marquer le contenu comme « PPV ».",
+          "Fixer un prix juste et teaser le contenu.",
+          "Utiliser story/fil/chat pour diriger vers le PPV."
+        ],
+        "title": "Pay-per-view (optionnel)"
+      },
+      "tips": {
+        "badge": "De base",
+        "bullets": [
+          "Le Sub envoie le montant de son choix via le bouton de pourboire dans le chat ou sur le profil.",
+          "La Domme reçoit le montant total.",
+          "Les frais de plateforme sont à la charge du Sub.",
+          "Visible instantanément dans le wallet & l’historique des gains."
+        ],
+        "ctaBackToSettings": "Retour aux paramètres",
+        "number": 1,
+        "steps": [
+          "Activer les pourboires sur votre profil (si désactivés).",
+          "Mentionner votre bouton de pourboire dans le chat.",
+          "Remercier publiquement — la preuve sociale stimule les pourboires suivants."
+        ],
+        "title": "Pourboires directs (tributs)"
+      }
+    },
+    "subtitle": "Comment gagner sur Subm8 — aperçu & bonnes pratiques",
+    "title": "Monétisation"
+  }
+}

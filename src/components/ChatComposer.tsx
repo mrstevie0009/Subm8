@@ -50,6 +50,8 @@ type Props = {
   onCancelReply?: () => void;
   onCreateReply?: (p: { to: string; text: string }) => void;
   onCreateReaction?: (p: { to: string; emoji: string; op?: 'add' | 'remove' }) => void;
+
+  loading?: boolean;
 };
 
 function SendIcon({ size = 22 }: { size?: number }) {
@@ -363,6 +365,7 @@ export default function ChatComposer({
   replyTo,
   onCancelReply,
   onCreateReply,
+  loading = false,
 }: Props) {
   const t = useTranslations('common.chatComposer');
   const tVerify = useTranslations('common.verify');
@@ -370,6 +373,7 @@ export default function ChatComposer({
   const router = useRouter();
   const { data: session } = useSession();
   const ageOk = !!session?.user?.ageVerified;
+  const isDisabled = !!disabled || loading;
 
   const [verifyOpen, setVerifyOpen] = React.useState(false);
   useKeyboardInset();
@@ -679,7 +683,7 @@ export default function ChatComposer({
         transform: 'translateY(calc(-1 * var(--kb, 0px)))',
       }}
     >
-      {disabled && (
+      {(disabled || loading) && ( // CHANGED
         <div className="mb-2 text-center text-[13px] text-white/80">
           {disabledNotice ?? t('disabled.default')}
         </div>
@@ -722,6 +726,13 @@ export default function ChatComposer({
             <span>{t('recording.inProgress')}</span>
             <span className="opacity-80">{recordSecs}s</span>
           </div>
+        </div>
+      )}
+
+      {loading && ( // NEW
+        <div className="mb-2 space-y-2">
+          <div className="h-6 rounded-lg bg-white/10 animate-pulse" />
+          <div className="h-6 w-2/3 rounded-lg bg-white/10 animate-pulse" />
         </div>
       )}
 
@@ -787,7 +798,7 @@ export default function ChatComposer({
               ref={taRef}
               rows={1}
               value={text}
-              disabled={disabled}
+              disabled={isDisabled} // CHANGED
               onChange={(e) => {
                 const v = e.target.value;
                 setText(v);
@@ -805,15 +816,10 @@ export default function ChatComposer({
               onBlur={() => {
                 if (!hasAnyAttach && !text.trim()) stopTyping();
               }}
-              placeholder={disabled ? t('placeholders.closed') : t('placeholders.message')}
+              placeholder={isDisabled ? t('placeholders.closed') : t('placeholders.message')} // CHANGED
               className="w-full resize-none bg-transparent outline-none placeholder:text-muted
                         text-[14px] leading-5 px-0 pt-1 pb-1 rounded-2xl no-scrollbar break-anywhere"
-              style={{
-                minHeight: 40,
-                maxHeight,                 // cap beibehalten
-                overflowY: 'auto',         // scrollen erlauben
-                WebkitOverflowScrolling: 'touch',
-              }}
+              style={{ minHeight: 40, maxHeight, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}
             />
 
             <div className="mt-2 flex items-center gap-8 pl-2">
@@ -824,6 +830,7 @@ export default function ChatComposer({
                 aria-label={t('actions.upload')}
                 title={t('actions.upload')}
                 onClick={(e) => {
+                  if (isDisabled) { e.preventDefault(); return; }
                   if (!ageOk) {
                     e.preventDefault();      // verhindert das Öffnen des Dateidialogs
                     setVerifyOpen(true);     // öffnet das Veriff-Prompt
@@ -835,7 +842,7 @@ export default function ChatComposer({
                   className="hidden"
                   accept="image/*,video/*"
                   multiple
-                  disabled={disabled}
+                  disabled={isDisabled}
                   onChange={(e) => {
                     const files = Array.from(e.target.files || []);
                     if (files.length) {
@@ -856,7 +863,7 @@ export default function ChatComposer({
               <button
                 type="button"
                 onClick={() => setGifOpen(true)}
-                disabled={disabled}
+                disabled={isDisabled} // CHANGED
                 className={`${circle} border border-white/12 bg-transparent hover:bg-white/10 disabled:opacity-50`}
                 style={{ width: toolSize, height: toolSize }}
                 aria-label={t('actions.gif')}
@@ -870,28 +877,29 @@ export default function ChatComposer({
                 <button
                   type="button"
                   onClick={() => {
+                    if (isDisabled) return; // NEW
                     if (!ageOk) { setVerifyOpen(true); return; }
                     onTip();
                   }}
-                  disabled={disabled}
+                  disabled={isDisabled} // CHANGED
                   className={`${circle} border border-white/12 bg-transparent hover:bg-white/10 disabled:opacity-50`}
                   style={{ width: toolSize, height: toolSize }}
                   aria-label={t('actions.tip')}
                   title={t('actions.tip')}
                 >
-                      <TipIcon className="w-[30px] h-[30px]" />
-                    </button>
+                  <TipIcon className="w-[30px] h-[30px]" />
+                </button>
               ) : (
                 <>
                   <button
                     ref={plusBtnRef}
                     type="button"
                     onClick={() => {
-                      if (disabled) return;
+                      if (isDisabled) return; // NEW
                       if (!ageOk) { setVerifyOpen(true); return; }
                       openMenu();
                     }}
-                    disabled={disabled}
+                    disabled={isDisabled} // CHANGED
                     className={`${circle} border border-white/12 bg-transparent hover:bg-white/10 disabled:opacity-50`}
                     style={{ width: toolSize, height: toolSize }}
                     aria-label={t('actions.openActions')}
@@ -900,7 +908,7 @@ export default function ChatComposer({
                     <PlusIcon />
                   </button>
 
-                  {menuOpen && anchorRect && (
+                  {menuOpen && anchorRect && !loading && (
                     <ActionMenu anchorRect={anchorRect} onClose={() => setMenuOpen(false)}>
                       <button
                         type="button"
@@ -942,7 +950,7 @@ export default function ChatComposer({
           {/* Mic */}
           <button
             type="button"
-            disabled={disabled}
+            disabled={isDisabled} // CHANGED
             className={`${circle} border border-white/12 bg-transparent hover:bg-white/10 disabled:opacity-50`}
             style={{ width: sendSize, height: sendSize }}
             aria-label={t('actions.voice.holdAria')}
@@ -966,7 +974,7 @@ export default function ChatComposer({
           <button
             type="button"
             onClick={() => void submit()}
-            disabled={(!text.trim() && !hasAnyAttach && !replyTo) || disabled}
+            disabled={isDisabled || (!text.trim() && !hasAnyAttach && !replyTo)} // CHANGED
             className={`${circle} bg-[var(--purple)] text-white hover:opacity-95 disabled:opacity-50`}
             style={{ width: sendSize, height: sendSize }}
             aria-label={t('actions.sendMessageAria')}
@@ -978,7 +986,7 @@ export default function ChatComposer({
       </div>
 
       {/* Voice preview bar */}
-      {audioPreviewUrl && (
+      {!loading && audioPreviewUrl && (
         <div className="mx-auto mt-2 max-w-[760px] rounded-2xl border border-white/12 bg-white/[.06] p-2 flex items-center gap-3">
           <audio src={audioPreviewUrl} controls className="flex-1" />
           <button
@@ -997,74 +1005,77 @@ export default function ChatComposer({
           </button>
         </div>
       )}
+      {!loading && ( // NEW
+        <>
+          <MentionSuggestChat
+            anchorRef={suggestAnchorRef as React.RefObject<HTMLElement>}
+            value={text}
+            onChange={setText}
+            limit={8}
+          />
 
-      <MentionSuggestChat
-        anchorRef={suggestAnchorRef as React.RefObject<HTMLElement>}
-        value={text}
-        onChange={setText}
-        limit={8}
-      />
+          <TipRequestCreateModal
+            open={tipReqOpen}
+            onClose={() => setTipReqOpen(false)}
+            onCreate={(payload) => {
+              setTipReqOpen(false);
+              if (onCreateTipRequest) {
+                onCreateTipRequest(payload);
+                return;
+              }
+              const currency = payload.currency ?? 'EUR';
+              const amountStr = new Intl.NumberFormat(undefined, { style: 'currency', currency }).format(
+                payload.amountCents / 100,
+              );
+              const msg = `🧾 ${t('protocol.tipRequestLabel')}: ${amountStr}${payload.note ? `\n${payload.note}` : ''}`;
+              onSend(msg);
+            }}
+          />
 
-      <TipRequestCreateModal
-        open={tipReqOpen}
-        onClose={() => setTipReqOpen(false)}
-        onCreate={(payload) => {
-          setTipReqOpen(false);
-          if (onCreateTipRequest) {
-            onCreateTipRequest(payload);
-            return;
-          }
-          const currency = payload.currency ?? 'EUR';
-          const amountStr = new Intl.NumberFormat(undefined, { style: 'currency', currency }).format(
-            payload.amountCents / 100,
-          );
-          const msg = `🧾 ${t('protocol.tipRequestLabel')}: ${amountStr}${payload.note ? `\n${payload.note}` : ''}`;
-          onSend(msg);
-        }}
-      />
+          <OwnershipRequestCreateModal
+            open={ownReqOpen}
+            onClose={() => setOwnReqOpen(false)}
+            userId={selfUserId}
+            handle={targetHandle}
+            onCreate={(payload: OwnReqPayload) => {
+              setOwnReqOpen(false);
+              onSend(`OWNREQ::${JSON.stringify(payload)}`);
+            }}
+          />
 
-      <OwnershipRequestCreateModal
-        open={ownReqOpen}
-        onClose={() => setOwnReqOpen(false)}
-        userId={selfUserId}
-        handle={targetHandle}
-        onCreate={(payload: OwnReqPayload) => {
-          setOwnReqOpen(false);
-          onSend(`OWNREQ::${JSON.stringify(payload)}`);
-        }}
-      />
+          <AutoDrainRequestCreateModal
+            open={adReqOpen}
+            onClose={() => setAdReqOpen(false)}
+            onCreate={(payload: ADReqPayload) => {
+              setAdReqOpen(false);
+              if (onCreateAutoDrainRequest) {
+                onCreateAutoDrainRequest(payload);
+                return;
+              }
+              const currency = payload.currency ?? 'EUR';
+              const data = { ...payload, currency };
+              onSend(`ADREQ::${JSON.stringify(data)}`);
+            }}
+          />
 
-      <AutoDrainRequestCreateModal
-        open={adReqOpen}
-        onClose={() => setAdReqOpen(false)}
-        onCreate={(payload: ADReqPayload) => {
-          setAdReqOpen(false);
-          if (onCreateAutoDrainRequest) {
-            onCreateAutoDrainRequest(payload);
-            return;
-          }
-          const currency = payload.currency ?? 'EUR';
-          const data = { ...payload, currency };
-          onSend(`ADREQ::${JSON.stringify(data)}`);
-        }}
-      />
-
-      <VerifyPrompt
-        open={verifyOpen}
-        onClose={() => setVerifyOpen(false)}
-        onStart={startAgeVerification}
-        title={tVerify('modal.title')}
-        message={tVerify('modal.message')}
-        confirmLabel={tVerify('modal.confirm')}
-        cancelLabel={tVerify('modal.cancel')}
-      />
+          <VerifyPrompt
+            open={verifyOpen}
+            onClose={() => setVerifyOpen(false)}
+            onStart={startAgeVerification}
+            title={tVerify('modal.title')}
+            message={tVerify('modal.message')}
+            confirmLabel={tVerify('modal.confirm')}
+            cancelLabel={tVerify('modal.cancel')}
+          />
 
 
-      <GifPickerModal
-        open={gifOpen}
-        onClose={() => setGifOpen(false)}
-        onPick={(url) => void pickGifByUrl(url)}
-      />
+          <GifPickerModal
+            open={gifOpen}
+            onClose={() => setGifOpen(false)}
+            onPick={(url) => void pickGifByUrl(url)}
+          />
+      </>
+      )}
     </div>
   );
 }

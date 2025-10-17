@@ -1,0 +1,230 @@
+{
+  "chat": {
+    "empty": {
+      "subtitle": "Start a new chat from a profile.",
+      "title": "No conversations"
+    },
+    "header": {
+      "subtitle": "{total} conversations • {unread} unread",
+      "title": "Messages"
+    },
+    "loading": "Loading…",
+    "loadingError": "Could not load chats",
+    "row": {
+      "badges": {
+        "muted": "Muted",
+        "pinned": "Pinned"
+      },
+      "menu": {
+        "block": "Block user",
+        "delete": "Delete chat",
+        "mute": "Mute chat",
+        "pin": "Pin chat",
+        "report": "Report user",
+        "unmute": "Unmute",
+        "unpin": "Unpin"
+      },
+      "preview": {
+        "audio": "Audio",
+        "file": "File",
+        "image": "Photo",
+        "video": "Video"
+      }
+    },
+    "system": {
+      "ownershipAccepted": "Ownership confirmed",
+      "ownershipRequest": "Ownership request",
+      "ownershipRequestWithParts": "Ownership request: {parts}",
+      "part": {
+        "avatar": "Avatar",
+        "banner": "Banner",
+        "bio": "Bio"
+      },
+      "reaction": {
+        "added": "{user} reacted with {emoji}",
+        "removed": "{user} removed the {emoji} reaction"
+      },
+      "shared": {
+        "link": "Link shared",
+        "post": "Post shared",
+        "profile": "Profile @{handle} shared"
+      },
+      "tipPaid": "Tip paid: {amount}",
+      "tipRequest": "Tip request: {amount}"
+    },
+    "toolbar": {
+      "filters": {
+        "all": "All",
+        "pinned": "Pinned",
+        "unread": "Unread"
+      },
+      "searchPlaceholder": "Search messages…",
+      "settingsAria": "Settings"
+    },
+    "you": "You"
+  },
+  "chatComposer": {
+    "actions": {
+      "actions": "Actions",
+      "gif": "Search GIFs",
+      "openActions": "Open actions",
+      "remove": "Remove",
+      "send": "Send",
+      "sendMessageAria": "Send message",
+      "tip": "Send tip",
+      "upload": "Upload media",
+      "voice": {
+        "holdAria": "Voice message (hold to record)",
+        "holdTitle": "Voice message (hold)"
+      }
+    },
+    "disabled": {
+      "default": "This conversation is blocked."
+    },
+    "errors": {
+      "gif": {
+        "loadList": "Could not load GIFs.",
+        "loadOne": "Could not load GIF."
+      },
+      "voice": {
+        "denied": "No microphone access (denied or blocked).",
+        "unsupported": "Voice messages are not supported by this browser."
+      }
+    },
+    "gif": {
+      "close": "Close",
+      "loading": "Loading GIFs…",
+      "search": {
+        "button": "Search",
+        "placeholder": "Search GIFs…"
+      },
+      "selectTitle": "Select"
+    },
+    "menu": {
+      "autodrainRequest": "Autodrain request",
+      "ownershipRequest": "Ownership request",
+      "tipRequest": "Tip request"
+    },
+    "placeholders": {
+      "closed": "DMs are closed",
+      "message": "Message…"
+    },
+    "protocol": {
+      "tipRequestLabel": "Tip request"
+    },
+    "recording": {
+      "inProgress": "Recording in progress"
+    },
+    "voice": {
+      "preview": {
+        "discard": "Discard",
+        "send": "Send"
+      }
+    }
+  },
+  "chatHeader": {
+    "aria": {
+      "back": "Back",
+      "more": "More",
+      "profile": "Profile of {name}"
+    },
+    "badges": {
+      "blockedYou": "Has blocked you",
+      "youBlocked": "Blocked by you"
+    },
+    "menu": {
+      "block": "Block user",
+      "mute": "Mute conversation",
+      "muteSoon": "Mute conversation — coming soon",
+      "reportConversation": "Report conversation",
+      "unblock": "Unblock",
+      "viewProfile": "View profile"
+    },
+    "role": {
+      "domme": "Domme",
+      "sub": "Sub"
+    }
+  },
+  "chatThread": {
+    "actions": {
+      "accept": "Accept",
+      "decline": "Decline",
+      "moreEmojis": "More emojis",
+      "reply": "Reply"
+    },
+    "audio": {
+      "pause": "Pause",
+      "play": "Play"
+    },
+    "community": {
+      "members": "{count} members"
+    },
+    "disabled": {
+      "byOther": "You can no longer send direct messages to this person.",
+      "youBlocked": "You have blocked this person. Sending is disabled."
+    },
+    "emoji": {
+      "close": "Close",
+      "recent": "Recently used",
+      "searchPlaceholder": "Search emojis",
+      "sheetTitle": "Smileys & reactions"
+    },
+    "envelopes": {
+      "autodrainEnabled": {
+        "title": "AUTODRAIN ENABLED"
+      },
+      "autodrainRequest": {
+        "cadence": {
+          "daily": "Daily",
+          "monthly": "Monthly",
+          "weekly": "Weekly"
+        },
+        "declinedMsg": "❌ Autodrain request declined",
+        "recurrenceLabel": "Recurrence: {cadence}",
+        "title": "AUTODRAIN REQUEST"
+      },
+      "ownershipAccepted": {
+        "applied": "Changes have been applied to the Sub profile.",
+        "title": "OWNERSHIP CONFIRMED"
+      },
+      "ownershipRequest": {
+        "declinedMsg": "❌ Ownership request declined",
+        "items": {
+          "avatar": "Avatar",
+          "banner": "Banner",
+          "bio": "Bio"
+        },
+        "legacy": {
+          "avatarPreview": "🖼 Avatar preview included.",
+          "bannerPreview": "🏞 Banner preview included."
+        },
+        "title": "OWNERSHIP REQUEST"
+      },
+      "tipPaid": {
+        "title": "TIP PAID"
+      },
+      "tipRequest": {
+        "declinedMsg": "❌ Tip request declined",
+        "title": "TIP REQUEST"
+      }
+    },
+    "invite": {
+      "expires": "Expires: {date}",
+      "usesLeft": "Uses left: {count}"
+    },
+    "loading": "Loading…",
+    "media": {
+      "attachment": "📎 Attachment",
+      "audio": "🎙 Audio",
+      "image": "📷 Image",
+      "video": "🎞 Video"
+    },
+    "quoted": {
+      "notFound": "Message not found"
+    },
+    "verify": {
+      "redirectNote": "You will be redirected automatically after completion."
+    },
+    "you": "You"
+  }
+}

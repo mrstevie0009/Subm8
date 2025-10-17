@@ -1,0 +1,42 @@
+{
+  "bookmarksPage": {
+    "ariaBack": "Zurück zum Feed",
+    "emptyDesc": "Speichere Beiträge, um sie hier jederzeit wieder aufzurufen.",
+    "emptyTitle": "Noch keine Lesezeichen",
+    "guestDesc": "Füge Beiträgen Lesezeichen hinzu, damit du sie später schnell wiederfindest.",
+    "guestTitle": "Beiträge für später speichern",
+    "title": "Lesezeichen"
+  },
+  "feedFilter": {
+    "apply": "Übernehmen",
+    "following": "Gefolgte",
+    "newPosts": "Neueste Beiträge",
+    "onlyDommes": "Nur Dommes",
+    "onlySubs": "Nur Subs",
+    "reset": "Zurücksetzen",
+    "title": "Deinen Feed filtern",
+    "toggleAria": "Feed-Filter",
+    "topPosts": "Top-Beiträge"
+  },
+  "toast": {
+    "comment": {
+      "failedTitle": "Senden fehlgeschlagen",
+      "sent": "Kommentar wurde gesendet"
+    },
+    "community": {
+      "createFailedTitle": "Erstellen fehlgeschlagen",
+      "created": "Community erstellt"
+    },
+    "generic": {
+      "tryAgain": "Bitte später erneut versuchen"
+    },
+    "media": {
+      "maxReached": "Max. {max} Medien pro Post erreicht",
+      "onlyRemaining": "Nur {remaining} weitere {remaining, plural, one {Medium} other {Medien}} möglich (max. {max})."
+    },
+    "post": {
+      "failedTitle": "Posten fehlgeschlagen",
+      "published": "Beitrag wurde veröffentlicht"
+    }
+  }
+}

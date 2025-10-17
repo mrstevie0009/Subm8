@@ -1,0 +1,165 @@
+{
+  "links": {
+    "settings": "Settings"
+  },
+  "profileSettings": {
+    "alreadyDeactivated": "Account is deactivated",
+    "ariaBack": "Back",
+    "changePassword": "Change password",
+    "countryLabel": "Country",
+    "countryMissing": "Column missing in DB",
+    "countryPlaceholder": "DE, AT, CH, US",
+    "currentPasswordLabel": "Current password",
+    "dangerZoneDesc": "Deactivation locks your profile and ends all sessions.",
+    "dangerZoneTitle": "Danger zone",
+    "deactivateButton": "Deactivate account",
+    "deactivateNotAvailable": "Deactivation not available",
+    "deleteButton": "Permanently delete account",
+    "deleteButtonTitle": "Permanently delete account",
+    "deleteHint": "Deletes your account and all related data. If linked accounts exist, you’ll switch to the home feed; otherwise, you’ll go to the sign-in page.",
+    "emailLabel": "Email",
+    "emailPlaceholder": "you@example.com",
+    "handleHelp": "3–20 characters; a–z, 0–9, “_” and “.” allowed.",
+    "handleLabel": "Handle",
+    "handlePlaceholder": "your.handle",
+    "headerTitle": "Manage profile & account",
+    "languageButton": "Change",
+    "languageHelp": "Select your preferred interface language.",
+    "languageLabel": "Language",
+    "logoutButton": "Log out",
+    "logoutSectionTitle": "Logout",
+    "newPassword2Label": "New password (repeat)",
+    "newPassword2Placeholder": "enter again",
+    "newPasswordLabel": "New password",
+    "newPasswordPlaceholder": "min. 8 characters",
+    "notSignedInMessage": "Please sign in to edit settings.",
+    "passwordSectionTitle": "Password",
+    "phoneLabel": "Phone number",
+    "phoneMissing": "Column missing in DB",
+    "phonePlaceholder": "+49 170 1234567",
+    "profileSectionTitle": "Profile",
+    "saveProfile": "Save profile"
+  },
+  "securityPage": {
+    "ariaBack": "Back",
+    "extraPassword": {
+      "desc": "When resetting the password, email or phone must also be confirmed.",
+      "title": "Extra password protection",
+      "toggle": {
+        "disable": "Disable protection",
+        "enable": "Enable protection",
+        "title": "Toggle password reset protection"
+      }
+    },
+    "notSignedInMessage": "Please sign in to manage security options.",
+    "sessions": {
+      "desc": "Ends all active sessions on all devices and logs you out.",
+      "endAll": "End all sessions",
+      "title": "End sessions"
+    },
+    "status": {
+      "active": "Active",
+      "notSetup": "Not set up",
+      "ready": "Ready"
+    },
+    "title": "Security & access",
+    "twofa": {
+      "active": "Active: App-based 2FA is enabled.",
+      "confirm": "Confirm",
+      "disable": "Disable",
+      "intro": "Protect your account with a second login step. Use app (TOTP), SMS or passkeys.",
+      "passkeyActiveMsg": "Passkey is active. You can use it to log in.",
+      "passkeysActiveNote": "Passkey is set up and stored for 2-step authentication.",
+      "passkeysDisable": "Disable passkeys",
+      "passkeysNote": "Set up a passkey for faster, safer sign-ins.",
+      "passkeysRemoveAllTitle": "Remove all passkeys",
+      "passkeysTitle": "Security keys / passkeys",
+      "qrAlt": "TOTP QR code",
+      "resend": "Resend",
+      "resendTitle": "Resend code",
+      "scanIntro": "Scan the QR code with your authenticator app, then enter the 6-digit code.",
+      "setup": "Set up",
+      "sms": {
+        "disable2fa": "Disable SMS 2FA",
+        "disable2faTitle": "Disable SMS 2FA (phone number remains saved)",
+        "loginSendsToPrefix": "At login, we send a code to",
+        "removeNumber": "Remove number",
+        "removeNumberTitle": "Remove phone number",
+        "request": "Request SMS code"
+      },
+      "smsActiveMsg": "Two-factor login via SMS is active.",
+      "smsAddPhoneFirst": "Add a phone number in your profile settings first.",
+      "smsAddPhoneHintEnd": "and add a phone number.",
+      "smsAddPhoneHintStart": "Open your",
+      "smsChangeNumber": "Change number",
+      "smsPhoneReady": "Phone number saved. You can now set up SMS codes.",
+      "smsTitle": "SMS codes",
+      "title": "Two-factor authentication",
+      "tokenAria": "6-digit verification code",
+      "tokenPlaceholder": "123456",
+      "totpTitle": "Authenticator app (TOTP)"
+    }
+  },
+  "settings": {
+    "aria": "Settings",
+    "avatarAlt": "Profile picture",
+    "follow": "Follow",
+    "guest": "Guest",
+    "loading": "Loading…",
+    "menu": {
+      "bookmarks": "Bookmarks",
+      "payments": "Payments",
+      "premium": "Premium",
+      "profile": "Profile",
+      "settings": "Settings"
+    },
+    "noHandle": "—",
+    "recommended": "Recommended profiles",
+    "roleDomme": "Domme",
+    "roleSub": "Sub",
+    "signIn": "Sign in",
+    "signOut": "Sign out",
+    "statsError": "Error loading stats",
+    "statsFollowers": "Followers",
+    "statsFollowing": "Following",
+    "suggestionsEmpty": "No suggestions right now.",
+    "switchToHandle": "Switch to @{handle}",
+    "switchToName": "Switch to {name}",
+    "unfollow": "Unfollow"
+  },
+  "settingsPage": {
+    "ariaBack": "Back to feed",
+    "items": {
+      "account": {
+        "desc": "View and edit profile info (name, bio, avatar, banner), export data, and manage account options.",
+        "title": "Your account"
+      },
+      "bookmarks": {
+        "desc": "Manage saved posts.",
+        "title": "Bookmarks"
+      },
+      "monetization": {
+        "desc": "From tips to communities. All paths to stable income.",
+        "title": "Monetization"
+      },
+      "notifications": {
+        "desc": "Choose which activities, recommendations, and messages you want to be notified about.",
+        "title": "Notifications"
+      },
+      "premium": {
+        "desc": "View benefits and manage your premium settings.",
+        "title": "Premium"
+      },
+      "privacy": {
+        "desc": "Control what you see and share, and adjust your privacy.",
+        "title": "Privacy"
+      },
+      "security": {
+        "desc": "Check login security, manage connected apps, and monitor access.",
+        "title": "Security & access"
+      }
+    },
+    "searchPlaceholder": "Search settings",
+    "title": "Settings"
+  }
+}

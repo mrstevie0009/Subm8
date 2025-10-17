@@ -1,0 +1,39 @@
+{
+  "offerEditor": {
+    "actions": {
+      "addBg": "Hintergrund hinzufügen",
+      "cancel": "Abbrechen",
+      "changeBg": "Hintergrund ändern",
+      "remove": "Entfernen",
+      "save": "Speichern",
+      "saving": "Speichere…"
+    },
+    "controls": {
+      "color": "Farbe",
+      "dim": "Abdunkeln",
+      "font": "Schriftart",
+      "hex": "Hex",
+      "textColor": "Textfarbe"
+    },
+    "placeholders": {
+      "text": "Text…",
+      "title": "Titel…"
+    }
+  },
+  "offerViewer": {
+    "actions": {
+      "close": "Schließen"
+    },
+    "aria": {
+      "modalLabel": "Angebot"
+    },
+    "placeholders": {
+      "noContent": "Kein Inhalt.",
+      "noTitle": "Kein Titel"
+    },
+    "states": {
+      "loadError": "Laden fehlgeschlagen.",
+      "loading": "Lade…"
+    }
+  }
+}

@@ -11,11 +11,26 @@ import type { Profile } from '@/types/profile';
 import { followAction, unfollowAction } from '@/app/actions/follow';
 import { blockUserAction, unblockUserAction } from '@/app/actions/blocks';
 import { reportUserAction } from '@/app/actions/reports';
-import OfferViewerModal from '@/components/OfferViewerModal';
-import TipModal from '@/components/TipModal';
-import AutoDrainEnableModal from '@/components/AutoDrainEnableModal';
 import { useSession } from 'next-auth/react';
 import { toast } from '@/lib/toast';
+
+import dynamic from 'next/dynamic';
+
+// Lazy load (kein JS im Initial-Chunk)
+const OfferViewerModal = dynamic(() => import('@/components/OfferViewerModal'), {
+  ssr: false,
+  loading: () => null,
+});
+const TipModal = dynamic(() => import('@/components/TipModal'), {
+  ssr: false,
+  loading: () => null,
+});
+const AutoDrainEnableModal = dynamic(() => import('@/components/AutoDrainEnableModal'), {
+  ssr: false,
+  loading: () => null,
+});
+
+
 
 
 const AVATAR_PH = '/images/avatar-placeholder.png';
@@ -23,7 +38,7 @@ const BANNER_PH = '/images/banner-placeholder.png';
 const TIPPAID_PREFIX = 'TIPPAID::';
 const ADACC_PREFIX   = 'ADACC::';
 
-function Chip({
+const Chip = React.memo(function Chip({
   children,
   tone = 'neutral',
   size = 'sm',
@@ -48,7 +63,7 @@ function Chip({
       {children}
     </span>
   );
-}
+});
 
 // Tip-Icon ohne Kreis
 function TipIcon(props: React.SVGProps<SVGSVGElement>) {
@@ -173,6 +188,13 @@ export default function ProfileHeader({
 
   const [bannerSrc, setBannerSrc] = React.useState<string>(profile.bannerUrl || BANNER_PH);
   const [avatarSrc, setAvatarSrc] = React.useState<string>(profile.avatarUrl || AVATAR_PH);
+  // Loading-States für angenehme Skeleton-Fades
+  const [bannerLoaded, setBannerLoaded] = React.useState(false);
+  const [avatarLoaded, setAvatarLoaded] = React.useState(false);
+
+  // winziges 1x1-Blur (Data-URI) – sofort da, keine Netzwerklast
+  const BLUR_PIXEL =
+    'data:image/gif;base64,R0lGODlhAQABAAAAACw=';
 
   const [isFollowing, setIsFollowing] = React.useState<boolean>(!!initialIsFollowing);
   const [pending, startTransition] = React.useTransition();
@@ -185,6 +207,9 @@ export default function ProfileHeader({
 
   const [tipOpen, setTipOpen] = React.useState(false);
   const [autoDrainOpen, setAutoDrainOpen] = React.useState(false);
+
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => setMounted(true), []);
 
   // RoleUI -> TipModal-Role
   const tipModalRole: 'domme' | 'submissive' =
@@ -258,6 +283,7 @@ export default function ProfileHeader({
     try {
       const href = `${window.location.origin}/${locale}/u/${profile.username}`;
       await navigator.clipboard.writeText(href);
+      toast.show?.({ title: tProf('copied'), variant: 'success', durationMs: 1400 });
     } catch {}
   }
 
@@ -710,8 +736,20 @@ export default function ProfileHeader({
     setTipMenuOpen(true);
   }, []);
 
+  type WithModernCSS = React.CSSProperties & {
+    contentVisibility?: 'auto' | 'hidden' | 'visible';
+    containIntrinsicSize?: string;
+  };
+  const sectionStyle: WithModernCSS = {
+    ...rootVars,
+    contentVisibility: 'auto',
+    containIntrinsicSize: '800px',
+  };
   return (
-    <section className="rounded-app border border-sub overflow-hidden shadow-app relative" style={rootVars}>
+    <section
+      className="rounded-app border border-sub overflow-hidden shadow-app relative"
+      style={sectionStyle}
+    >
       {/* FIXED MINI HEADER */}
       <div
         className={`
@@ -719,7 +757,7 @@ export default function ProfileHeader({
           border-b border-white/10
           backdrop-blur bg-black/55
           transition-all duration-200
-          ${compact ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 -translate-y-3 pointer-events-none'}
+          ${mounted && compact ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 -translate-y-3 pointer-events-none'}
         `}
         role="banner"
       >
@@ -762,19 +800,28 @@ export default function ProfileHeader({
 
       {/* Banner */}
       <div className="relative" style={{ height: 'var(--bannerH)' }}>
-        <Image
-          src={bannerSrc}
-          alt=""
-          fill
-          className="object-cover"
-          sizes="100vw"
-          onError={() => setBannerSrc(BANNER_PH)}
-        />
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/30 via-black/0 to-black/35" />
-        <div className="absolute top-2 right-2 z-10">
-          <MoreMenu />
-        </div>
+      {/* Skeleton-Hintergrund */}
+      <div className={`absolute inset-0 bg-white/10 ${bannerLoaded ? 'opacity-0' : 'opacity-100'} transition-opacity`} />
+
+      <Image
+        src={bannerSrc}
+        alt=""
+        fill
+        className="object-cover"
+        sizes="100vw"
+        priority              // Banner ist above-the-fold → schnellerer LCP
+        placeholder="blur"
+        blurDataURL={BLUR_PIXEL}
+        onLoad={() => setBannerLoaded(true)}
+        onError={() => setBannerSrc(BANNER_PH)}
+        fetchPriority="high"  // für neuere Browser
+        decoding="async"
+      />
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/30 via-black/0 to-black/35" />
+      <div className="absolute top-2 right-2 z-10">
+        <MoreMenu />
       </div>
+    </div>
 
       {/* Sentinel */}
       <div ref={sentinelRef} aria-hidden className="h-1" />
@@ -793,13 +840,21 @@ export default function ProfileHeader({
                 className="relative rounded-full overflow-hidden bg-white/10 ring-1 ring-white/20 shadow-[0_6px_30px_-10px_rgba(0,0,0,.8)]"
                 style={avatarStyle}
               >
+              <div
+                className={`absolute inset-0 bg-white/10 ${avatarLoaded ? 'opacity-0' : 'opacity-100'} transition-opacity`}
+                aria-hidden
+              />
                 <Image
                   src={avatarSrc}
                   alt={`${profile.displayName} avatar (${roleFull})`}
                   fill
                   className="object-cover"
                   sizes="(min-width:1024px) 136px, (min-width:640px) 104px, 88px"
+                  placeholder="blur"
+                  blurDataURL={BLUR_PIXEL}
+                  onLoad={() => setAvatarLoaded(true)}
                   onError={() => setAvatarSrc(AVATAR_PH)}
+                  decoding="async"
                 />
               </div>
             </div>
@@ -881,12 +936,14 @@ export default function ProfileHeader({
                     <button
                       type="submit"
                       disabled={pending}
-                      className={`px-3 sm:px-4 h-9 rounded-full inline-flex items-center text-[12px] sm:text-[13px] ${
+                      aria-busy={pending}
+                      className={`px-3 sm:px-4 h-9 rounded-full inline-flex items-center gap-2 text-[12px] sm:text-[13px] ${
                         isFollowing
                           ? 'border border-white/25 hover:bg-white/5'
                           : 'bg-[var(--purple)] text-white hover:opacity-95'
                       }`}
                     >
+                      {pending && <span className="inline-block h-3 w-3 rounded-full border-2 border-white/40 border-t-white animate-spin" aria-hidden />}
                       {isFollowing ? tProf('unfollow') : tProf('follow')}
                     </button>
                   </form>
@@ -1053,7 +1110,9 @@ export default function ProfileHeader({
   );
 }
 
-function TabBtn({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+const TabBtn = React.memo(function TabBtn({
+  label, active, onClick
+}: { label: string; active: boolean; onClick: () => void }) {
   return (
     <li>
       <button
@@ -1066,4 +1125,4 @@ function TabBtn({ label, active, onClick }: { label: string; active: boolean; on
       </button>
     </li>
   );
-}
+});

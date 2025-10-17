@@ -1,0 +1,230 @@
+{
+  "chat": {
+    "empty": {
+      "subtitle": "Starte einen neuen Chat über ein Profil.",
+      "title": "Keine Unterhaltungen"
+    },
+    "header": {
+      "subtitle": "{total} Unterhaltungen • {unread} ungelesen",
+      "title": "Nachrichten"
+    },
+    "loading": "Lade…",
+    "loadingError": "Chats konnten nicht geladen werden",
+    "row": {
+      "badges": {
+        "muted": "Stumm",
+        "pinned": "Angeheftet"
+      },
+      "menu": {
+        "block": "Nutzer blockieren",
+        "delete": "Chat löschen",
+        "mute": "Chat stummschalten",
+        "pin": "Chat anheften",
+        "report": "Nutzer melden",
+        "unmute": "Stummschaltung aufheben",
+        "unpin": "Chat lösen"
+      },
+      "preview": {
+        "audio": "Audio",
+        "file": "Datei",
+        "image": "Foto",
+        "video": "Video"
+      }
+    },
+    "system": {
+      "ownershipAccepted": "Ownership bestätigt",
+      "ownershipRequest": "Ownership-Anfrage",
+      "ownershipRequestWithParts": "Ownership-Anfrage: {parts}",
+      "part": {
+        "avatar": "Avatar",
+        "banner": "Banner",
+        "bio": "Bio"
+      },
+      "reaction": {
+        "added": "{user} hat mit {emoji} reagiert",
+        "removed": "{user} hat die Reaktion {emoji} entfernt"
+      },
+      "shared": {
+        "link": "Link geteilt",
+        "post": "Beitrag geteilt",
+        "profile": "Profil @{handle} geteilt"
+      },
+      "tipPaid": "Trinkgeld bezahlt: {amount}",
+      "tipRequest": "Trinkgeld-Anfrage: {amount}"
+    },
+    "toolbar": {
+      "filters": {
+        "all": "Alle",
+        "pinned": "Angeheftet",
+        "unread": "Ungelesen"
+      },
+      "searchPlaceholder": "Nachrichten durchsuchen…",
+      "settingsAria": "Einstellungen"
+    },
+    "you": "Du"
+  },
+  "chatComposer": {
+    "actions": {
+      "actions": "Aktionen",
+      "gif": "GIFs suchen",
+      "openActions": "Aktionen öffnen",
+      "remove": "Entfernen",
+      "send": "Senden",
+      "sendMessageAria": "Nachricht senden",
+      "tip": "Trinkgeld senden",
+      "upload": "Medien hochladen",
+      "voice": {
+        "holdAria": "Sprachnachricht (halten zum Aufnehmen)",
+        "holdTitle": "Sprachnachricht (halten)"
+      }
+    },
+    "disabled": {
+      "default": "Diese Unterhaltung ist blockiert."
+    },
+    "errors": {
+      "gif": {
+        "loadList": "Konnte GIFs nicht laden.",
+        "loadOne": "GIF konnte nicht geladen werden."
+      },
+      "voice": {
+        "denied": "Kein Mikrofonzugriff (abgelehnt oder blockiert).",
+        "unsupported": "Sprachnachrichten werden von diesem Browser nicht unterstützt."
+      }
+    },
+    "gif": {
+      "close": "Schließen",
+      "loading": "Lade GIFs…",
+      "search": {
+        "button": "Suchen",
+        "placeholder": "Nach GIFs suchen…"
+      },
+      "selectTitle": "Auswählen"
+    },
+    "menu": {
+      "autodrainRequest": "Autodrain-Anfrage",
+      "ownershipRequest": "Ownership-Anfrage",
+      "tipRequest": "Trinkgeld-Anfrage"
+    },
+    "placeholders": {
+      "closed": "DMs sind geschlossen",
+      "message": "Nachricht…"
+    },
+    "protocol": {
+      "tipRequestLabel": "Trinkgeld-Anfrage"
+    },
+    "recording": {
+      "inProgress": "Aufnahme läuft"
+    },
+    "voice": {
+      "preview": {
+        "discard": "Verwerfen",
+        "send": "Senden"
+      }
+    }
+  },
+  "chatHeader": {
+    "aria": {
+      "back": "Zurück",
+      "more": "Mehr",
+      "profile": "Profil von {name}"
+    },
+    "badges": {
+      "blockedYou": "Hat dich blockiert",
+      "youBlocked": "Von dir blockiert"
+    },
+    "menu": {
+      "block": "Nutzer blockieren",
+      "mute": "Unterhaltung stummschalten",
+      "muteSoon": "Unterhaltung stummschalten — bald verfügbar",
+      "reportConversation": "Unterhaltung melden",
+      "unblock": "Blockierung aufheben",
+      "viewProfile": "Profil ansehen"
+    },
+    "role": {
+      "domme": "Domme",
+      "sub": "Sub"
+    }
+  },
+  "chatThread": {
+    "actions": {
+      "accept": "Akzeptieren",
+      "decline": "Ablehnen",
+      "moreEmojis": "Weitere Emojis",
+      "reply": "Antworten"
+    },
+    "audio": {
+      "pause": "Pause",
+      "play": "Abspielen"
+    },
+    "community": {
+      "members": "{count} Mitglieder"
+    },
+    "disabled": {
+      "byOther": "Du kannst dieser Person keine Direktnachrichten mehr senden.",
+      "youBlocked": "Du hast diese Person blockiert. Senden ist deaktiviert."
+    },
+    "emoji": {
+      "close": "Schließen",
+      "recent": "Kürzlich benutzt",
+      "searchPlaceholder": "Emojis durchsuchen",
+      "sheetTitle": "Smileys & Reaktionen"
+    },
+    "envelopes": {
+      "autodrainEnabled": {
+        "title": "AUTODRAIN AKTIVIERT"
+      },
+      "autodrainRequest": {
+        "cadence": {
+          "daily": "Täglich",
+          "monthly": "Monatlich",
+          "weekly": "Wöchentlich"
+        },
+        "declinedMsg": "❌ Autodrain-Anfrage abgelehnt",
+        "recurrenceLabel": "Wiederholung: {cadence}",
+        "title": "AUTODRAIN-ANFRAGE"
+      },
+      "ownershipAccepted": {
+        "applied": "Änderungen wurden im Sub-Profil übernommen.",
+        "title": "OWNERSHIP BESTÄTIGT"
+      },
+      "ownershipRequest": {
+        "declinedMsg": "❌ Ownership-Anfrage abgelehnt",
+        "items": {
+          "avatar": "Avatar",
+          "banner": "Banner",
+          "bio": "Bio"
+        },
+        "legacy": {
+          "avatarPreview": "🖼 Avatar-Vorschau enthalten.",
+          "bannerPreview": "🏞 Banner-Vorschau enthalten."
+        },
+        "title": "OWNERSHIP-ANFRAGE"
+      },
+      "tipPaid": {
+        "title": "TRINKGELD BEZAHLT"
+      },
+      "tipRequest": {
+        "declinedMsg": "❌ Trinkgeld-Anfrage abgelehnt",
+        "title": "TRINKGELD-ANFRAGE"
+      }
+    },
+    "invite": {
+      "expires": "Läuft ab: {date}",
+      "usesLeft": "Verbleibende Nutzungen: {count}"
+    },
+    "loading": "Lade…",
+    "media": {
+      "attachment": "📎 Anhang",
+      "audio": "🎙 Audio",
+      "image": "📷 Bild",
+      "video": "🎞 Video"
+    },
+    "quoted": {
+      "notFound": "Nachricht nicht gefunden"
+    },
+    "verify": {
+      "redirectNote": "Du wirst nach Abschluss automatisch zurückgeleitet."
+    },
+    "you": "Du"
+  }
+}

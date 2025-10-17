@@ -42,7 +42,7 @@ function GifPickerModal({
   onPick: (gifUrl: string) => void;
 }) {
   // Übersetzungen (robust mit Fallbacks)
-  const tg = useTranslations('community.gifPicker');
+  const tg = useTranslations('common.community.gifPicker');
 
   const [q, setQ] = React.useState('');
   const [loading, setLoading] = React.useState(false);

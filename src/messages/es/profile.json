@@ -1,0 +1,99 @@
+{
+  "editProfileForm": {
+    "actions": {
+      "changeAvatar": "Cambiar avatar",
+      "changeBanner": "Cambiar banner",
+      "editOfferMenu": "Editar menú de ofertas",
+      "save": "Guardar"
+    },
+    "fields": {
+      "bio": "Bio",
+      "location": "Ubicación",
+      "name": "Nombre",
+      "role": "Rol",
+      "username": "Nombre de usuario",
+      "website": "Sitio web / enlace"
+    },
+    "header": {
+      "title": "Editar perfil"
+    },
+    "hints": {
+      "maxChars": "Máx. {count} caracteres",
+      "roleFixed": "El rol está fijado",
+      "usernamePattern": "3–20 caracteres, a–z, 0–9, _"
+    },
+    "media": {
+      "avatarAlt": "Avatar",
+      "bannerAlt": "Banner"
+    },
+    "placeholders": {
+      "website": "p. ej., https://example.com"
+    },
+    "roles": {
+      "domme": "Domme",
+      "submissive": "Sumisa/Sumiso"
+    }
+  },
+  "editTabs": {
+    "tabs": {
+      "general": "General",
+      "ownership": "Ownership"
+    }
+  },
+  "ownershipTab": {
+    "actions": {
+      "addAvatar": "Añadir avatar",
+      "changeBanner": "Cambiar banner",
+      "reset": "Restablecer",
+      "save": "Guardar",
+      "saving": "Guardando…"
+    },
+    "errors": {
+      "readAvatar": "No se pudo leer el avatar.",
+      "readBanner": "No se pudo leer el banner.",
+      "readFile": "No se pudo leer el archivo.",
+      "save": "No se pudo guardar.",
+      "tooLarge": "Archivo demasiado grande (máx. 4 MB para vista previa local)."
+    },
+    "header": {
+      "clearTitle": "Borrar perfil de ownership local",
+      "title": "Perfil de ownership"
+    },
+    "labels": {
+      "bio": "Bio de ownership",
+      "counter": "{n}/{max}",
+      "savedAt": "Guardado {ts}"
+    },
+    "placeholders": {
+      "avatar": "Avatar",
+      "banner": "Banner de ownership",
+      "bio": "Esta bio se aplicará cuando se acepte el ownership…"
+    }
+  },
+  "profile": {
+    "autodrain": "Autodrain",
+    "blockUser": "Bloquear usuario",
+    "blockedBy": "Este usuario te ha bloqueado",
+    "copyProfileLink": "Copiar enlace del perfil",
+    "editProfile": "Editar perfil",
+    "follow": "Seguir",
+    "joined": "Desde",
+    "message": "Mensaje",
+    "messagingDisabled": "Mensajes desactivados por bloqueo",
+    "more": "Más",
+    "offer": "Oferta",
+    "offerMenu": "Menú de ofertas",
+    "reportUser": "Denunciar usuario",
+    "sendTip": "Enviar propina",
+    "shareProfileViaDm": "Compartir perfil por MD",
+    "tabs": {
+      "gallery": "Galería",
+      "leaderboard": "Clasificación",
+      "posts": "Publicaciones"
+    },
+    "tipActions": "Acciones de propina",
+    "unblockUser": "Desbloquear usuario",
+    "unfollow": "Dejar de seguir",
+    "youBlocked": "Has bloqueado a este usuario"
+  }
+}

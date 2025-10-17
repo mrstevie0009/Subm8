@@ -1,0 +1,39 @@
+{
+  "offerEditor": {
+    "actions": {
+      "addBg": "Añadir fondo",
+      "cancel": "Cancelar",
+      "changeBg": "Cambiar fondo",
+      "remove": "Eliminar",
+      "save": "Guardar",
+      "saving": "Guardando…"
+    },
+    "controls": {
+      "color": "Color",
+      "dim": "Oscurecer",
+      "font": "Fuente",
+      "hex": "Hex",
+      "textColor": "Color del texto"
+    },
+    "placeholders": {
+      "text": "Texto…",
+      "title": "Título…"
+    }
+  },
+  "offerViewer": {
+    "actions": {
+      "close": "Cerrar"
+    },
+    "aria": {
+      "modalLabel": "Oferta"
+    },
+    "placeholders": {
+      "noContent": "Sin contenido.",
+      "noTitle": "Sin título"
+    },
+    "states": {
+      "loadError": "Error al cargar.",
+      "loading": "Cargando…"
+    }
+  }
+}

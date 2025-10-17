@@ -161,12 +161,12 @@ function BlockBadges({ hasBlockedAuthor, blockedByAuthor, tPost }: { hasBlockedA
     <span className="ml-2 inline-flex items-center gap-1" data-no-nav>
       {hasBlockedAuthor && (
         <span className="inline-flex items-center gap-1 rounded-full border border-red-400/40 bg-red-500/10 px-2 py-0.5 text-[10px] uppercase tracking-wide text-red-300">
-          <BanIcon /> {tPost('block.youBlock')}
+          <BanIcon /> {tPost('block.blocksYou')}
         </span>
       )}
       {blockedByAuthor && (
         <span className="inline-flex items-center gap-1 rounded-full border border-red-400/40 bg-red-500/10 px-2 py-0.5 text-[10px] uppercase tracking-wide text-red-300">
-          <ShieldOffIcon /> {tPost('block.blocksYou')}
+          <ShieldOffIcon /> {tPost('blockStatus.blocksYou')}
         </span>
       )}
     </span>
@@ -936,7 +936,7 @@ function BlurredMediaGate({
   onStartVeriff: () => void | Promise<void>;
   locale?: string;
 }) {
-  const tVerify = useTranslations('common.verify');
+  const tVerify = useTranslations('verify');
   const firstImg = items.find((m) => m.kind !== 'video');
 
   return (
@@ -1080,8 +1080,8 @@ export default function PostCard({
   const openLightbox = (start: number) => { setLightboxIndex(start); setLightboxOpen(true); };
 
   const t = useTranslations('common');       // Root (common.json)
-  const tPost = useTranslations('common.post');
-  const tTime = useTranslations('common');   // time.* liegen im Root
+  const tPost = useTranslations('post');
+  const tTime = useTranslations('post');   // time.* liegen im Root
 
   const [hasReposted, setHasReposted] = React.useState(false);
   const [bookmarked, setBookmarked] = React.useState(!!post.initiallyBookmarked);
