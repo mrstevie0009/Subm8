@@ -37,7 +37,7 @@ export default function SearchPage() {
   const router = useRouter();
   const sp = useSearchParams();
   const { locale } = useParams() as { locale: string };
-  const t = useTranslations('common.search');
+  const t = useTranslations('search');
 
   // Query & Tab aus URL
   const qParam = sp.get('q') || '';

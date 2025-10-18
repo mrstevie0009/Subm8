@@ -50,8 +50,8 @@ export default function EditProfileForm({
   initial: EditInitial;
   action: (formData: FormData) => Promise<void>;
 }) {
-  const t = useTranslations('common.editProfileForm');
-  const te = useTranslations('common.offerEditor');
+  const t = useTranslations('profile.editProfileForm');
+  const te = useTranslations('offer.offerEditor');
 
   const [avatarPreview, setAvatarPreview] = React.useState<string>(initial.avatarUrl || AVATAR_PH);
   const [bannerPreview, setBannerPreview] = React.useState<string>(initial.bannerUrl || BANNER_PH);

@@ -65,7 +65,7 @@ function DMShareOverlayLink({
   onClose: () => void;
   url: string;
 }) {
-  const t = useTranslations('common.communities.share');
+  const t = useTranslations('communities.share');
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [items, setItems] = React.useState<Array<{
@@ -278,7 +278,7 @@ export default function CommunityShareButton({
   slug: string;
   name: string;
 }) {
-  const t = useTranslations('common.communities.share');
+  const t = useTranslations('communities.communities.share');
   const tBrand = useTranslations('common.brand');
   const brand = tBrand('name');
   const [shareOpen, setShareOpen] = React.useState(false);

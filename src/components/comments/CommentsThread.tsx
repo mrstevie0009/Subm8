@@ -31,7 +31,7 @@ function GifPickerModal({
   onClose: () => void;
   onPick: (gifUrl: string) => void;
 }) {
-  const t = useTranslations('common.comments');
+  const t = useTranslations('comments');
   const [q, setQ] = React.useState('');
   const [loading, setLoading] = React.useState(false);
   const [err, setErr] = React.useState<string | null>(null);
@@ -189,7 +189,7 @@ function Counter({ value = 0, active }: { value?: number; active?: boolean }) {
 }
 
 export default function CommentsThread({ postId }: { postId: string }) {
-  const t = useTranslations('common.comments');
+  const t = useTranslations('comments');
 
   const [tree, setTree] = React.useState<TreeComment[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -266,8 +266,8 @@ function CommentNode({
   depth: number;
   onChanged: () => void;
 }) {
-  const t = useTranslations('common.comments');
-  const tTime = useTranslations('common');
+  const t = useTranslations('comments');
+  const tTime = useTranslations('post');
   const [showReply, setShowReply] = React.useState(false);
   const [liked, setLiked] = React.useState(Boolean(node.viewer?.liked));
   const [likeCount, setLikeCount] = React.useState(node.counts.likes);
@@ -394,8 +394,8 @@ function Composer({
   parentId: string | null;
   onDone: () => void;
 }) {
-  const t = useTranslations('common.comments');
-  const tt = useTranslations('common.toast');
+  const t = useTranslations('comments');
+  const tt = useTranslations('home.toast');
   const [text, setText] = React.useState('');
   const [busy, setBusy] = React.useState(false);
   const [file, setFile] = React.useState<File | null>(null);
@@ -555,7 +555,7 @@ function Composer({
 }
 
 function RolePill({ role }: { role: 'DOMME' | 'SUBMISSIVE' }) {
-  const tPost = useTranslations('common.post');
+  const tPost = useTranslations('post');
   const isDomme = role === 'DOMME';
   return isDomme ? (
     <span

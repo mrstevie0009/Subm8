@@ -40,7 +40,7 @@ export default function CommunityJoinButton({
   const router = useRouter();
   const pathname = usePathname();
   const locale = useLocale();
-  const t = useTranslations('common.communities.join');
+  const t = useTranslations('communities.communities.join');
 
   const allowedByRole = canJoinByRole(policy, viewerRole);
   const disabled = loading || (!joined && !allowedByRole);

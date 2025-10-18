@@ -41,7 +41,7 @@ export default function CommentComposer({
   className,
   disableInternalFloating = false,
 }: Props) {
-  const t = useTranslations('common.comments');
+  const t = useTranslations('comments');
   const ta = useTranslations('common.communities.share');
   const tt = useTranslations('common.toast');
   const submittedRef = React.useRef(false);

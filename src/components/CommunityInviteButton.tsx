@@ -22,7 +22,7 @@ type Props = {
 export default function CommunityInviteButton(props: Props) {
   // Nur die Props holen, die wir wirklich verwenden – so vermeiden wir no-unused-vars
   const { slug, joined } = props;
-  const t = useTranslations('common.communities.invite');
+  const t = useTranslations('communities.communities.invite');
 
   // Hook MUSS vor jedem early return kommen (Rules of Hooks)
   const [open, setOpen] = React.useState(false);

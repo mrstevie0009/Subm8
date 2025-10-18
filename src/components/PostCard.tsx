@@ -2165,7 +2165,7 @@ export default function PostCard({
     title={tPost?.('delete.title') ?? 'Delete post'}
     message={tPost?.('delete.confirm') ?? 'Delete this post for everyone? This also removes all its reposts.'}
     confirmLabel={tPost?.('delete.button') ?? 'Delete post'}
-    cancelLabel={t('actions.cancel')}
+    cancelLabel={tPost('share.cancel')}
     />
 
       

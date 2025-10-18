@@ -178,9 +178,9 @@ export default function ProfileHeader({
 
 
   // 🔤 Translations
-  const tPost = useTranslations('common.post');      // für share-Overlay (vorhandene Keys)
-  const tProf = useTranslations('common.profile');   // neue Keys für ProfileHeader
-  const tVerify = useTranslations('common.verify');
+  const tPost = useTranslations('post');      // für share-Overlay (vorhandene Keys)
+  const tProf = useTranslations('profile.profile');   // neue Keys für ProfileHeader
+  const tVerify = useTranslations('verify');
 
   const AVATAR_BIG   = 'clamp(88px, 18vw, 136px)';
   const AVATAR_SMALL = '40px';

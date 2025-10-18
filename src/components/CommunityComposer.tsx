@@ -42,7 +42,7 @@ function GifPickerModal({
   onPick: (gifUrl: string) => void;
 }) {
   // Übersetzungen (robust mit Fallbacks)
-  const tg = useTranslations('common.community.gifPicker');
+  const tg = useTranslations('communities.community.gifPicker');
 
   const [q, setQ] = React.useState('');
   const [loading, setLoading] = React.useState(false);
@@ -165,10 +165,10 @@ export default function CommunityComposer({ slug }: Props) {
   const canPost = (canPostText || hasAttachment) && !loading;
 
   // toasts (bestehender Namespace)
-  const tt = useTranslations('common.toast');
+  const tt = useTranslations('home.toast');
 
   // neuer Namespace für diesen Composer (mit Fallbacks)
-  const t = useTranslations('common.community.composer');
+  const t = useTranslations('communities.community.composer');
 
   function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];

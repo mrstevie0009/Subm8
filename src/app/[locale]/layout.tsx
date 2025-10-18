@@ -17,13 +17,32 @@ export default async function RootLayout({ children, params }: LayoutProps) {
 
   let messages: Record<string, unknown>;
     try {
+      const postCommon   = (await import(`../../messages/${locale}/common.json`)).default;
       const postFile   = (await import(`../../messages/${locale}/post.json`)).default;   // { post: {...} }
       const verifyFile = (await import(`../../messages/${locale}/verify.json`)).default; // { verify: {...} }
+      const home   = (await import(`../../messages/${locale}/home.json`)).default;
+      const settings   = (await import(`../../messages/${locale}/settings.json`)).default;
+      const comments   = (await import(`../../messages/${locale}/comments.json`)).default;
+      const profile   = (await import(`../../messages/${locale}/profile.json`)).default;
+      const offer   = (await import(`../../messages/${locale}/offer.json`)).default;
+      const search   = (await import(`../../messages/${locale}/search.json`)).default;
+      const notifications   = (await import(`../../messages/${locale}/notifications.json`)).default;
+      const communitiesFile   = (await import(`../../messages/${locale}/communities.json`)).default;
 
 
       messages = {
         post: postFile.post,         
-        verify: verifyFile.verify
+        verify: verifyFile.verify,
+        common: postCommon,
+        home: home,
+        settings: settings,
+        comments: comments.comments,
+        profile: profile,
+        offer: offer,
+        search: search.search,
+        notifications: notifications,
+        communities: communitiesFile,    
+        
       };
     } catch {
       notFound();

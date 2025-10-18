@@ -35,8 +35,8 @@ export default function CreateCommunityButton() {
 
   const router = useRouter();
   const locale = useLocale();
-  const t = useTranslations('common.communities.create');
-  const tt = useTranslations('common.toast');
+  const t = useTranslations('communities.communities');
+  const tt = useTranslations('home.toast');
 
   // Portal-Root
   React.useEffect(() => {
@@ -282,7 +282,7 @@ export default function CreateCommunityButton() {
         className="px-3 py-1.5 rounded-full bg-[var(--purple)] text-white hover:opacity-95"
         onClick={() => setOpen(true)}
       >
-        {t('button')}
+        {t('create.button')}
       </button>
       {open && mounted && portalRef.current ? createPortal(modal, portalRef.current) : null}
     </>

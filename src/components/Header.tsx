@@ -52,7 +52,7 @@ function FilterIconFilled(props: React.SVGProps<SVGSVGElement>) {
 
 /* ================== Filter Toggle (UI, hängt außerhalb) ================== */
 function FeedFilterToggle({ open, setOpen }: { open: boolean; setOpen: (v: boolean) => void }) {
-  const t = useTranslations('common.feedFilter');
+  const t = useTranslations('home.feedFilter'); // feedFilter.json
   const wrapRef = React.useRef<HTMLDivElement | null>(null);
   const btnRef = React.useRef<HTMLButtonElement | null>(null);
   const panelRef = React.useRef<HTMLDivElement | null>(null);

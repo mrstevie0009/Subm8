@@ -43,7 +43,7 @@ export default function SettingsDrawer({ open, onClose }: Props) {
   const locale = useLocale();
   const pathname = usePathname();
   const search = useSearchParams();
-  const t = useTranslations('common.settings');
+  const t = useTranslations('settings.settings');
 
   const isAuth = Boolean(session?.user);
 

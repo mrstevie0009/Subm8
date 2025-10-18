@@ -7,7 +7,7 @@ import { useTranslations } from 'next-intl';
 export default function PostDetailHeader() {
   const router = useRouter();
   const { locale } = useParams() as { locale: string };
-  const tPost = useTranslations('common.post');
+  const tPost = useTranslations('post');
 
   const goBack = React.useCallback(() => {
     // Wenn es eine History gibt → zurück; sonst sauber auf den Feed der aktuellen Locale

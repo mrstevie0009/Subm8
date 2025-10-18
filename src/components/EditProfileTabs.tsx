@@ -68,7 +68,7 @@ async function fileToDataUrl(file: File): Promise<string> {
 
 /* ---------- Ownership Tab UI ---------- */
 function OwnershipTab({ userId, handle }: { userId: string; handle: string }) {
-  const t = useTranslations('common.ownershipTab');
+  const t = useTranslations('profile.ownershipTab');
 
   const [banner, setBanner] = React.useState<string | undefined>();
   const [avatar, setAvatar] = React.useState<string | undefined>();
@@ -288,7 +288,7 @@ export default function EditProfileTabs({
   action,
   EditFormComponent,
 }: Props): React.ReactElement {
-  const tTabs = useTranslations('common.editTabs');
+  const tTabs = useTranslations('profile.editTabs');
   const [tab, setTab] = React.useState<'general' | 'ownership'>('general');
 
   React.useEffect(() => {

@@ -16,7 +16,7 @@ type OfferPayload =
   | { ok: false; error: string };
 
 export default function OfferViewerModal({ open, onClose, handle }: Props) {
-  const t = useTranslations('common.offerViewer');
+  const t = useTranslations('offer.offerViewer');
   const [loading, setLoading] = React.useState(false);
   const [err, setErr] = React.useState<string | null>(null);
   const [data, setData] =

@@ -12,6 +12,7 @@ import CommunityInviteButton from '@/components/CommunityInviteButton';
 import type { FeedPost as PostCardFeedPost } from '@/components/PostCard';
 import { getTranslations } from 'next-intl/server';
 
+
 type Params = { locale: string; slug: string };
 
 function policyKeyFromDb(value: string) {
@@ -34,8 +35,8 @@ export default async function CommunityPage({ params }: { params: Promise<Params
   const { locale, slug } = await params;
   const [me, tDetail, tPolicy] = await Promise.all([
     getCurrentUser().catch(() => null),
-    getTranslations({ locale, namespace: 'common.communities.detail' }),
-    getTranslations({ locale, namespace: 'common.communities.page.policyBadge' })
+    getTranslations({ locale, namespace: 'communities.detail' }),
+    getTranslations({ locale, namespace: 'communities.communities.page.policyBadge' })
   ]);
 
   const community = await prisma.community.findUnique({

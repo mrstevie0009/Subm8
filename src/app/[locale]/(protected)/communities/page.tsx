@@ -89,7 +89,7 @@ function CommunityCardSkeleton() {
 }
 export default function CommunitiesPage() {
   const locale = useLocale();
-  const t = useTranslations('common.communitiesPage');
+  const t = useTranslations('communities.communitiesPage');
 
   // Policy-Label via i18n
   const policyLabel = React.useCallback(

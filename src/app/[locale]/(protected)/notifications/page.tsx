@@ -101,7 +101,7 @@ export default function NotificationsPage() {
   const router = useRouter();
   const { locale } = useParams() as { locale: string };
 
-  const t = useTranslations('common.notificationsPage');
+  const t = useTranslations('notifications.notificationsPage');
   const tTime = useTranslations('common.time');
 
   // Notifications laden
