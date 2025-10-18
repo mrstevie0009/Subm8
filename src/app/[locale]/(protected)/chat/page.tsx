@@ -675,41 +675,6 @@ export default function ChatListPage() {
   type Filter = 'all' | 'unread' | 'pinned';
   const [filter, setFilter] = React.useState<Filter>('all');
 
-  const markedRef = React.useRef<Set<string>>(new Set());
-
-  const markAsRead = React.useCallback(async (ids: string[]) => {
-    try {
-      // einfache Variante: pro Thread-Id ein POST auf /api/chat/:id/read
-      await Promise.all(
-        ids.map((cid) => fetch(`/api/chat/${cid}/read`, { method: 'POST' }))
-      );
-    } catch {
-      // leise ignorieren – UI bleibt trotzdem optimistisch auf 0
-    }
-  }, []);
-
-  React.useEffect(() => {
-    if (document.hidden) return;
-
-    const unreadIds = items
-      .filter((i) => i.unread > 0)
-      .map((i) => i.id)
-      .filter((id) => !markedRef.current.has(id));
-
-    if (unreadIds.length === 0) return;
-
-    // Optimistisch im UI auf gelesen setzen
-    setItems((prev) =>
-      prev.map((i) => (unreadIds.includes(i.id) ? { ...i, unread: 0 } : i))
-    );
-
-    // Vermerken, dass diese IDs gemeldet wurden
-    unreadIds.forEach((id) => markedRef.current.add(id));
-
-    // Server informieren
-    void markAsRead(unreadIds);
-  }, [items, markAsRead]);
-
   React.useEffect(() => {
     const onVis = () => {
       if (document.visibilityState === 'visible') {
@@ -881,22 +846,6 @@ export default function ChatListPage() {
     const href = withQuery(pathname, searchParams, { settings: '1' });
     router.push(href, { scroll: false });
   };
-
-  // ⬇️ NEU: Wenn Chatliste offen ist, alle sichtbaren Konversationen als „gesehen“ stempeln,
-  // damit BottomNav-Popups/Badges erst bei *neuen* Nachrichten wieder erscheinen.
-  React.useEffect(() => {
-    if (items.length === 0) return;
-    try {
-      const key = 'chatMiniDismiss:v1';
-      const raw = localStorage.getItem(key);
-      const map: Record<string, number> = raw ? JSON.parse(raw) : {};
-      const now = Date.now();
-      items.forEach(i => {
-        map[i.id] = Math.max(map[i.id] || 0, now);
-      });
-      localStorage.setItem(key, JSON.stringify(map));
-    } catch {}
-  }, [items]);
 
   return (
     <main className="mx-auto px-3" style={{ maxWidth: 760 }}>
