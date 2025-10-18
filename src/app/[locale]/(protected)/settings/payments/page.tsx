@@ -3,8 +3,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/currentUser";
-import { cancelAutodrainAction } from "@/app/actions/autodrain"; // ← keeps cancel per-sub working
-import { getTranslations } from "next-intl/server";
+import { cancelAutodrainAction } from "@/app/actions/autodrain";
+import { createTranslator } from "next-intl";
+import { notFound } from "next/navigation";
 
 type Params = { locale: string };
 
@@ -27,9 +28,18 @@ function parseMeta(input: unknown): PaymentMeta {
 type AutoDrainCadence = "DAILY" | "WEEKLY" | "MONTHLY";
 
 export default async function PaymentsPage({ params }: { params: Promise<Params> }) {
-  // params is a promise in your setup
+  // Dein Projekt gibt params als Promise – also so lassen
   const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: "common" });
+
+  // Messages manuell laden & Translator bauen (Namespace = "payment")
+  let t: ReturnType<typeof createTranslator>;
+  try {
+    const paymentFile = (await import(`@/messages/${locale}/payments.json`)).default;
+    const messages = { payment: paymentFile };
+    t = createTranslator({ locale, messages, namespace: "payment" });
+  } catch {
+    notFound();
+  }
 
   const cadenceLabel = (c: AutoDrainCadence) =>
     c === "DAILY"
@@ -66,7 +76,6 @@ export default async function PaymentsPage({ params }: { params: Promise<Params>
     );
   }
 
-  // Read payments (not tips), so net/gross are correct
   const payments = await prisma.payment.findMany({
     where: { OR: [{ payeeId: me.id }, { payerId: me.id }] },
     include: {
@@ -76,7 +85,6 @@ export default async function PaymentsPage({ params }: { params: Promise<Params>
     orderBy: { createdAt: "desc" },
   });
 
-  // Domme balance = NET of incoming SUCCEEDED payments
   const balanceCents = payments
     .filter((p) => p.payeeId === me.id && p.status === "SUCCEEDED")
     .reduce((acc, p) => acc + (p.amountNetToDommeCents || 0), 0);
@@ -87,7 +95,6 @@ export default async function PaymentsPage({ params }: { params: Promise<Params>
     const incoming = p.payeeId === me.id;
     const counterparty = incoming ? p.User_Payment_payerIdToUser : p.User_Payment_payeeIdToUser;
     const meta = parseMeta(p.metadataJson);
-    // incoming = NET (Domme), outgoing = GROSS (Sub)
     const amountCents = incoming ? p.amountNetToDommeCents : p.amountGrossCents;
 
     return {
@@ -106,11 +113,9 @@ export default async function PaymentsPage({ params }: { params: Promise<Params>
     };
   });
 
-  // Split into two views for clearer structure
   const receivedRows = rows.filter((r) => r.direction === "in");
   const sentRows = rows.filter((r) => r.direction === "out");
 
-  // Active Autodrain subs
   const outgoingSubs = await prisma.autoDrainSubscription.findMany({
     where: { subId: me.id, active: true },
     select: { id: true, dommeId: true, amountCents: true, currency: true, cadence: true, nextChargeAt: true },
@@ -191,7 +196,7 @@ export default async function PaymentsPage({ params }: { params: Promise<Params>
       <section className="px-4 py-6 border-b border-white/10">
         <h2 className="text-[18px] font-semibold mb-3">{t("paymentsPage.autodrain.title")}</h2>
 
-        {/* Enabled by you (you are Sub) */}
+        {/* Enabled by you */}
         <div className="mb-6">
           <div className="text-[13px] text-white/70 mb-2">{t("paymentsPage.autodrain.outgoing.title")}</div>
           {outgoingSubs.length === 0 ? (
@@ -290,7 +295,7 @@ export default async function PaymentsPage({ params }: { params: Promise<Params>
                         <td className="whitespace-nowrap">{fmtMoney(s.amountCents, s.currency, locale)}</td>
                         <td className="whitespace-nowrap">{cadenceLabel(s.cadence as AutoDrainCadence)}</td>
                         <td className="whitespace-nowrap">{s.nextChargeAt ? dtf.format(s.nextChargeAt) : "—"}</td>
-                        <td /> {/* Domme doesn't cancel here */}
+                        <td />
                       </tr>
                     );
                   })}
@@ -301,7 +306,7 @@ export default async function PaymentsPage({ params }: { params: Promise<Params>
         </div>
       </section>
 
-      {/* Sends (incoming payments) */}
+      {/* Received */}
       <section className="px-4 py-6 border-b border-white/10">
         <h2 className="text-[18px] font-semibold mb-3">{t("paymentsPage.payments.received.title")}</h2>
         {receivedRows.length === 0 ? (
@@ -352,7 +357,11 @@ export default async function PaymentsPage({ params }: { params: Promise<Params>
                       <td className="whitespace-nowrap">{amountLabel}</td>
                       <td className="whitespace-nowrap">{r.what}</td>
                       <td className={`whitespace-nowrap font-medium ${statusTone}`}>
-                        {t(`paymentsPage.payments.status.${r.status.toLowerCase() as "created"|"processing"|"succeeded"|"failed"|"canceled"}`)}
+                        {t(
+                          `paymentsPage.payments.status.${
+                            r.status.toLowerCase() as "created" | "processing" | "succeeded" | "failed" | "canceled"
+                          }`
+                        )}
                       </td>
                     </tr>
                   );
@@ -363,7 +372,7 @@ export default async function PaymentsPage({ params }: { params: Promise<Params>
         )}
       </section>
 
-      {/* You Sent (outgoing payments) */}
+      {/* Sent */}
       <section className="px-4 py-6">
         <h2 className="text-[18px] font-semibold mb-3">{t("paymentsPage.payments.sent.title")}</h2>
         {sentRows.length === 0 ? (
@@ -414,7 +423,11 @@ export default async function PaymentsPage({ params }: { params: Promise<Params>
                       <td className="whitespace-nowrap">{amountLabel}</td>
                       <td className="whitespace-nowrap">{r.what}</td>
                       <td className={`whitespace-nowrap font-medium ${statusTone}`}>
-                        {t(`paymentsPage.payments.status.${r.status.toLowerCase() as "created"|"processing"|"succeeded"|"failed"|"canceled"}`)}
+                        {t(
+                          `paymentsPage.payments.status.${
+                            r.status.toLowerCase() as "created" | "processing" | "succeeded" | "failed" | "canceled"
+                          }`
+                        )}
                       </td>
                     </tr>
                   );

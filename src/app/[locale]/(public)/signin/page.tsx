@@ -21,9 +21,9 @@ export default function SignInPage() {
   const locale = useLocale();
 
   // i18n
-  const t = useTranslations('common.auth.signin');
+  const t = useTranslations('auth.auth.signin');
   const tc = useTranslations('common');
-  const t2fa = useTranslations('common.auth.signin2fa');
+  const t2fa = useTranslations('auth.auth.signin2fa');
 
   const preset =
     sp.get('email') ??

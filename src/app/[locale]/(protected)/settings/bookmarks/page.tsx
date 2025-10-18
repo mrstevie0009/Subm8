@@ -3,12 +3,12 @@ import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/currentUser';
 import type { Role } from '@prisma/client';
 import PostCard, { type FeedPost } from '@/components/PostCard';
-import { getTranslations } from 'next-intl/server';
 import BackButton from '@/components/BackButtonStandard';
+import { createTranslator } from 'next-intl';
+import { notFound } from 'next/navigation';
 
 type Params = { locale: string };
 
-// Kompaktes Typ-Shape für die Abfrage
 type BookmarkRow = {
   id: string;
   createdAt: Date;
@@ -30,13 +30,19 @@ type BookmarkRow = {
 
 export default async function BookmarksPage({ params }: { params: Params }) {
   const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: 'common' });
 
-  // Aktuellen User holen (mit id!)
+  // Messages aus home.json laden (Namespace = "home")
+  let t: ReturnType<typeof createTranslator>;
+  try {
+    const homeFile = (await import(`@/messages/${locale}/home.json`)).default;
+    t = createTranslator({ locale, messages: { home: homeFile }, namespace: 'home' });
+  } catch {
+    notFound();
+  }
+
   const me = await getCurrentUser();
   const handle = me?.handle ?? '—';
 
-  // Gemeinsamer Header (Back nach Feed + Handle)
   const Header = (
     <header className="px-4 pt-3 pb-4 border-b border-white/10">
       <div className="flex items-center">
@@ -56,7 +62,6 @@ export default async function BookmarksPage({ params }: { params: Params }) {
     </header>
   );
 
-  // Wenn nicht eingeloggt → leerer Zustand
   if (!me) {
     return (
       <section className="rounded-app border border-sub overflow-hidden shadow-app">
@@ -73,14 +78,12 @@ export default async function BookmarksPage({ params }: { params: Params }) {
     );
   }
 
-  // Bookmarks laden
   const rows = (await prisma.bookmark.findMany({
     where: { userId: me.id },
     orderBy: { createdAt: 'desc' },
     include: { post: { include: { author: true } } },
   })) as unknown as BookmarkRow[];
 
-  // Leerzustand (eingeloggt, aber keine Bookmarks)
   if (rows.length === 0) {
     return (
       <section className="rounded-app border border-sub overflow-hidden shadow-app">
@@ -97,7 +100,6 @@ export default async function BookmarksPage({ params }: { params: Params }) {
     );
   }
 
-  // In UI-Posts mappen
   const posts: FeedPost[] = rows.map((b) => {
     const p = b.post;
     const a = p.author;
@@ -114,7 +116,7 @@ export default async function BookmarksPage({ params }: { params: Params }) {
           id: a.id,
           handle: a.handle,
           displayName: a.displayName ?? a.handle,
-          role: a.role, // 'DOMME' | 'SUBMISSIVE'
+          role: a.role,
           avatarUrl: a.avatarUrl,
         },
         quote: null,
@@ -141,7 +143,6 @@ export default async function BookmarksPage({ params }: { params: Params }) {
   );
 }
 
-/* ===== Icons ===== */
 function ChevronLeftIcon() {
   return (
     <svg

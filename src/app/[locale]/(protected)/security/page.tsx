@@ -5,7 +5,10 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import QRCode from 'qrcode';
 import { authenticator } from 'otplib';
-import { getTranslations } from 'next-intl/server';
+
+// ⬇️ i18n: createTranslator + manuelles Laden
+import { createTranslator } from 'next-intl';
+import { notFound } from 'next/navigation';
 
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/currentUser';
@@ -14,6 +17,7 @@ import PasskeySetupClient from '@/components/security/PasskeySetupClient';
 import { sendSms } from '@/lib/sms';
 
 type Params = { locale: string };
+type Awaitable<T> = T | Promise<T>;
 
 export const dynamic = 'force-dynamic';
 
@@ -276,9 +280,29 @@ export async function logoutAllSessionsAction() {
    Page
 ========================= */
 
-export default async function SecurityPage({ params }: { params: Params }) {
+export default async function SecurityPage({ params }: { params: Awaitable<Params> }) {
   const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: 'common.securityPage' });
+
+  // ⬇️ Nachrichten laden & Translator erzeugen
+  let t: ReturnType<typeof createTranslator>;
+  let tRoot: ReturnType<typeof createTranslator>;
+  try {
+    const settingsFile = (await import(`@/messages/${locale}/settings.json`)).default;
+    t = createTranslator({
+      locale,
+      messages: { settings: settingsFile },
+      namespace: 'settings.securityPage'
+    });
+    // Für keys wie "links.settings"
+    tRoot = createTranslator({
+      locale,
+      messages: { settings: settingsFile },
+      namespace: 'settings'
+    });
+  } catch {
+    notFound();
+  }
+
   const user = await getAuthUser();
 
   if (!user) {
@@ -522,7 +546,7 @@ export default async function SecurityPage({ params }: { params: Params }) {
               <p className="text-sm text-white/60">
                 {t('twofa.smsAddPhoneHintStart')}{' '}
                 <Link href={`/${locale}/settings`} className="underline decoration-white/30 hover:decoration-white">
-                  {t('links.settings')}
+                  {tRoot('links.settings')}
                 </Link>{' '}
                 {t('twofa.smsAddPhoneHintEnd')}
               </p>

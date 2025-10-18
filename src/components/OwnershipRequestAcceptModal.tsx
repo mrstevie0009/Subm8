@@ -54,7 +54,7 @@ export default function OwnershipRequestAcceptModal({
   onSuccess,
   selfUserId,
 }: Props) {
-  const t = useTranslations('common.ownershipRequestAcceptModal');
+  const t = useTranslations('ownership.ownershipRequestAcceptModal');
 
   const [mounted, setMounted] = React.useState(false);
   const [busy, setBusy] = React.useState(false);

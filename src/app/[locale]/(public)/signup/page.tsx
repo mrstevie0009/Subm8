@@ -63,7 +63,7 @@ function AccountTypeCard({
 export default function SignupStartPage() {
   const router = useRouter();
   const locale = useLocale();
-  const t = useTranslations('common.auth.signup');
+  const t = useTranslations('auth.auth.signup');
   const tc = useTranslations('common');
 
   const [username, setUsername] = React.useState('');

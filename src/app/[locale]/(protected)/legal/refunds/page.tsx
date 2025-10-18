@@ -1,14 +1,29 @@
 import { LegalArticle, Callout } from '@/components/legal/LegalArticle';
-import { getTranslations } from 'next-intl/server';
+import { createTranslator } from 'next-intl';
+import { notFound } from 'next/navigation';
 
 export const dynamic = 'force-static';
 
 type Params = { locale: string };
 
-export default async function RefundPage({ params }: { params: Params }) {
+export default async function LegalPage({ params }: { params: Params }) {
   const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: 'common.legal.refund'});
-  const updated = new Intl.DateTimeFormat('de-DE', { dateStyle: 'medium' }).format(new Date());
+
+  // i18n-Datei manuell laden und Translator erstellen
+  let t: ReturnType<typeof createTranslator>;
+  try {
+    const legalFile = (await import(`@/messages/${locale}/legal.json`)).default;
+
+    // WICHTIG: legalFile hat bereits die richtige Struktur (z.B. { legal: { legal: { overview: {...} } } })
+    t = createTranslator({
+      locale,
+      messages: legalFile,
+      namespace: 'legal.refund'
+    });
+  } catch {
+    notFound();
+  }
+  const updated = new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(new Date());
 
   return (
     <LegalArticle

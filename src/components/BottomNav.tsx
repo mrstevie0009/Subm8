@@ -8,6 +8,22 @@ import * as React from 'react';
 import { createPortal } from 'react-dom';
 import { useScrollHide } from '../hooks/useScrollHide';
 
+const CHAT_MINI_DISMISS_KEY = 'chatMiniDismiss:v1';
+
+function readChatMiniDismiss(): Record<string, number> {
+  try {
+    const raw = localStorage.getItem(CHAT_MINI_DISMISS_KEY);
+    return raw ? (JSON.parse(raw) as Record<string, number>) : {};
+  } catch {
+    return {};
+  }
+}
+function writeChatMiniDismiss(map: Record<string, number>) {
+  try {
+    localStorage.setItem(CHAT_MINI_DISMISS_KEY, JSON.stringify(map));
+  } catch {}
+}
+
 type WindowWithWebkit = Window & {
   webkitAudioContext?: typeof AudioContext;
 };
@@ -134,7 +150,7 @@ function MiniPopup({ anchorEl, avatarUrl, unreadCount, hidden, variant = 'chat',
 
     // Mittig über dem Icon ausrichten
     const left = Math.round(r.left + r.width / 2);
-    const top = Math.round(r.top - 15);
+    const top = Math.round(r.top - 17);
     setPos({ left, top });
   }, [anchorEl]);
 
@@ -293,6 +309,7 @@ function NavContent() {
       window.removeEventListener('storage', read);
     };
   }, []);
+
   const lastChatKeyRef = React.useRef<string | null>(null);
   const lastNotiKeyRef = React.useRef<string | null>(null);
   const isActive = (seg: string) =>
@@ -369,6 +386,21 @@ function NavContent() {
     unread: number;
   } | null>(null);
 
+    React.useEffect(() => {
+    const onOpen = (e: Event) => {
+      const ce = e as CustomEvent<{ conversationId?: string; userId?: string }>;
+      if (
+        miniUser &&
+        (ce.detail?.conversationId === miniUser.conversationId ||
+        ce.detail?.userId === miniUser.userId)
+      ) {
+        setMiniUser(null);
+      }
+    };
+    window.addEventListener('chat:thread-opened', onOpen as EventListener);
+    return () => window.removeEventListener('chat:thread-opened', onOpen as EventListener);
+  }, [miniUser]);
+
   const chatTabRef = React.useRef<HTMLAnchorElement | null>(null);
   const notiTabRef = React.useRef<HTMLAnchorElement | null>(null);
 
@@ -399,13 +431,12 @@ function NavContent() {
         }>;
       } = await res.json();
 
-      const list = (j?.ok && Array.isArray(j.items) ? j.items : []) as NonNullable<typeof j.items>;
-
-      // Any unread?
+      const list = (j?.ok && Array.isArray(j.items) ? j.items : []);
       const anyUnread = list.some((it) => (it.unread ?? 0) > 0);
-      setHasUnreadChat(anyUnread && !chatActive);
 
-      // letzter Thread mit unread > 0
+      // ⬇️ Badge am Chat-Tab immer zeigen, wenn es irgendwo Unread gibt
+      setHasUnreadChat(anyUnread);
+
       const latestUnread = list
         .filter((it) => (it.unread ?? 0) > 0)
         .sort((a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime())[0];
@@ -415,25 +446,33 @@ function NavContent() {
         return;
       }
 
-      // Wenn der aktuell geöffnete Thread genau dieser ist → Popup nicht zeigen
+      // Wenn genau dieser Thread offen ist → kein Popup
       const openId = currentThreadId;
       const shouldHide = openId && latestUnread.id === openId;
 
-      setMiniUser(
-        shouldHide
-          ? null
-          : {
-              conversationId: latestUnread.id,
-              userId: latestUnread.other.id,
-              avatarUrl: latestUnread.other.avatarUrl ?? null,
-              unread: latestUnread.unread ?? 0,
-            },
-      );
+      // Dismiss-Sperre: erst wieder zeigen, wenn spätere Nachricht kommt
+      const dismissMap = readChatMiniDismiss();
+      const lastDismissTs = dismissMap[latestUnread.id] || 0;
+      const lastMsgTs = new Date(latestUnread.lastMessageAt).getTime();
+      const suppressedByDismiss = lastDismissTs > 0 && lastMsgTs <= lastDismissTs;
+
+      if (shouldHide || suppressedByDismiss) {
+        setMiniUser(null);
+        return;
+      }
+
+      setMiniUser({
+        conversationId: latestUnread.id,
+        userId: latestUnread.other.id,
+        avatarUrl: latestUnread.other.avatarUrl ?? null,
+        unread: latestUnread.unread ?? 0,
+      });
     } catch {
       setHasUnreadChat(false);
       setMiniUser(null);
     }
-  }, [chatActive, currentThreadId]);
+  }, [currentThreadId]);
+
 
   React.useEffect(() => {
     checkChat();
@@ -460,13 +499,24 @@ function NavContent() {
   React.useEffect(() => {
     const onOpen = (e: Event) => {
       const ce = e as CustomEvent<{ conversationId?: string; userId?: string }>;
-      if (miniUser && (ce.detail?.conversationId === miniUser.conversationId || ce.detail?.userId === miniUser.userId)) {
+      if (miniUser &&
+          (ce.detail?.conversationId === miniUser.conversationId ||
+          ce.detail?.userId === miniUser.userId)) {
         setMiniUser(null);
+      }
+
+      // ⬇️ NEU: Dismiss-Sperre setzen für den geöffneten Thread
+      const cid = ce.detail?.conversationId;
+      if (cid) {
+        const map = readChatMiniDismiss();
+        map[cid] = Date.now();         // „gesehen/unterdrücken bis etwas Neueres kommt“
+        writeChatMiniDismiss(map);
       }
     };
     window.addEventListener('chat:thread-opened', onOpen as EventListener);
     return () => window.removeEventListener('chat:thread-opened', onOpen as EventListener);
   }, [miniUser]);
+
 
   // 🔔 Sound abspielen (Chat)
   React.useEffect(() => {

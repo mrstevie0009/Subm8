@@ -35,7 +35,7 @@ export default function TipRequestCreateModal({
   onCreate,
   defaultCurrency = 'EUR',
 }: Props) {
-  const t = useTranslations('common.tipRequest');
+  const t = useTranslations('payment.tipRequest');
 
   const [amount, setAmount] = React.useState('50');
   const [note, setNote] = React.useState('');

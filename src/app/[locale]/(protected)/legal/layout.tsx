@@ -1,6 +1,10 @@
+// src/app/[locale]/legal/layout.tsx
 import Link from "next/link";
-import { getTranslations } from "next-intl/server";
 import BackButton from '@/components/BackButtonStandard';
+
+// i18n: manuelles Laden + createTranslator
+import { createTranslator } from 'next-intl';
+import { notFound } from 'next/navigation';
 
 type Params = { locale: string };
 
@@ -11,18 +15,50 @@ export default async function LegalLayout({
   params,
 }: {
   children: React.ReactNode;
-  params: Promise<Params>;
+  params: Params;
 }) {
   const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: "common"});
+
+  // i18n-Dateien manuell laden und Translatoren erstellen
+  let tLegal: ReturnType<typeof createTranslator>;
+  let tLegalPage: ReturnType<typeof createTranslator>;
+  let tHome: ReturnType<typeof createTranslator>;
+
+  try {
+    const legalFile = (await import(`@/messages/${locale}/legal.json`)).default;
+    const homeFile  = (await import(`@/messages/${locale}/home.json`)).default;
+
+    // legal.* (z.B. legal.guidelines.title, legal.terms.title, …)
+    tLegal = createTranslator({
+      locale,
+      messages: legalFile,
+      namespace: 'legal'
+    });
+
+    // legalPage.* liegt als eigener Top-Level-Schlüssel im gleichen File
+    tLegalPage = createTranslator({
+      locale,
+      messages: legalFile,
+      namespace: 'legalPage'
+    });
+
+    // home.json hat KEIN "home"-Top-Level; für Namespace-Nutzung -> unter "home" wrappen
+    tHome = createTranslator({
+      locale,
+      messages: { home: homeFile },
+      namespace: 'home'
+    });
+  } catch {
+    notFound();
+  }
 
   const items = [
-    { href: `/${locale}/legal/community-guidelines`, label: t("legal.guidelines.title") },
-    { href: `/${locale}/legal/privacy`, label: t("legal.privacy.title") },
-    { href: `/${locale}/legal/terms`, label: t("legal.terms.title") },
-    { href: `/${locale}/legal/age-verification`, label: t("legal.age.title") },
-    { href: `/${locale}/legal/refunds`, label: t("legal.refund.title") },
-    { href: `/${locale}/legal/impressum`, label: t("legal.imprint.title") }
+    { href: `/${locale}/legal/community-guidelines`, label: tLegal('guidelines.title') },
+    { href: `/${locale}/legal/privacy`,              label: tLegal('privacy.title') },
+    { href: `/${locale}/legal/terms`,                label: tLegal('terms.title') },
+    { href: `/${locale}/legal/age-verification`,     label: tLegal('age.title') },
+    { href: `/${locale}/legal/refunds`,              label: tLegal('refund.title') },
+    { href: `/${locale}/legal/impressum`,            label: tLegal('imprint.title') }
   ];
 
   return (
@@ -30,16 +66,16 @@ export default async function LegalLayout({
       <header className="px-4 pt-3 pb-4 border-b border-white/10">
         <div className="flex items-center gap-2">
           <BackButton
-                    fallbackHref={`/${locale}`}
-                    ariaLabel={t('bookmarksPage.ariaBack')}
-                    className="inline-flex items-center justify-center p-1 hover:opacity-85 focus:outline-none focus:ring-2 focus:ring-[var(--purple)]/40"
-                    style={{ color: 'var(--purple)' }}
-                  >
-                    <ChevronLeftIcon />
-                  </BackButton>
-                  <div className="ml-2 sm:ml-3">
-            <h1 className="text-lg font-semibold">{t('legalPage.title')}</h1>
-            <p className="text-sm text-white/60">{t('legalPage.subtitle')}</p>
+            fallbackHref={`/${locale}`}
+            ariaLabel={tHome('bookmarksPage.ariaBack')}
+            className="inline-flex items-center justify-center p-1 hover:opacity-85 focus:outline-none focus:ring-2 focus:ring-[var(--purple)]/40"
+            style={{ color: 'var(--purple)' }}
+          >
+            <ChevronLeftIcon />
+          </BackButton>
+          <div className="ml-2 sm:ml-3">
+            <h1 className="text-lg font-semibold">{tLegalPage('title')}</h1>
+            <p className="text-sm text-white/60">{tLegalPage('subtitle')}</p>
           </div>
         </div>
       </header>

@@ -43,7 +43,7 @@ export default function AutoDrainRequestAcceptModal({
   conversationId,
   onSuccess,
 }: Props) {
-  const t = useTranslations('common.autoDrainAcceptModal');
+  const t = useTranslations('payment.autoDrainAcceptModal');
 
   const [sending, setSending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);

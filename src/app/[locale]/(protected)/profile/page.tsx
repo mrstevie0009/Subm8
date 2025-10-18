@@ -9,7 +9,10 @@ import { prisma } from '@/lib/prisma';
 import { hashPassword } from '@/lib/password';
 import { getCurrentUser } from '@/lib/currentUser';
 import type { User } from '@prisma/client';
-import { getTranslations, setRequestLocale } from 'next-intl/server';
+
+// ⬇️ i18n: auf createTranslator + manuelles Laden umgestellt
+import { createTranslator } from 'next-intl';
+import { notFound } from 'next/navigation';
 
 import BackButton from '@/components/BackButtonStandard';
 
@@ -19,6 +22,7 @@ import { authOptions } from '@/lib/auth';
 import { ACTIVE_COOKIE_NAME, buildActiveUserCookieValue } from '@/lib/activeUserCookie';
 
 type Params = { locale: string };
+type Awaitable<T> = T | Promise<T>;
 
 export const dynamic = 'force-dynamic';
 
@@ -278,12 +282,6 @@ export async function deactivateAccountAction() {
 
 /**
  * Vollständiges Löschen des aktuell aktiven Accounts.
- * Verhalten:
- * - Wenn gelöschter Account verknüpfter Alt ist → entkoppeln, Sessions löschen, active_user_id löschen, redirect('/')
- * - Wenn gelöschter Account Owner ist:
- *    - Wenn verknüpfte Accounts existieren: (Session des Owners ist ungültig) → vollständiges Logout und redirect('/signin')
- *      (Ein automatischer Wechsel ohne Re-Login ist nach Owner-Delete nicht möglich.)
- *    - Wenn keine verknüpften Accounts: vollständiges Logout → '/signin'
  */
 export async function deleteAccountAction() {
   'use server';
@@ -296,9 +294,7 @@ export async function deleteAccountAction() {
   const jar = await cookies();
 
   async function clearSessionAndCookies() {
-    // Sessiontoken aus DB löschen (alle Sessions des Users)
     await prisma.session.deleteMany({ where: { userId: user.id } }).catch(() => {});
-    // Cookies KLIENT-seitig invalidieren
     const expire = { expires: new Date(0), httpOnly: true, path: '/' as const };
     jar.set('sessionToken', '', expire);
     jar.set('next-auth.session-token', '', expire);
@@ -323,48 +319,26 @@ export async function deleteAccountAction() {
     }
   }
 
-  // 1) Entkoppeln beidseitig (Owner <-> Linked), Follows/Blocks etc. optional aufräumen
   await prisma.$transaction([
-    prisma.accountLink.deleteMany({ where: { ownerId: user.id } }), // falls der zu löschende selbst Owner war
-    prisma.accountLink.deleteMany({ where: { linkedUserId: user.id } }), // falls der zu löschende ein Alt war
-    // Optional: Weitere Entitäten löschen/neutralisieren (abhängig vom Schema):
-    // prisma.message.deleteMany({ where: { authorId: user.id } }),
-    // prisma.conversation.deleteMany({ where: { OR: [{ dommeId: user.id }, { subId: user.id }] } }),
-    // prisma.follow.deleteMany({ where: { OR: [{ followerId: user.id }, { followingId: user.id }] } }),
-    // prisma.block.deleteMany({ where: { OR: [{ blockerId: user.id }, { blockedId: user.id }] } }),
-    // prisma.bookmark.deleteMany({ where: { userId: user.id } }),
+    prisma.accountLink.deleteMany({ where: { ownerId: user.id } }),
+    prisma.accountLink.deleteMany({ where: { linkedUserId: user.id } }),
   ]);
 
-  // 2) Sessions des Users löschen
   await prisma.session.deleteMany({ where: { userId: user.id } }).catch(() => {});
-
-  // 3) User löschen
   await prisma.user.delete({ where: { id: user.id } }).catch((e) => {
-    // Falls FK-Constraints existieren: vorher Child-Datensätze löschen (siehe oben)
     throw e;
   });
 
-  // ========== Redirect-Logik wie vereinbart ==========
-
-  // A) Gelöschter Account war ein verknüpfter Alt (nicht Owner)
   if (ownerId && user.id !== ownerId) {
-    // Zurück auf Owner (active_user_id leeren) & Home
     await setActiveUserCookie(null);
     redirect('/');
   }
 
-  // B) Gelöschter Account war der Owner
   if (ownerId && user.id === ownerId) {
-    // Owner-Session ist nicht mehr gültig → vollständiges Logout
     await clearSessionAndCookies();
-
-    // Falls es verknüpfte Accounts gab, können wir ohne Re-Login NICHT automatisch wechseln.
-    // (Session gehört zum gelöschten User und ist entfernt.)
-    // → Zur Signin-Seite
     redirect('/signin');
   }
 
-  // C) Kein Owner in der Session (sollte selten passieren) → Logout zur Sicherheit
   await clearSessionAndCookies();
   redirect('/signin');
 }
@@ -406,13 +380,22 @@ export async function changeLanguageAction(formData: FormData) {
    Page Component (Server)
 ========================= */
 
-export default async function SettingsPage({ params }: { params: Params }) {
+export default async function SettingsPage({ params }: { params: Awaitable<Params> }) {
+  // Akzeptiert sowohl {locale} als Plain-Objekt als auch Promise<Params>
   const { locale } = await params;
 
-  // ⬅️ Locale für SSR setzen, damit getTranslations die richtige Sprache lädt
-  setRequestLocale(locale);
-
-  const t = await getTranslations({ locale, namespace: 'common.profileSettings' });
+  // ⬅️ Übersetzungen manuell laden & Translator für Namespace "settings.profileSettings" bauen
+  let t: ReturnType<typeof createTranslator>;
+  try {
+    const settingsFile = (await import(`@/messages/${locale}/settings.json`)).default;
+    t = createTranslator({
+      locale,
+      messages: { settings: settingsFile },
+      namespace: 'settings.profileSettings'
+    });
+  } catch {
+    notFound();
+  }
 
   const me = await getCurrentUser().catch(() => null);
   if (!me) {
@@ -481,7 +464,7 @@ export default async function SettingsPage({ params }: { params: Params }) {
         <div className="flex items-center gap-2">
           <BackButton
             fallbackHref={`/${locale}`}
-            ariaLabel={"back to feed"}
+            ariaLabel={t('ariaBack')}
             className="inline-flex items-center justify-center p-1 hover:opacity-85 focus:outline-none focus:ring-2 focus:ring-[var(--purple)]/40"
             style={{ color: 'var(--purple)' }}
           >

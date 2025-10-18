@@ -241,7 +241,7 @@ function GifPickerModal({
   onClose: () => void;
   onPick: (gifUrl: string) => void;
 }) {
-  const t = useTranslations('common.chatComposer');
+  const t = useTranslations('chat.chatComposer');
   const [q, setQ] = React.useState('');
   const [loading, setLoading] = React.useState(false);
   const [err, setErr] = React.useState<string | null>(null);
@@ -367,8 +367,8 @@ export default function ChatComposer({
   onCreateReply,
   loading = false,
 }: Props) {
-  const t = useTranslations('common.chatComposer');
-  const tVerify = useTranslations('common.verify');
+  const t = useTranslations('chat.chatComposer');
+  const tVerify = useTranslations('verify');
   const locale = useLocale();
   const router = useRouter();
   const { data: session } = useSession();

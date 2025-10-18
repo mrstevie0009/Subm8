@@ -43,7 +43,7 @@ function fmtCurrency(cents: number, currency = CURRENCY) {
 }
 
 function RolePill({ role }: { role: Props['toRole'] }) {
-  const t = useTranslations('common.tipModal.roles');
+  const t = useTranslations('payment.tipModal.roles');
   const isDomme = String(role).toUpperCase() === 'DOMME';
   return (
     <span
@@ -69,7 +69,7 @@ export default function TipModal({
   conversationId,
   onSuccess,
 }: Props) {
-  const t = useTranslations('common.tipModal');
+  const t = useTranslations('payment.tipModal');
 
   const [amount, setAmount] = React.useState('50');
   const [note, setNote] = React.useState('');

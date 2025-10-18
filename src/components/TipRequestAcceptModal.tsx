@@ -41,7 +41,7 @@ export default function TipRequestAcceptModal({
   conversationId,
   onSuccess,
 }: Props) {
-  const t = useTranslations('common.tipRequestAcceptModal');
+  const t = useTranslations('payment.tipRequestAcceptModal');
 
   const [sending, setSending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);

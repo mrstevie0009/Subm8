@@ -37,7 +37,7 @@ function GifPickerModal({
   onClose: () => void;
   onPick: (gifUrl: string) => void;
 }) {
-  const t = useTranslations('common.gifPicker');
+  const t = useTranslations('communities.gifPicker');
 
   const [q, setQ] = React.useState('');
   const [loading, setLoading] = React.useState(false);
@@ -217,8 +217,8 @@ function isHeicLike(file: File | undefined) {
 }
 
 export default function ComposePostModal({ open, onClose }: Props) {
-  const t = useTranslations('common.compose');
-  const tt = useTranslations('common.toast');
+  const t = useTranslations('communities.compose');
+  const tt = useTranslations('home.toast');
 
   const [mounted, setMounted] = React.useState(false);
   React.useEffect(() => setMounted(true), []);

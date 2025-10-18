@@ -3,8 +3,11 @@ import Link from 'next/link';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/currentUser';
-import { getTranslations } from 'next-intl/server';
 import BackButton from '@/components/BackButtonStandard';
+
+// i18n: manuelles Laden + createTranslator (wie bei Monetization)
+import { createTranslator } from 'next-intl';
+import { notFound } from 'next/navigation';
 
 type Params = { locale: string };
 
@@ -237,28 +240,45 @@ export default async function NotificationsPage({
 }) {
   const { locale } = await params;
   const me = await getCurrentUser().catch(() => null);
-  const t = await getTranslations({ locale, namespace: 'common' });
+
+  // i18n-Datei manuell laden und Translator erstellen (Namespace: "notifications")
+  let t: ReturnType<typeof createTranslator>;
+  try {
+    const notificationsFile = (await import(`@/messages/${locale}/notifications.json`)).default;
+    t = createTranslator({
+      locale,
+      messages: notificationsFile,
+      namespace: 'notifications',
+    });
+  } catch {
+    notFound();
+  }
 
   if (!me) {
     return (
       <section className="rounded-xl border border-white/10 overflow-hidden">
         <header className="px-4 pt-3 pb-4 border-b border-white/10">
           <div className="flex items-center gap-2">
-            <Link href={`/${locale}/settings`} className="p-1" aria-label={t('notifications.ariaBack')}>
+            <Link href={`/${locale}/settings`} className="p-1" aria-label={t('ariaBack')}>
               <ChevronLeftIcon />
             </Link>
             <div>
-              <h1 className="text-lg font-semibold">{t('notifications.title')}</h1>
-              <p className="text-sm text-white/60">{t('notifications.notSignedInNote')}</p>
+              <h1 className="text-lg font-semibold">{t('title')}</h1>
+              <p className="text-sm text-white/60">{t('notSignedInNote')}</p>
             </div>
           </div>
         </header>
-        <div className="p-6 text-white/80">{t('notifications.notSignedInIntro')}</div>
+        <div className="p-6 text-white/80">{t('notSignedInIntro')}</div>
       </section>
     );
   }
 
   const s = await readSettings(me.id);
+
+  // Strings für das eingebettete Script vorab holen (wie in Monetization)
+  const savingLabel = JSON.stringify(t('actions.saving') || 'Saving…');
+  const saveLabel   = JSON.stringify(t('actions.save') || 'Save settings');
+  const savedMsg    = JSON.stringify(t('actions.savedAria') || 'Settings have been saved.');
 
   return (
     <section className="rounded-xl border border-white/10 overflow-hidden">
@@ -266,15 +286,15 @@ export default async function NotificationsPage({
         <div className="flex items-center gap-2">
           <BackButton
             fallbackHref={`/${locale}`}
-            ariaLabel={t('bookmarksPage.ariaBack')}
+            ariaLabel={t('ariaBack')}
             className="inline-flex items-center justify-center p-1 hover:opacity-85 focus:outline-none focus:ring-2 focus:ring-[var(--purple)]/40"
             style={{ color: 'var(--purple)' }}
           >
             <ChevronLeftIcon />
           </BackButton>
           <div className="ml-2 sm:ml-3">
-            <h1 className="text-lg font-semibold">{t('notifications.title')}</h1>
-            <p className="text-sm text-white/60">{t('notifications.intro')}</p>
+            <h1 className="text-lg font-semibold">{t('title')}</h1>
+            <p className="text-sm text-white/60">{t('intro')}</p>
           </div>
         </div>
       </header>
@@ -287,56 +307,56 @@ export default async function NotificationsPage({
         aria-atomic="true"
         className="pointer-events-none fixed left-1/2 top-1/2 z-50 hidden -translate-x-1/2 -translate-y-1/2 transform rounded-full border border-white/15 bg-black/70 px-4 py-2 text-sm text-white/90 shadow-lg backdrop-blur"
       >
-        <span id="save-toast-text">{t('notifications.actions.savedAria')}</span>
+        <span id="save-toast-text">{t('actions.savedAria')}</span>
       </div>
 
       <form action={saveNotificationsAction} className="grid gap-6 p-4" id="notifications-form">
         {/* Anzeige & Sound */}
-        <Card title={t('notifications.cards.ui.title')}>
-          <Toggle name="uiPopup" label={t('notifications.cards.ui.popup')} defaultChecked={s.uiPopup} />
-          <Toggle name="uiSound" label={t('notifications.cards.ui.sound')} defaultChecked={s.uiSound} />
+        <Card title={t('cards.ui.title')}>
+          <Toggle name="uiPopup" label={t('cards.ui.popup')} defaultChecked={s.uiPopup} />
+          <Toggle name="uiSound" label={t('cards.ui.sound')} defaultChecked={s.uiSound} />
           <p className="text-xs text-white/50">
-            {t('notifications.cards.ui.note')}
+            {t('cards.ui.note')}
           </p>
         </Card>
 
         {/* Global */}
-        <Card title={t('notifications.cards.push.title')}>
-          <Toggle name="pushEnabled" label={t('notifications.cards.push.toggleActive')} defaultChecked={s.pushEnabled} />
-          <p className="text-xs text-white/50">{t('notifications.cards.push.note')}</p>
+        <Card title={t('cards.push.title')}>
+          <Toggle name="pushEnabled" label={t('cards.push.toggleActive')} defaultChecked={s.pushEnabled} />
+          <p className="text-xs text-white/50">{t('cards.push.note')}</p>
         </Card>
 
         {/* Direktnachrichten */}
-        <Card title={t('notifications.cards.dm.title')}>
-          <Toggle name="dmMessages" label={t('notifications.cards.dm.messages')} defaultChecked={s.dmMessages} />
-          <Toggle name="dmReactions" label={t('notifications.cards.dm.reactions')} defaultChecked={s.dmReactions} />
+        <Card title={t('cards.dm.title')}>
+          <Toggle name="dmMessages" label={t('cards.dm.messages')} defaultChecked={s.dmMessages} />
+          <Toggle name="dmReactions" label={t('cards.dm.reactions')} defaultChecked={s.dmReactions} />
         </Card>
 
         {/* Feed & Aktivitäten */}
-        <Card title={t('notifications.cards.feed.title')}>
-          <Toggle name="mentions" label={t('notifications.cards.feed.mentions')} defaultChecked={s.mentions} />
-          <Toggle name="comments" label={t('notifications.cards.feed.comments')} defaultChecked={s.comments} />
-          <Toggle name="likes" label={t('notifications.cards.feed.likes')} defaultChecked={s.likes} />
-          <Toggle name="newFollowers" label={t('notifications.cards.feed.newFollowers')} defaultChecked={s.newFollowers} />
+        <Card title={t('cards.feed.title')}>
+          <Toggle name="mentions" label={t('cards.feed.mentions')} defaultChecked={s.mentions} />
+          <Toggle name="comments" label={t('cards.feed.comments')} defaultChecked={s.comments} />
+          <Toggle name="likes" label={t('cards.feed.likes')} defaultChecked={s.likes} />
+          <Toggle name="newFollowers" label={t('cards.feed.newFollowers')} defaultChecked={s.newFollowers} />
         </Card>
 
         {/* E-Mail */}
-        <Card title={t('notifications.cards.email.title')}>
-          <Toggle name="emailMessages" label={t('notifications.cards.email.messages')} defaultChecked={s.emailMessages} />
-          <Toggle name="emailDigest" label={t('notifications.cards.email.digest')} defaultChecked={s.emailDigest} />
-          <p className="text-xs text-white/50">{t('notifications.cards.email.note')}</p>
+        <Card title={t('cards.email.title')}>
+          <Toggle name="emailMessages" label={t('cards.email.messages')} defaultChecked={s.emailMessages} />
+          <Toggle name="emailDigest" label={t('cards.email.digest')} defaultChecked={s.emailDigest} />
+          <p className="text-xs text-white/50">{t('cards.email.note')}</p>
         </Card>
 
         {/* Stummschalt-Filter */}
-        <Card title={t('notifications.cards.filters.title')}>
-          <Toggle name="muteNotFollowing" label={t('notifications.cards.filters.notFollowing')} defaultChecked={s.muteNotFollowing} />
-          <Toggle name="muteNotFollowers" label={t('notifications.cards.filters.notFollowers')} defaultChecked={s.muteNotFollowers} />
-          <Toggle name="muteNewAccounts" label={t('notifications.cards.filters.newAccounts')} defaultChecked={s.muteNewAccounts} />
-          <Toggle name="muteNoAvatar" label={t('notifications.cards.filters.noAvatar')} defaultChecked={s.muteNoAvatar} />
-          <Toggle name="requireEmailVerified" label={t('notifications.cards.filters.emailUnverified')} defaultChecked={s.requireEmailVerified} />
-          <Toggle name="requirePhoneVerified" label={t('notifications.cards.filters.phoneUnverified')} defaultChecked={s.requirePhoneVerified} />
+        <Card title={t('cards.filters.title')}>
+          <Toggle name="muteNotFollowing" label={t('cards.filters.notFollowing')} defaultChecked={s.muteNotFollowing} />
+          <Toggle name="muteNotFollowers" label={t('cards.filters.notFollowers')} defaultChecked={s.muteNotFollowers} />
+          <Toggle name="muteNewAccounts" label={t('cards.filters.newAccounts')} defaultChecked={s.muteNewAccounts} />
+          <Toggle name="muteNoAvatar" label={t('cards.filters.noAvatar')} defaultChecked={s.muteNoAvatar} />
+          <Toggle name="requireEmailVerified" label={t('cards.filters.emailUnverified')} defaultChecked={s.requireEmailVerified} />
+          <Toggle name="requirePhoneVerified" label={t('cards.filters.phoneUnverified')} defaultChecked={s.requirePhoneVerified} />
           <p className="text-xs text-white/50">
-            {t('notifications.cards.filters.note')}
+            {t('cards.filters.note')}
           </p>
         </Card>
 
@@ -344,11 +364,11 @@ export default async function NotificationsPage({
           <button
             type="submit"
             className="px-4 py-2 rounded-full bg-white/10 hover:bg-white/15 border border-white/15 data-[busy=true]:opacity-60"
-            aria-label={t('notifications.actions.save')}
-            title={t('notifications.actions.save')}
+            aria-label={t('actions.save')}
+            title={t('actions.save')}
             id="save-button"
           >
-            {t('notifications.actions.save')}
+            {t('actions.save')}
           </button>
 
           {/* Server Action direkt am Button */}
@@ -356,11 +376,11 @@ export default async function NotificationsPage({
             type="submit"
             formAction={resetNotificationsAction}
             className="px-4 py-2 rounded-full border border-red-400/40 text-red-200/90 hover:bg-red-500/10"
-            title={t('notifications.actions.resetTitle')}
-            aria-label={t('notifications.actions.reset')}
+            title={t('actions.resetTitle')}
+            aria-label={t('actions.reset')}
             id="reset-button"
           >
-            {t('notifications.actions.reset')}
+            {t('actions.reset')}
           </button>
         </div>
 
@@ -419,9 +439,9 @@ export default async function NotificationsPage({
                 // ---------- Submit per fetch zur API-Route ----------
                 var saveBtn = document.getElementById('save-button');
                 var resetBtn = document.getElementById('reset-button');
-                var savingLabel = ${JSON.stringify(t('notifications.actions.saving') || 'Saving…')};
-                var saveLabel = ${JSON.stringify(t('notifications.actions.save') || 'Save settings')};
-                var savedMsg = ${JSON.stringify(t('notifications.actions.savedAria') || 'Settings have been saved.')};
+                var savingLabel = ${savingLabel};
+                var saveLabel   = ${saveLabel};
+                var savedMsg    = ${savedMsg};
 
                 async function submitServerAction(ev){
                   ev.preventDefault();
@@ -457,8 +477,7 @@ export default async function NotificationsPage({
                     return;
                   }
 
-                  // Reset: optional auch ohne Navigation per API implementieren
-                  // -> aktuell lässt du Reset weiterhin als echte Server Action laufen.
+                  // Reset bleibt als echte Server Action.
                 }
 
                 form.addEventListener('submit', submitServerAction);

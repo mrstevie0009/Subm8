@@ -28,9 +28,9 @@ function TermsPrivacyModal({
   onClose: () => void;
   initialTab?: LegalTab;
 }) {
-  const tTerms = useTranslations('common.legal.terms');
-  const tPrivacy = useTranslations('common.legal.privacy');
-  const tShared = useTranslations('common.legal.shared');
+  const tTerms = useTranslations('legal.legal.terms');
+  const tPrivacy = useTranslations('legal.legal.privacy');
+  const tShared = useTranslations('legal.legal.shared');
 
   const [tab, setTab] = React.useState<LegalTab>(initialTab);
   React.useEffect(() => setTab(initialTab), [initialTab, open]);
@@ -232,8 +232,8 @@ export default function SignupAccountPage() {
   const sp = useSearchParams();
   const locale = useLocale();
 
-  const t = useTranslations('common.auth.signupAccount');
-  const tRole = useTranslations('common.post.role');
+  const t = useTranslations('auth.auth.signupAccount');
+  const tRole = useTranslations('post.role');
 
   const handle = (sp.get('handle') || '').toLowerCase();
   const roleParam = sp.get('role');

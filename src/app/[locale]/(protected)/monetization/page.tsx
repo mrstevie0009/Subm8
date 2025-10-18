@@ -1,17 +1,41 @@
 // src/app/[locale]/monetization/page.tsx
 import Link from "next/link";
-import { getTranslations } from "next-intl/server";
-import BackButton from '@/components/BackButtonStandard';
+import BackButton from "@/components/BackButtonStandard";
+
+// i18n: manuelles Laden + createTranslator
+import { createTranslator } from "next-intl";
+import { notFound } from "next/navigation";
 
 type Params = { locale: string };
 
 export const dynamic = "force-static";
 
 export default async function MonetizationPage({ params }: { params: Params }) {
-  const { locale } = params;
+  const { locale } = await params;
 
-  // Serverseitig laden – vermeidet Hook/Hydration-Probleme
-  const t = await getTranslations({ locale, namespace: "common.monetizationPage" });
+  // i18n laden
+  let t: ReturnType<typeof createTranslator>;
+  let tSettings: ReturnType<typeof createTranslator>;
+  try {
+    const monetizationFile = (await import(`@/messages/${locale}/monetization.json`)).default;
+    const settingsFile = (await import(`@/messages/${locale}/settings.json`)).default;
+
+    // monetization.json hat top-level "monetizationPage"
+    t = createTranslator({
+      locale,
+      messages: monetizationFile,
+      namespace: "monetizationPage",
+    });
+
+    // Nur für "Back to feed" o.ä. aus settings.settingsPage
+    tSettings = createTranslator({
+      locale,
+      messages: { settings: settingsFile },
+      namespace: "settings.settingsPage",
+    });
+  } catch {
+    notFound();
+  }
 
   // Helpers
   const list = (key: string): string[] => {
@@ -19,9 +43,14 @@ export default async function MonetizationPage({ params }: { params: Params }) {
     return Array.isArray(v) ? (v as string[]) : typeof v === "string" ? [v] : [];
   };
   const str = (key: string, fallback = ""): string => {
-    const val = t(key);
-    // Falls next-intl den Key-Namen zurückgibt, nutze Fallback
-    return typeof val === "string" && !val.includes(".") ? val : fallback || val;
+    const v = t.raw(key);
+    return typeof v === "string" ? v : fallback;
+  };
+  const num = (key: string, fallback: number): number => {
+    const v = t.raw(key);
+    if (typeof v === "number") return v;
+    const parsed = Number(v);
+    return Number.isFinite(parsed) ? parsed : fallback;
   };
 
   return (
@@ -30,13 +59,13 @@ export default async function MonetizationPage({ params }: { params: Params }) {
       <header className="px-4 pt-3 pb-5 border-b border-white/10 bg-gradient-to-b from-white/5 to-transparent">
         <div className="flex items-center gap-2">
           <BackButton
-                    fallbackHref={`/${locale}`}
-                    ariaLabel={t('bookmarksPage.ariaBack')}
-                    className="inline-flex items-center justify-center p-1 hover:opacity-85 focus:outline-none focus:ring-2 focus:ring-[var(--purple)]/40"
-                    style={{ color: 'var(--purple)' }}
-                  >
-                    <ChevronLeftIcon />
-                  </BackButton>
+            fallbackHref={`/${locale}`}
+            ariaLabel={tSettings("ariaBack")}
+            className="inline-flex items-center justify-center p-1 hover:opacity-85 focus:outline-none focus:ring-2 focus:ring-[var(--purple)]/40"
+            style={{ color: "var(--purple)" }}
+          >
+            <ChevronLeftIcon />
+          </BackButton>
           <div className="flex items-center gap-3">
             <CoinIcon className="w-6 h-6 opacity-80" />
             <div>
@@ -50,18 +79,9 @@ export default async function MonetizationPage({ params }: { params: Params }) {
       {/* Hero / KPIs */}
       <div className="p-4 md:p-6">
         <div className="grid gap-4 md:grid-cols-3">
-          <HeroCard
-            title={str("hero.walletRealtime.title")}
-            text={str("hero.walletRealtime.text")}
-          />
-          <HeroCard
-            title={str("hero.flexibleSources.title")}
-            text={str("hero.flexibleSources.text")}
-          />
-          <HeroCard
-            title={str("hero.clearTransparent.title")}
-            text={str("hero.clearTransparent.text")}
-          />
+          <HeroCard title={str("hero.walletRealtime.title")} text={str("hero.walletRealtime.text")} />
+          <HeroCard title={str("hero.flexibleSources.title")} text={str("hero.flexibleSources.text")} />
+          <HeroCard title={str("hero.clearTransparent.title")} text={str("hero.clearTransparent.text")} />
         </div>
       </div>
 
@@ -69,20 +89,18 @@ export default async function MonetizationPage({ params }: { params: Params }) {
       <div className="p-4 md:p-6 grid gap-6">
         {/* 1. Tips */}
         <MethodCard
-          number={str("Direct tips (tributes)", "1")}
+          number={num("methods.tips.number", 1)}
           title={str("methods.tips.title")}
           badge={str("methods.tips.badge")}
           icon={<LightningIcon className="w-5 h-5" />}
           bullets={list("methods.tips.bullets")}
           steps={list("methods.tips.steps")}
-          ctas={[
-            { label: str("methods.tips.ctaBackToSettings", "Back to Settings"), href: `/${locale}/settings` },
-          ]}
+          ctas={[{ label: str("methods.tips.ctaBackToSettings", "Back to settings"), href: `/${locale}/settings` }]}
         />
 
         {/* 2. Pay-per-View */}
         <MethodCard
-          number={str("Pay-per-view (optional)", "2")}
+          number={num("methods.ppv.number", 2)}
           title={str("methods.ppv.title")}
           badge={str("methods.ppv.badge")}
           icon={<EyeIcon className="w-5 h-5" />}
@@ -92,7 +110,7 @@ export default async function MonetizationPage({ params }: { params: Params }) {
 
         {/* 3. Custom Tributes */}
         <MethodCard
-          number={str("Custom tributes (drainer / tribute timer)", "3")}
+          number={num("methods.customTributes.number", 3)}
           title={str("methods.customTributes.title")}
           badge={str("methods.customTributes.badge")}
           icon={<RepeatIcon className="w-5 h-5" />}
@@ -102,20 +120,18 @@ export default async function MonetizationPage({ params }: { params: Params }) {
 
         {/* 4. Paid Communities */}
         <MethodCard
-          number={str("Community contributions (paid communities)", "4")}
+          number={num("methods.paidCommunities.number", 4)}
           title={str("methods.paidCommunities.title")}
           badge={str("methods.paidCommunities.badge")}
           icon={<UsersIcon className="w-5 h-5" />}
           bullets={list("methods.paidCommunities.bullets")}
           steps={list("methods.paidCommunities.steps")}
-          ctas={[
-            { label: str("methods.paidCommunities.ctaOpenCommunities", "Open communities"), href: `/${locale}/communities` },
-          ]}
+          ctas={[{ label: str("methods.paidCommunities.ctaOpenCommunities", "Open communities"), href: `/${locale}/communities` }]}
         />
 
         {/* 5. Payouts */}
         <MethodCard
-          number={str("methods.payouts.number", "5")}
+          number={num("methods.payouts.number", 5)}
           title={str("methods.payouts.title")}
           badge={str("methods.payouts.badge")}
           icon={<BankIcon className="w-5 h-5" />}
@@ -126,7 +142,7 @@ export default async function MonetizationPage({ params }: { params: Params }) {
 
         {/* 6. Leaderboard */}
         <MethodCard
-          number={str("Leaderboard & badges (gamification)", "6")}
+          number={num("methods.leaderboardBadges.number", 6)}
           title={str("methods.leaderboardBadges.title")}
           badge={str("methods.leaderboardBadges.badge")}
           icon={<TrophyIcon className="w-5 h-5" />}
@@ -183,8 +199,6 @@ function MethodCard(props: {
   note?: string;
 }) {
   const { number, title, badge, icon, bullets, steps, ctas, note } = props;
-  // statischer Text aus common.monetizationPage.methodCard:
-  // Wir lassen diese Komponente dumb und übergeben nur Plain-Strings.
   return (
     <section className="rounded-lg border border-white/10 overflow-hidden">
       <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-white/5">
@@ -193,7 +207,9 @@ function MethodCard(props: {
             {number}
           </span>
           <div className="flex items-center gap-2">
-            <span aria-hidden="true" className="shrink-0">{icon}</span>
+            <span aria-hidden="true" className="shrink-0">
+              {icon}
+            </span>
             <h2 className="text-base font-semibold">{title}</h2>
           </div>
         </div>
@@ -225,7 +241,6 @@ function MethodCard(props: {
           </div>
         ) : (
           <div className="rounded-md border border-white/10 bg-white/5 p-3 text-sm text-white/70">
-            {/* Fallback-Text in Deutsch; wenn du ihn i18n willst, gib ihn als Prop rein */}
             Nutze dieses Feature, wenn es zu deiner Audience passt – Preisgestaltung und Messaging
             sind entscheidend.
           </div>
@@ -283,7 +298,7 @@ function LinkButton({
   );
 }
 
-/* ======= Icons (inline, keine externen Libs) ======= */
+/* ======= Icons (inline) ======= */
 
 function ChevronLeftIcon() {
   return (

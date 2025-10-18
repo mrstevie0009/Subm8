@@ -38,7 +38,7 @@ export default function AutoDrainRequestCreateModal({
   onCreate,
   defaultCurrency = 'EUR',
 }: Props) {
-  const t = useTranslations('common.autoDrain');
+  const t = useTranslations('payment.autoDrain');
 
   const [amount, setAmount] = React.useState('50');
   const [cadence, setCadence] = React.useState<AutoDrainCadence>('MONTHLY');

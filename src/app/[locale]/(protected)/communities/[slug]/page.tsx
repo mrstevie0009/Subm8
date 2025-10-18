@@ -1,7 +1,8 @@
-//src/app/[locale]/(protected)/communities/[slug]/page.tsx
+// src/app/[locale]/(protected)/communities/[slug]/page.tsx
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/currentUser';
 import { notFound } from 'next/navigation';
+
 import CommunityJoinButton from '@/components/CommunityJoinButton';
 import CommunityComposer from '@/components/CommunityComposer';
 import BackButton from '@/components/BackButton';
@@ -10,8 +11,9 @@ import CommunityFeedClient from '@/components/CommunityFeedClient';
 import CommunityShareButton from '@/components/CommunityShareButton';
 import CommunityInviteButton from '@/components/CommunityInviteButton';
 import type { FeedPost as PostCardFeedPost } from '@/components/PostCard';
-import { getTranslations } from 'next-intl/server';
 
+// i18n: manuelles Laden
+import { createTranslator } from 'next-intl';
 
 type Params = { locale: string; slug: string };
 
@@ -33,11 +35,29 @@ function policyKeyFromDb(value: string) {
 // gleiche Selektion wie im Home-Feed, damit die PostCard alles hat
 export default async function CommunityPage({ params }: { params: Promise<Params> }) {
   const { locale, slug } = await params;
-  const [me, tDetail, tPolicy] = await Promise.all([
-    getCurrentUser().catch(() => null),
-    getTranslations({ locale, namespace: 'communities.detail' }),
-    getTranslations({ locale, namespace: 'communities.communities.page.policyBadge' })
-  ]);
+  
+  let tDetail: ReturnType<typeof createTranslator>;
+  let tPolicy: ReturnType<typeof createTranslator>;
+  try {
+    const communitiesFile = (await import(`@/messages/${locale}/communities.json`)).default;
+
+    tDetail = createTranslator({
+      locale,
+      messages: communitiesFile,
+      namespace: 'communities.detail'
+    });
+
+    // Wichtig: richtiges Namespace (ohne doppelte "communities")
+    tPolicy = createTranslator({
+      locale,
+      messages: communitiesFile,
+      namespace: 'communities.page.policyBadge'
+    });
+  } catch {
+    notFound();
+  }
+
+  const me = await getCurrentUser().catch(() => null);
 
   const community = await prisma.community.findUnique({
     where: { slug: slug.toLowerCase() },
@@ -242,7 +262,6 @@ export default async function CommunityPage({ params }: { params: Promise<Params
             alt=""
             className="block w-full h-[var(--banner-h)] object-cover select-none"
           />
-          {/* leichter Fade für Lesbarkeit – fängt nicht die Pointer ab */}
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/0 to-black/35" />
         </figure>
       </div>
@@ -257,7 +276,7 @@ export default async function CommunityPage({ params }: { params: Promise<Params
             shadow-app
             p-4
             before:content-[''] before:absolute before:inset-x-0
-            before:-top-3 sm:before:-top-4     /* sitzt knapp im Banner */
+            before:-top-3 sm:before:-top-4
             before:h-4 sm:before:h-5
             before:pointer-events-none
           `}

@@ -8,6 +8,7 @@ import { useLocale, useTranslations } from 'next-intl';
 import type { ChatUser } from '@/types/chat';
 import { blockUserAction, unblockUserAction } from '@/app/actions/blocks';
 import { reportUserAction } from '@/app/actions/reports';
+import { createPortal } from 'react-dom';
 
 type Props = {
   other: ChatUser & { role: 'domme' | 'submissive' | 'DOMME' | 'SUBMISSIVE' };
@@ -25,7 +26,7 @@ export default function ChatHeader({
   loading = false,
 }: Props) {
   const locale = useLocale();
-  const t = useTranslations('common.chatHeader');
+  const t = useTranslations('chat.chatHeader');
 
   // Responsive Größen
   const iconSize = 'clamp(28px, 3.6vw, 34px)';
@@ -56,25 +57,53 @@ export default function ChatHeader({
     } catch {}
   }, [blockedEither, onBlockStateChange]);
 
-  // 3-Punkte-Menü
+  // 3-Punkte-Menü → Portal + fixed Position
   const [menuOpen, setMenuOpen] = React.useState(false);
-  const menuRef = React.useRef<HTMLDivElement | null>(null);
+  const btnRef = React.useRef<HTMLButtonElement | null>(null);
+  const [menuPos, setMenuPos] = React.useState<{ top: number; left: number } | null>(null);
 
-  React.useEffect(() => {
-    function onDocClick(e: MouseEvent) {
-      const t = e.target as Node | null;
-      if (!menuRef.current?.contains(t as Node)) setMenuOpen(false);
+  // Position berechnen, wenn offen (und bei Scroll/Resize neu)
+  React.useLayoutEffect(() => {
+    if (!menuOpen) return;
+
+    function compute() {
+      const el = btnRef.current;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      const menuW = 224; // ≈ w-56
+      const gap = 8;
+
+      // Rechts ausrichten, aber Viewportränder respektieren
+      const maxLeft = window.innerWidth - menuW - 8;
+      const left = Math.max(8, Math.min(maxLeft, r.right - menuW));
+      const top = r.bottom + gap; // unterhalb des Headers
+      setMenuPos({ top, left });
     }
-    if (menuOpen) document.addEventListener('mousedown', onDocClick);
-    return () => document.removeEventListener('mousedown', onDocClick);
+
+    compute();
+    const onScroll = () => compute();
+    const onResize = () => compute();
+
+    window.addEventListener('scroll', onScroll, true);
+    window.addEventListener('resize', onResize);
+    return () => {
+      window.removeEventListener('scroll', onScroll, true);
+      window.removeEventListener('resize', onResize);
+    };
+  }, [menuOpen]);
+
+  // ESC zum Schließen
+  React.useEffect(() => {
+    if (!menuOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setMenuOpen(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
   }, [menuOpen]);
 
   const profileHref = `/${locale}/u/${other.username}`;
 
   return (
-    <header
-      className="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-black/65 backdrop-blur"
-    >
+    <header className="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-black/65 backdrop-blur">
       <div className="mx-auto w-full max-w-[760px] px-3 py-2 overflow-x-hidden">
         <div className="flex items-center gap-3">
           {/* Back */}
@@ -91,7 +120,7 @@ export default function ChatHeader({
           </Link>
 
           {/* Avatar → Profil */}
-          {loading ? ( // NEW
+          {loading ? (
             <div
               className="relative overflow-hidden rounded-full border border-white/15 bg-white/10 animate-pulse block"
               style={{ width: avatar, height: avatar }}
@@ -119,7 +148,7 @@ export default function ChatHeader({
           <div className="min-w-0 flex-1 leading-tight">
             <div className="flex items-center gap-2">
               {/* Displayname → Profil */}
-              {loading ? ( // NEW
+              {loading ? (
                 <div className="h-[18px] w-40 max-w-[55vw] rounded bg-white/10 animate-pulse" aria-hidden />
               ) : (
                 <h1 className="font-semibold truncate" style={{ fontSize: titleSz, lineHeight: 1.1 }}>
@@ -148,16 +177,16 @@ export default function ChatHeader({
               </span>
 
               {/* Block-Badges */}
-              {!loading && isBlockedByOther && ( // NEW condition
+              {!loading && isBlockedByOther && (
                 <Badge tone="danger">{t('badges.blockedYou')}</Badge>
               )}
-              {!loading && !isBlockedByOther && iBlocked && ( // NEW condition
+              {!loading && !isBlockedByOther && iBlocked && (
                 <Badge tone="danger">{t('badges.youBlocked')}</Badge>
               )}
             </div>
 
             {/* Handle → Profil */}
-            {loading ? ( // NEW
+            {loading ? (
               <div className="mt-1 h-[14px] w-24 rounded bg-white/10 animate-pulse" aria-hidden />
             ) : (
               <div className="truncate" style={{ fontSize: metaSz }}>
@@ -174,94 +203,103 @@ export default function ChatHeader({
           </div>
 
           {/* More */}
-          <div className="relative" ref={menuRef}>
+          <div className="relative">
             <button
+              ref={btnRef}
               aria-label={t('aria.more')}
-              className="inline-grid place-items-center rounded hover:bg-white/5 disabled:opacity-50" // NEW disabled style
+              className="inline-grid place-items-center rounded hover:bg-white/5 disabled:opacity-50"
               style={{ width: iconSize, height: iconSize }}
               onClick={() => setMenuOpen(v => !v)}
-              disabled={loading} // NEW
+              disabled={loading}
             >
               <svg viewBox="0 0 24 24" fill="currentColor"
-                  style={{ width: '56%', height: '56%', color: 'rgba(255,255,255,.95)' }}>
+                   style={{ width: '56%', height: '56%', color: 'rgba(255,255,255,.95)' }}>
                 <circle cx="12" cy="5" r="2" />
                 <circle cx="12" cy="12" r="2" />
                 <circle cx="12" cy="19" r="2" />
               </svg>
             </button>
-
-            {menuOpen && !loading && ( // NEW: Menü nie zeigen, wenn loading
-              <div
-                className="absolute right-0 mt-2 w-56 rounded-xl border border-white/10 bg-black/85 backdrop-blur shadow-lg p-1 z-50"
-                role="menu"
-              >
-                <Link
-                  href={profileHref}
-                  className="block px-3 py-2 rounded hover:bg-white/10"
-                  onClick={() => setMenuOpen(false)}
-                >
-                  {t('menu.viewProfile')}
-                </Link>
-
-                {/* Mute (Stub) */}
-                <button
-                  type="button"
-                  className="w-full text-left px-3 py-2 rounded hover:bg-white/10"
-                  onClick={() => {
-                    setMenuOpen(false);
-                    alert(t('menu.muteSoon'));
-                  }}
-                >
-                  {t('menu.mute')}
-                </button>
-
-                {/* Block/Unblock */}
-                {!iBlocked ? (
-                  <form
-                    action={blockUserAction}
-                    onSubmit={() => {
-                      setIBlocked(true);
-                      setMenuOpen(false);
-                    }}
-                  >
-                    <input type="hidden" name="blockedHandle" value={other.username} />
-                    <input type="hidden" name="handle" value={other.username} />
-                    <button className="w-full text-left px-3 py-2 rounded hover:bg-white/10  text-red-300">
-                      {t('menu.block')}
-                    </button>
-                  </form>
-                ) : (
-                  <form
-                    action={unblockUserAction}
-                    onSubmit={() => {
-                      setIBlocked(false);
-                      setMenuOpen(false);
-                    }}
-                  >
-                    <input type="hidden" name="blockedHandle" value={other.username} />
-                    <input type="hidden" name="handle" value={other.username} />
-                    <button className="w-full text-left px-3 py-2 rounded hover:bg-white/10  text-red-300">
-                      {t('menu.unblock')}
-                    </button>
-                  </form>
-                )}
-
-                {/* Report user (Chat) */}
-                <form
-                  action={reportUserAction}
-                  onSubmit={() => setMenuOpen(false)}
-                >
-                  <input type="hidden" name="handle" value={other.username} />
-                  <input type="hidden" name="reason" value="DM_ABUSE" />
-                  <button className="w-full text-left px-3 py-2 rounded hover:bg-white/10 text-red-300">
-                    {t('menu.reportConversation')}
-                  </button>
-                </form>
-              </div>
-            )}
           </div>
         </div>
       </div>
+
+      {/* Menü via Portal außerhalb des Headers */}
+      {menuOpen && !loading && menuPos && createPortal(
+        <>
+          {/* Click-away Layer */}
+          <div
+            className="fixed inset-0 z-[2147483646]"
+            onMouseDown={() => setMenuOpen(false)}
+          />
+          <div
+            className="fixed z-[2147483647] w-56 rounded-xl border border-white/10 bg-black/85 backdrop-blur shadow-lg p-1"
+            role="menu"
+            style={{ top: menuPos.top, left: menuPos.left }}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <Link
+              href={profileHref}
+              className="block px-3 py-2 rounded hover:bg-white/10"
+              onClick={() => setMenuOpen(false)}
+            >
+              {t('menu.viewProfile')}
+            </Link>
+
+            {/* Mute (Stub) */}
+            <button
+              type="button"
+              className="w-full text-left px-3 py-2 rounded hover:bg-white/10"
+              onClick={() => {
+                setMenuOpen(false);
+                alert(t('menu.muteSoon'));
+              }}
+            >
+              {t('menu.mute')}
+            </button>
+
+            {/* Block/Unblock */}
+            {!iBlocked ? (
+              <form
+                action={blockUserAction}
+                onSubmit={() => {
+                  setIBlocked(true);
+                  setMenuOpen(false);
+                }}
+              >
+                <input type="hidden" name="blockedHandle" value={other.username} />
+                <input type="hidden" name="handle" value={other.username} />
+                <button className="w-full text-left px-3 py-2 rounded hover:bg-white/10 text-red-300">
+                  {t('menu.block')}
+                </button>
+              </form>
+            ) : (
+              <form
+                action={unblockUserAction}
+                onSubmit={() => {
+                  setIBlocked(false);
+                  setMenuOpen(false);
+                }}
+              >
+                <input type="hidden" name="blockedHandle" value={other.username} />
+                <input type="hidden" name="handle" value={other.username} />
+                <button className="w-full text-left px-3 py-2 rounded hover:bg-white/10 text-red-300">
+                  {t('menu.unblock')}
+                </button>
+              </form>
+            )}
+
+            {/* Report user (Chat) */}
+            <form action={reportUserAction} onSubmit={() => setMenuOpen(false)}>
+              <input type="hidden" name="handle" value={other.username} />
+              <input type="hidden" name="reason" value="DM_ABUSE" />
+              <button className="w-full text-left px-3 py-2 rounded hover:bg-white/10 text-red-300">
+                {t('menu.reportConversation')}
+              </button>
+            </form>
+          </div>
+        </>,
+        document.body
+      )}
     </header>
   );
 }

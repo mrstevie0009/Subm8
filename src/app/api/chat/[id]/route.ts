@@ -164,6 +164,15 @@ export async function GET(_req: Request, { params }: Ctx) {
       }
     }
 
+     try {
+      await prisma.conversation.update({
+        where: { id },
+        data: iAmDomme ? { unreadForDomme: 0 } : { unreadForSub: 0 },
+      });
+    } catch {
+      // still akzeptieren
+    }
+
     // otherTyping (letzte 8s)
     const typingRow = await prisma.$queryRawUnsafe<{ exists: boolean }[]>(
       `SELECT EXISTS (

@@ -136,7 +136,7 @@ export default function OwnershipRequestCreateModal({
   handle,
   onCreate,
 }: Props) {
-  const t = useTranslations('common.ownershipRequest');
+  const t = useTranslations('ownership.ownershipRequest');
 
   const [mounted, setMounted] = React.useState(false);
   const [draft, setDraft] = React.useState<OwnershipDraft | null>(null);

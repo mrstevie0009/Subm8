@@ -28,6 +28,13 @@ export default async function RootLayout({ children, params }: LayoutProps) {
       const search   = (await import(`../../messages/${locale}/search.json`)).default;
       const notifications   = (await import(`../../messages/${locale}/notifications.json`)).default;
       const communitiesFile   = (await import(`../../messages/${locale}/communities.json`)).default;
+      const chatFile   = (await import(`../../messages/${locale}/chat.json`)).default;
+      const authFile   = (await import(`../../messages/${locale}/auth.json`)).default;
+      const legalFile   = (await import(`../../messages/${locale}/legal.json`)).default;
+      const paymentFile   = (await import(`../../messages/${locale}/payments.json`)).default;
+      const ownershipFile   = (await import(`../../messages/${locale}/ownership.json`)).default;
+      const monetizationFile   = (await import(`../../messages/${locale}/monetization.json`)).default;
+
 
 
       messages = {
@@ -41,7 +48,13 @@ export default async function RootLayout({ children, params }: LayoutProps) {
         offer: offer,
         search: search.search,
         notifications: notifications,
-        communities: communitiesFile,    
+        communities: communitiesFile, 
+        chat: chatFile,     
+        auth: authFile,
+        legal: legalFile,
+        payment: paymentFile, 
+        ownership: ownershipFile,
+        monetization: monetizationFile.monetizationPage,
         
       };
     } catch {

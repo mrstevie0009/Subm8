@@ -237,7 +237,7 @@ function ChatBlurredMediaGate({
   subtitle?: string;
   cta?: string;
 }) {
-  const t = useTranslations('common.chatThread');
+  const t = useTranslations('chat.chatThread');
   const isImg = mediaUrl ? (() => {
     const u = mediaUrl.split('?')[0].toLowerCase();
     return /\.(png|jpe?g|webp|gif)$/i.test(u);
@@ -351,7 +351,7 @@ function AudioBubble({
   mine: boolean;
   avatarUrl?: string | null;
 }) {
-  const t = useTranslations('common.chatThread');
+  const t = useTranslations('chat.chatThread');
   const audioRef = React.useRef<HTMLAudioElement | null>(null);
   const [dur, setDur] = React.useState(0);
   const [tNow, setTNow] = React.useState(0);
@@ -715,7 +715,7 @@ type CommunityPreviewDto = {
 };
 
 function CommunityLinkPreview({ slug, locale }: { slug: string; locale: string }) {
-  const t = useTranslations('common.chatThread');
+  const t = useTranslations('chat.chatThread');
   const [data, setData] = React.useState<CommunityPreviewDto | null>(null);
   const [loading, setLoading] = React.useState(true);
 
@@ -816,7 +816,7 @@ type InvitePreviewDto = {
 };
 
 function InviteLinkPreview({ code, href }: { code: string; href: string }) {
-  const t = useTranslations('common.chatThread');
+  const t = useTranslations('chat.chatThread');
   const [data, setData] = React.useState<InvitePreviewDto | null>(null);
   const [loading, setLoading] = React.useState(true);
 
@@ -953,7 +953,7 @@ function QuotedPreview({
   mine: boolean;
   locale: string;
 }) {
-  const t = useTranslations('common.chatThread');
+  const t = useTranslations('chat.chatThread');
   return (
     <div className={`mb-1 rounded-lg border px-2 py-1 ${mine ? 'border-white/25 bg-white/10' : 'border-white/12 bg-white/06'}`}>
       {target ? (
@@ -1039,7 +1039,7 @@ function ActionsPopover({ state, onClose, onReply, onReact }: {
   onReply: (msgId: string) => void;
   onReact: (msgId: string, emoji: string) => void;
 }) {
-  const t = useTranslations('common.chatThread');
+  const t = useTranslations('chat.chatThread');
   const popRef = React.useRef<HTMLDivElement | null>(null);
   const [pos, setPos] = React.useState<{ left: number; top: number }>({ left: 0, top: 0 });
   const [showPicker, setShowPicker] = React.useState(false);
@@ -1139,7 +1139,7 @@ function EmojiPickerSheet({
   onClose: () => void;
   onPick: (emoji: string) => void;
 }) {
-  const t = useTranslations('common.chatThread');
+  const t = useTranslations('chat.chatThread');
   const [q, setQ] = React.useState('');
   const [recent, setRecent] = React.useState<string[]>([]);
 
@@ -1256,8 +1256,8 @@ function EmojiPickerSheet({
 /* ------------------------- Page ------------------------- */
 export default function ChatThreadPage() {
   
-  const t = useTranslations('common.chatThread');
-  const tVerify = useTranslations('common.verify');
+  const t = useTranslations('chat.chatThread');
+  const tVerify = useTranslations('verify');
   const { id } = useParams<{ id: string }>();
   const searchParams = useSearchParams();
   const locale = useLocale();
@@ -1322,6 +1322,22 @@ export default function ChatThreadPage() {
     toDisplayName: string;
     toAvatarUrl?: string;
   } | null>(null);
+
+    React.useEffect(() => {
+    if (!other) return;
+    const ev = new CustomEvent('chat:thread-opened', {
+      detail: { conversationId: String(id), userId: other.id },
+    });
+    window.dispatchEvent(ev);
+  }, [id, other]);
+
+  const didMarkReadRef = React.useRef(false);
+  React.useEffect(() => {
+    if (didMarkReadRef.current) return;
+    if (!other) return;
+    didMarkReadRef.current = true;
+    void fetch(`/api/chat/${id}/read`, { method: 'POST' });
+  }, [id, other]);
 
   const [ownToAccept, setOwnToAccept] = React.useState<OwnershipReqPayload | null>(null);
 
