@@ -1,3 +1,4 @@
+//src/components/HomeFeedClient.tsx
 'use client';
 
 import * as React from 'react';
@@ -356,12 +357,40 @@ export default function HomeFeedClient({ initialItems }: Props) {
     return () => io.disconnect();
   }, [feedQuery, loadingMore, endReached, oldestISO]);
 
-  function handleClickNew() {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    setTimeout(() => {
-      void loadNewPosts();
-    }, 150);
+  function smoothScrollToTop(duration = 350) {
+    return new Promise<void>((resolve) => {
+      const startY = window.scrollY || window.pageYOffset || 0;
+      if (startY <= 0) return resolve();
+
+      const start = performance.now();
+      const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
+
+      function step(now: number) {
+        const t = Math.min(1, (now - start) / duration);
+        const eased = easeOutCubic(t);
+        const y = Math.round(startY * (1 - eased));
+        window.scrollTo(0, y);
+        if (t < 1) requestAnimationFrame(step);
+        else resolve();
+      }
+
+      requestAnimationFrame(step);
+    });
   }
+
+
+  async function handleClickNew() {
+  // 1) Sanft nach oben (schneller, aber nicht „teleport“)
+  await smoothScrollToTop(380);
+
+  // 2) Neue Posts laden (zeigt dein lila Button als Spinner)
+  await loadNewPosts();
+
+  // 3) Nach Commit minimal „nachziehen“, wieder smooth aber sehr kurz
+  requestAnimationFrame(() => {
+    void smoothScrollToTop(160);
+  });
+}
 
   return (
     <>
@@ -372,7 +401,9 @@ export default function HomeFeedClient({ initialItems }: Props) {
       <div
         className={`
           fixed left-1/2 -translate-x-1/2 z-[70]
-          ${newCount > 0 && !atTop ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}
+          ${(loadingNew || (newCount > 0 && !atTop))
+            ? 'opacity-100 pointer-events-auto'
+            : 'opacity-0 pointer-events-none'}
           transition-opacity duration-300
         `}
         style={{ top: buttonTop }}
@@ -383,7 +414,22 @@ export default function HomeFeedClient({ initialItems }: Props) {
           className="px-4 h-9 rounded-full bg-[var(--purple)] text-white text-[13px] font-semibold shadow-[0_8px_30px_-12px_rgba(139,92,246,.9)] hover:opacity-95"
           aria-live="polite"
         >
-          {loadingNew ? 'Loading…' : `${newCount} New ${newCount === 1 ? 'post' : 'posts'}`}
+          {loadingNew ? (
+            <span className="inline-block align-middle" aria-label="Loading" role="status">
+              <svg
+                viewBox="0 0 24 24"
+                className="w-5 h-5 animate-spin"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <circle cx="12" cy="12" r="9" className="opacity-25" />
+                <path d="M21 12a9 9 0 0 1-9 9" />
+              </svg>
+            </span>
+          ) : (
+            `${newCount} New ${newCount === 1 ? 'post' : 'posts'}`
+          )}
         </button>
       </div>
 

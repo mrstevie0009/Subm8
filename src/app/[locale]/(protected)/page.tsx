@@ -1,3 +1,4 @@
+// src/app/[locale]/(protected)/page.tsx
 import HomeFeedClient from '@/components/HomeFeedClient';
 import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';

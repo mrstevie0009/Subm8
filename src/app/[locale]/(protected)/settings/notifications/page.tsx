@@ -29,16 +29,11 @@ type NotifSettings = {
   likes: boolean;
   newFollowers: boolean;
 
-  // E-Mail
-  emailMessages: boolean;
-  emailDigest: boolean;
-
   // Filter (Stummschalten/Anforderungen)
   muteNotFollowing: boolean;
   muteNotFollowers: boolean;
   muteNewAccounts: boolean;
   muteNoAvatar: boolean;
-  requireEmailVerified: boolean;
   requirePhoneVerified: boolean;
 };
 
@@ -56,14 +51,10 @@ const DEFAULTS: NotifSettings = {
   likes: true,
   newFollowers: true,
 
-  emailMessages: false,
-  emailDigest: false,
-
   muteNotFollowing: false,
   muteNotFollowers: false,
   muteNewAccounts: false,
   muteNoAvatar: false,
-  requireEmailVerified: false,
   requirePhoneVerified: false,
 };
 
@@ -94,7 +85,6 @@ async function ensureSettingsTable() {
       "muteNotFollowers" BOOLEAN NOT NULL DEFAULT false,
       "muteNewAccounts" BOOLEAN NOT NULL DEFAULT false,
       "muteNoAvatar" BOOLEAN NOT NULL DEFAULT false,
-      "requireEmailVerified" BOOLEAN NOT NULL DEFAULT false,
       "requirePhoneVerified" BOOLEAN NOT NULL DEFAULT false,
 
       "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -117,9 +107,8 @@ async function readSettings(userId: string): Promise<NotifSettings> {
       "uiSound", "uiPopup",
       "dmMessages", "dmReactions",
       "mentions", "comments", "likes", "newFollowers",
-      "emailMessages", "emailDigest",
       "muteNotFollowing", "muteNotFollowers", "muteNewAccounts", "muteNoAvatar",
-      "requireEmailVerified", "requirePhoneVerified"
+      "requirePhoneVerified"
     FROM "UserNotificationSettings"
     WHERE "userId" = ${userId}
     LIMIT 1
@@ -148,14 +137,10 @@ async function upsertSettings(userId: string, form: FormData) {
     likes:                    boolFromForm(form, 'likes'),
     newFollowers:             boolFromForm(form, 'newFollowers'),
 
-    emailMessages:            boolFromForm(form, 'emailMessages'),
-    emailDigest:              boolFromForm(form, 'emailDigest'),
-
     muteNotFollowing:         boolFromForm(form, 'muteNotFollowing'),
     muteNotFollowers:         boolFromForm(form, 'muteNotFollowers'),
     muteNewAccounts:          boolFromForm(form, 'muteNewAccounts'),
     muteNoAvatar:             boolFromForm(form, 'muteNoAvatar'),
-    requireEmailVerified:     boolFromForm(form, 'requireEmailVerified'),
     requirePhoneVerified:     boolFromForm(form, 'requirePhoneVerified'),
   };
 
@@ -170,9 +155,8 @@ async function upsertSettings(userId: string, form: FormData) {
       "uiSound", "uiPopup",
       "dmMessages", "dmReactions",
       "mentions", "comments", "likes", "newFollowers",
-      "emailMessages", "emailDigest",
       "muteNotFollowing", "muteNotFollowers", "muteNewAccounts", "muteNoAvatar",
-      "requireEmailVerified", "requirePhoneVerified",
+      "requirePhoneVerified",
       "updatedAt"
     )
     VALUES (
@@ -181,9 +165,8 @@ async function upsertSettings(userId: string, form: FormData) {
       ${values.uiSound}, ${values.uiPopup},
       ${values.dmMessages}, ${values.dmReactions},
       ${values.mentions}, ${values.comments}, ${values.likes}, ${values.newFollowers},
-      ${values.emailMessages}, ${values.emailDigest},
       ${values.muteNotFollowing}, ${values.muteNotFollowers}, ${values.muteNewAccounts}, ${values.muteNoAvatar},
-      ${values.requireEmailVerified}, ${values.requirePhoneVerified},
+      ${values.requirePhoneVerified},
       NOW()
     )
     ON CONFLICT ("userId") DO UPDATE SET
@@ -196,13 +179,10 @@ async function upsertSettings(userId: string, form: FormData) {
       "comments" = EXCLUDED."comments",
       "likes" = EXCLUDED."likes",
       "newFollowers" = EXCLUDED."newFollowers",
-      "emailMessages" = EXCLUDED."emailMessages",
-      "emailDigest" = EXCLUDED."emailDigest",
       "muteNotFollowing" = EXCLUDED."muteNotFollowing",
       "muteNotFollowers" = EXCLUDED."muteNotFollowers",
       "muteNewAccounts" = EXCLUDED."muteNewAccounts",
       "muteNoAvatar" = EXCLUDED."muteNoAvatar",
-      "requireEmailVerified" = EXCLUDED."requireEmailVerified",
       "requirePhoneVerified" = EXCLUDED."requirePhoneVerified",
       "updatedAt" = NOW();
   `;
@@ -340,20 +320,12 @@ export default async function NotificationsPage({
           <Toggle name="newFollowers" label={t('cards.feed.newFollowers')} defaultChecked={s.newFollowers} />
         </Card>
 
-        {/* E-Mail */}
-        <Card title={t('cards.email.title')}>
-          <Toggle name="emailMessages" label={t('cards.email.messages')} defaultChecked={s.emailMessages} />
-          <Toggle name="emailDigest" label={t('cards.email.digest')} defaultChecked={s.emailDigest} />
-          <p className="text-xs text-white/50">{t('cards.email.note')}</p>
-        </Card>
-
         {/* Stummschalt-Filter */}
         <Card title={t('cards.filters.title')}>
           <Toggle name="muteNotFollowing" label={t('cards.filters.notFollowing')} defaultChecked={s.muteNotFollowing} />
           <Toggle name="muteNotFollowers" label={t('cards.filters.notFollowers')} defaultChecked={s.muteNotFollowers} />
           <Toggle name="muteNewAccounts" label={t('cards.filters.newAccounts')} defaultChecked={s.muteNewAccounts} />
           <Toggle name="muteNoAvatar" label={t('cards.filters.noAvatar')} defaultChecked={s.muteNoAvatar} />
-          <Toggle name="requireEmailVerified" label={t('cards.filters.emailUnverified')} defaultChecked={s.requireEmailVerified} />
           <Toggle name="requirePhoneVerified" label={t('cards.filters.phoneUnverified')} defaultChecked={s.requirePhoneVerified} />
           <p className="text-xs text-white/50">
             {t('cards.filters.note')}

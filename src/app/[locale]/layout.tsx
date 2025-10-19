@@ -62,17 +62,13 @@ export default async function RootLayout({ children, params }: LayoutProps) {
     }
 
   return (
-    <html lang={locale}>
-      <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-      </head>
-      <body className={`${inter.className} bg-black text-white`}>
-        <NextIntlClientProvider locale={locale} messages={messages}>
-          <Providers>
-            {children}
-          </Providers>
-        </NextIntlClientProvider>
-      </body>
-    </html>
+    <NextIntlClientProvider locale={locale} messages={messages}>
+      <Providers>
+        {/* optional: die Body-Klassen hier auf ein Wrapper-<div> setzen */}
+        <div className={`${inter.className} bg-black text-white`}>
+          {children}
+        </div>
+      </Providers>
+    </NextIntlClientProvider>
   )
 }

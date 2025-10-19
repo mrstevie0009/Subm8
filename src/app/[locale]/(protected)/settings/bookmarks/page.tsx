@@ -6,6 +6,7 @@ import PostCard, { type FeedPost } from '@/components/PostCard';
 import BackButton from '@/components/BackButtonStandard';
 import { createTranslator } from 'next-intl';
 import { notFound } from 'next/navigation';
+import React from 'react';
 
 type Params = { locale: string };
 
@@ -29,7 +30,7 @@ type BookmarkRow = {
 };
 
 export default async function BookmarksPage({ params }: { params: Params }) {
-  const { locale } = await params;
+  const { locale } = params;
 
   // Messages aus home.json laden (Namespace = "home")
   let t: ReturnType<typeof createTranslator>;
@@ -64,17 +65,19 @@ export default async function BookmarksPage({ params }: { params: Params }) {
 
   if (!me) {
     return (
-      <section className="rounded-app border border-sub overflow-hidden shadow-app">
-        {Header}
-        <div className="p-10 md:p-14">
-          <h2 className="text-[28px] md:text-[36px] font-extrabold leading-tight mb-3">
-            {t('bookmarksPage.guestTitle')}
-          </h2>
-          <p className="text-white/70 text-[15px] md:text-[17px]">
-            {t('bookmarksPage.guestDesc')}
-          </p>
-        </div>
-      </section>
+      <Viewport>
+        <section className="mx-auto max-w-3xl rounded-app border border-sub overflow-hidden shadow-app">
+          {Header}
+          <div className="p-10 md:p-14">
+            <h2 className="text-[28px] md:text-[36px] font-extrabold leading-tight mb-3">
+              {t('bookmarksPage.guestTitle')}
+            </h2>
+            <p className="text-white/70 text-[15px] md:text-[17px]">
+              {t('bookmarksPage.guestDesc')}
+            </p>
+          </div>
+        </section>
+      </Viewport>
     );
   }
 
@@ -86,17 +89,19 @@ export default async function BookmarksPage({ params }: { params: Params }) {
 
   if (rows.length === 0) {
     return (
-      <section className="rounded-app border border-sub overflow-hidden shadow-app">
-        {Header}
-        <div className="p-10 md:p-14">
-          <h2 className="text-[28px] md:text-[36px] font-extrabold leading-tight mb-3">
-            {t('bookmarksPage.emptyTitle')}
-          </h2>
-          <p className="text-white/70 text-[15px] md:text-[17px]">
-            {t('bookmarksPage.emptyDesc')}
-          </p>
-        </div>
-      </section>
+      <Viewport>
+        <section className="mx-auto max-w-3xl rounded-app border border-sub overflow-hidden shadow-app">
+          {Header}
+          <div className="p-10 md:p-14">
+            <h2 className="text-[28px] md:text-[36px] font-extrabold leading-tight mb-3">
+              {t('bookmarksPage.emptyTitle')}
+            </h2>
+            <p className="text-white/70 text-[15px] md:text-[17px]">
+              {t('bookmarksPage.emptyDesc')}
+            </p>
+          </div>
+        </section>
+      </Viewport>
     );
   }
 
@@ -130,16 +135,31 @@ export default async function BookmarksPage({ params }: { params: Params }) {
   });
 
   return (
-    <section className="rounded-app border border-sub overflow-hidden shadow-app">
-      {Header}
-      <div className="divide-y divide-white/10">
-        {posts.map((post) => (
-          <div key={post.id} className="p-4">
-            <PostCard post={post} />
-          </div>
-        ))}
+    <Viewport>
+      <section className="mx-auto max-w-3xl rounded-app border border-sub overflow-hidden shadow-app">
+        {Header}
+        <div className="divide-y divide-white/10">
+          {posts.map((post) => (
+            <div key={post.id} className="p-4">
+              <PostCard post={post} />
+            </div>
+          ))}
+        </div>
+      </section>
+    </Viewport>
+  );
+}
+
+/** Vollbild-Wrapper: Hintergrund füllt die Seite; Scrollen nur im Inhalt */
+function Viewport({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="fixed inset-0 z-0 bg-black bg-gradient-to-b from-black to-[#0b0b0b]">
+      <div className="h-full overflow-y-auto overscroll-contain">
+        <div className="px-3 sm:px-4 py-4 sm:py-6 pb-[max(1rem,env(safe-area-inset-bottom))]">
+          {children}
+        </div>
       </div>
-    </section>
+    </div>
   );
 }
 

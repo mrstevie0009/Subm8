@@ -27,7 +27,16 @@ export default async function SettingsPage({ params }: { params: Promise<Params>
   ];
 
   return (
-    <section className="rounded-app border border-sub overflow-hidden shadow-app">
+    <div
+      className="
+        min-h-[100svh]
+        bg-black
+        bg-gradient-to-b from-black to-[#0b0b0b]
+        px-3 sm:px-4 py-4 sm:py-6
+        pb-[max(1rem,env(safe-area-inset-bottom))]
+      "
+    >
+    <section className="mx-auto max-w-3xl rounded-app border border-sub overflow-hidden shadow-app">
       <header className="px-4 pt-3 pb-4 border-b border-white/10">
         <div className="flex items-center">
           <Link
@@ -83,6 +92,7 @@ export default async function SettingsPage({ params }: { params: Promise<Params>
         ))}
       </ul>
     </section>
+    </div>
   );
 }
 

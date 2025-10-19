@@ -6,7 +6,6 @@ import { redirect } from 'next/navigation';
 import QRCode from 'qrcode';
 import { authenticator } from 'otplib';
 
-// ⬇️ i18n: createTranslator + manuelles Laden
 import { createTranslator } from 'next-intl';
 import { notFound } from 'next/navigation';
 
@@ -15,6 +14,7 @@ import { getCurrentUser } from '@/lib/currentUser';
 import BackButton from '@/components/BackButtonStandard';
 import PasskeySetupClient from '@/components/security/PasskeySetupClient';
 import { sendSms } from '@/lib/sms';
+import React from 'react';
 
 type Params = { locale: string };
 type Awaitable<T> = T | Promise<T>;
@@ -46,7 +46,7 @@ async function getAuthUser() {
       email: true,
       phone: true,
       twoFactorEnabled: true,
-      twoFactorType: true, // 'TOTP' | 'WEBAUTHN' | 'SMS' | null
+      twoFactorType: true,
       twoFactorSecret: true,
       twoFactorTempSecret: true,
       passwordResetProtection: true,
@@ -99,12 +99,8 @@ export async function verifyTotpAction(formData: FormData) {
   const { user } = await requireUser();
   const token = (formData.get('token') ?? '').toString().trim();
 
-  if (!user.twoFactorTempSecret) {
-    throw new Error('no_totp_setup');
-  }
-  if (!token || !/^\d{6}$/.test(token)) {
-    throw new Error('invalid_code');
-  }
+  if (!user.twoFactorTempSecret) throw new Error('no_totp_setup');
+  if (!token || !/^\d{6}$/.test(token)) throw new Error('invalid_code');
 
   const ok = authenticator.check(token, user.twoFactorTempSecret);
   if (!ok) throw new Error('invalid_code');
@@ -283,22 +279,13 @@ export async function logoutAllSessionsAction() {
 export default async function SecurityPage({ params }: { params: Awaitable<Params> }) {
   const { locale } = await params;
 
-  // ⬇️ Nachrichten laden & Translator erzeugen
+  // i18n
   let t: ReturnType<typeof createTranslator>;
   let tRoot: ReturnType<typeof createTranslator>;
   try {
     const settingsFile = (await import(`@/messages/${locale}/settings.json`)).default;
-    t = createTranslator({
-      locale,
-      messages: { settings: settingsFile },
-      namespace: 'settings.securityPage'
-    });
-    // Für keys wie "links.settings"
-    tRoot = createTranslator({
-      locale,
-      messages: { settings: settingsFile },
-      namespace: 'settings'
-    });
+    t = createTranslator({ locale, messages: { settings: settingsFile }, namespace: 'settings.securityPage' });
+    tRoot = createTranslator({ locale, messages: { settings: settingsFile }, namespace: 'settings' });
   } catch {
     notFound();
   }
@@ -307,24 +294,26 @@ export default async function SecurityPage({ params }: { params: Awaitable<Param
 
   if (!user) {
     return (
-      <section className="rounded-xl border border-white/10 overflow-hidden">
-        <header className="px-4 pt-3 pb-4 border-b border-white/10">
-          <div className="flex items-center gap-2">
-            <Link href={`/${locale}/settings`} className="p-1" aria-label={t('ariaBack')}>
-              <ChevronLeftIcon />
-            </Link>
-            <div>
-              <h1 className="text-lg font-semibold">{t('title')}</h1>
-              <p className="text-sm text-white/60">@—</p>
+      <Viewport>
+        <section className="mx-auto max-w-3xl rounded-xl border border-white/10 overflow-hidden">
+          <header className="px-4 pt-3 pb-4 border-b border-white/10">
+            <div className="flex items-center gap-2">
+              <Link href={`/${locale}/settings`} className="p-1" aria-label={t('ariaBack')}>
+                <ChevronLeftIcon />
+              </Link>
+              <div>
+                <h1 className="text-lg font-semibold">{t('title')}</h1>
+                <p className="text-sm text-white/60">@—</p>
+              </div>
             </div>
-          </div>
-        </header>
-        <div className="p-6 text-white/80">{t('notSignedInMessage')}</div>
-      </section>
+          </header>
+          <div className="p-6 text-white/80">{t('notSignedInMessage')}</div>
+        </section>
+      </Viewport>
     );
   }
 
-  // QR-Code nur während des TOTP-Setups rendern
+  // QR
   let qrDataUrl: string | null = null;
   if (user.twoFactorTempSecret && user.email) {
     const issuer = encodeURIComponent(process.env.NEXT_PUBLIC_APP_NAME ?? 'Subm8');
@@ -333,7 +322,6 @@ export default async function SecurityPage({ params }: { params: Awaitable<Param
     qrDataUrl = await QRCode.toDataURL(otpauth);
   }
 
-  // Status-Berechnung
   const passkeyActive =
     (user.twoFactorEnabled && user.twoFactorType === 'WEBAUTHN') || user.passkeyCount > 0;
   const totpActive = user.twoFactorEnabled && user.twoFactorType === 'TOTP';
@@ -341,323 +329,329 @@ export default async function SecurityPage({ params }: { params: Awaitable<Param
   const phoneReady = Boolean(user.phone);
 
   return (
-    <section className="rounded-xl border border-white/10 overflow-hidden">
-      <header className="px-4 pt-3 pb-4 border-b border-white/10">
-        <div className="flex items-center gap-2">
-          <BackButton
-            fallbackHref={`/${locale}`}
-            ariaLabel={t('ariaBack')}
-            className="inline-flex items-center justify-center p-1 hover:opacity-85 focus:outline-none focus:ring-2 focus:ring-[var(--purple)]/40"
-            style={{ color: 'var(--purple)' }}
-          >
-            <ChevronLeftIcon />
-          </BackButton>
-          <div className="ml-2 sm:ml-3">
-            <h1 className="text-lg font-semibold">{t('title')}</h1>
-            <p className="text-sm text-white/60">@{user.handle}</p>
+    <Viewport>
+      <section className="mx-auto max-w-5xl rounded-xl border border-white/10 overflow-hidden">
+        <header className="px-4 pt-3 pb-4 border-b border-white/10">
+          <div className="flex items-center gap-2">
+            <BackButton
+              fallbackHref={`/${locale}`}
+              ariaLabel={t('ariaBack')}
+              className="inline-flex items-center justify-center p-1 hover:opacity-85 focus:outline-none focus:ring-2 focus:ring-[var(--purple)]/40"
+              style={{ color: 'var(--purple)' }}
+            >
+              <ChevronLeftIcon />
+            </BackButton>
+            <div className="ml-2 sm:ml-3">
+              <h1 className="text-lg font-semibold">{t('title')}</h1>
+              <p className="text-sm text-white/60">@{user.handle}</p>
+            </div>
           </div>
+        </header>
+
+        {/* Banner */}
+        <div className="p-4 space-y-3">
+          {passkeyActive && (
+            <SuccessCallout>
+              <span className="font-medium">✅ {t('twofa.passkeysTitle')}</span> {t('twofa.passkeyActiveMsg')}
+            </SuccessCallout>
+          )}
+          {totpActive && (
+            <SuccessCallout>
+              <span className="font-medium">✅ {t('twofa.totpTitle')}</span> {t('twofa.active')}
+            </SuccessCallout>
+          )}
+          {smsActive && (
+            <SuccessCallout>
+              <span className="font-medium">✅ {t('twofa.smsTitle')}</span> {t('twofa.smsActiveMsg')}
+            </SuccessCallout>
+          )}
+          {!smsActive && phoneReady && (
+            <InfoCallout>
+              <span className="font-medium">ℹ️ {t('twofa.smsTitle')}</span> {t('twofa.smsPhoneReady')}
+            </InfoCallout>
+          )}
         </div>
-      </header>
 
-      {/* ------ Success/Info Banner oben ------ */}
-      <div className="p-4 space-y-3">
-        {passkeyActive && (
-          <SuccessCallout>
-            <span className="font-medium">✅ {t('twofa.passkeysTitle')}</span>{' '}
-            {t('twofa.passkeyActiveMsg')}
-          </SuccessCallout>
-        )}
-        {totpActive && (
-          <SuccessCallout>
-            <span className="font-medium">✅ {t('twofa.totpTitle')}</span> {t('twofa.active')}
-          </SuccessCallout>
-        )}
-        {smsActive && (
-          <SuccessCallout>
-            <span className="font-medium">✅ {t('twofa.smsTitle')}</span> {t('twofa.smsActiveMsg')}
-          </SuccessCallout>
-        )}
-        {!smsActive && phoneReady && (
-          <InfoCallout>
-            <span className="font-medium">ℹ️ {t('twofa.smsTitle')}</span>{' '}
-            {t('twofa.smsPhoneReady')}
-          </InfoCallout>
-        )}
-      </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-4 pt-0">
+          {/* 2FA */}
+          <section className="rounded-lg border border-white/10 p-4">
+            <h2 className="text-base font-semibold mb-2">{t('twofa.title')}</h2>
+            <p className="text-sm text-white/70 mb-4">{t('twofa.intro')}</p>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-4 pt-0">
-        {/* Zwei-Faktor-Authentifizierung */}
-        <section className="rounded-lg border border-white/10 p-4">
-          <h2 className="text-base font-semibold mb-2">{t('twofa.title')}</h2>
-          <p className="text-sm text-white/70 mb-4">{t('twofa.intro')}</p>
+            {/* Passkeys */}
+            <div className="mb-8">
+              <div className="flex items-center justify-between mb-1">
+                <h3 className="font-medium">{t('twofa.passkeysTitle')}</h3>
+                <span
+                  className={`text-xs px-2 py-1 rounded-full border ${
+                    passkeyActive
+                      ? 'bg-emerald-400/15 border-emerald-400/30 text-emerald-200'
+                      : 'bg-white/10 border-white/15 text-white/80'
+                  }`}
+                >
+                  {passkeyActive ? t('status.active') : t('status.notSetup')}
+                </span>
+              </div>
 
-          {/* Passkeys / Security Keys */}
-          <div className="mb-8">
-            <div className="flex items-center justify-between mb-1">
-              <h3 className="font-medium">{t('twofa.passkeysTitle')}</h3>
-              <span
-                className={`text-xs px-2 py-1 rounded-full border ${
-                  passkeyActive
-                    ? 'bg-emerald-400/15 border-emerald-400/30 text-emerald-200'
-                    : 'bg-white/10 border-white/15 text-white/80'
-                }`}
-              >
-                {passkeyActive ? t('status.active') : t('status.notSetup')}
-              </span>
-            </div>
+              <p className="text-sm text-white/70 mb-3">
+                {passkeyActive ? t('twofa.passkeysActiveNote') : t('twofa.passkeysNote')}
+              </p>
 
-            <p className="text-sm text-white/70 mb-3">
-              {passkeyActive ? t('twofa.passkeysActiveNote') : t('twofa.passkeysNote')}
-            </p>
-
-            <div className="flex items-center gap-2">
-              <PasskeySetupClient key={String(passkeyActive)} mode={passkeyActive ? 'add' : 'setup'} />
-              {passkeyActive && (
-                <form action={disablePasskeysAction}>
-                  <button
-                    type="submit"
-                    className="inline-flex items-center px-3 py-1.5 rounded-full border border-white/15 bg-white/10 hover:bg-white/15 text-sm"
-                    title={t('twofa.passkeysRemoveAllTitle')}
-                  >
-                    {t('twofa.passkeysDisable')}
-                  </button>
-                </form>
-              )}
-            </div>
-          </div>
-
-          {/* SMS Codes */}
-          <div className="mb-8">
-            <div className="flex items-center justify-between mb-1">
-              <h3 className="font-medium">{t('twofa.smsTitle')}</h3>
-              <span
-                className={`text-xs px-2 py-1 rounded-full border ${
-                  smsActive
-                    ? 'bg-emerald-400/15 border-emerald-400/30 text-emerald-200'
-                    : phoneReady
-                      ? 'bg-white/10 border-white/15 text-white/80'
-                      : 'bg-white/10 border-white/15 text-white/50'
-                }`}
-              >
-                {smsActive ? t('status.active') : phoneReady ? t('status.ready') : t('status.notSetup')}
-              </span>
-            </div>
-
-            {/* Telefon-Status + Aktionen */}
-            <div className="mb-3 flex items-center gap-2 text-sm text-white/70">
-              {phoneReady ? (
-                <>
-                  <span className="rounded-full border border-white/15 bg-white/5 px-2 py-0.5">
-                    {maskPhone(user.phone!)}
-                  </span>
-                  <Link
-                    href={`/${locale}/settings`}
-                    className="underline decoration-white/30 hover:decoration-white"
-                    title={t('twofa.smsChangeNumber')}
-                  >
-                    {t('twofa.smsChangeNumber')}
-                  </Link>
-                </>
-              ) : (
-                <span>{t('twofa.smsAddPhoneFirst')}</span>
-              )}
-            </div>
-
-            {/* Setup-/Verify-Flow oder Deaktivieren */}
-            {!smsActive && phoneReady && (
-              <div className="flex items-center gap-2 flex-wrap">
-                {!user.smsPending ? (
-                  <form action={startSmsSetupAction}>
+              <div className="flex items-center gap-2">
+                <PasskeySetupClient key={String(passkeyActive)} mode={passkeyActive ? 'add' : 'setup'} />
+                {passkeyActive && (
+                  <form action={disablePasskeysAction}>
                     <button
                       type="submit"
-                      className="h-10 px-3 rounded-full border border-white/15 bg-white/10 hover:bg-white/15 text-sm"
+                      className="inline-flex items-center px-3 py-1.5 rounded-full border border-white/15 bg-white/10 hover:bg-white/15 text-sm"
+                      title={t('twofa.passkeysRemoveAllTitle')}
                     >
-                      {t('twofa.sms.request')}
+                      {t('twofa.passkeysDisable')}
                     </button>
                   </form>
-                ) : (
+                )}
+              </div>
+            </div>
+
+            {/* SMS */}
+            <div className="mb-8">
+              <div className="flex items-center justify-between mb-1">
+                <h3 className="font-medium">{t('twofa.smsTitle')}</h3>
+                <span
+                  className={`text-xs px-2 py-1 rounded-full border ${
+                    smsActive
+                      ? 'bg-emerald-400/15 border-emerald-400/30 text-emerald-200'
+                      : phoneReady
+                        ? 'bg-white/10 border-white/15 text-white/80'
+                        : 'bg-white/10 border-white/15 text-white/50'
+                  }`}
+                >
+                  {smsActive ? t('status.active') : phoneReady ? t('status.ready') : t('status.notSetup')}
+                </span>
+              </div>
+
+              <div className="mb-3 flex items-center gap-2 text-sm text-white/70">
+                {phoneReady ? (
                   <>
-                    <form action={verifySmsSetupAction} className="flex items-center gap-2">
-                      <input
-                        name="code"
-                        placeholder={t('twofa.tokenPlaceholder')}
-                        inputMode="numeric"
-                        pattern="\d*"
-                        className="h-10 w-28 rounded-xl bg-white/5 border border-white/15 px-3 outline-none focus:ring-2 focus:ring-white/20"
-                        aria-label={t('twofa.smsCodeAria')}
-                      />
+                    <span className="rounded-full border border-white/15 bg-white/5 px-2 py-0.5">
+                      {maskPhone(user.phone!)}
+                    </span>
+                    <Link
+                      href={`/${locale}/settings`}
+                      className="underline decoration-white/30 hover:decoration-white"
+                      title={t('twofa.smsChangeNumber')}
+                    >
+                      {t('twofa.smsChangeNumber')}
+                    </Link>
+                  </>
+                ) : (
+                  <span>{t('twofa.smsAddPhoneFirst')}</span>
+                )}
+              </div>
+
+              {!smsActive && phoneReady && (
+                <div className="flex items-center gap-2 flex-wrap">
+                  {!user.smsPending ? (
+                    <form action={startSmsSetupAction}>
                       <button
                         type="submit"
                         className="h-10 px-3 rounded-full border border-white/15 bg-white/10 hover:bg-white/15 text-sm"
                       >
-                        {t('twofa.confirm')}
+                        {t('twofa.sms.request')}
                       </button>
                     </form>
-                    <form action={startSmsSetupAction}>
-                      <button
-                        type="submit"
-                        className="h-10 px-3 rounded-full border border-white/15 bg-white/5 hover:bg-white/10 text-sm"
-                        title={t('twofa.resendTitle')}
-                      >
-                        {t('twofa.resend')}
-                      </button>
-                    </form>
-                  </>
-                )}
-                <form action={disableSmsNumberAction}>
-                  <button
-                    type="submit"
-                    className="h-10 px-3 rounded-full border border-white/15 bg-white/5 hover:bg-white/10 text-sm"
-                    title={t('twofa.sms.removeNumberTitle')}
-                    disabled={!phoneReady}
-                  >
-                    {t('twofa.sms.removeNumber')}
-                  </button>
-                </form>
-              </div>
-            )}
-
-            {/* Deaktivieren, wenn SMS aktiv */}
-            {smsActive && (
-              <div className="mt-3 flex items-center gap-2 flex-wrap">
-                <form action={disableSms2FAAction}>
-                  <button
-                    type="submit"
-                    className="h-10 px-3 rounded-full border border-white/15 bg-white/10 hover:bg-white/15 text-sm"
-                    title={t('twofa.sms.disable2faTitle')}
-                  >
-                    {t('twofa.sms.disable2fa')}
-                  </button>
-                </form>
-                <form action={disableSmsNumberAction}>
-                  <button
-                    type="submit"
-                    className="h-10 px-3 rounded-full border border-white/15 bg-white/5 hover:bg-white/10 text-sm"
-                    title={t('twofa.sms.removeNumberTitle')}
-                  >
-                    {t('twofa.sms.removeNumber')}
-                  </button>
-                </form>
-              </div>
-            )}
-
-            {/* Hinweis, wenn keine Nummer vorhanden */}
-            {!smsActive && !phoneReady && (
-              <p className="text-sm text-white/60">
-                {t('twofa.smsAddPhoneHintStart')}{' '}
-                <Link href={`/${locale}/settings`} className="underline decoration-white/30 hover:decoration-white">
-                  {tRoot('links.settings')}
-                </Link>{' '}
-                {t('twofa.smsAddPhoneHintEnd')}
-              </p>
-            )}
-
-            {/* Hinweis, wenn SMS aktiv */}
-            {smsActive && (
-              <div className="mt-2 text-sm text-white/70">
-                {t('twofa.sms.loginSendsToPrefix')}{' '}
-                <span className="rounded-full border border-white/15 bg-white/5 px-2 py-0.5">
-                  {maskPhone(user.phone!)}
-                </span>
-                .
-              </div>
-            )}
-          </div>
-
-          {/* TOTP (App) */}
-          <div className="mb-6">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="font-medium">{t('twofa.totpTitle')}</h3>
-            </div>
-
-            {totpActive ? (
-              <>
-                <p className="text-sm text-emerald-300 mb-2">{t('twofa.active')}</p>
-                <form action={disable2FAAction}>
-                  <button className="px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/15 border border-white/15 text-sm">
-                    {t('twofa.disable')}
-                  </button>
-                </form>
-              </>
-            ) : (
-              <>
-                {!user.twoFactorTempSecret && (
-                  <form action={startTotpSetupAction}>
-                    <button className="px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/15 border border-white/15 text-sm">
-                      {t('twofa.setup')}
+                  ) : (
+                    <>
+                      <form action={verifySmsSetupAction} className="flex items-center gap-2">
+                        <input
+                          name="code"
+                          placeholder={t('twofa.tokenPlaceholder')}
+                          inputMode="numeric"
+                          pattern="\d*"
+                          className="h-10 w-28 rounded-xl bg-white/5 border border-white/15 px-3 outline-none focus:ring-2 focus:ring-white/20"
+                          aria-label={t('twofa.smsCodeAria')}
+                        />
+                        <button
+                          type="submit"
+                          className="h-10 px-3 rounded-full border border-white/15 bg-white/10 hover:bg-white/15 text-sm"
+                        >
+                          {t('twofa.confirm')}
+                        </button>
+                      </form>
+                      <form action={startSmsSetupAction}>
+                        <button
+                          type="submit"
+                          className="h-10 px-3 rounded-full border border-white/15 bg-white/5 hover:bg-white/10 text-sm"
+                          title={t('twofa.resendTitle')}
+                        >
+                          {t('twofa.resend')}
+                        </button>
+                      </form>
+                    </>
+                  )}
+                  <form action={disableSmsNumberAction}>
+                    <button
+                      type="submit"
+                      className="h-10 px-3 rounded-full border border-white/15 bg-white/5 hover:bg-white/10 text-sm"
+                      title={t('twofa.sms.removeNumberTitle')}
+                      disabled={!phoneReady}
+                    >
+                      {t('twofa.sms.removeNumber')}
                     </button>
                   </form>
-                )}
+                </div>
+              )}
 
-                {user.twoFactorTempSecret && qrDataUrl && (
-                  <div className="mt-3 rounded-md border border-white/10 p-3">
-                    <p className="text-sm mb-2">{t('twofa.scanIntro')}</p>
-                    <div className="w-40 h-40 relative mb-3">
-                      <Image
-                        src={qrDataUrl}
-                        alt={t('twofa.qrAlt')}
-                        width={160}
-                        height={160}
-                        className="rounded bg-white p-1"
-                        unoptimized
-                        priority
-                      />
-                    </div>
-                    <form action={verifyTotpAction} className="flex items-center gap-2">
-                      <input
-                        name="token"
-                        inputMode="numeric"
-                        pattern="[0-9]*"
-                        placeholder={t('twofa.tokenPlaceholder')}
-                        className="w-32 rounded-md bg-white/5 border border-white/10 px-3 py-2 outline-none focus:ring-2 focus:ring-white/20"
-                        aria-label={t('twofa.tokenAria')}
-                      />
-                      <button
-                        type="submit"
-                        className="px-3 py-2 rounded-full bg-white/10 hover:bg-white/15 border border-white/15 text-sm"
-                      >
-                        {t('twofa.confirm')}
+              {smsActive && (
+                <div className="mt-3 flex items-center gap-2 flex-wrap">
+                  <form action={disableSms2FAAction}>
+                    <button
+                      type="submit"
+                      className="h-10 px-3 rounded-full border border-white/15 bg-white/10 hover:bg-white/15 text-sm"
+                      title={t('twofa.sms.disable2faTitle')}
+                    >
+                      {t('twofa.sms.disable2fa')}
+                    </button>
+                  </form>
+                  <form action={disableSmsNumberAction}>
+                    <button
+                      type="submit"
+                      className="h-10 px-3 rounded-full border border-white/15 bg-white/5 hover:bg-white/10 text-sm"
+                      title={t('twofa.sms.removeNumberTitle')}
+                    >
+                      {t('twofa.sms.removeNumber')}
+                    </button>
+                  </form>
+                </div>
+              )}
+
+              {!smsActive && !phoneReady && (
+                <p className="text-sm text-white/60">
+                  {t('twofa.smsAddPhoneHintStart')}{' '}
+                  <Link href={`/${locale}/settings`} className="underline decoration-white/30 hover:decoration-white">
+                    {tRoot('links.settings')}
+                  </Link>{' '}
+                  {t('twofa.smsAddPhoneHintEnd')}
+                </p>
+              )}
+
+              {smsActive && (
+                <div className="mt-2 text-sm text-white/70">
+                  {t('twofa.sms.loginSendsToPrefix')}{' '}
+                  <span className="rounded-full border border-white/15 bg-white/5 px-2 py-0.5">
+                    {maskPhone(user.phone!)}
+                  </span>
+                  .
+                </div>
+              )}
+            </div>
+
+            {/* TOTP */}
+            <div className="mb-6">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="font-medium">{t('twofa.totpTitle')}</h3>
+              </div>
+
+              {totpActive ? (
+                <>
+                  <p className="text-sm text-emerald-300 mb-2">{t('twofa.active')}</p>
+                  <form action={disable2FAAction}>
+                    <button className="px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/15 border border-white/15 text-sm">
+                      {t('twofa.disable')}
+                    </button>
+                  </form>
+                </>
+              ) : (
+                <>
+                  {!user.twoFactorTempSecret && (
+                    <form action={startTotpSetupAction}>
+                      <button className="px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/15 border border-white/15 text-sm">
+                        {t('twofa.setup')}
                       </button>
                     </form>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        </section>
+                  )}
 
-        {/* Zusätzlicher Passwortschutz & Sessions */}
-        <section className="rounded-lg border border-white/10 p-4">
-          <h2 className="text-base font-semibold mb-2">{t('extraPassword.title')}</h2>
-          <p className="text-sm text-white/70 mb-4">{t('extraPassword.desc')}</p>
+                  {user.twoFactorTempSecret && qrDataUrl && (
+                    <div className="mt-3 rounded-md border border-white/10 p-3">
+                      <p className="text-sm mb-2">{t('twofa.scanIntro')}</p>
+                      <div className="w-40 h-40 relative mb-3">
+                        <Image
+                          src={qrDataUrl}
+                          alt={t('twofa.qrAlt')}
+                          width={160}
+                          height={160}
+                          className="rounded bg-white p-1"
+                          unoptimized
+                          priority
+                        />
+                      </div>
+                      <form action={verifyTotpAction} className="flex items-center gap-2">
+                        <input
+                          name="token"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          placeholder={t('twofa.tokenPlaceholder')}
+                          className="w-32 rounded-md bg-white/5 border border-white/10 px-3 py-2 outline-none focus:ring-2 focus:ring-white/20"
+                          aria-label={t('twofa.tokenAria')}
+                        />
+                        <button
+                          type="submit"
+                          className="px-3 py-2 rounded-full bg-white/10 hover:bg-white/15 border border-white/15 text-sm"
+                        >
+                          {t('twofa.confirm')}
+                        </button>
+                      </form>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </section>
 
-          <form action={togglePasswordResetProtectionAction}>
-            <button
-              type="submit"
-              className="px-4 py-2 rounded-full border border-white/15 bg-white/10 hover:bg-white/15"
-              title={t('extraPassword.toggle.title')}
-            >
-              {user.passwordResetProtection
-                ? t('extraPassword.toggle.disable')
-                : t('extraPassword.toggle.enable')}
-            </button>
-          </form>
+          {/* Extra Password & Sessions */}
+          <section className="rounded-lg border border-white/10 p-4">
+            <h2 className="text-base font-semibold mb-2">{t('extraPassword.title')}</h2>
+            <p className="text-sm text-white/70 mb-4">{t('extraPassword.desc')}</p>
 
-          <div className="mt-6">
-            <h3 className="font-medium mb-2">{t('sessions.title')}</h3>
-            <p className="text-sm text-white/70 mb-3">{t('sessions.desc')}</p>
-            <form action={logoutAllSessionsAction}>
+            <form action={togglePasswordResetProtectionAction}>
               <button
                 type="submit"
                 className="px-4 py-2 rounded-full border border-white/15 bg-white/10 hover:bg-white/15"
+                title={t('extraPassword.toggle.title')}
               >
-                {t('sessions.endAll')}
+                {user.passwordResetProtection ? t('extraPassword.toggle.disable') : t('extraPassword.toggle.enable')}
               </button>
             </form>
-          </div>
-        </section>
+
+            <div className="mt-6">
+              <h3 className="font-medium mb-2">{t('sessions.title')}</h3>
+              <p className="text-sm text-white/70 mb-3">{t('sessions.desc')}</p>
+              <form action={logoutAllSessionsAction}>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-full border border-white/15 bg-white/10 hover:bg-white/15"
+                >
+                  {t('sessions.endAll')}
+                </button>
+              </form>
+            </div>
+          </section>
+        </div>
+      </section>
+    </Viewport>
+  );
+}
+
+/** Vollbild-Wrapper: Hintergrund füllt die Seite; Scrollen nur im Inhalt */
+function Viewport({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="fixed inset-0 z-0 bg-black bg-gradient-to-b from-black to-[#0b0b0b]">
+      <div className="h-full overflow-y-auto overscroll-contain">
+        <div className="px-3 sm:px-4 py-4 sm:py-6 pb-[max(1rem,env(safe-area-inset-bottom))]">
+          {children}
+        </div>
       </div>
-    </section>
+    </div>
   );
 }
 
@@ -680,14 +674,7 @@ function InfoCallout({ children }: { children: React.ReactNode }) {
 /* ===== Icons ===== */
 function ChevronLeftIcon() {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      width="22"
-      height="22"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2.2}
-    >
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth={2.2}>
       <path d="m15 6-6 6 6 6" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
