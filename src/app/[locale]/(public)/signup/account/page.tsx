@@ -337,18 +337,18 @@ export default function SignupAccountPage() {
 
       <div className="w-full max-w-[380px] sm:max-w-md">
         <Card className="rounded-2xl bg-white/5 backdrop-blur-xl ring-1 ring-white/50 shadow-[0_8px_30px_rgba(0,0,0,.35)] overflow-hidden">
-          <CardContent className="p-5 sm:p-6 md:p-8 bg-[rgba(162,89,255,0.45)]">
+          <CardContent className="p-5 sm:p-6 md:p-8 sm:pt-1 md:pt-2 bg-[rgba(162,89,255,0.45)]">
             {/* Header */}
             <div className="text-center mb-6 sm:mb-6">
               <div className="flex justify-center mb-2 sm:mb-3">
                 <Image
-                  src="/logo.png"
-                  alt="Subm8 logo"
-                  width={120}
-                  height={36}
-                  priority
-                  className="h-7 sm:h-9 w-auto drop-shadow-md"
-                />
+                                  src="/logo-bigger.png"
+                                  alt='Subm8 logo'
+                                  width={120}
+                                  height={36}
+                                  priority
+                                  className="h-7 sm:h-10 w-auto drop-shadow-md"
+                                />
               </div>
               <div className="text-[13px] sm:text-sm text-white/70">{t('headerTop')}</div>
               <h1 className="text-white text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight mt-1 leading-tight">

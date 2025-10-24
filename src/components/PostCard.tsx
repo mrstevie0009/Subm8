@@ -13,7 +13,6 @@ import { likePostAction, unlikePostAction } from '@/app/actions/likes';
 import CommentComposer from '@/components/comments/CommentComposer';
 import { reportPostAction } from '@/app/actions/reports';
 import { blockUserAction, unblockUserAction } from '@/app/actions/blocks';
-import { pinPostAction, unpinPostAction } from '@/app/actions/pin-post';
 import RichText from '@/components/RichText';
 import QuoteOverlay from '@/components/quotes/QuoteOverlay';
 import VideoPlayer from '@/components/VideoPlayer';
@@ -82,10 +81,7 @@ export type FeedPost = {
   community?: { name: string; slug: string } | null;
 };
 
-/** --- Fix: Form-Action-Signatur für Server Actions an React angleichen --- */
-type VoidFormAction = (formData: FormData) => void | Promise<void>;
-const pinPostFormAction = pinPostAction as unknown as VoidFormAction;
-const unpinPostFormAction = unpinPostAction as unknown as VoidFormAction;
+
 
 
 
@@ -1092,6 +1088,7 @@ export default function PostCard({
   const [bookmarkPulse, fireBookmarkPulse] = usePulseFlag();
 
   const c = post.content;
+  const isRepost = post.id !== c.id;
   const uiRole =
     c.author.role === 'DOMME'
       ? 'domme'
@@ -1163,10 +1160,11 @@ export default function PostCard({
       setConfirmDeleteOpen(false);
       setDeleted(true);
 
-      try { window.dispatchEvent(new CustomEvent('profile:pinnedChange', { detail: { postId: c.id, pinned: false } })); } catch {}
+      try { try { window.dispatchEvent(new CustomEvent('profile:pinnedChange', { detail: { postId: post.id, pinned: false } })); } catch {} } catch {}
       try { window.dispatchEvent(new CustomEvent('post:deleted', { detail: { contentId: c.id } })); } catch {}
 
       if (typeof window !== 'undefined' && window.location.pathname.includes(`/p/${post.id}`)) {
+        
         router.push(`/${locale}`);
       } else {
         router.refresh();
@@ -1237,19 +1235,40 @@ export default function PostCard({
   const [avatarSrc, setAvatarSrc] = React.useState<string>(c.author.avatarUrl || AVATAR_PH);
   const [pendingLike, startLikeTransition] = React.useTransition();
 
+  const buildFeedQuery = React.useCallback(() => {
+    const sp = new URLSearchParams();
+    const feed = searchParams.get('feed');
+    const role = searchParams.get('role');
+    if (feed) sp.set('feed', feed);
+    if (role) sp.set('role', role);
+    return sp.toString() || 'default';
+  }, [searchParams]);
+
+  // vor Navigation: aktuelle Feed-Scroll-Position unter DEMSELBEN Key speichern,
+  // den HomeFeedClient beim Restore liest
+  const saveFeedReturnPoint = React.useCallback(() => {
+    try {
+      const y = String(window.scrollY || 0);
+      const key = `homefeed:scroll:${buildFeedQuery()}`; // 👈 identisch zu HomeFeedClient
+      sessionStorage.setItem(key, y);
+    } catch {}
+  }, [buildFeedQuery]);
+
   const goDetail = React.useCallback(
     (e: React.MouseEvent) => {
       const target = e.target as HTMLElement | null;
       if (target && target.closest('[data-no-nav]')) return;
+      saveFeedReturnPoint(); 
       router.push(`/${locale}/p/${post.id}`);
     },
-    [router, locale, post.id]
+    [router, locale, post.id, saveFeedReturnPoint]
   );
   const onKeyActivate = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') {
       const target = e.target as HTMLElement | null;
       if (target && target.closest('[data-no-nav]')) return;
       e.preventDefault();
+      saveFeedReturnPoint();
       router.push(`/${locale}/p/${post.id}`);
     }
   };
@@ -1380,7 +1399,7 @@ export default function PostCard({
       const ce = ev as CustomEvent<{ postId: string; pinned: boolean }>;
       if (!ce.detail) return;
       const { postId, pinned } = ce.detail;
-      if (postId === c.id) {
+      if (postId === post.id) {
         setIsPinned(!!pinned);
       } else if (pinned) {
         setIsPinned(false);
@@ -1388,18 +1407,16 @@ export default function PostCard({
     }
     window.addEventListener('profile:pinnedChange', onPinnedChange);
     return () => window.removeEventListener('profile:pinnedChange', onPinnedChange);
-  }, [c.id]);
+  }, [post.id]);
 
   const isSmall = typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches;
   useBodyLock(composerOpen && isSmall);
 
   React.useEffect(() => {
     if (typeof pinnedPostId === 'string') {
-      setIsPinned(pinnedPostId === c.id);
-    } else if (pinnedPostId === null) {
-      setIsPinned(false);
+      setIsPinned(pinnedPostId === post.id);
     }
-  }, [pinnedPostId, c.id]);
+  }, [pinnedPostId, post.id]);
 
   const onProfileOfAuthor =
     typeof handle === 'string' &&
@@ -1690,14 +1707,46 @@ export default function PostCard({
 
 
   function MoreMenu() {
-    const showPinControls = onProfileOfAuthor;
+    const showPinControls = onProfileOfAuthor && !isRepost;
     const showReport = !isMine; // <-- eigenes Posting? Dann kein Report
 
     const optimisticBroadcast = (pinned: boolean) => {
       try {
-        window.dispatchEvent(new CustomEvent('profile:pinnedChange', { detail: { postId: c.id, pinned } }));
+        window.dispatchEvent(new CustomEvent('profile:pinnedChange', { detail: { postId: post.id, pinned } }));
       } catch {}
     };
+
+
+  const [pinBusy, setPinBusy] = React.useState(false);
+  async function togglePin(nextPinned: boolean) {
+      if (pinBusy) return;
+      setPinBusy(true);
+
+      // Optimistisch updaten
+      setIsPinned(nextPinned);
+      optimisticBroadcast(nextPinned);
+      setMoreOpen(false);
+
+      try {
+        const resp = await fetch(`/api/posts/${post.id}/pin`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ pin: nextPinned }),
+        });
+        if (!resp.ok) {
+          // rollback bei Fehler
+          setIsPinned(!nextPinned);
+          optimisticBroadcast(!nextPinned);
+          const j = await resp.json().catch(() => null);
+          throw new Error(j?.error || `HTTP ${resp.status}`);
+        }
+        router.refresh(); // UI sicher nachziehen
+      } catch {
+        toast.error('Konnte den Pin-Status nicht ändern.', 'Fehler');
+      } finally {
+        setPinBusy(false);
+      }
+    }
 
     return (
       <div ref={moreRef} className="relative" data-no-nav onClick={(e) => e.stopPropagation()}>
@@ -1725,43 +1774,29 @@ export default function PostCard({
           >
             {/* Pin / Unpin nur auf eigenem Profil */}
             {showPinControls && (
-              <>
-                {!isPinned ? (
-                  <form
-                    action={pinPostFormAction}
-                    onSubmit={() => {
-                      setIsPinned(true);
-                      optimisticBroadcast(true);
-                      setMoreOpen(false);
-                    }}
-                  >
-                    <input type="hidden" name="handle" value={c.author.handle} />
-                    <input type="hidden" name="locale" value={locale} />
-                    <input type="hidden" name="postId" value={c.id} />
-                    <button type="submit" className="w-full text-left px-3 py-2 rounded hover:bg-white/10">
-                      {tPost('pinToProfile')}
-                    </button>
-                  </form>
-                ) : (
-                  <form
-                    action={unpinPostFormAction}
-                    onSubmit={() => {
-                      setIsPinned(false);
-                      optimisticBroadcast(false);
-                      setMoreOpen(false);
-                    }}
-                  >
-                    <input type="hidden" name="handle" value={c.author.handle} />
-                    <input type="hidden" name="locale" value={locale} />
-                    <input type="hidden" name="postId" value={c.id} />
-                    <button type="submit" className="w-full text-left px-3 py-2 rounded hover:bg-white/10">
-                      {tPost('unpinFromProfile')}
-                    </button>
-                  </form>
-                )}
-                <div className="h-px my-1 bg-white/10" />
-              </>
-            )}
+            <>
+              {!isPinned ? (
+                <button
+                  type="button"
+                  className="w-full text-left px-3 py-2 rounded hover:bg-white/10 disabled:opacity-50"
+                  disabled={pinBusy}
+                  onClick={() => togglePin(true)}
+                >
+                  {tPost('pinToProfile')}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="w-full text-left px-3 py-2 rounded hover:bg-white/10 disabled:opacity-50"
+                  disabled={pinBusy}
+                  onClick={() => togglePin(false)}
+                >
+                  {tPost('unpinFromProfile')}
+                </button>
+              )}
+              <div className="h-px my-1 bg-white/10" />
+            </>
+          )}
 
             {/* Copy Text */}
             <button
@@ -1880,6 +1915,7 @@ export default function PostCard({
       const root = e.currentTarget as HTMLElement;
       const barrier = (e.target as HTMLElement | null)?.closest('[data-no-nav]');
       if (barrier && barrier !== root) return;
+      saveFeedReturnPoint();
       router.push(`/${locale}/p/${q.id}`);
     };
 
@@ -2008,7 +2044,7 @@ export default function PostCard({
               </ProfileLink>
             </div>
 
-            {isPinned && (
+            {isPinned && !isRepost && (
               <span className="ml-2 text-[10px] px-2 py-0.5 rounded-full bg-[var(--purple)]/20 text-[var(--purple)] border border-[var(--purple)]/30">
                 {tPost('pinned')}
               </span>

@@ -1,3 +1,4 @@
+//src/app/[locale]/(protected)/search/page.tsx
 'use client';
 
 import * as React from 'react';
@@ -488,7 +489,6 @@ function SuggestionItem({
       </div>
 
       <form
-        method="POST"
         action={following ? unfollowAction : followAction}
         onSubmit={() => {
           const next = !following;
@@ -531,7 +531,6 @@ function FollowForm({
 
   return (
     <form
-      method="POST"
       action={following ? unfollowAction : followAction}
       onSubmit={() => setFollowing((v) => !v)}
     >

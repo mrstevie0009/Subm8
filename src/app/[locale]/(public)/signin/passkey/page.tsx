@@ -86,12 +86,12 @@ export default function SignInPasskeyPage() {
             <div className="text-center mb-8">
               <div className="flex justify-center mb-3">
                 <Image
-                  src="/logo.png"
+                  src="/logo-bigger.png"
                   alt={`${tc('brand.name')} logo`}
-                  width={160}
-                  height={48}
+                  width={120}
+                  height={36}
                   priority
-                  className="h-10 w-auto drop-shadow-md"
+                  className="h-7 sm:h-10 w-auto drop-shadow-md"
                 />
               </div>
               <p className="text-white/80 mb-2">{t('subtitle')}</p>

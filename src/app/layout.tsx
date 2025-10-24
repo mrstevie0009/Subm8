@@ -1,5 +1,5 @@
 // src/app/layout.tsx
-import './globals.css'; // falls du globale Styles hast
+import './globals.css';
 
 export const metadata = {
   title: 'Subm8',
@@ -8,8 +8,10 @@ export const metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html suppressHydrationWarning>
-      <body>{children}</body>
+    <html lang="en">
+      <body className="bg-black text-white min-h-[100svh]">
+        {children}
+      </body>
     </html>
   );
 }

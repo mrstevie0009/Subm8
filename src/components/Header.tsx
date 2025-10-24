@@ -310,8 +310,7 @@ export default function Header({ locale }: { locale: string }) {
   const { data: session } = useSession();
   const hidden = useScrollHide({ threshold: 6, topAlwaysShow: 12 });
   const isHome = pathname === `/${locale}`;
- // Ein stabiler Bool, ob das Panel geschlossen werden soll
- const shouldAutoClose = hidden || !isHome;
+  const shouldAutoClose = hidden || !isHome;
 
   const inBookmarks = pathname?.startsWith(`/${locale}/settings/bookmarks`) ?? false;
   const chatBase = `/${locale}/chat`;
@@ -320,16 +319,18 @@ export default function Header({ locale }: { locale: string }) {
   const hideHeader = inBookmarks || inChatThread;
 
   const [filterOpen, setFilterOpen] = React.useState(false);
-
-  // Panel schließen, wenn Header verschwindet ODER nicht Home
   React.useEffect(() => {
     if (shouldAutoClose && filterOpen) setFilterOpen(false);
   }, [shouldAutoClose, filterOpen]);
 
-  const iconSize = 'clamp(24px, 2.8vw, 50px)';
+  // <<< WICHTIG: eine gemeinsame, gedeckelte Größe
+  // Passe MIN/FLUID/MAX nach Geschmack an.
+  const ICON_MIN = 30;      // px – auf sehr kleinen Screens
+  const ICON_MAX = 30;      // px – deine Obergrenze (nicht größer werden)
+  const ICON_FLUID = '5vw';
+  const iconSize = `clamp(${ICON_MIN}px, ${ICON_FLUID}, ${ICON_MAX}px)`;
   const headerHeight = `calc(${iconSize} + 16px)`;
 
-  // Position des hängenden Filters (rechts neben Settings)
   const innerRef = React.useRef<HTMLDivElement | null>(null);
   const settingsRef = React.useRef<HTMLButtonElement | null>(null);
   const [hangLeft, setHangLeft] = React.useState<number>(0);
@@ -340,10 +341,8 @@ export default function Header({ locale }: { locale: string }) {
       const inner = innerRef.current;
       const settings = settingsRef.current;
       if (!inner || !settings) return;
-
       const innerBox = inner.getBoundingClientRect();
       const setBox = settings.getBoundingClientRect();
-
       const center = setBox.left - innerBox.left + setBox.width + gapPx + 20; // 20 = 1/2 von 40px
       const minX = 8;
       const maxX = innerBox.width - 8;
@@ -385,7 +384,7 @@ export default function Header({ locale }: { locale: string }) {
 
   if (hideHeader) return null;
 
-  type CSSVars = React.CSSProperties & { ['--header-h']?: string };
+  type CSSVars = React.CSSProperties & { ['--header-h']?: string; ['--icon-size']?: string };
 
   return (
     <header
@@ -395,6 +394,7 @@ export default function Header({ locale }: { locale: string }) {
         {
           height: headerHeight,
           ['--header-h']: headerHeight,
+          ['--icon-size']: iconSize,        // <<< Variable bereitstellen
           background: '#000',
           transform: hidden ? `translateY(calc(-1 * ${headerHeight}))` : 'translateY(0)',
           transition: 'transform 220ms ease',
@@ -403,16 +403,14 @@ export default function Header({ locale }: { locale: string }) {
       }
       aria-label="Subm8 Header"
     >
-      {/* Unterkante */}
       <div className="absolute left-0 right-0 bottom-0 h-px bg-white/5" />
 
-      {/* Innen-Grid */}
       <div
         ref={innerRef}
         className="relative mx-auto px-4 h-full grid items-center"
         style={{
           maxWidth: 760,
-          gridTemplateColumns: `calc(${iconSize} + 16px) 1fr calc(${iconSize} + 16px)`,
+          gridTemplateColumns: `calc(var(--icon-size) + 16px) 1fr calc(var(--icon-size) + 16px)`,
         }}
       >
         {/* Settings */}
@@ -422,14 +420,13 @@ export default function Header({ locale }: { locale: string }) {
           onClick={openSettings}
           className="justify-self-start p-2 rounded hover:bg-white/5 shrink-0 relative inline-grid place-items-center cursor-pointer"
           aria-label="Settings"
-          style={{ width: iconSize, height: iconSize }}
+          style={{ width: 'var(--icon-size)', height: 'var(--icon-size)' }}
         >
           <svg
-            xmlns="http://www.w3.org/2000/svg"
             viewBox="0 0 48 48"
             aria-hidden="true"
             style={{
-              color: 'var(--purple)',        // erbt hieraus die Stroke-Farbe
+              color: 'var(--purple)',
               position: 'absolute',
               inset: 0,
               width: '70%',
@@ -446,19 +443,17 @@ export default function Header({ locale }: { locale: string }) {
           </svg>
         </button>
 
-        {/* Logo */}
+        {/* Logo – benutzt dieselbe gedeckelte Größe */}
         <Link href={`/${locale}`} prefetch={false} className="justify-self-center flex items-center">
           <Image
-            src="/logo.png"
+            src="/logo.svg"
             alt="Subm8 Logo"
-            width={50}
-            height={50}
+            width={80}
+            height={80}
             priority
             className="select-none"
-            style={{ width: iconSize, height: iconSize }}
-            sizes="(min-width: 1024px) 50px, (min-width: 640px) 32px, 24px"
           />
-        </Link>
+                  </Link>
 
         {/* Compose */}
         <button
@@ -487,27 +482,19 @@ export default function Header({ locale }: { locale: string }) {
           </svg>
         </button>
 
-        {/* Hänge-Overlay: rechts neben Settings, unter dem Header */}
-        {/* Hänge-Overlay: nur auf der Home-Seite anzeigen */}
+        {/* Hänge-Overlay nur Home */}
         {isHome && (
           <div
             aria-hidden
-            className={`pointer-events-none absolute left-0 right-0 transition-opacity duration-200 ${
-              hidden ? 'opacity-0' : 'opacity-100'
-            }`}
+            className={`pointer-events-none absolute left-0 right-0 transition-opacity duration-200 ${hidden ? 'opacity-0' : 'opacity-100'}`}
             style={{ top: 'calc(100% - 6px)', height: 0, zIndex: 60 }}
           >
-            {/* Toggle */}
             <div
-              className={`absolute -translate-x-1/2 z-[70] ${
-                hidden ? 'pointer-events-none' : 'pointer-events-auto'
-              }`}
+              className={`absolute -translate-x-1/2 z-[70] ${hidden ? 'pointer-events-none' : 'pointer-events-auto'}`}
               style={{ left: `${hangLeft}px`, top: 0 }}
             >
               <FeedFilterToggle open={filterOpen} setOpen={setFilterOpen} />
             </div>
-
-            {/* Cover-Maske */}
             <div
               className="absolute left-0 right-0 pointer-events-none z-[80]"
               style={{

@@ -2,10 +2,8 @@
 import '../globals.css'
 import { NextIntlClientProvider } from 'next-intl'
 import { notFound } from 'next/navigation'
-import { Inter } from 'next/font/google'
 import Providers from '@/components/Providers'
 
-const inter = Inter({ subsets: ['latin'], weight: ['400','500','600','700'], display: 'swap' })
 
 type LayoutProps = {
   children: React.ReactNode
@@ -62,13 +60,14 @@ export default async function RootLayout({ children, params }: LayoutProps) {
     }
 
   return (
-    <NextIntlClientProvider locale={locale} messages={messages}>
-      <Providers>
-        {/* optional: die Body-Klassen hier auf ein Wrapper-<div> setzen */}
-        <div className={`${inter.className} bg-black text-white`}>
-          {children}
-        </div>
-      </Providers>
-    </NextIntlClientProvider>
+    <html lang={locale}>
+      <body className="bg-black text-white min-h-[100svh]">
+        <NextIntlClientProvider locale={locale} messages={messages}>
+          <Providers>
+            {children}
+          </Providers>
+        </NextIntlClientProvider>
+      </body>
+    </html>
   )
 }

@@ -465,7 +465,7 @@ function AccountSheet({
   err: string | null;
   setErr: (e: string | null) => void;
 }) {
-  const tA = useTranslations('common.accountSheet');
+  const tA = useTranslations('auth.accountSheet');
   const [tab, setTab] = React.useState<'existing' | 'new'>('existing');
 
   // --- existing

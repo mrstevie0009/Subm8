@@ -252,12 +252,12 @@ export default function SignupStartPage() {
 
       <div className="w-full max-w-[380px] sm:max-w-md">
         <Card className="rounded-2xl bg-white/5 backdrop-blur-xl ring-1 ring-white/50 shadow-[0_8px_30px_rgba(0,0,0,.35)] overflow-hidden">
-          <CardContent className="p-5 sm:p-8 bg-[rgba(162,89,255,0.45)]">
+          <CardContent className="p-5 sm:p-8 sm:pt-1 md:pt-2 bg-[rgba(162,89,255,0.45)]">
             {/* Header + Logo */}
             <div className="text-center mb-6 sm:mb-8">
               <div className="flex justify-center mb-3">
                 <Image
-                  src="/logo.png"
+                  src="/logo-bigger.png"
                   alt={`${tc('brand.name')} logo`}
                   width={120}
                   height={36}

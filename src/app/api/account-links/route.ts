@@ -101,6 +101,27 @@ export async function POST(req: Request) {
 
     if (candidate.id === session.user.id) return NextResponse.json({ ok: true });
 
+    // --- INHERIT VERIFY: Falls Owner verifiziert ist, Kandidaten sofort verifizieren + Herkunft merken
+    {
+      const owner = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { ageVerified: true, verifiedAt: true, dob: true },
+      });
+
+      if (owner?.ageVerified && owner.verifiedAt) {
+        await prisma.user.update({
+          where: { id: candidate.id },
+          data: {
+            ageVerified: true,
+            verifiedAt: owner.verifiedAt,
+            // dob nur setzen, wenn vorhanden. (Ist optional.)
+            ...(owner.dob ? { dob: owner.dob } : {}),
+            verifiedByUserId: session.user.id, // <- NEU (aus dem Schema)
+          },
+        });
+      }
+    }
+
     await prisma.accountLink.upsert({
       where: { ownerId_linkedUserId: { ownerId: session.user.id, linkedUserId: candidate.id } },
       create: { ownerId: session.user.id, linkedUserId: candidate.id },
@@ -147,6 +168,26 @@ export async function POST(req: Request) {
     await prisma.accountLink.create({
       data: { ownerId: session.user.id, linkedUserId: newUser.id },
     });
+
+    // --- INHERIT VERIFY: Falls Owner verifiziert ist, neuen User sofort verifizieren + Herkunft merken
+    {
+      const owner = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { ageVerified: true, verifiedAt: true, dob: true },
+      });
+
+      if (owner?.ageVerified && owner.verifiedAt) {
+        await prisma.user.update({
+          where: { id: newUser.id },
+          data: {
+            ageVerified: true,
+            verifiedAt: owner.verifiedAt,
+            ...(owner.dob ? { dob: owner.dob } : {}),
+            verifiedByUserId: session.user.id, // <- NEU
+          },
+        });
+      }
+    }
 
     const res = NextResponse.json({ ok: true, switched: true });
     const value = await buildActiveUserCookieValue(newUser.id);

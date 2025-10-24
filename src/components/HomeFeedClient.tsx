@@ -1,4 +1,4 @@
-//src/components/HomeFeedClient.tsx
+// src/components/HomeFeedClient.tsx
 'use client';
 
 import * as React from 'react';
@@ -70,6 +70,9 @@ type ApiPost = {
   };
   community?: { name: string; slug: string } | null;
 };
+
+const SCROLL_KEY_PREFIX = 'homefeed:scroll:';
+const DATA_KEY_PREFIX = 'homefeed:data:';
 
 function mapApiPost(p: ApiPost): FeedPost {
   const isRepost = !!p.repostOf;
@@ -190,7 +193,55 @@ export default function HomeFeedClient({ initialItems }: Props) {
     return sp.toString();
   }, [searchParams]);
 
-  // State
+  const scrollKey = React.useMemo(
+    () => `${SCROLL_KEY_PREFIX}${feedQuery || 'default'}`,
+    [feedQuery]
+  );
+  const dataKey = React.useMemo(
+    () => `${DATA_KEY_PREFIX}${feedQuery || 'default'}`,
+    [feedQuery]
+  );
+
+  const prevFeedQueryRef = React.useRef<string | null>(null);
+  const isBackForwardNav = React.useCallback(() => {
+    const nav = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined;
+    return nav?.type === 'back_forward';
+  }, []);
+
+  // --- RESTORE SCROLL: bei Back/Forward ODER wenn es überhaupt eine gespeicherte Position gibt
+  React.useEffect(() => {
+    const saved = sessionStorage.getItem(scrollKey);
+    const y = saved ? parseInt(saved, 10) : 0;
+
+    const nav = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined;
+    const isBF = nav?.type === 'back_forward';
+
+    if ((isBF || y > 0) && Number.isFinite(y)) {
+      requestAnimationFrame(() => {
+        window.scrollTo(0, y);
+      });
+    }
+  }, [scrollKey]);
+
+  // --- PERSIST SCROLL
+  React.useEffect(() => {
+    let raf = 0;
+    const onScroll = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        sessionStorage.setItem(scrollKey, String(window.scrollY || 0));
+      });
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      onScroll(); // letzte Position persistieren
+      window.removeEventListener('scroll', onScroll);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [scrollKey]);
+
+  // --- STATE
   const [items, setItems] = React.useState<FeedPost[]>(() => dedupeById(initialItems));
   const [firstLoading, setFirstLoading] = React.useState(items.length === 0);
   const [newCount, setNewCount] = React.useState(0);
@@ -253,9 +304,34 @@ export default function HomeFeedClient({ initialItems }: Props) {
     return () => io.disconnect();
   }, [headerHeight]);
 
-  // Initial laden bei Filterwechsel
+  // --- REHYDRATE ITEMS SOFORT aus SessionStorage (verhindert "Sprung nach oben")
+  React.useEffect(() => {
+    const raw = sessionStorage.getItem(dataKey);
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw) as { items: FeedPost[] };
+        if (Array.isArray(parsed.items) && parsed.items.length) {
+          setItems(parsed.items);
+          setFirstLoading(false);
+        }
+      } catch {}
+    }
+  }, [dataKey]);
+
+  // --- PERSIST ITEMS in SessionStorage
+  React.useEffect(() => {
+    const raf = requestAnimationFrame(() => {
+      try {
+        sessionStorage.setItem(dataKey, JSON.stringify({ items }));
+      } catch {}
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [items, dataKey]);
+
+  // --- INITIAL LADEN / bei Filterwechsel
   React.useEffect(() => {
     let cancelled = false;
+
     const load = async () => {
       const sp = new URLSearchParams(feedQuery);
       sp.set('limit', String(PAGE_SIZE));
@@ -263,22 +339,37 @@ export default function HomeFeedClient({ initialItems }: Props) {
       const res = await fetch(`/api/feed${qs}`, { cache: 'no-store' });
       if (!res.ok) return;
       const data = (await res.json()) as { posts: ApiPost[] };
+
       if (!cancelled) {
         const mapped = data.posts.map(mapApiPost);
         setItems(dedupeById(mapped));
         setNewCount(0);
         setEndReached(false);
         setFirstLoading(false);
-        window.scrollTo({ top: 0 });
+
+        // Nur nach oben scrollen, wenn der Filter sich wirklich geändert hat
+        // UND es KEIN back/forward war (History-Restore soll Position behalten).
+        const prev = prevFeedQueryRef.current;
+        const changed = prev !== null && prev !== feedQuery;
+        if (changed && !isBackForwardNav()) {
+          window.scrollTo({ top: 0 });
+        }
+        prevFeedQueryRef.current = feedQuery;
       }
     };
+
+    // prev initialisieren, falls erster Mount
+    if (prevFeedQueryRef.current === null) {
+      prevFeedQueryRef.current = feedQuery;
+    }
+
     load();
     return () => {
       cancelled = true;
     };
-  }, [feedQuery]);
+  }, [feedQuery, PAGE_SIZE, isBackForwardNav]);
 
-  // Polling: nur zählen
+  // --- Polling: nur zählen
   React.useEffect(() => {
     let active = true;
     const tick = async () => {
@@ -300,7 +391,7 @@ export default function HomeFeedClient({ initialItems }: Props) {
     };
   }, [latestISO, feedQuery]);
 
-  // Neue Posts laden
+  // --- Neue Posts laden
   const loadNewPosts = React.useCallback(async () => {
     setLoadingNew(true);
     try {
@@ -324,7 +415,7 @@ export default function HomeFeedClient({ initialItems }: Props) {
     if (atTop && newCount > 0 && !loadingNew) void loadNewPosts();
   }, [atTop, newCount, loadingNew, loadNewPosts]);
 
-  // Bottom-Sentinel: automatisch mehr laden
+  // --- Bottom-Sentinel: automatisch mehr laden
   React.useEffect(() => {
     const el = bottomSentinelRef.current;
     if (!el) return;
@@ -378,19 +469,18 @@ export default function HomeFeedClient({ initialItems }: Props) {
     });
   }
 
-
   async function handleClickNew() {
-  // 1) Sanft nach oben (schneller, aber nicht „teleport“)
-  await smoothScrollToTop(380);
+    // 1) Sanft nach oben (schneller, aber nicht „teleport“)
+    await smoothScrollToTop(380);
 
-  // 2) Neue Posts laden (zeigt dein lila Button als Spinner)
-  await loadNewPosts();
+    // 2) Neue Posts laden (zeigt dein lila Button als Spinner)
+    await loadNewPosts();
 
-  // 3) Nach Commit minimal „nachziehen“, wieder smooth aber sehr kurz
-  requestAnimationFrame(() => {
-    void smoothScrollToTop(160);
-  });
-}
+    // 3) Nach Commit minimal „nachziehen“, wieder smooth aber sehr kurz
+    requestAnimationFrame(() => {
+      void smoothScrollToTop(160);
+    });
+  }
 
   return (
     <>

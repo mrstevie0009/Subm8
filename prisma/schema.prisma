@@ -96,6 +96,12 @@ model User {
   dob         DateTime?
   veriffId    String? // letzte Veriff-Verification-ID
   verifiedAt  DateTime?
+
+  verifiedByUserId String?
+  verifiedBy       User?     @relation("UserVerifiedBy", fields: [verifiedByUserId], references: [id], onDelete: SetNull)
+  verifiedChildren User[]    @relation("UserVerifiedBy") // inverse Seite für einfache Abfragen
+  
+  @@index([verifiedByUserId])
 }
 
 model SmsChallenge {

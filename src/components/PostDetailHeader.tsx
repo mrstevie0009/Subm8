@@ -1,3 +1,4 @@
+//src/components/PostDetailHeader.tsx
 'use client';
 
 import * as React from 'react';

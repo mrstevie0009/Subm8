@@ -248,15 +248,15 @@ export default function SignInPage() {
         <Card className="rounded-2xl bg-[rgba(162,89,255,0.12)] backdrop-blur-xl ring-1 ring-white/20 shadow-[0_8px_30px_rgba(0,0,0,.35)] overflow-hidden">
           {/* Card auf Mobile kompakter + harte Maxhöhe */}
           <CardContent
-            className="p-5 sm:p-6 md:p-8
+            className="p-5 sm:p-6 md:p-8 pt-3 sm:pt-1 md:pt-2
                         bg-[rgba(162,89,255,0.08)]
                         overflow-visible
                         sm:max-h-[92svh] sm:overflow-auto sm:overscroll-contain"
             >
             <div className="text-center mb-6 sm:mb-8">
-              <div className="flex justify-center mb-2 sm:mb-3">
+              <div className="flex justify-center mb-1 sm:mb-2">
                 <Image
-                  src="/logo.png"
+                  src="/logo-bigger.png"
                   alt={`${tc('brand.name')} logo`}
                   width={120}
                   height={36}

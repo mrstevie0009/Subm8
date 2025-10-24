@@ -1,3 +1,4 @@
+//src/app/[locale]/(protected)/u/[handle]/page.tsx
 import * as React from 'react';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/currentUser';

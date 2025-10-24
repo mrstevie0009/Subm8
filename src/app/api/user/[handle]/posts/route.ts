@@ -1,6 +1,7 @@
 // src/app/api/user/[handle]/posts/route.ts
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import type { Prisma } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,24 +38,26 @@ export async function GET(req: Request, ctx: { params: { handle: string } }) {
       return NextResponse.json({ ok: true, posts: [], count: 0 });
     }
 
-    // Handle normalisieren: führendes @ entfernen, lowercased
+    // Handle normalisieren
     const raw = handle.startsWith('@') ? handle.slice(1) : handle;
     const normalized = raw.toLowerCase();
 
-    // User auflösen: zuerst Handle (case-insensitive), dann Fallback auf ID
+    // User auflösen (inkl. pinnedPostId), Fallback auf ID
     let user = await prisma.user.findFirst({
       where: { handle: { equals: normalized, mode: 'insensitive' } },
-      select: { id: true },
+      select: { id: true, pinnedPostId: true },
     });
     if (!user && /^[a-f0-9-]{24,}$/.test(raw)) {
-      // Fallback: evtl. wurde eine ID übergeben
       user = await prisma.user.findUnique({
         where: { id: raw },
-        select: { id: true },
+        select: { id: true, pinnedPostId: true },
       });
     }
     if (!user) {
-      return NextResponse.json({ ok: false, error: 'User not found', posts: [], hasMore: false, nextCursor: null }, { status: 404 });
+      return NextResponse.json(
+        { ok: false, error: 'User not found', posts: [], hasMore: false, nextCursor: null },
+        { status: 404 }
+      );
     }
 
     // --- Nur zählen (Polling) ---
@@ -71,53 +74,75 @@ export async function GET(req: Request, ctx: { params: { handle: string } }) {
       return NextResponse.json({ ok: true, count: rows.length });
     }
 
+    // Pinned nur auf der ersten Seite (wenn kein before-Parameter)
+    const pinnedId = !beforeDate ? user.pinnedPostId : null;
+
+    // Gemeinsamer Include-Block (als const, damit Prisma-Typen ableitbar sind)
+    const commonInclude = {
+      author: {
+        select: { id: true, handle: true, displayName: true, role: true, avatarUrl: true },
+      },
+      uploaded: true,
+      repostOf: {
+        select: {
+          id: true,
+          text: true,
+          mediaUrl: true, mediaAlt: true,
+          uploaded: true,
+          createdAt: true,
+          author: {
+            select: { id: true, handle: true, displayName: true, role: true, avatarUrl: true },
+          },
+          _count: { select: { Like: true, Comment: true, reposts: true } },
+        },
+      },
+      quoteOf: {
+        select: {
+          id: true,
+          text: true,
+          mediaUrl: true, mediaAlt: true,
+          uploaded: true,
+          createdAt: true,
+          author: {
+            select: { id: true, handle: true, displayName: true, role: true, avatarUrl: true },
+          },
+        },
+      },
+      _count: { select: { Like: true, Comment: true, reposts: true } },
+    } as const;
+
+    // Exakten Rückgabe-Typ aus dem Include ableiten
+    type PostWithRels = Prisma.PostGetPayload<{ include: typeof commonInclude }>;
+
+    // Gepinnten Post im selben Shape laden (damit der Typ identisch ist)
+    const pinnedArr = pinnedId
+      ? (await prisma.post.findMany({
+          where: { id: pinnedId, authorId: user.id },
+          orderBy: { createdAt: 'desc' },
+          include: commonInclude,
+          take: 1,
+        })) as PostWithRels[]
+      : [];
+
+    const pinned: PostWithRels | null = pinnedArr[0] ?? null;
+
     // --- Seite laden (Pagination nach unten) ---
-    const rows = await prisma.post.findMany({
+    const rows = (await prisma.post.findMany({
       where: {
         authorId: user.id,
         ...(beforeDate ? { createdAt: { lt: beforeDate } } : {}),
+        ...(pinned?.id ? { id: { not: pinned.id } } : {}), // gepinnten aus Liste ausschließen
       },
       orderBy: { createdAt: 'desc' },
-      include: {
-        author: {
-          select: { id: true, handle: true, displayName: true, role: true, avatarUrl: true },
-        },
-        uploaded: true,
-        repostOf: {
-          select: {
-            id: true,
-            text: true,
-            mediaUrl: true, mediaAlt: true,
-            uploaded: true,
-            createdAt: true,
-            author: {
-              select: { id: true, handle: true, displayName: true, role: true, avatarUrl: true },
-            },
-            _count: { select: { Like: true, Comment: true, reposts: true } },
-          },
-        },
-        quoteOf: {
-          select: {
-            id: true,
-            text: true,
-            mediaUrl: true, mediaAlt: true,
-            uploaded: true,
-            createdAt: true,
-            author: {
-              select: { id: true, handle: true, displayName: true, role: true, avatarUrl: true },
-            },
-          },
-        },
-        _count: { select: { Like: true, Comment: true, reposts: true } },
-      },
+      include: commonInclude,
       take: limit + 1, // +1 um "hasMore" zu bestimmen
-    });
+    })) as PostWithRels[];
 
     const hasMore = rows.length > limit;
-    const pageRows = hasMore ? rows.slice(0, limit) : rows;
+    const pageRows: PostWithRels[] = hasMore ? rows.slice(0, limit) : rows;
     const nextCursor = hasMore ? pageRows[pageRows.length - 1]!.createdAt.toISOString() : null;
 
-    const posts = pageRows.map((p) => {
+    const mapPost = (p: PostWithRels) => {
       const isRepost = !!p.repostOf;
       const isQuote = !!p.quoteOf;
       return {
@@ -181,7 +206,13 @@ export async function GET(req: Request, ctx: { params: { handle: string } }) {
         },
         community: null,
       };
-    });
+    };
+
+    // pinned (falls vorhanden) voranstellen, mit Flag
+    const posts = [
+      ...(pinned ? [{ ...mapPost(pinned), isPinned: true }] : []),
+      ...pageRows.map((p) => ({ ...mapPost(p), isPinned: false })),
+    ];
 
     return NextResponse.json({ ok: true, posts, hasMore, nextCursor });
   } catch (err) {

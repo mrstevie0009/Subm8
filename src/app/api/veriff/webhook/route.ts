@@ -64,6 +64,21 @@ export async function POST(req: NextRequest) {
          verifiedAt: new Date(),
        },
      });
+     // --- INHERIT VERIFY: Alle Kinder des jetzt verifizierten Users ebenfalls verifizieren
+    if (ageOk) {
+      // gleiche verifiedAt-Zeit für alle setzen
+      const verifiedAtNow = new Date();
+
+      await prisma.user.updateMany({
+        where: { verifiedByUserId: userId },
+        data: {
+          ageVerified: true,
+          verifiedAt: verifiedAtNow,
+          dob: dob ? new Date(dob) : null,
+        },
+      });
+    }
+
    } catch (e) {
      console.error('❌ DB-Update ageVerified fehlgeschlagen:', e);
    }
