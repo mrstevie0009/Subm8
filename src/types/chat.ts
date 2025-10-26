@@ -1,6 +1,42 @@
 //src/types/chat.ts
 export type UserRole = 'domme' | 'submissive';
 
+export type DbRole = 'DOMME' | 'SUBMISSIVE';
+
+export type ThreadMessageDto = {
+  id: string;
+  at: string;                 // ISO
+  authorId: string;
+  text?: string | null;
+  mediaUrl?: string | null;
+  mediaType?: string | null;
+  read: boolean;
+};
+
+export type ThreadOk = {
+  ok: true;
+  me: { id: string; role: DbRole; avatarUrl?: string | null };
+  other: {
+    id: string;
+    handle: string;
+    displayName: string;
+    avatarUrl: string | null;
+    role: DbRole;
+  };
+  messages: ThreadMessageDto[];
+  viewerHasBlocked: boolean;
+  isBlockedByOther: boolean;
+
+  /** optional, wenn Server es mitsendet */
+  otherTyping?: boolean;
+
+  /** optional, nur informativ */
+  pageSize?: number;
+};
+
+export type ThreadErr = { ok: false; error: string };
+export type ThreadResponse = ThreadOk | ThreadErr;
+
 export type ChatUser = {
   id: string;
   displayName: string;

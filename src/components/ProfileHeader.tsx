@@ -13,6 +13,7 @@ import { blockUserAction, unblockUserAction } from '@/app/actions/blocks';
 import { reportUserAction } from '@/app/actions/reports';
 import { useSession } from 'next-auth/react';
 import { toast } from '@/lib/toast';
+import BackButton from '@/components/BackButton';
 
 import dynamic from 'next/dynamic';
 
@@ -751,52 +752,82 @@ export default function ProfileHeader({
       style={sectionStyle}
     >
       {/* FIXED MINI HEADER */}
-      <div
-        className={`
-          fixed top-0 left-0 right-0 z-[60]
-          border-b border-white/10
-          backdrop-blur bg-black/55
-          transition-all duration-200
-          ${mounted && compact ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 -translate-y-3 pointer-events-none'}
-        `}
-        role="banner"
-      >
-        <div className="max-w-screen-xl mx-auto">
-          <div className="h-[56px] px-3 flex items-center gap-2">
-            <div className="rounded-full overflow-hidden shrink-0" style={{ width: 32, height: 32 }}>
-              <Image src={avatarSrc} alt="" width={32} height={32} className="object-cover" />
+      {mounted &&
+        createPortal(
+          <div
+            className={`
+              fixed top-0 left-0 right-0 z-[60]
+              border-b border-white/10
+              transition-all duration-200
+              ${mounted && compact ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 -translate-y-3 pointer-events-none'}
+            `}
+            role="banner"
+          >
+            {/* Hintergrund-Layer mit Banner + Blur */}
+            <div className="relative h-[56px]">
+              <div className="absolute inset-0 -z-10 pointer-events-none overflow-hidden">
+                <Image
+                  src={bannerSrc}
+                  alt=""
+                  fill
+                  sizes="100vw"
+                  className="object-cover blur-[4px] scale-110 brightness-50"
+                  priority
+                />
+                {/* zusätzliche Abdunklung / Verlauf für bessere Lesbarkeit */}
+                <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/40 to-black/60" />
+              </div>
+
+              <div className="max-w-screen-xl mx-auto">
+                <div className="h-[56px] px-2 sm:px-3 flex items-center gap-2">
+                  {/* Back */}
+                  <BackButton
+                    fallbackHref={`/${locale}`}
+                    ariaLabel="Back"
+                    className="inline-flex items-center justify-center h-8 w-8 rounded-full border border-white/15
+                              bg-black/30 hover:bg-black/50 text-white"
+                  />
+
+                  {/* Avatar */}
+                  <div className="rounded-full overflow-hidden shrink-0" style={{ width: 32, height: 32 }}>
+                    <Image src={avatarSrc} alt="" width={32} height={32} className="object-cover" />
+                  </div>
+
+                  {/* Titel – Handle in compact nicht anzeigen */}
+                  <div className="min-w-0 mr-auto">
+                    <div className="text-[15px] font-semibold truncate">{profile.displayName}</div>
+                  </div>
+
+                  {!isOwner && !blockedEither && (
+                    <button
+                      type="button"
+                      onClick={onMessageClick}
+                      aria-label={tProf('message')}
+                      title={tProf('message')}
+                      className="inline-grid place-items-center rounded-full border border-white/20 hover:bg-white/10 h-8 w-8"
+                    >
+                      <ChatGlyphIcon className="w-[16px] h-[16px]" />
+                    </button>
+                  )}
+                  <MoreMenu />
+                </div>
+              </div>
             </div>
-            <div className="min-w-0 mr-auto">
-              <div className="text-[15px] font-semibold truncate">{profile.displayName}</div>
-              <div className="text-[12px] text-white/60 truncate">@{profile.username}</div>
-            </div>
-            {!isOwner && !blockedEither && (
-              <button
-                type="button"
-                onClick={onMessageClick}
-                aria-label={tProf('message')}
-                title={tProf('message')}
-                className="inline-grid place-items-center rounded-full border border-white/20 hover:bg-white/5 h-8 w-8"
-              >
-                {/* alt: <MessageIcon className="w-[16px] h-[16px]" /> */}
-                <ChatGlyphIcon className="w-[16px] h-[16px]" />
-              </button>
+
+            {showTabs && (
+              <nav className="px-1 border-t border-white/10 bg-black/60">
+                <ul className="grid grid-cols-3 text-center text-[14px] font-medium">
+                  <TabBtn label={tProf('tabs.posts')}       active={activeTab === 'posts'}       onClick={() => onTabChange?.('posts')} />
+                  <TabBtn label={tProf('tabs.gallery')}     active={activeTab === 'gallery'}     onClick={() => onTabChange?.('gallery')} />
+                  <TabBtn label={tProf('tabs.leaderboard')} active={activeTab === 'leaderboard'} onClick={() => onTabChange?.('leaderboard')} />
+                </ul>
+              </nav>
             )}
+          </div>,
+          document.body
+        )
+      }
 
-            <MoreMenu />
-          </div>
-
-          {showTabs && (
-            <nav className="px-1 border-t border-white/10">
-              <ul className="grid grid-cols-3 text-center text-[14px] font-medium">
-                <TabBtn label={tProf('tabs.posts')}       active={activeTab === 'posts'}       onClick={() => onTabChange?.('posts')} />
-                <TabBtn label={tProf('tabs.gallery')}     active={activeTab === 'gallery'}     onClick={() => onTabChange?.('gallery')} />
-                <TabBtn label={tProf('tabs.leaderboard')} active={activeTab === 'leaderboard'} onClick={() => onTabChange?.('leaderboard')} />
-              </ul>
-            </nav>
-          )}
-        </div>
-      </div>
 
       {/* Banner */}
       <div className="relative" style={{ height: 'var(--bannerH)' }}>
@@ -818,6 +849,16 @@ export default function ProfileHeader({
         decoding="async"
       />
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/30 via-black/0 to-black/35" />
+      {/* NEW: back button top-left on the banner */}
+      <div className="absolute top-2 left-2 z-10">
+        <BackButton
+          fallbackHref={`/${locale}`}
+          ariaLabel="Back"
+          className="inline-flex items-center justify-center size-9 rounded-full border border-white/15
+                    bg-black/40 backdrop-blur hover:bg-black/60 text-white"
+        />
+      </div>
+
       <div className="absolute top-2 right-2 z-10">
         <MoreMenu />
       </div>
@@ -884,80 +925,7 @@ export default function ProfileHeader({
               </Link>
             ) : (
               <>
-                {/* NEU: Tip-Button (nur wenn Profil Domme ist & nicht geblockt) – links neben Follow */}
-                {profile.role === 'domme' && !blockedEither && (
-                  <>
-                    <button
-                      ref={tipBtnRef}
-                      type="button"
-                      onClick={openTipMenu}
-                      className="inline-grid place-items-center rounded-full border border-white/20 hover:bg-white/5 h-9 w-9"
-                      aria-label={tProf('tipActions')}
-                      title={tProf('tipActions')}
-                    >
-                      <TipIcon className="w-[30px] h-[30px]" />
-                    </button>
-
-
-                    {tipMenuOpen && tipAnchorRect && (
-                      <ActionMenu anchorRect={tipAnchorRect} onClose={() => setTipMenuOpen(false)}>
-                        <button
-                          type="button"
-                          className="w-full text-left px-3 py-2 rounded-lg hover:bg-white/10"
-                          onClick={() => {
-                            setTipMenuOpen(false);
-                            setTipOpen(true);   // << Modal öffnen
-                          }}
-                        >
-                          {tProf('sendTip')}
-                        </button>
-
-                        <button
-                          type="button"
-                          className="w-full text-left px-3 py-2 rounded-lg hover:bg-white/10"
-                          onClick={() => {
-                            setTipMenuOpen(false);
-                            setAutoDrainOpen(true);
-                          }}
-                        >
-                          {tProf('autodrain')}
-                        </button>
-                      </ActionMenu>
-                    )}
-                  </>
-                )}
-
-                {!blockedEither ? (
-                  <form
-                    action={isFollowing ? unfollowAction : followAction}
-                    onSubmit={() => startTransition(() => setIsFollowing(v => !v))}
-                  >
-                    <input type="hidden" name="userId" value={profile.id} />
-                    <button
-                      type="submit"
-                      disabled={pending}
-                      aria-busy={pending}
-                      className={`px-3 sm:px-4 h-9 rounded-full inline-flex items-center gap-2 text-[12px] sm:text-[13px] ${
-                        isFollowing
-                          ? 'border border-white/25 hover:bg-white/5'
-                          : 'bg-[var(--purple)] text-white hover:opacity-95'
-                      }`}
-                    >
-                      {pending && <span className="inline-block h-3 w-3 rounded-full border-2 border-white/40 border-t-white animate-spin" aria-hidden />}
-                      {isFollowing ? tProf('unfollow') : tProf('follow')}
-                    </button>
-                  </form>
-                ) : (
-                  <button
-                    type="button"
-                    disabled
-                    title={isBlockedByProfile ? tProf('blockedBy') : tProf('youBlocked')}
-                    className="px-3 sm:px-4 h-9 rounded-full border border-white/20 text-white/60 cursor-not-allowed text-[12px] sm:text-[13px]"
-                  >
-                    {tProf('follow')}
-                  </button>
-                )}
-
+                {/* 1) Message */}
                 {!blockedEither ? (
                   <button
                     type="button"
@@ -979,6 +947,7 @@ export default function ProfileHeader({
                   </span>
                 )}
 
+                {/* 2) Offer */}
                 <button
                   type="button"
                   onClick={handleOfferClick}
@@ -990,6 +959,80 @@ export default function ProfileHeader({
                   <GiftIcon className="w-[18px] h-[18px] sm:mr-1.5" />
                   <span className="hidden sm:inline">{tProf('offer')}</span>
                 </button>
+
+                {/* 3) Follow */}
+                {!blockedEither ? (
+                  <form
+                    action={isFollowing ? unfollowAction : followAction}
+                    onSubmit={() => startTransition(() => setIsFollowing(v => !v))}
+                  >
+                    <input type="hidden" name="userId" value={profile.id} />
+                    <button
+                      type="submit"
+                      disabled={pending}
+                      aria-busy={pending}
+                      className={`px-3 sm:px-4 h-9 rounded-full inline-flex items-center gap-2 text-[12px] sm:text-[13px] font-semibold ${
+                        isFollowing
+                          ? 'border border-white/25 hover:bg-white/5'
+                          : 'bg-[var(--purple)] text-white hover:opacity-95'
+                      }`}
+                    >
+                      {pending && <span className="inline-block h-3 w-3 rounded-full border-2 border-white/40 border-t-white animate-spin" aria-hidden />}
+                      {isFollowing ? tProf('unfollow') : tProf('follow')}
+                    </button>
+                  </form>
+                ) : (
+                  <button
+                    type="button"
+                    disabled
+                    title={isBlockedByProfile ? tProf('blockedBy') : tProf('youBlocked')}
+                    className="px-3 sm:px-4 h-9 rounded-full border border-white/20 text-white/60 cursor-not-allowed text-[12px] sm:text-[13px] font-semibold"
+                  >
+                    {tProf('follow')}
+                  </button>
+                )}
+
+                {/* Optional: Tip-Button (Domme) */}
+                {profile.role === 'domme' && !blockedEither && (
+                  <>
+                    <button
+                      ref={tipBtnRef}
+                      type="button"
+                      onClick={openTipMenu}
+                      className="inline-grid place-items-center rounded-full border border-white/20 hover:bg-white/5 h-9 w-9"
+                      aria-label={tProf('tipActions')}
+                      title={tProf('tipActions')}
+                    >
+                      <TipIcon className="w-[30px] h-[30px]" />
+                    </button>
+
+                    {tipMenuOpen && tipAnchorRect && (
+                      <ActionMenu anchorRect={tipAnchorRect} onClose={() => setTipMenuOpen(false)}>
+                        <button
+                          type="button"
+                          className="w-full text-left px-3 py-2 rounded-lg hover:bg-white/10"
+                          onClick={() => {
+                            setTipMenuOpen(false);
+                            setTipOpen(true);
+                          }}
+                        >
+                          {tProf('sendTip')}
+                        </button>
+
+                        <button
+                          type="button"
+                          className="w-full text-left px-3 py-2 rounded-lg hover:bg-white/10"
+                          onClick={() => {
+                            setTipMenuOpen(false);
+                            setAutoDrainOpen(true);
+                          }}
+                        >
+                          {tProf('autodrain')}
+                        </button>
+                      </ActionMenu>
+                    )}
+                  </>
+                )}
               </>
             )}
           </div>

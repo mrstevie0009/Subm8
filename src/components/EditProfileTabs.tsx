@@ -295,11 +295,16 @@ export default function EditProfileTabs({
     if (!isDomme && tab === 'ownership') setTab('general');
   }, [isDomme, tab]);
 
+  type CSSVars = React.CSSProperties & { ['--edit-sticky-h']?: string };
+
   return (
-    <main className="mx-auto px-3" style={{ maxWidth: 760 }}>
-      {/* Sticky Header: Back + Tabs */}
-      <div className="sticky top-[calc(var(--header-h,56px)+8px)] z-10 bg-black/55 backdrop-blur border-b border-white/10">
-        <div className="flex items-center gap-2 px-2 py-2">
+  <main className="mx-auto px-3" style={{ maxWidth: 760 }}>
+    {/* Sticky Header */}
+    <div
+      className="sticky top-'clamp(24px, 2.8vw, 50px)' bg-black/55 backdrop-blur border-b border-white/10"
+      style={{ ['--edit-sticky-h']: '48px' } as CSSVars}
+    >
+      <div className="h-[var(--edit-sticky-h)] flex items-center gap-2 px-2">
           <BackButton
             ariaLabel="Back"
             fallbackHref={`/${locale}/u/${handle}`}
@@ -338,8 +343,8 @@ export default function EditProfileTabs({
           )}
         </div>
       </div>
+      <div style={{ height: 'calc(var(--edit-sticky-h) + 8px)' } as CSSVars} aria-hidden />
 
-      <div className="mt-3" />
 
       {tab === 'general' ? (
         <EditFormComponent locale={locale} initial={initial} action={action} />

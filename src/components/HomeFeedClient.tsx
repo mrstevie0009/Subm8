@@ -469,7 +469,7 @@ export default function HomeFeedClient({ initialItems }: Props) {
     });
   }
 
-  async function handleClickNew() {
+  const handleClickNew = React.useCallback(async () => {
     // 1) Sanft nach oben (schneller, aber nicht „teleport“)
     await smoothScrollToTop(380);
 
@@ -480,7 +480,13 @@ export default function HomeFeedClient({ initialItems }: Props) {
     requestAnimationFrame(() => {
       void smoothScrollToTop(160);
     });
-  }
+  }, [loadNewPosts]);
+
+  React.useEffect(() => {
+    const handler = () => { void handleClickNew(); };
+    window.addEventListener('home:refresh', handler as EventListener);
+    return () => window.removeEventListener('home:refresh', handler as EventListener);
+  }, [handleClickNew]);
 
   return (
     <>

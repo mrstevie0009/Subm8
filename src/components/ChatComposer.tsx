@@ -818,7 +818,7 @@ export default function ChatComposer({
               }}
               placeholder={isDisabled ? t('placeholders.closed') : t('placeholders.message')} // CHANGED
               className="w-full resize-none bg-transparent outline-none placeholder:text-muted
-                        text-[14px] leading-5 px-0 pt-1 pb-1 rounded-2xl no-scrollbar break-anywhere"
+                        text-[14px] leading-5 pl-2 pr-0 pt-1 pb-1 rounded-2xl no-scrollbar break-anywhere"
               style={{ minHeight: 40, maxHeight, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}
             />
 

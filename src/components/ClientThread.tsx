@@ -20,38 +20,16 @@ import RichText from '@/components/RichText';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { toast } from '@/lib/toast';
+import type { ThreadResponse, ThreadOk } from '@/types/chat';
 
 type DbRole = 'DOMME' | 'SUBMISSIVE';
-
-type ThreadOk = {
-  ok: true;
-  me: { id: string; role: DbRole; avatarUrl?: string | null };
-  other: {
-    id: string;
-    handle: string;
-    displayName: string;
-    avatarUrl: string | null;
-    role: DbRole;
-  };
-  messages: {
-    id: string;
-    at: string;
-    authorId: string;
-    text?: string | null;
-    mediaUrl?: string | null;
-    mediaType?: string | null;
-    read: boolean;
-  }[];
-  viewerHasBlocked: boolean;
-  isBlockedByOther: boolean;
-};
-type ThreadErr = { ok: false; error: string };
-type ThreadResponse = ThreadOk | ThreadErr;
 
 type UiMessage = ChatMessage & {
   mediaUrl?: string;
   mediaType?: string;
 };
+
+
 
 /* ========= (1) STABIL: shallowEqualMsg + stableMergeMessages im Modul-Scope ========= */
 function shallowEqualMsg(a: UiMessage, b: UiMessage) {
@@ -984,6 +962,39 @@ function QuotedPreview({
   );
 }
 
+function TypingDots({ mine = false }: { mine?: boolean }) {
+  return (
+    <div className={`inline-flex items-center gap-2 rounded-2xl px-3 py-2 border ${
+      mine ? 'bg-[var(--purple)]/90 border-[var(--purple)]/40 text-white'
+           : 'bg-white/[.07] border-white/10 text-white/90'
+    }`}>
+      <span className="text-[13px]">typing</span>
+      <span className="relative inline-flex w-10 h-4">
+        {[0,1,2].map(i => (
+          <span
+            key={i}
+            className="absolute left-0 top-1/2 -translate-y-1/2 rounded-full"
+            style={{
+              width: 6, height: 6,
+              transform: `translateX(${i*10}px) translateY(-50%)`,
+              background: 'currentColor',
+              opacity: 0.85,
+              animation: `ctyp ${900 + i*120}ms infinite ease-in-out`,
+            }}
+          />
+        ))}
+        <style jsx>{`
+          @keyframes ctyp {
+            0%, 80%, 100% { transform: translateY(-50%) scale(0.6); opacity: .6; }
+            40% { transform: translateY(-50%) scale(1); opacity: 1; }
+          }
+        `}</style>
+      </span>
+    </div>
+  );
+}
+
+
 /* ------------ Long-Press + ContextMenu helper ------------ */
 function useLongPress(
   onLongPress: (e: React.PointerEvent | React.MouseEvent) => void,
@@ -1305,6 +1316,8 @@ export default function ChatThreadPage() {
   const [error, setError] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(true);
 
+  const [otherTyping, setOtherTyping] = React.useState(false);
+
   const [tipOpen, setTipOpen] = React.useState(false);
   const [accept, setAccept] = React.useState<{
     amountCents: number;
@@ -1361,6 +1374,12 @@ export default function ChatThreadPage() {
       const json: ThreadResponse = await res.json();
       if (myReq !== latestReqRef.current) return; // älterer Response -> ignorieren
       if (!json.ok) throw new Error(json.error || 'Failed to load');
+
+      setOtherTyping(prev =>
+        prev === (json.ok ? (json.otherTyping ?? false) : false)
+          ? prev
+          : (json.ok ? (json.otherTyping ?? false) : false)
+      );
 
       /* ========= (5) State-Updates nur bei Änderungen ========= */
       setMeId(prev => (prev === json.me.id ? prev : json.me.id));
@@ -1431,9 +1450,16 @@ export default function ChatThreadPage() {
     const myReq = ++latestReqRef.current;
     try {
       const res = await fetch(`/api/chat/${id}?fast=1&take=30`, { cache: 'no-store' });
-      const json: ThreadResponse & { pageSize?: number } = await res.json();
+      const json: ThreadResponse & { pageSize?: number; otherTyping?: boolean } = await res.json();
       if (myReq !== latestReqRef.current) return;
       if (!json.ok) throw new Error(json.error || 'Failed to load');
+
+      setOtherTyping(prev =>
+        prev === (json.ok ? (json.otherTyping ?? false) : false)
+          ? prev
+          : (json.ok ? (json.otherTyping ?? false) : false)
+      );
+
       // dieselben State-Updates wie in load(), nur ohne Reads/Extras
       setMeId((p) => (p === json.me.id ? p : json.me.id));
       setMeRole((p) => {
@@ -1506,41 +1532,9 @@ export default function ChatThreadPage() {
     };
   }, [load, loadFastFirstPaint]);
 
-  const sendMessage = React.useCallback(
-    async ({ text, file }: { text: string; file?: File }) => {
-      if (viewerHasBlocked || isBlockedByOther) return;
-      if (file) {
-        const fd = new FormData();
-        fd.append('text', text);
-        fd.append('file', file);
-        await fetch(`/api/chat/${id}`, { method: 'POST', body: fd });
-      } else {
-        await fetch(`/api/chat/${id}`, {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ text }),
-        });
-      }
-      await load();
-    },
-    [id, load, viewerHasBlocked, isBlockedByOther]
-  );
-
-  const [actionSheet, setActionSheet] = React.useState<ActionSheetState>({
-    open: false, x: 0, y: 0, msgId: '', mine: false,
-  });
-
-   // ----- Scroll: „immer unten starten“ + „sticky bottom“, bis User hochscrollt
-  const scrollerRef = React.useRef<HTMLDivElement | null>(null);
   const [stickBottom, setStickBottom] = React.useState(true);
-
-  const isNearBottom = React.useCallback(() => {
-    const el = scrollerRef.current;
-    if (!el) return true;
-    const dist = el.scrollHeight - el.scrollTop - el.clientHeight;
-    return dist < 80; // px
-  }, []);
-
+  const scrollerRef = React.useRef<HTMLDivElement | null>(null);
+  const listRef = React.useRef<HTMLDivElement | null>(null);
   const scrollToBottom = React.useCallback((behavior: ScrollBehavior = 'auto') => {
     const el = scrollerRef.current;
     if (!el) return;
@@ -1561,6 +1555,79 @@ export default function ChatThreadPage() {
       prevLenRef.current = len;
     }
   }, [messages.length, stickBottom, scrollToBottom]);
+
+  React.useEffect(() => {
+    if (!listRef.current) return;
+    const ro = new ResizeObserver(() => {
+      if (stickBottom) scrollToBottom('auto');
+    });
+    ro.observe(listRef.current);
+    return () => ro.disconnect();
+  }, [stickBottom, scrollToBottom]);
+
+  const sendMessage = React.useCallback(
+    async ({ text, file }: { text: string; file?: File }) => {
+      if (viewerHasBlocked || isBlockedByOther) return;
+
+      // Netzwerk
+      if (file) {
+        const fd = new FormData();
+        fd.append('text', text);
+        fd.append('file', file);
+        await fetch(`/api/chat/${id}`, { method: 'POST', body: fd });
+      } else {
+        await fetch(`/api/chat/${id}`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ text }),
+        });
+      }
+
+      // 1x laden
+      await load();
+
+      // nach DOM-Commit + evtl. Bildlayout nochmal sicher nach unten
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          scrollToBottom('smooth');
+        });
+      });
+    },
+    [id, load, viewerHasBlocked, isBlockedByOther, scrollToBottom]
+  );
+
+  const pinAndSend = React.useCallback((text: string) => {
+    // 1) ab jetzt „Bottom-Modus“
+    setStickBottom(true);
+
+    // 2) gib dem Composer Zeit zum Schrumpfen (autosize im ChatComposer)
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        // vorsorglich schon mal unten
+        scrollToBottom('auto');
+        // 3) jetzt wirklich schicken (macht dann noch ein load())
+        void sendMessage({ text });
+      });
+    });
+  }, [sendMessage, scrollToBottom]);
+
+
+  const [actionSheet, setActionSheet] = React.useState<ActionSheetState>({
+    open: false, x: 0, y: 0, msgId: '', mine: false,
+  });
+
+
+
+  
+
+  const isNearBottom = React.useCallback(() => {
+    const el = scrollerRef.current;
+    if (!el) return true;
+    const dist = el.scrollHeight - el.scrollTop - el.clientHeight;
+    return dist < 80; // px
+  }, []);
+
+  
 
   const onScrollList = React.useCallback(() => {
     setStickBottom(isNearBottom());
@@ -2256,33 +2323,55 @@ export default function ChatThreadPage() {
                     ))}
                 </div>
                 ) : (
-                <div className="space-y-2 pb-6">
-                    {messages.map((m) => (
+                <div ref={listRef} className="space-y-2 pb-6">
+                  {messages.map((m) => (
                     <MessageItem key={m.id} m={m} rxKey={reactionDigestByMsg.get(m.id) ?? ''} />
-                    ))}
+                  ))}
+                  {otherTyping && other && (
+                    <div className="flex justify-start">
+                      <div className="max-w-[75%] w-fit">
+                        <TypingDots mine={false} />
+                      </div>
+                    </div>
+                  )}
                 </div>
-            )}
+              )}
           </div>
         </div>
       </main>
 
       {/* Composer */}
       <ChatComposer
+        onTypingPing={async (active) => {
+          try {
+            await fetch(`/api/chat/${id}`, {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({ typing: !!active }),
+            });
+          } catch {}
+        }}
         loading={!isReady}
         viewerRole={meRole ?? 'submissive'}
         disabled={disabled || !isReady}
         disabledNotice={disabled ? disabledNotice : (!isReady ? t('loading') : undefined)}
         selfUserId={meId ?? ''}
         targetHandle={(other?.username ?? '')}
-        onSend={(text) => isReady ? sendMessage({ text }) : undefined}
+        onSend={(text) => isReady ? pinAndSend(text) : undefined}
         onTip={() => isReady ? setTipOpen(true) : undefined}
         onUpload={(file, caption) => isReady ? sendMessage({ text: caption || '', file }) : undefined}
         replyTo={replyTarget}
         onCancelReply={() => setReplyTarget(null)}
         onCreateReply={(p) => {
-            if (!isReady) return;
-            void sendMessage({ text: `${REPLY_PREFIX}${JSON.stringify({ to: p.to, text: p.text })}` });
-            setReplyTarget(null);
+          if (!isReady) return;
+          setStickBottom(true);
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              scrollToBottom('auto');
+              void sendMessage({ text: `${REPLY_PREFIX}${JSON.stringify({ to: p.to, text: p.text })}` });
+              setReplyTarget(null);
+            });
+          });
         }}
         onCreateTipRequest={(p) => {
             if (!isReady) return;

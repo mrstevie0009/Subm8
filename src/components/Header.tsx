@@ -9,6 +9,8 @@ import { useScrollHide } from '../hooks/useScrollHide';
 import { useSession } from 'next-auth/react';
 import { useTranslations } from 'next-intl';
 
+
+
 function withQuery(
   pathname: string | null,
   search: ReturnType<typeof useSearchParams>,
@@ -336,6 +338,13 @@ export default function Header({ locale }: { locale: string }) {
   const [hangLeft, setHangLeft] = React.useState<number>(0);
   const gapPx = 8;
 
+  const onLogoClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (isHome) {
+      e.preventDefault();                     // nicht neu navigieren
+      window.dispatchEvent(new CustomEvent('home:refresh'));
+    }
+  };
+
   React.useLayoutEffect(() => {
     const update = () => {
       const inner = innerRef.current;
@@ -444,7 +453,12 @@ export default function Header({ locale }: { locale: string }) {
         </button>
 
         {/* Logo – benutzt dieselbe gedeckelte Größe */}
-        <Link href={`/${locale}`} prefetch={false} className="justify-self-center flex items-center">
+        <Link
+          href={`/${locale}`}
+          prefetch={false}
+          onClick={onLogoClick}  // <-- neu
+          className="justify-self-center flex items-center"
+        >
           <Image
             src="/logo.svg"
             alt="Subm8 Logo"
