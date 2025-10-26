@@ -15,29 +15,8 @@ import { useSession } from 'next-auth/react';
 import { toast } from '@/lib/toast';
 import BackButton from '@/components/BackButton';
 
-import dynamic from 'next/dynamic';
-
-// Lazy load (kein JS im Initial-Chunk)
-const OfferViewerModal = dynamic(() => import('@/components/OfferViewerModal'), {
-  ssr: false,
-  loading: () => null,
-});
-const TipModal = dynamic(() => import('@/components/TipModal'), {
-  ssr: false,
-  loading: () => null,
-});
-const AutoDrainEnableModal = dynamic(() => import('@/components/AutoDrainEnableModal'), {
-  ssr: false,
-  loading: () => null,
-});
-
-
-
-
 const AVATAR_PH = '/images/avatar-placeholder.png';
 const BANNER_PH = '/images/banner-placeholder.png';
-const TIPPAID_PREFIX = 'TIPPAID::';
-const ADACC_PREFIX   = 'ADACC::';
 
 const Chip = React.memo(function Chip({
   children,
@@ -125,6 +104,9 @@ type Props = {
   viewerHasBlocked?: boolean;
   isBlockedByProfile?: boolean;
   onInlineButtonClick?: () => void;
+  onOpenTip?: () => void;
+  onOpenAutoDrain?: () => void;
+  onOpenVerify?: () => void;
 };
 
 export default function ProfileHeader({
@@ -137,54 +119,31 @@ export default function ProfileHeader({
   viewerHasBlocked = false,
   isBlockedByProfile = false,
   onInlineButtonClick,
+  onOpenTip,
+  onOpenAutoDrain,
+  onOpenVerify,
 }: Props) {
   const locale = useLocale();
   const router = useRouter();
+
   const { data: session } = useSession();
   const ageOk = !!session?.user?.ageVerified;
 
-  const [verifyOpen, setVerifyOpen] = React.useState(false);
-
-  const startAgeVerification = React.useCallback(async () => {
-    try {
-      // Nach der Verifikation wieder zurück zum aktuellen Profil
-      const back = `/${locale}/u/${profile.username}`;
-
-      // Falls nicht eingeloggt -> Login mit Callback
-      if (!session) {
-        router.push(`/${locale}/signin?callbackUrl=${encodeURIComponent(back)}`);
-        return;
-      }
-
-      const res = await fetch(
-        `/api/veriff/start?back=${encodeURIComponent(back)}&locale=${locale}`,
-        { method: 'POST' }
-      );
-      const j = await res.json().catch(() => null);
-      if (!res.ok || !j?.url) throw new Error(j?.details || j?.error || `HTTP ${res.status}`);
-
-      router.push(j.url as string);
-    } catch{
-      toast.error('Die Verifikation konnte nicht gestartet werden.', 'Fehler');
-    }
-  }, [locale, profile.username, router, session]);
 
   const onMessageClick = React.useCallback(() => {
     if (ageOk) {
       router.push(`/${locale}/chat/new?to=${profile.username}`);
     } else {
-      setVerifyOpen(true);
+      onOpenVerify?.();
     }
-  }, [ageOk, router, locale, profile.username]);
+  }, [ageOk, router, locale, profile.username, onOpenVerify]);
 
 
   // 🔤 Translations
   const tPost = useTranslations('post');      // für share-Overlay (vorhandene Keys)
   const tProf = useTranslations('profile.profile');   // neue Keys für ProfileHeader
-  const tVerify = useTranslations('verify');
 
   const AVATAR_BIG   = 'clamp(88px, 18vw, 136px)';
-  const AVATAR_SMALL = '40px';
   const BANNER_H     = 'clamp(160px, 26vw, 260px)';
 
   const [bannerSrc, setBannerSrc] = React.useState<string>(profile.bannerUrl || BANNER_PH);
@@ -203,18 +162,10 @@ export default function ProfileHeader({
   const [hasBlocked, setHasBlocked] = React.useState<boolean>(viewerHasBlocked);
   const blockedEither = hasBlocked || isBlockedByProfile;
 
-  const [offerOpen, setOfferOpen] = React.useState(false);
-  const handleOfferClick = onInlineButtonClick ?? (() => setOfferOpen(true));
-
-  const [tipOpen, setTipOpen] = React.useState(false);
-  const [autoDrainOpen, setAutoDrainOpen] = React.useState(false);
+  const handleOfferClick = onInlineButtonClick ?? (() => { /* no-op fallback */ });
 
   const [mounted, setMounted] = React.useState(false);
   React.useEffect(() => setMounted(true), []);
-
-  // RoleUI -> TipModal-Role
-  const tipModalRole: 'domme' | 'submissive' =
-  profile.role === 'domme' ? 'domme' : 'submissive';
 
   // ---- Compact Header Logik
   const [compact, setCompact] = React.useState(false);
@@ -232,7 +183,7 @@ export default function ProfileHeader({
   }, []);
 
   type CSSVars = React.CSSProperties & { ['--avatar']?: string; ['--bannerH']?: string };
-  const rootVars: CSSVars = { ['--avatar']: compact ? AVATAR_SMALL : AVATAR_BIG, ['--bannerH']: BANNER_H };
+  const rootVars: CSSVars = { ['--avatar']: AVATAR_BIG, ['--bannerH']: BANNER_H };
   const avatarStyle: React.CSSProperties = {
     width: 'var(--avatar)',
     height: 'var(--avatar)',
@@ -377,70 +328,6 @@ export default function ProfileHeader({
     );
 
     return createPortal(panel, document.body);
-  }
-
-  // --- Verify Prompt (Message-Gate) ---
-  function VerifyPrompt({
-    open,
-    onClose,
-    onStart,
-    title = 'Altersnachweis erforderlich',
-    message = 'Verifiziere einmalig dein Alter, um Direktnachrichten zu senden.',
-    confirmLabel = 'Jetzt verifizieren',
-    cancelLabel = 'Abbrechen',
-  }: {
-    open: boolean;
-    onClose: () => void;
-    onStart: () => void | Promise<void>;
-    title?: string;
-    message?: string;
-    confirmLabel?: string;
-    cancelLabel?: string;
-  }) {
-    React.useEffect(() => {
-      if (!open) return;
-      const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
-      window.addEventListener('keydown', onKey);
-      return () => window.removeEventListener('keydown', onKey);
-    }, [open, onClose]);
-
-    if (!open) return null;
-
-    return createPortal(
-      <div
-        className="fixed inset-0 z-[2147483604] flex items-center justify-center"
-        role="dialog"
-        aria-modal="true"
-        data-no-nav
-        onClick={onClose}
-      >
-        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-        <div
-          className="relative w-[min(520px,92vw)] rounded-2xl border border-white/12 bg-[#0b0b0d] p-4 shadow-2xl"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <h2 className="text-[18px] font-semibold">{title}</h2>
-          <p className="mt-2 text-white/80">{message}</p>
-          <div className="mt-4 flex items-center justify-end gap-2">
-            <button
-              type="button"
-              className="px-3 py-2 rounded-lg border border-white/15 hover:bg-white/10"
-              onClick={onClose}
-            >
-              {cancelLabel}
-            </button>
-            <button
-              type="button"
-              className="px-4 py-2 rounded-lg bg-[var(--purple)] hover:opacity-95 text-white"
-              onClick={() => void onStart()}
-            >
-              {confirmLabel}
-            </button>
-          </div>
-        </div>
-      </div>,
-      document.body
-    );
   }
 
 
@@ -722,20 +609,19 @@ export default function ProfileHeader({
   }
 
   // — Variablen werden genutzt
-  const roleFull  = profile.role === 'domme' ? 'Domme' : 'Sub';
-  const roleShort = profile.role === 'domme' ? 'Dom'   : 'Sub';
   const website   = (profile.websiteUrl ?? '').trim();
 
   // Tip-Button State (nur Domme-Profile)
   const [tipMenuOpen, setTipMenuOpen] = React.useState(false);
   const [tipAnchorRect, setTipAnchorRect] = React.useState<DOMRect | null>(null);
   const tipBtnRef = React.useRef<HTMLButtonElement | null>(null);
-  const openTipMenu = React.useCallback(() => {
-    const r = tipBtnRef.current?.getBoundingClientRect();
-    if (!r) return;
+  // ⬇️ ersetzt deine bisherige openTipMenu-Definition
+  const openTipMenu = React.useCallback((e: React.MouseEvent<HTMLButtonElement>) => {
+    const r = (e.currentTarget as HTMLButtonElement).getBoundingClientRect();
     setTipAnchorRect(r);
     setTipMenuOpen(true);
   }, []);
+
 
   type WithModernCSS = React.CSSProperties & {
     contentVisibility?: 'auto' | 'hidden' | 'visible';
@@ -746,110 +632,101 @@ export default function ProfileHeader({
     contentVisibility: 'auto',
     containIntrinsicSize: '800px',
   };
-  return (
-    <section
-      className="rounded-app border border-sub overflow-hidden shadow-app relative"
-      style={sectionStyle}
-    >
-      {/* FIXED MINI HEADER */}
-      {mounted &&
-        createPortal(
-          <div
-            className={`
-              fixed top-0 left-0 right-0 z-[60]
-              border-b border-white/10
-              transition-all duration-200
-              ${mounted && compact ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 -translate-y-3 pointer-events-none'}
-            `}
-            role="banner"
-          >
-            {/* Hintergrund-Layer mit Banner + Blur */}
-            <div className="relative h-[56px]">
-              <div className="absolute inset-0 -z-10 pointer-events-none overflow-hidden">
-                <Image
-                  src={bannerSrc}
-                  alt=""
-                  fill
-                  sizes="100vw"
-                  className="object-cover blur-[4px] scale-110 brightness-50"
-                  priority
-                />
-                {/* zusätzliche Abdunklung / Verlauf für bessere Lesbarkeit */}
-                <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/40 to-black/60" />
-              </div>
 
-              <div className="max-w-screen-xl mx-auto">
-                <div className="h-[56px] px-2 sm:px-3 flex items-center gap-2">
-                  {/* Back */}
-                  <BackButton
-                    fallbackHref={`/${locale}`}
-                    ariaLabel="Back"
-                    className="inline-flex items-center justify-center h-8 w-8 rounded-full border border-white/15
-                              bg-black/30 hover:bg-black/50 text-white"
-                  />
 
-                  {/* Avatar */}
-                  <div className="rounded-full overflow-hidden shrink-0" style={{ width: 32, height: 32 }}>
-                    <Image src={avatarSrc} alt="" width={32} height={32} className="object-cover" />
-                  </div>
-
-                  {/* Titel – Handle in compact nicht anzeigen */}
-                  <div className="min-w-0 mr-auto">
-                    <div className="text-[15px] font-semibold truncate">{profile.displayName}</div>
-                  </div>
-
-                  {!isOwner && !blockedEither && (
-                    <button
-                      type="button"
-                      onClick={onMessageClick}
-                      aria-label={tProf('message')}
-                      title={tProf('message')}
-                      className="inline-grid place-items-center rounded-full border border-white/20 hover:bg-white/10 h-8 w-8"
-                    >
-                      <ChatGlyphIcon className="w-[16px] h-[16px]" />
-                    </button>
-                  )}
-                  <MoreMenu />
-                </div>
-              </div>
+ return (
+  <section
+    className="rounded-app border border-sub overflow-hidden shadow-app relative"
+    style={sectionStyle}
+  >
+    {/* FIXED MINI HEADER */}
+    {mounted &&
+      createPortal(
+        <div
+          className={`
+            fixed top-0 left-0 right-0 z-[60]
+            border-b border-white/10
+            transition-all duration-200
+            ${mounted && compact ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 -translate-y-3 pointer-events-none'}
+          `}
+          role="banner"
+        >
+          {/* Hintergrund-Layer mit Banner + Blur */}
+          <div className="relative h-[56px]">
+            <div className="absolute inset-0 -z-10 pointer-events-none overflow-hidden">
+              <Image
+                src={bannerSrc}
+                alt=""
+                fill
+                sizes="100vw"
+                className="object-cover blur-[4px] scale-110 brightness-50"
+                priority
+              />
+              <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/40 to-black/60" />
             </div>
 
-            {showTabs && (
-              <nav className="px-1 border-t border-white/10 bg-black/60">
-                <ul className="grid grid-cols-3 text-center text-[14px] font-medium">
-                  <TabBtn label={tProf('tabs.posts')}       active={activeTab === 'posts'}       onClick={() => onTabChange?.('posts')} />
-                  <TabBtn label={tProf('tabs.gallery')}     active={activeTab === 'gallery'}     onClick={() => onTabChange?.('gallery')} />
-                  <TabBtn label={tProf('tabs.leaderboard')} active={activeTab === 'leaderboard'} onClick={() => onTabChange?.('leaderboard')} />
-                </ul>
-              </nav>
-            )}
-          </div>,
-          document.body
-        )
-      }
+            <div className="max-w-screen-xl mx-auto">
+              <div className="h-[56px] px-2 sm:px-3 flex items-center gap-2">
+                <BackButton
+                  fallbackHref={`/${locale}`}
+                  ariaLabel="Back"
+                  className="inline-flex items-center justify-center h-8 w-8 rounded-full border border-white/15
+                            bg-black/30 hover:bg-black/50 text-white"
+                />
+                <div className="rounded-full overflow-hidden shrink-0" style={{ width: 32, height: 32 }}>
+                  <Image src={avatarSrc} alt="" width={32} height={32} className="object-cover" />
+                </div>
+                <div className="min-w-0 mr-auto">
+                  <div className="text-[15px] font-semibold truncate">{profile.displayName}</div>
+                </div>
+                {!isOwner && !blockedEither && (
+                  <button
+                    type="button"
+                    onClick={onMessageClick}
+                    aria-label={tProf('message')}
+                    title={tProf('message')}
+                    className="inline-grid place-items-center rounded-full border border-white/20 hover:bg-white/10 h-8 w-8"
+                  >
+                    <ChatGlyphIcon className="w-[16px] h-[16px]" />
+                  </button>
+                )}
+                <MoreMenu />
+              </div>
+            </div>
+          </div>
 
+          {showTabs && (
+            <nav className="px-1 border-t border-white/10 bg-black/60">
+              <ul className="grid grid-cols-3 text-center text-[14px] font-medium">
+                <TabBtn label={tProf('tabs.posts')}       active={activeTab === 'posts'}       onClick={() => onTabChange?.('posts')} />
+                <TabBtn label={tProf('tabs.gallery')}     active={activeTab === 'gallery'}     onClick={() => onTabChange?.('gallery')} />
+                <TabBtn label={tProf('tabs.leaderboard')} active={activeTab === 'leaderboard'} onClick={() => onTabChange?.('leaderboard')} />
+              </ul>
+            </nav>
+          )}
+        </div>,
+        document.body
+      )
+    }
 
-      {/* Banner */}
-      <div className="relative" style={{ height: 'var(--bannerH)' }}>
-      {/* Skeleton-Hintergrund */}
+    {/* Banner */}
+    <div className="relative" style={{ height: 'var(--bannerH)' }}>
       <div className={`absolute inset-0 bg-white/10 ${bannerLoaded ? 'opacity-0' : 'opacity-100'} transition-opacity`} />
-
       <Image
         src={bannerSrc}
         alt=""
         fill
         className="object-cover"
         sizes="100vw"
-        priority              // Banner ist above-the-fold → schnellerer LCP
+        priority
         placeholder="blur"
         blurDataURL={BLUR_PIXEL}
         onLoad={() => setBannerLoaded(true)}
         onError={() => setBannerSrc(BANNER_PH)}
-        fetchPriority="high"  // für neuere Browser
+        fetchPriority="high"
         decoding="async"
       />
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/30 via-black/0 to-black/35" />
-      {/* NEW: back button top-left on the banner */}
       <div className="absolute top-2 left-2 z-10">
         <BackButton
           fallbackHref={`/${locale}`}
@@ -858,299 +735,265 @@ export default function ProfileHeader({
                     bg-black/40 backdrop-blur hover:bg-black/60 text-white"
         />
       </div>
-
       <div className="absolute top-2 right-2 z-10">
         <MoreMenu />
       </div>
     </div>
 
-      {/* Sentinel */}
-      <div ref={sentinelRef} aria-hidden className="h-1" />
+    {/* ===== Action-Bar DIREKT UNTER dem Banner (außerhalb des Banners) ===== */}
+    <div className="px-4 mt-2">
+      <div className="ml-auto flex items-center gap-2 flex-nowrap justify-end">
+        {isOwner ? (
+  <div className="flex items-center gap-2">
+    <Link
+      href={`/${locale}/u/${profile.username}/edit`}
+      className="px-3 sm:px-4 h-9 inline-flex items-center rounded-full border border-white/20 hover:bg-white/5 text-[12px] sm:text-[13px] whitespace-nowrap"
+    >
+      {tProf('editProfile')}
+    </Link>
 
-      {/* Content */}
-      <div className="px-4 pb-0">
-        {/* Header-Zeile: Avatar + Name links, Buttons rechts */}
-        <div className="flex items-start gap-3 pt-2 sm:pt-3">
-          {/* Avatar (halb im Banner) */}
-          <div className="shrink-0">
-            <div
-              className="inline-block w-fit rounded-full p-[2px] bg-gradient-to-br from-[var(--purple)]/70 via-fuchsia-500/50 to-sky-400/50"
-              style={{ marginTop: 'calc(var(--avatar) * -0.6)' }}
+    <button
+      type="button"
+      onClick={handleOfferClick}
+      className="h-9 inline-flex items-center rounded-full bg-[var(--purple)]/95 text-white text-[12px] sm:text-[13px] font-semibold shadow-[0_8px_30px_-12px_rgba(139,92,246,.9)]
+                hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--purple)]/60 px-2 sm:px-4 shrink-0 whitespace-nowrap"
+      aria-label={tProf('offerMenu')}
+      title={tProf('offerMenu')}
+    >
+      <GiftIcon className="w-[18px] h-[18px] sm:mr-1.5" />
+      <span className="hidden sm:inline">{tProf('offer')}</span>
+    </button>
+  </div>
+) : (
+  <>
+    {/* TIP links vom Chat (nur für Dommes & wenn nicht geblockt) */}
+    {profile.role === 'domme' && !blockedEither && (
+      <>
+        <button
+          ref={tipBtnRef}
+          type="button"
+          onClick={openTipMenu}
+          className="inline-grid place-items-center rounded-full border border-white/20 hover:bg-white/5 h-9 w-9 shrink-0"
+          aria-label={tProf('tipActions')}
+          title={tProf('tipActions')}
+        >
+          <TipIcon className="w-[30px] h-[30px]" />
+        </button>
+
+        {/* Einmaliges ActionMenu – bleibt bestehen */}
+        {tipMenuOpen && tipAnchorRect && (
+          <ActionMenu anchorRect={tipAnchorRect} onClose={() => setTipMenuOpen(false)}>
+            <button
+              type="button"
+              className="w-full text-left px-3 py-2 rounded-lg hover:bg-white/10"
+              onClick={() => {
+                setTipMenuOpen(false);
+                onOpenTip?.();
+              }}
             >
-              <div
-                className="relative rounded-full overflow-hidden bg-white/10 ring-1 ring-white/20 shadow-[0_6px_30px_-10px_rgba(0,0,0,.8)]"
-                style={avatarStyle}
-              >
-              <div
-                className={`absolute inset-0 bg-white/10 ${avatarLoaded ? 'opacity-0' : 'opacity-100'} transition-opacity`}
-                aria-hidden
-              />
-                <Image
-                  src={avatarSrc}
-                  alt={`${profile.displayName} avatar (${roleFull})`}
-                  fill
-                  className="object-cover"
-                  sizes="(min-width:1024px) 136px, (min-width:640px) 104px, 88px"
-                  placeholder="blur"
-                  blurDataURL={BLUR_PIXEL}
-                  onLoad={() => setAvatarLoaded(true)}
-                  onError={() => setAvatarSrc(AVATAR_PH)}
-                  decoding="async"
-                />
-              </div>
-            </div>
+              {tProf('sendTip')}
+            </button>
 
-            {/* Rolle unter dem Avatar, zentriert */}
-            <div className="mt-2 text-center">
-              <Chip tone="purple" size="sm">{roleShort}</Chip>
-            </div>
-          </div>
-
-          {/* Name + Handle direkt unter dem Banner */}
-          <div className="min-w-0 self-start">
-            <h1 className="text-[clamp(18px,2.4vw,22px)] font-semibold leading-tight truncate">
-              {profile.displayName}
-            </h1>
-            <div className="text-white/70 text-sm truncate">@{profile.username}</div>
-          </div>
-
-          {/* Buttons rechts */}
-          <div className="ml-auto flex items-center gap-2 flex-wrap justify-end">
-            {isOwner ? (
-              <Link
-                href={`/${locale}/u/${profile.username}/edit`}
-                className="px-3 sm:px-4 h-9 inline-flex items-center rounded-full border border-white/20 hover:bg-white/5 text-[12px] sm:text-[13px]"
-              >
-                {tProf('editProfile')}
-              </Link>
-            ) : (
-              <>
-                {/* 1) Message */}
-                {!blockedEither ? (
-                  <button
-                    type="button"
-                    onClick={onMessageClick}
-                    aria-label={tProf('message')}
-                    title={tProf('message')}
-                    className="inline-grid place-items-center rounded-full border border-white/20 hover:bg-white/5 h-9 w-9 text-white"
-                  >
-                    <ChatGlyphIcon className="w-[18px] h-[18px]" />
-                    <span className="sr-only">{tProf('message')}</span>
-                  </button>
-                ) : (
-                  <span
-                    aria-hidden
-                    title={tProf('messagingDisabled')}
-                    className="inline-grid place-items-center rounded-full border border-white/20 text-white/60 h-9 w-9 cursor-not-allowed"
-                  >
-                    <ChatGlyphIcon className="w-[18px] h-[18px] opacity-60" />
-                  </span>
-                )}
-
-                {/* 2) Offer */}
-                <button
-                  type="button"
-                  onClick={handleOfferClick}
-                  className="h-9 inline-flex items-center rounded-full bg-[var(--purple)]/95 text-white text-[12px] sm:text-[13px] font-semibold shadow-[0_8px_30px_-12px_rgba(139,92,246,.9)]
-                            hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--purple)]/60 px-2 sm:px-4"
-                  aria-label={tProf('offerMenu')}
-                  title={tProf('offerMenu')}
-                >
-                  <GiftIcon className="w-[18px] h-[18px] sm:mr-1.5" />
-                  <span className="hidden sm:inline">{tProf('offer')}</span>
-                </button>
-
-                {/* 3) Follow */}
-                {!blockedEither ? (
-                  <form
-                    action={isFollowing ? unfollowAction : followAction}
-                    onSubmit={() => startTransition(() => setIsFollowing(v => !v))}
-                  >
-                    <input type="hidden" name="userId" value={profile.id} />
-                    <button
-                      type="submit"
-                      disabled={pending}
-                      aria-busy={pending}
-                      className={`px-3 sm:px-4 h-9 rounded-full inline-flex items-center gap-2 text-[12px] sm:text-[13px] font-semibold ${
-                        isFollowing
-                          ? 'border border-white/25 hover:bg-white/5'
-                          : 'bg-[var(--purple)] text-white hover:opacity-95'
-                      }`}
-                    >
-                      {pending && <span className="inline-block h-3 w-3 rounded-full border-2 border-white/40 border-t-white animate-spin" aria-hidden />}
-                      {isFollowing ? tProf('unfollow') : tProf('follow')}
-                    </button>
-                  </form>
-                ) : (
-                  <button
-                    type="button"
-                    disabled
-                    title={isBlockedByProfile ? tProf('blockedBy') : tProf('youBlocked')}
-                    className="px-3 sm:px-4 h-9 rounded-full border border-white/20 text-white/60 cursor-not-allowed text-[12px] sm:text-[13px] font-semibold"
-                  >
-                    {tProf('follow')}
-                  </button>
-                )}
-
-                {/* Optional: Tip-Button (Domme) */}
-                {profile.role === 'domme' && !blockedEither && (
-                  <>
-                    <button
-                      ref={tipBtnRef}
-                      type="button"
-                      onClick={openTipMenu}
-                      className="inline-grid place-items-center rounded-full border border-white/20 hover:bg-white/5 h-9 w-9"
-                      aria-label={tProf('tipActions')}
-                      title={tProf('tipActions')}
-                    >
-                      <TipIcon className="w-[30px] h-[30px]" />
-                    </button>
-
-                    {tipMenuOpen && tipAnchorRect && (
-                      <ActionMenu anchorRect={tipAnchorRect} onClose={() => setTipMenuOpen(false)}>
-                        <button
-                          type="button"
-                          className="w-full text-left px-3 py-2 rounded-lg hover:bg-white/10"
-                          onClick={() => {
-                            setTipMenuOpen(false);
-                            setTipOpen(true);
-                          }}
-                        >
-                          {tProf('sendTip')}
-                        </button>
-
-                        <button
-                          type="button"
-                          className="w-full text-left px-3 py-2 rounded-lg hover:bg-white/10"
-                          onClick={() => {
-                            setTipMenuOpen(false);
-                            setAutoDrainOpen(true);
-                          }}
-                        >
-                          {tProf('autodrain')}
-                        </button>
-                      </ActionMenu>
-                    )}
-                  </>
-                )}
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* Bio & Meta */}
-        {profile.bio && profile.bio.trim() && (
-          <p className="mt-3 text-[15px] leading-relaxed text-white/90 whitespace-pre-wrap">
-            {profile.bio}
-          </p>
+            <button
+              type="button"
+              className="w-full text-left px-3 py-2 rounded-lg hover:bg-white/10"
+              onClick={() => {
+                setTipMenuOpen(false);
+                onOpenAutoDrain?.();
+              }}
+            >
+              {tProf('autodrain')}
+            </button>
+          </ActionMenu>
         )}
+      </>
+    )}
 
-        <div className="mt-3 flex items-center text-[12px] leading-[1.35] text-white/65 flex-wrap gap-x-3 gap-y-1">
-          {profile.location && (
-            <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-              <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 relative top-[0.5px]" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M12 21s-7-7.6-7-12a7 7 0 0 1 14 0c0 4.4-7 12-7 12Z" />
-                <circle cx="12" cy="9" r="2.5" />
-              </svg>
-              {profile.location}
-            </span>
-          )}
-          {profile.createdAt && (
-            <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-              <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 relative top-[0.5px]" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <rect x="3.5" y="5.5" width="17" height="15" rx="2" />
-                <path d="M8 3.5v4M16 3.5v4M3.5 9.5h17" />
-              </svg>
-              {tProf('joined')} {joinedMonthYear(profile.createdAt)}
-            </span>
-          )}
+    {/* Chat-Button direkt nach dem Tip-Button */}
+    {!blockedEither ? (
+      <button
+        type="button"
+        onClick={onMessageClick}
+        aria-label={tProf('message')}
+        title={tProf('message')}
+        className="inline-grid place-items-center rounded-full border border-white/20 hover:bg-white/5 h-9 w-9 text-white shrink-0"
+      >
+        <ChatGlyphIcon className="w-[18px] h-[18px]" />
+        <span className="sr-only">{tProf('message')}</span>
+      </button>
+    ) : (
+      <span
+        aria-hidden
+        title={tProf('messagingDisabled')}
+        className="inline-grid place-items-center rounded-full border border-white/20 text-white/60 h-9 w-9 cursor-not-allowed shrink-0"
+      >
+        <ChatGlyphIcon className="w-[18px] h-[18px] opacity-60" />
+      </span>
+    )}
 
-          {/* Website-Link (nutzt `website`) */}
-          {website && (
-            <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-              <LinkIcon className="w-3.5 h-3.5 relative top-[0.5px]" />
-              <a
-                href={ensureHttp(website)}
-                target="_blank"
-                rel="noopener noreferrer nofollow"
-                className="text-[var(--purple)] hover:underline truncate max-w-[50ch]"
-                title={ensureHttp(website)}
-              >
-                {displayHost(website)}
-              </a>
-            </span>
-          )}
-        </div>
+    {/* Offer */}
+    <button
+      type="button"
+      onClick={handleOfferClick}
+      className="h-9 inline-flex items-center rounded-full bg-[var(--purple)]/95 text-white text-[12px] sm:text-[13px] font-semibold shadow-[0_8px_30px_-12px_rgba(139,92,246,.9)]
+                hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--purple)]/60 px-2 sm:px-4 shrink-0 whitespace-nowrap"
+      aria-label={tProf('offerMenu')}
+      title={tProf('offerMenu')}
+    >
+      <GiftIcon className="w-[18px] h-[18px] sm:mr-1.5" />
+      <span className="hidden sm:inline">{tProf('offer')}</span>
+    </button>
 
-        <div className="mt-4" />
+    {/* Follow / Unfollow */}
+    {!blockedEither ? (
+      <form
+        action={isFollowing ? unfollowAction : followAction}
+        onSubmit={() => startTransition(() => setIsFollowing(v => !v))}
+      >
+        <input type="hidden" name="userId" value={profile.id} />
+        <button
+          type="submit"
+          disabled={pending}
+          aria-busy={pending}
+          className={`px-3 sm:px-4 h-9 rounded-full inline-flex items-center gap-2 text-[12px] sm:text-[13px] font-semibold whitespace-nowrap shrink-0 ${
+            isFollowing
+              ? 'border border-white/25 hover:bg-white/5'
+              : 'bg-[var(--purple)] text-white hover:opacity-95'
+          }`}
+        >
+          {pending && (
+            <span className="inline-block h-3 w-3 rounded-full border-2 border-white/40 border-t-white animate-spin" aria-hidden />
+          )}
+          {isFollowing ? tProf('unfollow') : tProf('follow')}
+        </button>
+      </form>
+    ) : (
+      <button
+        type="button"
+        disabled
+        title={isBlockedByProfile ? tProf('blockedBy') : tProf('youBlocked')}
+        className="px-3 sm:px-4 h-9 rounded-full border border-white/20 text-white/60 cursor-not-allowed text-[12px] sm:text-[13px] whitespace-nowrap shrink-0"
+      >
+        {tProf('follow')}
+      </button>
+    )}
+  </>
+)}
       </div>
+    </div>
 
-      {/* Tabs (nur wenn nicht compact) */}
-      {showTabs && (
-        <nav className={`border-t border-white/10 ${compact ? 'hidden' : 'block'}`}>
-          <ul className="grid grid-cols-3 text-center text-[14px] font-medium">
-            <TabBtn label={tProf('tabs.posts')}       active={activeTab === 'posts'}       onClick={() => onTabChange?.('posts')} />
-            <TabBtn label={tProf('tabs.gallery')}     active={activeTab === 'gallery'}     onClick={() => onTabChange?.('gallery')} />
-            <TabBtn label={tProf('tabs.leaderboard')} active={activeTab === 'leaderboard'} onClick={() => onTabChange?.('leaderboard')} />
-          </ul>
-        </nav>
+    {/* Sentinel */}
+    <div ref={sentinelRef} aria-hidden className="h-1" />
+
+    {/* Content */}
+<div className="px-4 pb-0">
+  {/* Header-Zeile: Avatar links, Name+Handle rechts in EINER Zeile */}
+  <div className="flex gap-3 pt-2 items-start">
+    {/* Avatar + Role */}
+    <div className="shrink-0">
+      <div
+        className="inline-block w-fit rounded-full p-[2px] bg-gradient-to-br from-[var(--purple)]/70 via-fuchsia-500/50 to-sky-400/50"
+        style={{ marginTop: 'calc((var(--avatar) + 4px) / -1)' }}
+      >
+        <div
+          className="relative rounded-full overflow-hidden bg-white/10 ring-1 ring-white/20 shadow-[0_6px_30px_-10px_rgba(0,0,0,.8)]"
+          style={avatarStyle}
+        >
+          <div
+            className={`absolute inset-0 bg-white/10 ${avatarLoaded ? 'opacity-0' : 'opacity-100'} transition-opacity`}
+            aria-hidden
+          />
+          <Image
+            src={avatarSrc}
+            alt={`${profile.displayName} avatar (${profile.role === 'domme' ? 'Domme' : 'Sub'})`}
+            fill
+            className="object-cover"
+            sizes="(min-width:1024px) 136px, (min-width:640px) 104px, 88px"
+            placeholder="blur"
+            blurDataURL={BLUR_PIXEL}
+            onLoad={() => setAvatarLoaded(true)}
+            onError={() => setAvatarSrc(AVATAR_PH)}
+            decoding="async"
+          />
+        </div>
+      </div>
+      <div className="-mt-1 text-center">
+        <Chip tone="purple" size="sm">{profile.role === 'domme' ? 'Dom' : 'Sub'}</Chip>
+      </div>
+    </div>
+
+    {/* Name + Handle rechts neben Avatar (eine Zeile) */}
+    <div className="min-w-0 flex-1"
+       style={{ marginTop: 'calc(var(--avatar) * -0)' }}>
+    <h1 className="text-[clamp(20px,2.6vw,24px)] font-semibold leading-none truncate">
+      {profile.displayName}
+    </h1>
+    <span className="text-white/70 text-sm leading-tight truncate">
+      @{profile.username}
+    </span>
+  </div>
+</div>
+
+      {/* Bio & Meta */}
+      {profile.bio && profile.bio.trim() && (
+        <p className="mt-3 text-[15px] leading-relaxed text-white/90 whitespace-pre-wrap">
+          {profile.bio}
+        </p>
       )}
 
-      <OfferViewerModal open={offerOpen} onClose={() => setOfferOpen(false)} handle={profile.username} />
+      <div className="mt-3 flex items-center text-[12px] leading-[1.35] text-white/65 flex-wrap gap-x-3 gap-y-1">
+        {profile.location && (
+          <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+            <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 relative top-[0.5px]" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M12 21s-7-7.6-7-12a7 7 0 0 1 14 0c0 4.4-7 12-7 12Z" />
+              <circle cx="12" cy="9" r="2.5" />
+            </svg>
+            {profile.location}
+          </span>
+        )}
+        {profile.createdAt && (
+          <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+            <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 relative top-[0.5px]" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <rect x="3.5" y="5.5" width="17" height="15" rx="2" />
+              <path d="M8 3.5v4M16 3.5v4M3.5 9.5h17" />
+            </svg>
+            {tProf('joined')} {joinedMonthYear(profile.createdAt)}
+          </span>
+        )}
+        {website && (
+          <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+            <LinkIcon className="w-3.5 h-3.5 relative top-[0.5px]" />
+            <a
+              href={ensureHttp(website)}
+              target="_blank"
+              rel="noopener noreferrer nofollow"
+              className="text-[var(--purple)] hover:underline truncate max-w-[50ch]"
+              title={ensureHttp(website)}
+            >
+              {displayHost(website)}
+            </a>
+          </span>
+        )}
+      </div>
 
-      <TipModal
-        open={tipOpen}
-        onClose={() => setTipOpen(false)}
-        toUserId={profile.id}
-        toDisplayName={profile.displayName}
-        toRole={tipModalRole}            // dein gemapptes Role-Value
-        toAvatarUrl={profile.avatarUrl || undefined}
-        onSuccess={({ paymentId, amountCents, currency, note }) => {
-          // exakt wie im Chat: TIPPAID::<json>
-          const payload = {
-            id: paymentId,
-            amountCents,
-            currency,
-            note: note?.trim() || undefined,
-          };
-          const envelope = `${TIPPAID_PREFIX}${JSON.stringify(payload)}`;
+      <div className="mt-4" />
+    </div>
 
-          setTipOpen(false);
+    {/* Tabs (nur wenn nicht compact) */}
+    {showTabs && (
+      <nav className={`border-t border-white/10 ${compact ? 'hidden' : 'block'}`}>
+        <ul className="grid grid-cols-3 text-center text-[14px] font-medium">
+          <TabBtn label={tProf('tabs.posts')}       active={activeTab === 'posts'}       onClick={() => onTabChange?.('posts')} />
+          <TabBtn label={tProf('tabs.gallery')}     active={activeTab === 'gallery'}     onClick={() => onTabChange?.('gallery')} />
+          <TabBtn label={tProf('tabs.leaderboard')} active={activeTab === 'leaderboard'} onClick={() => onTabChange?.('leaderboard')} />
+        </ul>
+      </nav>
+    )}
+  </section>
+);
 
-          // -> Chat öffnen & Nachricht automatisch senden (ChatThreadPage liest ?text=)
-          router.push(`/${locale}/chat/new?to=${profile.username}&text=${encodeURIComponent(envelope)}`);
-        }}
-      />
 
-      {/* ⬇️ neu: Autodrain-Enable Modal */}
-      <AutoDrainEnableModal
-        open={autoDrainOpen}
-        onClose={() => setAutoDrainOpen(false)}
-        toUserId={profile.id}
-        toDisplayName={profile.displayName}
-        toAvatarUrl={profile.avatarUrl || undefined}
-        defaultCurrency="EUR"
-        onSuccess={({ autoDrainId, amountCents, currency, cadence }) => {
-          // exakt dieselbe "AUTODRAIN ENABLED" Nachricht wie im Chat:
-          const payload = { id: autoDrainId, amountCents, currency, cadence };
-          const envelope = `${ADACC_PREFIX}${JSON.stringify(payload)}`;
-          setAutoDrainOpen(false);
-          // -> Chat öffnen & Nachricht automatisch senden (ChatThreadPage liest ?text=)
-          router.push(`/${locale}/chat/new?to=${profile.username}&text=${encodeURIComponent(envelope)}`);
-        }}
-      />
-      <VerifyPrompt
-        open={verifyOpen}
-        onClose={() => setVerifyOpen(false)}
-        onStart={startAgeVerification}
-        title={tVerify('modal.title')}
-        message={tVerify('modal.message')}
-        confirmLabel={tVerify('modal.confirm')}
-        cancelLabel={tVerify('modal.cancel')}
-      />
 
-    </section>
-  );
 }
 
 const TabBtn = React.memo(function TabBtn({

@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { createPortal } from 'react-dom';
-import Cropper from 'react-easy-crop';
+import Cropper, { type MediaSize } from 'react-easy-crop';
 import type { Area } from 'react-easy-crop';
 
 type Props = {
@@ -12,21 +12,32 @@ type Props = {
   onComplete: (blob: Blob) => void;
 };
 
-// Portrait 9:16 – wie Smartphone
-const OFFER_BG_ASPECT = 9 / 16;
+// ===== Einheitliche Bühne (Viewport) =====
+const OFFER_ASPECT = 9 / 12;      // Portrait
+const STAGE_H = 560;              // <— HIER Höhe ändern, wenn gewünscht
+const STAGE_W = Math.round(STAGE_H * OFFER_ASPECT); // abgeleitete Breite (315px)
 
 export default function OfferBgCropper({ open, imageSrc, onCancel, onComplete }: Props) {
   const [mounted, setMounted] = React.useState(false);
   const [crop, setCrop] = React.useState({ x: 0, y: 0 });
   const [zoom, setZoom] = React.useState(1);
+  const [minZoom, setMinZoom] = React.useState(1);
   const [pixels, setPixels] = React.useState<Area | null>(null);
 
   React.useEffect(() => setMounted(true), []);
   if (!mounted || !open || !imageSrc) return null;
 
+  // Ganzes Bild sichtbar (object-contain-Feeling)
+  const onMediaLoaded = (m: MediaSize) => {
+    const fitZoom = Math.min(STAGE_W / m.naturalWidth, STAGE_H / m.naturalHeight);
+    const z = Math.max(0.05, fitZoom);
+    setMinZoom(z);
+    setZoom(z);
+  };
+
   const handleUse = async () => {
     if (!pixels || !imageSrc) return;
-    const blob = await cropImageToBlobRect(imageSrc, pixels); // normaler Export
+    const blob = await cropImageToBlobRect(imageSrc, pixels);
     onComplete(blob);
   };
 
@@ -64,26 +75,39 @@ export default function OfferBgCropper({ open, imageSrc, onCancel, onComplete }:
           Crop background
         </div>
 
-        {/* mehr Höhe, damit 9:16 gut sichtbar ist */}
-        <div style={{ position: 'relative', height: 560 }}>
-          <Cropper
-            image={imageSrc}
-            crop={crop}
-            zoom={zoom}
-            aspect={OFFER_BG_ASPECT}   // Portrait
-            cropShape="rect"
-            showGrid={false}
-            objectFit="contain"
-            onCropChange={setCrop}
-            onZoomChange={setZoom}
-            onCropComplete={(_, p) => setPixels(p)}
-          />
+        {/* Feste, exakt gleiche Bühne wie im Viewer */}
+        <div
+          style={{
+            position: 'relative',
+            height: STAGE_H,
+            // Die Bühne hat exakte Breite – wird bei schmalen Screens zentriert.
+            display: 'grid',
+            placeItems: 'center',
+          }}
+        >
+          <div style={{ position: 'relative', width: STAGE_W, height: STAGE_H }}>
+            <Cropper
+              image={imageSrc}
+              crop={crop}
+              zoom={zoom}
+              minZoom={minZoom}
+              aspect={OFFER_ASPECT}
+              cropShape="rect"
+              showGrid={false}
+              objectFit="contain"
+              restrictPosition={false}
+              onMediaLoaded={onMediaLoaded}
+              onCropChange={setCrop}
+              onZoomChange={setZoom}
+              onCropComplete={(_, p) => setPixels(p)}
+            />
+          </div>
         </div>
 
         <div className="flex items-center gap-3 px-4 py-3 border-t border-white/10">
           <input
             type="range"
-            min={0.5}
+            min={minZoom}
             max={3}
             step={0.01}
             value={zoom}
@@ -117,7 +141,7 @@ async function cropImageToBlobRect(imageUrl: string, crop: Area): Promise<Blob> 
   const img = await loadImage(imageUrl);
 
   const out = document.createElement('canvas');
-  out.width = Math.max(1, Math.round(crop.width));   // Breite < Höhe
+  out.width = Math.max(1, Math.round(crop.width));
   out.height = Math.max(1, Math.round(crop.height));
   const ctx = out.getContext('2d')!;
   ctx.imageSmoothingQuality = 'high';

@@ -200,7 +200,7 @@ export default function EditProfileForm({
   return (
     <form
       action={action}
-      method="post"
+      method="POST"
       encType="multipart/form-data"
       className="relative rounded-app border border-sub overflow-hidden shadow-app"
       onSubmit={onSubmitGuard}
@@ -682,7 +682,7 @@ function OfferEditorModal({
                 src={bgPreview}
                 alt=""
                 fill
-                className="absolute inset-0 w-full h-full object-cover z-0 pointer-events-none"
+                className="absolute inset-0 w-full h-full object-contain z-0 pointer-events-none"  // <- vorher object-cover
                 sizes="(min-width:768px) 480px, 100vw"
                 unoptimized
                 aria-hidden

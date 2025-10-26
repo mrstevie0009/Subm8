@@ -4,6 +4,7 @@
 import * as React from "react";
 import { useTranslations } from 'next-intl';
 
+const OFFER_VIEW_BODY_PX = 560;
 
 type Props = { open: boolean; onClose: () => void; handle: string };
 
@@ -22,9 +23,31 @@ export default function OfferViewerModal({ open, onClose, handle }: Props) {
   const [data, setData] =
     React.useState<Extract<OfferPayload, { ok: true }> | null>(null);
 
-  // Schrift + Farbe aus localStorage übernehmen
+  
+  const headerRef = React.useRef<HTMLDivElement | null>(null);
+  const [bodyH, setBodyH] = React.useState(OFFER_VIEW_BODY_PX);
+    // Schrift + Farbe aus localStorage übernehmen
   const [fontStack, setFontStack] = React.useState<string | null>(null);
   const [fontColor, setFontColor] = React.useState<string | null>(null);
+
+
+  const recomputeBodyHeight = React.useCallback(() => {
+    if (!headerRef.current) return setBodyH(OFFER_VIEW_BODY_PX);
+    const headerH = headerRef.current.offsetHeight || 0;
+    // 24px = Top/Bottom Padding des Overlays (safe-area einkalkuliert)
+    const available =
+      Math.max(0, window.innerHeight - 24 /*overlay paddings*/ - headerH);
+
+    const next = Math.min(OFFER_VIEW_BODY_PX, Math.max(OFFER_VIEW_BODY_PX, available));
+    setBodyH(next);
+  }, []);
+
+  React.useEffect(() => {
+    if (!open) return;
+    recomputeBodyHeight();
+    window.addEventListener("resize", recomputeBodyHeight);
+    return () => window.removeEventListener("resize", recomputeBodyHeight);
+  }, [open, recomputeBodyHeight]);
 
   React.useEffect(() => {
     if (!open) return;
@@ -84,19 +107,26 @@ export default function OfferViewerModal({ open, onClose, handle }: Props) {
 
   if (!open) return null;
 
-  const BODY_HEIGHT_CLASS = "h-[520px]"; // Editor-ähnliche Höhe
+
 
   return (
     <div
-      className="fixed inset-0 z-[2147483600] bg-black/70 backdrop-blur-sm grid place-items-center px-3"
+      className="fixed inset-0 z-[2147483600] bg-black/70 backdrop-blur-sm flex items-center justify-center px-3"
+      style={{
+        paddingTop: 'max(12px, env(safe-area-inset-top))',
+        paddingBottom: 'max(12px, env(safe-area-inset-bottom))',
+      }}
       onMouseDown={(e) => e.target === e.currentTarget && onClose()}
       role="dialog"
       aria-modal="true"
       aria-label={t('aria.modalLabel')}
     >
-      <div className="w-full max-w-md rounded-3xl border border-white/12 bg-[#202022] text-white shadow-2xl overflow-hidden">
+      <div className="w-full max-w-md max-h-[calc(100dvh-24px)] rounded-3xl border border-white/12 bg-[#202022] text-white shadow-2xl overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--purple)]/60">
+        <div
+          ref={headerRef}
+          className="flex items-center justify-between px-4 py-3 border-b border-[var(--purple)]/60"
+        >
           <div className="leading-tight">
             <div className="font-semibold">
               {data ? data.user.displayName : handle}
@@ -114,8 +144,9 @@ export default function OfferViewerModal({ open, onClose, handle }: Props) {
 
         {/* Body – feste Höhe, mit Layern wie im Editor */}
         <div
-          className={`relative p-4 isolate ${BODY_HEIGHT_CLASS}`}
+          className="relative p-4 isolate overflow-hidden"
           style={{
+            height: bodyH,                       // <- dynamisch
             fontFamily: fontStack ?? undefined,
             color: fontColor ?? undefined,
           }}
@@ -127,8 +158,10 @@ export default function OfferViewerModal({ open, onClose, handle }: Props) {
                 className="absolute inset-0 z-0 pointer-events-none"
                 style={{
                   backgroundImage: `url(${data.offer.bgUrl})`,
-                  backgroundSize: "cover",
-                  backgroundPosition: "center",
+                  backgroundRepeat: 'no-repeat',
+                  backgroundPosition: 'center',
+                  backgroundSize: 'contain',  // <- vorher cover
+                  backgroundColor: 'black'    // letterboxing angenehm
                 }}
                 aria-hidden
               />

@@ -1534,6 +1534,7 @@ export default function ChatThreadPage() {
 
   const [stickBottom, setStickBottom] = React.useState(true);
   const scrollerRef = React.useRef<HTMLDivElement | null>(null);
+  
   const listRef = React.useRef<HTMLDivElement | null>(null);
   const scrollToBottom = React.useCallback((behavior: ScrollBehavior = 'auto') => {
     const el = scrollerRef.current;
