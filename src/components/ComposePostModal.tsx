@@ -19,6 +19,7 @@ const TENOR_BASE = 'https://g.tenor.com/v1';
 const MEDIA_MAX = 4;
 const atLimit = (n: number) => n >= MEDIA_MAX;
 
+
 type TenorMedia = {
   gif?: { url?: string };
   mediumgif?: { url?: string };
@@ -218,6 +219,7 @@ function isHeicLike(file: File | undefined) {
 
 export default function ComposePostModal({ open, onClose }: Props) {
   const t = useTranslations('communities.compose');
+  const tn = useTranslations('ownership.ownershipRequest');
   const tt = useTranslations('home.toast');
 
   const [mounted, setMounted] = React.useState(false);
@@ -287,6 +289,9 @@ export default function ComposePostModal({ open, onClose }: Props) {
   // GIF handling
   const [gifOpen, setGifOpen] = React.useState(false);
   const [gifErr, setGifErr] = React.useState<string | null>(null);
+  const justSubmittedRef = React.useRef(false);
+
+  const [isPending, startTransition] = React.useTransition();
 
   async function pickGifByUrl(url: string) {
     if (atLimit(media.length)) {
@@ -322,8 +327,6 @@ export default function ComposePostModal({ open, onClose }: Props) {
     };
   }, [open]);
 
-  if (!mounted || !open) return null;
-
   const overlayStyle: React.CSSProperties = {
     position: 'fixed',
     inset: 0,
@@ -342,23 +345,15 @@ export default function ComposePostModal({ open, onClose }: Props) {
     border: '1px solid rgba(255,255,255,0.10)',
     borderRadius: 20,
     overflow: 'hidden',
-    // NEU: Höhe begrenzen und Spaltenlayout
     maxHeight: '90vh',
     display: 'flex',
     flexDirection: 'column',
   };
 
-  const hasAnyMedia = media.length > 0;
+  // ⬇️ Früher Return jetzt NACH allen Hooks
+  if (!mounted || !open || justSubmittedRef.current) return null;
 
-  const submitAction = async (fd: FormData) => {
-    for (const m of media) {
-      fd.append('media', m.file);
-    }
-    // ts-expect-error — Client Action, React übergibt FormData
-    await createPost(fd);
-    toast.posted(tt('post.published')); // → "Post wurde geteilt" mit Häkchen
-    onClose();
-  };
+  const hasAnyMedia = media.length > 0;
 
   const RemoveBtn = ({ id, small = false }: { id: string; small?: boolean }) => (
     <button
@@ -537,10 +532,52 @@ export default function ComposePostModal({ open, onClose }: Props) {
 
         {/* Form als Column-Layout, Body scrollt */}
         <form
-          // ts-expect-error — Client Action, React übergibt FormData
-          action={submitAction}
+          onSubmit={(e) => {
+            e.preventDefault();
+            const form = e.currentTarget as HTMLFormElement;
+            const fd = new FormData(form);
+
+            // alle ausgewählten Medien anhängen
+            for (const m of media) fd.append('media', m.file);
+
+            // Redirect-Ziel setzen (falls nicht gesetzt)
+            if (!fd.get('returnTo')) {
+              const url = new URL(window.location.href);
+              ['compose', 'post', 'modal', 'newPost'].forEach((k) => url.searchParams.delete(k));
+              const clean = url.pathname + (url.search ? url.search : '');
+              fd.set('returnTo', clean || url.pathname);
+
+              // Optional: URL *sofort* lokal bereinigen, damit auch ohne Redirect kein Re-Open passiert
+              try {
+                window.history.replaceState(null, '', clean || url.pathname);
+              } catch {}
+            }
+
+            // Server Action starten – NICHT darauf warten
+            startTransition(() => {
+              // ts-expect-error — Client Action, React übergibt FormData
+              void createPost(fd);
+            });
+
+            // Einmaliges Re-Öffnen unterdrücken
+            justSubmittedRef.current = true;
+
+            // Lokalen State aufräumen (optional aber empfehlenswert)
+            try {
+              for (const m of media) {
+                if (m.preview?.startsWith('blob:')) URL.revokeObjectURL(m.preview);
+              }
+            } catch {}
+            setMedia([]);
+            setText('');
+
+            // UI sofort schließen + Feedback
+            toast.posted(tt('post.published'));
+            onClose();
+          }}
           className="flex min-h-0 flex-col"
         >
+
           {/* BODY (scrollbar) */}
           <div className="px-4 pt-4 pb-3 grid gap-3 flex-1 min-h-0 overflow-y-auto">
             {/* Anchor für MentionSuggest */}
@@ -618,9 +655,9 @@ export default function ComposePostModal({ open, onClose }: Props) {
               <button
                 type="submit"
                 className="px-4 py-1.5 rounded-full bg-[var(--purple)] hover:opacity-95 text-white disabled:opacity-50"
-                disabled={text.trim().length === 0 && media.length === 0}
+                disabled={(text.trim().length === 0 && media.length === 0) || isPending}
               >
-                {t('actions.post')}
+                {isPending ? tn('uploading') : t('actions.post')}
               </button>
             </div>
 
