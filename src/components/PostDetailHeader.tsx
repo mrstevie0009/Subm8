@@ -1,26 +1,27 @@
-//src/components/PostDetailHeader.tsx
+// src/components/PostDetailHeader.tsx
 'use client';
 
 import * as React from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 
-export default function PostDetailHeader() {
+export default function PostDetailHeader({ fixed = false }: { fixed?: boolean }) {
   const router = useRouter();
   const { locale } = useParams() as { locale: string };
   const tPost = useTranslations('post');
 
   const goBack = React.useCallback(() => {
-    // Wenn es eine History gibt → zurück; sonst sauber auf den Feed der aktuellen Locale
-    if (typeof window !== 'undefined' && window.history.length > 1) {
-      router.back();
-    } else {
-      router.push(`/${locale}`);
-    }
+    if (typeof window !== 'undefined' && window.history.length > 1) router.back();
+    else router.push(`/${locale}`);
   }, [router, locale]);
 
+  // gleiche Optik, aber wahlweise sticky ODER fixed
+  const headerClass = fixed
+    ? 'fixed inset-x-0 top-0 z-50 bg-black/90 backdrop-blur border-b border-sub'
+    : 'sticky top-0 z-40 bg-black/90 backdrop-blur border-b border-sub';
+
   return (
-    <header className="sticky top-0 z-40 bg-card/90 backdrop-blur border-b border-sub">
+    <header className={headerClass}>
       <div className="max-w-2xl mx-auto flex items-center gap-3 px-3 py-2">
         <button
           type="button"

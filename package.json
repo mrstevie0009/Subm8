@@ -24,6 +24,7 @@
     "firebase": "^12.1.0",
     "git": "^0.1.5",
     "libphonenumber-js": "^1.12.23",
+    "lottie-react": "^2.4.1",
     "next": "^15.5.4",
     "next-auth": "^4.24.11",
     "next-intl": "^4.3.9",

@@ -23,6 +23,7 @@ export default function PageChrome({
     [pathnameRaw]
   );
 
+  const inPostMedia = pathname.startsWith(`/${locale}/p/`) && pathname.endsWith('/media');
   const inBookmarks = pathname.startsWith(`/${locale}/settings/bookmarks`);
   const inSettings = pathname.startsWith(`/${locale}/settings`);
 
@@ -38,8 +39,8 @@ export default function PageChrome({
    pathname.startsWith(`/${locale}/signup`);
 
   // Header in Threads aus, in Chat-Übersicht an
-  const hideHeader = inBookmarks || inChatThread || isAuthPage || inSettings || inProfile || inEditProfile;
-  const hideBottomNav = inChatThread;
+  const hideHeader = inBookmarks || inChatThread || isAuthPage || inSettings || inProfile || inEditProfile || inPostMedia;
+  const hideBottomNav = inChatThread || inPostMedia;
 
   const contentTopPad = hideHeader ? '12px' : 'calc(clamp(24px, 2.8vw, 50px) + 20px)';
   const contentBottomPad = hideBottomNav ? '12px' : 'calc(var(--bottomnav-h, 72px) + 12px)';

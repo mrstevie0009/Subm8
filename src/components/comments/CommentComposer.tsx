@@ -1,7 +1,8 @@
+//src/components/comments/CommentComposer.tsx
 'use client';
 import * as React from 'react';
 import { createPortal } from 'react-dom'; // ⬅️ NEU
-import { useFormStatus, useFormState } from 'react-dom';
+import { useFormStatus } from 'react-dom';
 import type { AddCommentResult } from '@/app/actions/comments';
 import { addCommentAction } from '@/app/actions/comments';
 import { useTranslations } from 'next-intl';
@@ -19,7 +20,7 @@ type Props = {
 
 function SubmitButton({ disabled }: { disabled: boolean }) {
   const { pending } = useFormStatus();
-  const t = useTranslations('common.communities.share');
+  const t = useTranslations('communities.communities.share');
   return (
     <button
       type="submit"
@@ -42,8 +43,8 @@ export default function CommentComposer({
   disableInternalFloating = false,
 }: Props) {
   const t = useTranslations('comments');
-  const ta = useTranslations('common.communities.share');
-  const tt = useTranslations('common.toast');
+  const ta = useTranslations('communities.communities.share');
+  const tt = useTranslations('home.toast');
   const submittedRef = React.useRef(false);
 
   const [text, setText] = React.useState('');
@@ -143,7 +144,7 @@ export default function CommentComposer({
     },
     [action]
   );
-  const [state, formAction] = useFormState<ComposerState, FormData>(reducer, initialState);
+  const [state, formAction] = React.useActionState<ComposerState, FormData>(reducer, initialState);
 
   React.useEffect(() => {
     // Nur reagieren, wenn der User wirklich submit gedrückt hat

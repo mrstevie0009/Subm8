@@ -434,167 +434,6 @@ function MediaCarousel({ items, onOpen }: { items: ContentMedia[]; onOpen?: (i:n
   );
 }
 
-/* ---------------- Lightbox (Overlay mit vertikalem Scroll) ---------------- */
-function MediaLightbox({
-  items,
-  startIndex,
-  onClose,
-}: {
-  items: ContentMedia[];
-  startIndex: number;
-  onClose: () => void;
-}) {
-  const containerRef = React.useRef<HTMLDivElement>(null);
-  const [idx, setIdx] = React.useState(startIndex);
-
-  React.useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    const child = el.children[startIndex] as HTMLElement | undefined;
-    if (child) child.scrollIntoView({ block: 'center' });
-  }, [startIndex]);
-
-  // Keyboard navigation
-  React.useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-      if (e.key === 'ArrowDown' || e.key === 'ArrowRight') setIdx((i) => Math.min(items.length - 1, i + 1));
-      if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') setIdx((i) => Math.max(0, i - 1));
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [items.length, onClose]);
-
-  // keep current item centered when idx changes
-  React.useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    const child = el.children[idx] as HTMLElement | undefined;
-    if (child) child.scrollIntoView({ block: 'center', behavior: 'smooth' });
-  }, [idx]);
-
-  React.useEffect(() => {
-    // Flag + Event setzen
-    document.body.dataset.overlayOpen = 'true';
-    try { window.dispatchEvent(new CustomEvent('ui:overlay-toggle', { detail: { open: true, source: 'media' } })); } catch {}
-    // Cleanup beim Schließen
-    return () => {
-      delete document.body.dataset.overlayOpen;
-      try { window.dispatchEvent(new CustomEvent('ui:overlay-toggle', { detail: { open: false, source: 'media' } })); } catch {}
-    };
-  }, []);
-
-  React.useEffect(() => {
-  // --- Body scroll lock (kein Doppel-Scrollbar, kein Hintergrund-Scroll) ---
-  const scrollY = window.scrollY || window.pageYOffset || 0;
-  const scrollbarW = window.innerWidth - document.documentElement.clientWidth;
-
-  // Flag + Event (du hast das schon – lassen wir drin)
-  document.body.dataset.overlayOpen = 'true';
-  try { window.dispatchEvent(new CustomEvent('ui:overlay-toggle', { detail: { open: true, source: 'media' } })); } catch {}
-
-  // Hard lock: Body fixieren + Padding kompensieren (kein Layout-Shift)
-  document.body.style.position = 'fixed';
-  document.body.style.top = `-${scrollY}px`;
-  document.body.style.left = '0';
-  document.body.style.right = '0';
-  document.body.style.width = '100%';
-  document.body.style.overflow = 'hidden';
-  if (scrollbarW > 0) document.body.style.paddingRight = `${scrollbarW}px`;
-
-  // Optional: html auch absichern (einige Browser scrollen sonst das <html>)
-  document.documentElement.style.overflow = 'hidden';
-
-  return () => {
-    // Lock zurücksetzen
-    const top = document.body.style.top;
-    document.body.style.position = '';
-    document.body.style.top = '';
-    document.body.style.left = '';
-    document.body.style.right = '';
-    document.body.style.width = '';
-    document.body.style.overflow = '';
-    document.body.style.paddingRight = '';
-    document.documentElement.style.overflow = '';
-
-    // an ursprüngliche Position zurückspringen
-    const y = top ? -parseInt(top, 10) : 0;
-    window.scrollTo(0, y);
-
-    delete document.body.dataset.overlayOpen;
-    try { window.dispatchEvent(new CustomEvent('ui:overlay-toggle', { detail: { open: false, source: 'media' } })); } catch {}
-  };
-}, []);
-
-
-  return createPortal(
-    <div
-      className="fixed inset-0 z-[2147483603] bg-black/90 backdrop-blur-sm flex flex-col"
-      role="dialog"
-      aria-modal="true"
-      data-no-nav
-      onClick={onClose}
-      style={{ overscrollBehavior: 'none' }}
-    >
-      {/* Top bar */}
-      <div className="flex items-center justify-between px-4 py-3 text-white/90">
-        <div className="text-sm">{idx + 1} / {items.length}</div>
-        <button
-          type="button"
-          className="rounded-md px-3 py-1.5 bg-white/10 hover:bg-white/15"
-          onClick={(e) => { e.stopPropagation(); onClose(); }}
-        >
-          ✕
-        </button>
-      </div>
-
-      {/* Vertical scroll area */}
-      <div
-        ref={containerRef}
-        className="flex-1 overflow-y-auto snap-y snap-mandatory space-y-6 px-2 pb-6"
-        onClick={(e) => e.stopPropagation()}
-        style={{ overscrollBehaviorY: 'contain', WebkitOverflowScrolling: 'touch' }}
-      >
-        {items.map((m, i) => (
-          <div
-            key={m.url}
-            className="snap-start min-h-[88vh] grid place-items-center"
-            onMouseEnter={() => setIdx(i)}
-          >
-            {m.kind === 'video' ? (
-              <VideoPlayer src={m.url} className="max-h-[88vh] w-auto" />
-            ) : (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={m.url} alt={m.alt ?? ''} className="max-h-[88vh] w-auto object-contain" />
-            )}
-          </div>
-        ))}
-      </div>
-
-      {/* Prev / Next controls */}
-      <div className="absolute left-2 bottom-3 flex gap-2">
-        <button
-          type="button"
-          className="rounded-lg px-3 py-1.5 bg-white/10 hover:bg-white/15 text-white/90"
-          onClick={(e) => { e.stopPropagation(); setIdx((i) => Math.max(0, i - 1)); }}
-          disabled={idx === 0}
-        >
-          ←
-        </button>
-        <button
-          type="button"
-          className="rounded-lg px-3 py-1.5 bg-white/10 hover:bg-white/15 text-white/90"
-          onClick={(e) => { e.stopPropagation(); setIdx((i) => Math.min(items.length - 1, i + 1)); }}
-          disabled={idx === items.length - 1}
-        >
-          →
-        </button>
-      </div>
-    </div>,
-    document.body
-  );
-}
-
 type AnyHTMLElementRef =
   | React.RefObject<HTMLElement | null>
   | React.MutableRefObject<HTMLElement | null>;
@@ -1069,11 +908,12 @@ export default function PostCard({
   const { locale, handle } = params;
   const pathname = usePathname();
   const searchParams = useSearchParams();
+// STATE
 
-
-  const [lightboxOpen, setLightboxOpen] = React.useState(false);
-  const [lightboxIndex, setLightboxIndex] = React.useState(0);
-  const openLightbox = (start: number) => { setLightboxIndex(start); setLightboxOpen(true); };
+  const [likes, setLikes] = React.useState<number>(post.stats?.likes ?? 0);
+  const [liked, setLiked] = React.useState<boolean>(!!post.viewer?.liked);
+  const [comments, setComments] = React.useState<number>(post.stats?.comments ?? 0);
+  const [hasCommented, setHasCommented] = React.useState<boolean>(!!post.viewer?.commented);
 
   const t = useTranslations('common');       // Root (common.json)
   const tPost = useTranslations('post');
@@ -1087,7 +927,20 @@ export default function PostCard({
   const [repostPulse, fireRepostPulse] = usePulseFlag();
   const [bookmarkPulse, fireBookmarkPulse] = usePulseFlag();
 
+  const [composerOpen, setComposerOpen] = React.useState<boolean>(false);
+  const [reposts, setReposts] = React.useState<number>(post.stats?.reposts ?? 0);
+  const [repostMenuOpen, setRepostMenuOpen] = React.useState<boolean>(false);
+  const [quoteOpen, setQuoteOpen] = React.useState(false);
+  const [moreOpen, setMoreOpen] = React.useState(false);
+
+  const rootRef   = React.useRef<HTMLElement | null>(null);
+  const moreRef   = React.useRef<HTMLDivElement | null>(null);
+  const shareRef  = React.useRef<HTMLDivElement | null>(null);
+  const repostRef = React.useRef<HTMLDivElement | null>(null);
+  const composerRef = React.useRef<HTMLDivElement | null>(null);
+  const composerPortalRef = React.useRef<HTMLDivElement | null>(null);
   const c = post.content;
+
   const isRepost = post.id !== c.id;
   const uiRole =
     c.author.role === 'DOMME'
@@ -1096,12 +949,23 @@ export default function PostCard({
       ? 'submissive'
       : undefined;
 
-  // STATE
+  const saveInteractionSnapshot = React.useCallback(() => {
+  try {
+    const snap = {
+      likes,
+      liked,
+      comments,
+      reposts,
+      hasReposted,
+      bookmarked,
+    };
+    sessionStorage.setItem(`ps:snap:${c.id}`, JSON.stringify(snap));
+  } catch {}
+}, [c.id, likes, liked, comments, reposts, hasReposted, bookmarked]);
 
-  const [likes, setLikes] = React.useState<number>(post.stats?.likes ?? 0);
-  const [liked, setLiked] = React.useState<boolean>(!!post.viewer?.liked);
-  const [comments, setComments] = React.useState<number>(post.stats?.comments ?? 0);
-  const [hasCommented, setHasCommented] = React.useState<boolean>(!!post.viewer?.commented);
+  
+
+  
 
  // beim Mount lokales Flag lesen (persistiert über Navigations)
  React.useEffect(() => {
@@ -1117,18 +981,7 @@ export default function PostCard({
    } catch {}
  }, [c.id]);
 
-  const [composerOpen, setComposerOpen] = React.useState<boolean>(false);
-  const [reposts, setReposts] = React.useState<number>(post.stats?.reposts ?? 0);
-  const [repostMenuOpen, setRepostMenuOpen] = React.useState<boolean>(false);
-  const [quoteOpen, setQuoteOpen] = React.useState(false);
-  const [moreOpen, setMoreOpen] = React.useState(false);
-
-  const rootRef   = React.useRef<HTMLElement | null>(null);
-  const moreRef   = React.useRef<HTMLDivElement | null>(null);
-  const shareRef  = React.useRef<HTMLDivElement | null>(null);
-  const repostRef = React.useRef<HTMLDivElement | null>(null);
-  const composerRef = React.useRef<HTMLDivElement | null>(null);
-  const composerPortalRef = React.useRef<HTMLDivElement | null>(null);
+  
 
   const closeTransientUI = React.useCallback(() => {
     setMoreOpen(false);
@@ -1255,14 +1108,37 @@ export default function PostCard({
   }, [buildFeedQuery]);
 
   const goDetail = React.useCallback(
-    (e: React.MouseEvent) => {
-      const target = e.target as HTMLElement | null;
-      if (target && target.closest('[data-no-nav]')) return;
-      saveFeedReturnPoint(); 
-      router.push(`/${locale}/p/${post.id}`);
-    },
-    [router, locale, post.id, saveFeedReturnPoint]
-  );
+  (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement | null;
+    if (target && target.closest('[data-no-nav]')) return;
+
+    saveInteractionSnapshot();   // ⬅️ NEU
+    saveFeedReturnPoint();
+    router.push(`/${locale}/p/${post.id}`);
+  },
+  [locale, post.id, saveFeedReturnPoint, saveInteractionSnapshot, router]
+);
+
+  const openMediaPage = (start: number) => {
+    // 1) Interaktions-Snapshot sichern
+    saveInteractionSnapshot();     // ⬅️ NEU
+
+    // 2) komplette Media-Liste vorm Navigieren speichern (deins)
+    try {
+      const key = `pm:${post.id}`;
+      const payload = {
+        v: 1,
+        at: Date.now(),
+        items: mediaItems.map(m => ({ url: m.url, alt: m.alt ?? null, kind: m.kind })),
+      };
+      sessionStorage.setItem(key, JSON.stringify(payload));
+    } catch {}
+
+    // 3) Feed-Returnpoint + Navigation
+    saveFeedReturnPoint();
+    router.push(`/${locale}/p/${post.id}/media?i=${start}`);
+  };
+
   const onKeyActivate = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') {
       const target = e.target as HTMLElement | null;
@@ -2113,12 +1989,12 @@ export default function PostCard({
             {!ageOk ? (
               <BlurredMediaGate items={mediaItems} onStartVeriff={startAgeVerification} />
             ) : mediaItems.length === 1 ? (
-              <SingleMedia m={mediaItems[0]} priority onOpen={openLightbox} index={0} />
+              <SingleMedia m={mediaItems[0]} priority onOpen={openMediaPage} index={0} />
             ) : (
               <>
-                <MediaMosaic items={mediaItems} onOpen={openLightbox} />
-                <MediaMosaicOverflow items={mediaItems} onOpen={openLightbox} />
-                <MediaCarousel items={mediaItems} onOpen={openLightbox} />
+                <MediaMosaic items={mediaItems} onOpen={openMediaPage} />
+                <MediaMosaicOverflow items={mediaItems} onOpen={openMediaPage} />
+                <MediaCarousel items={mediaItems} onOpen={openMediaPage} />
               </>
             )}
           </div>
@@ -2206,14 +2082,6 @@ export default function PostCard({
             mediaUrl: mediaItems[0]?.url,
             mediaAlt: mediaItems[0]?.alt,
           }}
-        />
-      )}
-
-      {lightboxOpen && (
-        <MediaLightbox
-          items={mediaItems}
-          startIndex={lightboxIndex}
-          onClose={() => setLightboxOpen(false)}
         />
       )}
 
