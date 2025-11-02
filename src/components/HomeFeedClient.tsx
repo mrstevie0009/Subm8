@@ -1,21 +1,12 @@
 // src/components/HomeFeedClient.tsx
 'use client';
 
-'use client';
-
 import * as React from 'react';
 import { useSearchParams } from 'next/navigation';
 import PostCard from '@/components/PostCard';
 import type { FeedPost } from '@/components/PostCard';
-import dynamic from 'next/dynamic';
 
-// Lottie nur clientseitig laden, ohne Fallback
-const Lottie = dynamic(() => import('lottie-react'), {
-  ssr: false,
-  loading: () => null,
-});
-// deine Datei
-import heartSquish from '@/lotties/heart-Squish-Lottie.json';
+
 
 type Props = {
   initialItems: FeedPost[];
@@ -267,7 +258,7 @@ export default function HomeFeedClient({ initialItems }: Props) {
   const topSentinelRef = React.useRef<HTMLDivElement | null>(null);
   const [headerHeight, setHeaderHeight] = React.useState(64);
   const [buttonTop, setButtonTop] = React.useState(12);
-
+  
   React.useEffect(() => {
     const header = document.getElementById('app-global-header');
     if (!header) return;
@@ -518,18 +509,36 @@ export default function HomeFeedClient({ initialItems }: Props) {
         <button
           onClick={handleClickNew}
           disabled={loadingNew}
-          className="px-4 h-9 rounded-full bg-[var(--purple)] text-white text-[13px] font-semibold shadow-[0_8px_30px_-12px_rgba(139,92,246,.9)] hover:opacity-95"
+          className={[
+            'relative rounded-full overflow-visible hover:scale-105 transition-transform',
+            loadingNew
+              ? 'w-20 h-20 bg-transparent'           // ⬅ feste 80×80 px Fläche wenn Loading
+              : 'px-4 h-9 bg-[var(--purple)] text-white'
+          ].join(' ')}
           aria-live="polite"
         >
           {loadingNew ? (
-            <span className="inline-flex items-center justify-center align-middle" aria-label="Loading" role="status">
-              <Lottie
-                animationData={heartSquish as unknown as object}
-                loop
-                autoplay
-                style={{ width: 20, height: 20 }}   // gleiche Größe wie dein w-5/h-5 Spinner
-              />
-            </span>
+            <div
+              className="absolute inset-0 grid place-items-center"
+              aria-label="Loading"
+              role="status"
+            >
+              {/* Host-Box, damit der Video-Layer sicher Platz hat */}
+              <div className="w-full h-full">
+                <video
+                  key="heart-loader"
+                  src="/animations/heart-squish.mp4"  // ⬅ liegt in /public/animations/
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  preload="auto"
+                  className="w-full h-full object-contain opacity-0 transition-opacity duration-150"
+                  onCanPlay={(e) => { (e.currentTarget.style.opacity = '1'); }}
+                  style={{ filter: 'drop-shadow(0 0 4px rgba(255,255,255,0.18))' }}
+                />
+              </div>
+            </div>
           ) : (
             `${newCount} New ${newCount === 1 ? 'post' : 'posts'}`
           )}
