@@ -2,12 +2,19 @@
 'use client';
 
 import * as React from 'react';
+import { createPortal } from 'react-dom';
 import { signIn } from 'next-auth/react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import Link from 'next/link';
 import Image from 'next/image';
+import dynamic from 'next/dynamic';
 import { startAuthentication } from '@simplewebauthn/browser';
+
+// Lottie nur clientseitig laden
+const Lottie = dynamic(() => import('lottie-react'), { ssr: false });
+// JSON direkt importieren (stelle sicher, dass "resolveJsonModule": true in tsconfig ist)
+import heartThrow from '@/lotties/heart-throw-Lottie.json';
 
 // shadcn/ui
 import { Input } from '@/components/ui/input';
@@ -25,10 +32,7 @@ export default function SignInPage() {
   const tc = useTranslations('common');
   const t2fa = useTranslations('auth.auth.signin2fa');
 
-  const preset =
-    sp.get('email') ??
-    sp.get('handle')?.replace(/^@/, '') ??
-    '';
+  const preset = sp.get('email') ?? sp.get('handle')?.replace(/^@/, '') ?? '';
 
   const registered = sp.get('registered') === '1';
   const resetSuccess = sp.get('reset') === 'success';
@@ -56,6 +60,20 @@ export default function SignInPage() {
   const [twoFAError, setTwoFAError] = React.useState<string | null>(null);
   const [smsSent, setSmsSent] = React.useState(false);
 
+  // ---- Splash-Portal-Ziel finden (SSR-Splash im Layout) ----
+  const [splashHost, setSplashHost] = React.useState<HTMLElement | null>(null);
+
+  React.useEffect(() => {
+    setSplashHost(document.getElementById('boot-splash-lottie'));
+  }, []);
+
+  // ---- Event senden: Layout blendet SSR-Splash aus ----
+  const signalSplashDone = React.useCallback(() => {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('boot:splash-done'));
+    }
+  }, []);
+
   function resetAll() {
     setIdentifier('');
     setPassword('');
@@ -67,10 +85,10 @@ export default function SignInPage() {
     setSmsSent(false);
   }
 
-  async function fetchTwoFAStatus(): Promise<{needed:boolean; methods: TwoFAMethod[]}> {
+  async function fetchTwoFAStatus(): Promise<{ needed: boolean; methods: TwoFAMethod[] }> {
     const res = await fetch('/api/2fa/status', {
       method: 'GET',
-      headers: { 'Accept': 'application/json' },
+      headers: { Accept: 'application/json' },
       credentials: 'include',
     });
     if (!res.ok) return { needed: false, methods: [] };
@@ -81,20 +99,14 @@ export default function SignInPage() {
     try {
       setTwoFABusy(true);
       setTwoFAError(null);
-
-      // 1) Optionen holen
       const optRes = await fetch('/api/2fa/passkey/authentication-options', {
         method: 'GET',
-        headers: { 'Accept': 'application/json' },
+        headers: { Accept: 'application/json' },
         credentials: 'include',
       });
       if (!optRes.ok) throw new Error('options_failed');
       const optionsJSON = await optRes.json();
-
-      // 2) WebAuthn-Dialog
       const assertion = await startAuthentication(optionsJSON);
-
-      // 3) Verify
       const verifyRes = await fetch('/api/2fa/passkey/authentication-verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -105,7 +117,6 @@ export default function SignInPage() {
         const j = await verifyRes.json().catch(() => ({}));
         throw new Error(j?.error || 'verify_failed');
       }
-
       router.replace(`/${locale}`);
     } catch {
       setTwoFAError(t2fa('errors.passkeyFailed'));
@@ -129,7 +140,7 @@ export default function SignInPage() {
       const j = await r.json().catch(() => ({}));
       if (!r.ok || !j.ok) throw new Error(j?.error || 'sms_start_failed');
       setSmsSent(true);
-    } catch{
+    } catch {
       setTwoFAError(t2fa('errors.smsSendFailed'));
       resetAll();
       setInvalid(true);
@@ -147,7 +158,6 @@ export default function SignInPage() {
       }
       setTwoFABusy(true);
       setTwoFAError(null);
-
       const r = await fetch('/api/2fa/sms/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -156,9 +166,8 @@ export default function SignInPage() {
       });
       const j = await r.json().catch(() => ({}));
       if (!r.ok || !j.ok) throw new Error(j?.error || 'sms_verify_failed');
-
       router.replace(`/${locale}`);
-    } catch{
+    } catch {
       setTwoFAError(t2fa('errors.codeInvalid'));
       resetAll();
       setInvalid(true);
@@ -189,9 +198,7 @@ export default function SignInPage() {
         return;
       }
 
-      // 2FA-Status
       const status = await fetchTwoFAStatus();
-
       if (!status.needed || status.methods.length === 0) {
         const url = res?.url ?? `/${locale}`;
         router.replace(url);
@@ -237,22 +244,36 @@ export default function SignInPage() {
   return (
     <div
       className="relative grid min-h-[100svh] place-items-center px-3 py-4
-                bg-[#0b0b0c] overflow-hidden rounded-none md:rounded-2xl
-                [background-image:radial-gradient(00%_40%_at_50%_0%,rgba(255,255,255,.08),transparent_60%)]"
+                 bg-[#0b0b0c] overflow-hidden rounded-none md:rounded-2xl
+                 [background-image:radial-gradient(00%_40%_at_50%_0%,rgba(255,255,255,.08),transparent_60%)]"
     >
-      {/* dekorative Blobs auf Mobile kleiner/weg */}
+      {/* Lottie wird in den SSR-Splash (Layout) portaliert */}
+      {splashHost &&
+        createPortal(
+          <Lottie
+            animationData={heartThrow as unknown as object}
+            loop={false}
+            autoplay
+            onComplete={signalSplashDone}
+            style={{ width: '100%', height: '100%' }}
+          />,
+          splashHost
+        )
+      }
+
+      {/* dekorative Blobs */}
       <div className="pointer-events-none absolute -top-24 -left-24 h-48 w-48 md:h-72 md:w-72 rounded-full bg-purple-500/20 blur-3xl hidden sm:block" />
       <div className="pointer-events-none absolute -bottom-24 -right-24 h-56 w-56 md:h-80 md:w-80 rounded-full bg-purple-500/20 blur-[90px] hidden sm:block" />
 
+      {/* --- ab hier DEINE bestehende Sign-in Card --- */}
       <div className="w-full max-w-[380px] sm:max-w-md">
         <Card className="rounded-2xl bg-[rgba(162,89,255,0.12)] backdrop-blur-xl ring-1 ring-white/20 shadow-[0_8px_30px_rgba(0,0,0,.35)] overflow-hidden">
-          {/* Card auf Mobile kompakter + harte Maxhöhe */}
           <CardContent
             className="p-5 sm:p-6 md:p-8 pt-3 sm:pt-1 md:pt-2
-                        bg-[rgba(162,89,255,0.08)]
-                        overflow-visible
-                        sm:max-h-[92svh] sm:overflow-auto sm:overscroll-contain"
-            >
+                       bg-[rgba(0,0,0,0.7)]
+                       overflow-visible
+                       sm:max-h-[92svh] sm:overflow-auto sm:overscroll-contain"
+          >
             <div className="text-center mb-6 sm:mb-8">
               <div className="flex justify-center mb-1 sm:mb-2">
                 <Image
@@ -261,19 +282,22 @@ export default function SignInPage() {
                   width={120}
                   height={36}
                   priority
-                  className="h-7 sm:h-8 w-auto drop-shadow-md" />
+                  className="h-7 sm:h-8 w-auto drop-shadow-md"
+                />
               </div>
-              {/* Welcome/Brand: auf Mobile knapper */}
               <p className="text-white/80 mb-1 sm:mb-2 text-[13px] sm:text-sm">
                 {t('welcome', { brand: tc('brand.name') })}
               </p>
-              <Link
-                href={`/${locale}`}
-                prefetch={false}
-                className="text-white text-2xl sm:text-3xl md:text-4xl mb-1 sm:mb-2 inline-block font-extrabold leading-tight"
-              >
-                {tc('brand.name')}
-              </Link>
+              <div className="mb-1 sm:mb-2">
+                <Image
+                  src="/Sub m8.png"
+                  alt={`${tc('brand.name')} logo`}
+                  width={240}
+                  height={80}
+                  priority
+                  className="mx-auto w-[180px] sm:w-[220px] md:w-[240px] h-auto"
+                />
+              </div>
               <p className="text-white/70 text-[13px] sm:text-sm">{t('title')}</p>
             </div>
 
@@ -281,16 +305,16 @@ export default function SignInPage() {
               <div
                 className={`mb-4 sm:mb-5 rounded-xl border p-2.5 sm:p-3 text-[13px] sm:text-sm
                 ${registered
-                  ? 'border-blue-300/40 bg-blue-300/15 text-blue-100'
-                  : resetSuccess
-                  ? 'border-green-400/40 bg-green-400/15 text-green-100'
-                  : 'border-red-400/40 bg-red-400/15 text-red-100'}`}
+                    ? 'border-blue-300/40 bg-blue-300/15 text-blue-100'
+                    : resetSuccess
+                      ? 'border-green-400/40 bg-green-400/15 text-green-100'
+                      : 'border-red-400/40 bg-red-400/15 text-red-100'}`}
               >
                 {registered
                   ? t('alerts.registered')
                   : resetSuccess
-                  ? t('alerts.resetSuccess')
-                  : topErrorMsg}
+                    ? t('alerts.resetSuccess')
+                    : topErrorMsg}
               </div>
             )}
 
@@ -350,8 +374,8 @@ export default function SignInPage() {
                   type="submit"
                   disabled={loading}
                   className="w-full rounded-full py-2.5 sm:py-3 text-[15px] sm:text-base font-semibold
-                            bg-[var(--purple)]/80 hover:bg-[var(--purple)]
-                            disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                             bg-[var(--purple)]/80 hover:bg-[var(--purple)]
+                             disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   {loading ? t('buttons.submitLoading') : t('buttons.submit')}
                 </button>
@@ -362,7 +386,7 @@ export default function SignInPage() {
                   type="button"
                   onClick={() => signIn('google', { callbackUrl: `/${locale}` })}
                   className="w-full rounded-full py-2 text-[14px] sm:text-sm font-medium mt-1
-                            border border-white/20 bg-black/20 hover:bg-black/30 transition-colors"
+                             border border-white/20 bg-black/20 hover:bg-black/30 transition-colors"
                 >
                   {t('buttons.google')}
                 </button>
@@ -389,8 +413,8 @@ export default function SignInPage() {
                       type="submit"
                       disabled={forgotLoading}
                       className="w-full rounded-full py-2.5 sm:py-3 text-[15px] sm:text-base font-semibold
-                                bg-[var(--purple)]/80 hover:bg-[var(--purple)]
-                                disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                 bg-[var(--purple)]/80 hover:bg-[var(--purple)]
+                                 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                       {forgotLoading ? t('forgot.submitLoading') : t('forgot.submit')}
                     </button>
@@ -426,7 +450,7 @@ export default function SignInPage() {
         </Card>
       </div>
 
-      {/* 2FA-Modal -> auf Mobile auch kompakter */}
+      {/* 2FA Modal */}
       {show2FA && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-3 sm:p-4">
           <div className="w-full max-w-[380px] sm:max-w-md rounded-2xl border border-white/20
@@ -444,7 +468,6 @@ export default function SignInPage() {
               </div>
             )}
 
-            {/* Auswahl anzeigen, falls mehrere Methoden */}
             {chosen === null && twoFAMethods.length > 1 && (
               <div className="mb-4 space-y-2">
                 <p className="text-sm text-white/80">{t2fa('chooseMethod')}</p>
@@ -458,10 +481,7 @@ export default function SignInPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => {
-                      setChosen('sms');
-                      void sendSms();
-                    }}
+                    onClick={() => { setChosen('sms'); void sendSms(); }}
                     className="flex-1 rounded-full border border-white/20 bg-white/10 hover:bg-white/15 px-3 py-2 text-sm"
                   >
                     {t2fa('smsButton')}
@@ -470,7 +490,6 @@ export default function SignInPage() {
               </div>
             )}
 
-            {/* PASSKEY STEP */}
             {chosen === 'passkey' && (
               <div className="space-y-3">
                 <p className="text-sm text-white/70">
@@ -496,7 +515,6 @@ export default function SignInPage() {
               </div>
             )}
 
-            {/* SMS STEP */}
             {chosen === 'sms' && (
               <div className="space-y-3">
                 {!smsSent ? (

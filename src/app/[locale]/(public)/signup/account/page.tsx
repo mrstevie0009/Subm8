@@ -7,6 +7,11 @@ import { useLocale, useTranslations } from 'next-intl';
 import Link from 'next/link';
 import Image from 'next/image';
 import { signIn } from 'next-auth/react';
+import { createPortal } from 'react-dom';
+import dynamic from 'next/dynamic';
+
+// Lottie nur clientseitig laden
+const Lottie = dynamic(() => import('lottie-react'), { ssr: false });
 
 // shadcn/ui
 import { Input } from '@/components/ui/input';
@@ -263,7 +268,55 @@ export default function SignupAccountPage() {
     agree &&
     (!isDomme || dommeGiftAgree);
 
-  const googleAllowed = !!handle && !!role && agree && (!isDomme || dommeGiftAgree);
+  // --- Splash Host & Portal-Container ---
+  const [splashAlive, setSplashAlive] = React.useState(true);
+  const hostRef = React.useRef<HTMLElement | null>(null);
+  const portalContainerRef = React.useRef<HTMLDivElement | null>(null);
+
+  // Lazy JSON (HMR-freundlich)
+  const [animData, setAnimData] = React.useState<object | null>(null);
+  React.useEffect(() => {
+    let alive = true;
+    import('@/lotties/heart-throw-Lottie.json')
+      .then(m => alive && setAnimData((m).default ?? m))
+      .catch(() => {});
+    return () => { alive = false; };
+  }, []);
+
+  // Host finden, stabilen Child-Container anhängen & auf "done" hören
+  React.useEffect(() => {
+    const host = document.getElementById('boot-splash-lottie') as HTMLElement | null;
+    hostRef.current = host;
+
+    if (host && !portalContainerRef.current) {
+      const el = document.createElement('div');
+      el.style.width = '100%';
+      el.style.height = '100%';
+      el.setAttribute('data-portal-owner', 'signup-account');
+      try { host.appendChild(el); } catch {}
+      portalContainerRef.current = el;
+    }
+
+    const onDone = () => setSplashAlive(false);
+    window.addEventListener('boot:splash-done', onDone, { once: true });
+
+    return () => {
+      window.removeEventListener('boot:splash-done', onDone);
+      // defensives Cleanup (verhindert removeChild-Fehler bei HMR)
+      const hostNow = hostRef.current;
+      const el = portalContainerRef.current;
+      if (hostNow && el && el.parentNode === hostNow) {
+        try { hostNow.removeChild(el); } catch {}
+      }
+      portalContainerRef.current = null;
+      hostRef.current = null;
+    };
+  }, []);
+
+  // Event zum Layout schicken, sobald Lottie fertig
+  const signalSplashDone = React.useCallback(() => {
+    window.dispatchEvent(new Event('boot:splash-done'));
+  }, []);
 
   const submit: React.FormEventHandler<HTMLFormElement> = async (ev) => {
     ev.preventDefault();
@@ -304,15 +357,16 @@ export default function SignupAccountPage() {
     }
   };
 
+  const emailOk = email.length === 0 || isValidEmail(email);
+  
   const signInWithGoogle = async () => {
-    if (!googleAllowed) {
-      setErr(t('errors.signupFailed'));
-      return;
-    }
     try {
-      const payload = { handle, role };
-      const raw = btoa(encodeURIComponent(JSON.stringify(payload)));
-      document.cookie = `subm8_pending_signup=${raw}; Path=/; Max-Age=600; SameSite=Lax`;
+      // Falls wir schon Handle & Rolle kennen, Cookie mitschicken (optional)
+      if (handle && role) {
+        const payload = { handle, role };
+        const raw = btoa(encodeURIComponent(JSON.stringify(payload)));
+        document.cookie = `subm8_pending_signup=${raw}; Path=/; Max-Age=600; SameSite=Lax`;
+      }
       await signIn('google', { callbackUrl: `/${locale}` });
     } catch (e) {
       console.error(e);
@@ -331,13 +385,34 @@ export default function SignupAccountPage() {
                  bg-[#0b0b0c] overflow-hidden rounded-none md:rounded-2xl
                  [background-image:radial-gradient(00%_40%_at_50%_0%,rgba(255,255,255,.08),transparent_60%)]"
     >
+      {/* Lottie -> Splash hosten, nur solange Host lebt */}
+      {(splashAlive &&
+        animData &&
+        hostRef.current?.isConnected &&
+        portalContainerRef.current) &&
+        createPortal(
+          <Lottie
+            animationData={animData}
+            loop={false}
+            autoplay
+            onComplete={signalSplashDone}
+            style={{ width: '100%', height: '100%' }}
+          />,
+          portalContainerRef.current
+        )
+      }
       {/* Blobs auf Mobile kleiner/versteckt */}
       <div className="pointer-events-none absolute -top-24 -left-24 h-48 w-48 md:h-72 md:w-72 rounded-full bg-purple-500/20 blur-3xl hidden sm:block" />
       <div className="pointer-events-none absolute -bottom-24 -right-24 h-56 w-56 md:h-80 md:w-80 rounded-full bg-purple-500/20 blur-[90px] hidden sm:block" />
 
       <div className="w-full max-w-[380px] sm:max-w-md">
-        <Card className="rounded-2xl bg-white/5 backdrop-blur-xl ring-1 ring-white/50 shadow-[0_8px_30px_rgba(0,0,0,.35)] overflow-hidden">
-          <CardContent className="p-5 sm:p-6 md:p-8 sm:pt-1 md:pt-2 bg-[rgba(162,89,255,0.45)]">
+        <Card className="rounded-2xl bg-[rgba(162,89,255,0.12)] backdrop-blur-xl ring-1 ring-white/20 shadow-[0_8px_30px_rgba(0,0,0,.35)] overflow-hidden">
+                  <CardContent
+                              className="p-5 sm:p-6 md:p-8 pt-3 sm:pt-1 md:pt-2
+                                         bg-[rgba(0,0,0,0.7)]
+                                         overflow-visible
+                                         sm:max-h-[92svh] sm:overflow-auto sm:overscroll-contain"
+                            >
             {/* Header */}
             <div className="text-center mb-6 sm:mb-6">
               <div className="flex justify-center mb-2 sm:mb-3">
@@ -421,15 +496,24 @@ export default function SignupAccountPage() {
                 <label className="block text-[13px] sm:text-sm font-medium mb-1 text-white/90">
                   {t('fields.email.label')}
                 </label>
+                <label className="block text-[13px] sm:text-sm font-medium mb-1 text-white/90">
+                  {t('fields.email.label')}
+                </label>
                 <Input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder={t('fields.email.placeholder')}
-                  className={`${baseInput} h-10 sm:h-11`}
                   autoComplete="email"
                   required
+                  aria-invalid={email.length > 0 && !emailOk ? true : undefined}
+                  className={`${baseInput} h-10 sm:h-11 ${email.length > 0 && !emailOk ? 'border-red-400/70 focus:ring-red-400/30' : ''}`}
                 />
+                {email.length > 0 && !emailOk && (
+                  <div className="mt-1 text-[12px] text-red-300">
+                    {t('errors.emailInvalid', { default: 'Please enter a valid email address.' })}
+                  </div>
+                )}
               </div>
 
               <div>
@@ -518,11 +602,11 @@ export default function SignupAccountPage() {
                 <button
                   type="button"
                   onClick={signInWithGoogle}
-                  disabled={!googleAllowed || loading}
+                  disabled={loading} // nur noch bei Loading sperren
                   className="w-full rounded-full py-2 text-[14px] sm:text-sm font-medium
-                             border border-white/20 bg-black/20 hover:bg-black/30
-                             disabled:opacity-50 disabled:cursor-not-allowed
-                             transition-colors"
+                            border border-white/20 bg-black/20 hover:bg-black/30
+                            disabled:opacity-50 disabled:cursor-not-allowed
+                            transition-colors"
                 >
                   {t('buttons.google')}
                 </button>

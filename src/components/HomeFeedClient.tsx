@@ -1,10 +1,21 @@
 // src/components/HomeFeedClient.tsx
 'use client';
 
+'use client';
+
 import * as React from 'react';
 import { useSearchParams } from 'next/navigation';
 import PostCard from '@/components/PostCard';
 import type { FeedPost } from '@/components/PostCard';
+import dynamic from 'next/dynamic';
+
+// Lottie nur clientseitig laden, ohne Fallback
+const Lottie = dynamic(() => import('lottie-react'), {
+  ssr: false,
+  loading: () => null,
+});
+// deine Datei
+import heartSquish from '@/lotties/heart-Squish-Lottie.json';
 
 type Props = {
   initialItems: FeedPost[];
@@ -511,17 +522,13 @@ export default function HomeFeedClient({ initialItems }: Props) {
           aria-live="polite"
         >
           {loadingNew ? (
-            <span className="inline-block align-middle" aria-label="Loading" role="status">
-              <svg
-                viewBox="0 0 24 24"
-                className="w-5 h-5 animate-spin"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                <circle cx="12" cy="12" r="9" className="opacity-25" />
-                <path d="M21 12a9 9 0 0 1-9 9" />
-              </svg>
+            <span className="inline-flex items-center justify-center align-middle" aria-label="Loading" role="status">
+              <Lottie
+                animationData={heartSquish as unknown as object}
+                loop
+                autoplay
+                style={{ width: 20, height: 20 }}   // gleiche Größe wie dein w-5/h-5 Spinner
+              />
             </span>
           ) : (
             `${newCount} New ${newCount === 1 ? 'post' : 'posts'}`

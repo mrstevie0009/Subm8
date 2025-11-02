@@ -2,10 +2,19 @@
 'use client';
 
 import * as React from 'react';
+import { createPortal } from 'react-dom';                     
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
+import dynamic from 'next/dynamic';                          
+
+// Lottie nur clientseitig laden
+const Lottie = dynamic(() => import('lottie-react'), {
+  ssr: false,
+  loading: () => null,
+});
+import heartThrow from '@/lotties/heart-throw-Lottie.json';          
 
 // shadcn/ui
 import { Input } from '@/components/ui/input';
@@ -89,6 +98,24 @@ export default function SignupStartPage() {
   const handleFormatOk = !touched ? true : validHandle(username);
   const showFormatError = touched && !handleFormatOk;
   const showTakenError = handleState === 'taken';
+
+  const [splashHost, setSplashHost] = React.useState<HTMLElement | null>(null);
+  const [splashAlive, setSplashAlive] = React.useState(true);
+
+  // Host finden und stabilen Child-Container anlegen
+  React.useEffect(() => {
+    setSplashHost(document.getElementById('boot-splash-lottie'));
+    const onDone = () => setSplashAlive(false);
+    window.addEventListener('boot:splash-done', onDone, { once: true });
+    return () => window.removeEventListener('boot:splash-done', onDone);
+  }, []);
+
+  // Event senden: Layout blendet SSR-Splash aus
+  const signalSplashDone = React.useCallback(() => {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('boot:splash-done'));
+    }
+  }, []);
 
   /** ←——— FIX: als useCallback, damit der Effekt eine stabile Dep bekommt */
   const checkHandleAvailability = React.useCallback(async (h: string): Promise<'ok' | 'taken' | 'skip' | 'error'> => {
@@ -246,13 +273,32 @@ export default function SignupStartPage() {
     <div className="relative grid min-h-[100svh] place-items-center px-3 py-4 bg-[#0b0b0c] overflow-hidden rounded-none md:rounded-2xl
                    [background-image:radial-gradient(00%_40%_at_50%_0%,rgba(255,255,255,.08),transparent_60%)]"
     >
+      {/* Lottie wird in den SSR-Splash (Layout) portaliert */}
+      {(splashAlive && splashHost?.isConnected) &&
+        createPortal(
+          <Lottie
+            animationData={heartThrow as unknown as object}
+            loop={false}
+            autoplay
+            onComplete={signalSplashDone}
+            style={{ width: '100%', height: '100%' }}
+          />,
+          splashHost
+        )
+      }
+
       {/* weiche Blur-Blobs */}
       <div className="pointer-events-none absolute -top-24 -left-24 h-48 w-48 md:h-72 md:w-72 rounded-full bg-purple-500/20 blur-3xl" />
       <div className="pointer-events-none absolute -bottom-24 -right-24 h-56 w-56 md:h-80 md:w-80 rounded-full bg-purple-500/20 blur-[90px]" />
 
       <div className="w-full max-w-[380px] sm:max-w-md">
-        <Card className="rounded-2xl bg-white/5 backdrop-blur-xl ring-1 ring-white/50 shadow-[0_8px_30px_rgba(0,0,0,.35)] overflow-hidden">
-          <CardContent className="p-5 sm:p-8 sm:pt-1 md:pt-2 bg-[rgba(162,89,255,0.45)]">
+        <Card className="rounded-2xl bg-[rgba(162,89,255,0.12)] backdrop-blur-xl ring-1 ring-white/20 shadow-[0_8px_30px_rgba(0,0,0,.35)] overflow-hidden">
+          <CardContent
+                      className="p-5 sm:p-6 md:p-8 pt-3 sm:pt-1 md:pt-2
+                                 bg-[rgba(0,0,0,0.7)]
+                                 overflow-visible
+                                 sm:max-h-[92svh] sm:overflow-auto sm:overscroll-contain"
+                    >
             {/* Header + Logo */}
             <div className="text-center mb-6 sm:mb-8">
               <div className="flex justify-center mb-3">
@@ -300,7 +346,7 @@ export default function SignupStartPage() {
                     spellCheck={false}
                     disabled={busy}
                     aria-invalid={showFormatError || showTakenError ? true : undefined}
-                    className={`pl-8 h-10 sm:h-11 bg-black/30 border-white/20 text-white placeholder:text-white/50 focus:border-white/40 focus:ring-white/20 lowercase ${showFormatError || showTakenError ? 'border-red-400/70 focus:ring-red-400/30' : ''}`}
+                    className={`pl-8 h-10 sm:h-11 bg-[rgba(39,37,42,0.12)] border-white/20 text-white placeholder:text-white/50 focus:border-white/40 focus:ring-white/20 lowercase ${showFormatError || showTakenError ? 'border-red-400/70 focus:ring-red-400/30' : ''}`}
                   />
                 </div>
 
@@ -326,7 +372,7 @@ export default function SignupStartPage() {
               {/* Account Type Selection */}
               <div>
                 <p className="text-white/80 mb-3 sm:mb-4 text-center text-[13px] sm:text-base">{t('selectTypeTitle')}</p>
-                <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                <div className="bg-[rgba(67,66,69,0.12)]  grid grid-cols-2 gap-3 sm:gap-4">
                   <AccountTypeCard
                     type="sub"
                     emoji="😊"

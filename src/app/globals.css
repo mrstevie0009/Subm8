@@ -121,3 +121,21 @@ img, video, canvas, svg {
   min-height: 100dvh;
 }
 
+/* Splash-Pre-hydration Guard */
+html.s8-splash,
+html.s8-splash body {
+  background: #000;
+}
+html.s8-splash body {
+  overflow: hidden;
+}
+/* Versteckt die eigentliche Sign-in-UI bis React übernimmt */
+html.s8-splash .signin-root {
+  visibility: hidden; /* statt display:none, damit Layout stabil bleibt */
+}
+/* Splash-Container ist sofort sichtbar */
+html.s8-splash .signin-splash {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
