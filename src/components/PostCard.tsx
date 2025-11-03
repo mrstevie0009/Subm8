@@ -431,43 +431,164 @@ function MediaMosaicOverflow({ items, onOpen }: { items: ContentMedia[]; onOpen?
   );
 }
 
-/** Carousel nur wenn Video enthalten ist */
 function MediaCarousel({ items, onOpen }: { items: ContentMedia[]; onOpen?: (i:number)=>void }) {
-  if (!Array.isArray(items) || items.length === 0) return null;
-  const hasVideo = items.some((m) => m.kind === 'video');
-  if (!hasVideo) return null;
+  // Hooks must always run:
+  const scrollerRef = React.useRef<HTMLDivElement>(null);
+  const [idx, setIdx] = React.useState(0);
+
+  const draggingRef = React.useRef(false);
+  const startXRef = React.useRef(0);
+  const startScrollRef = React.useRef(0);
+  const deltaRef = React.useRef(0);
+  const clickGuardRef = React.useRef(false);
+
+  // Derived booleans AFTER hooks:
+  const hasVideo = React.useMemo(() => items?.some((m) => m.kind === 'video'), [items]);
+  const shouldRender = Array.isArray(items) && items.length > 0 && (hasVideo || items.length > 1);
+  
+
+  const snapTo = React.useCallback((targetIndex: number) => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    const w = el.clientWidth || 1;
+    const x = Math.max(0, Math.min(items.length - 1, targetIndex)) * w;
+    el.scrollTo({ left: x, behavior: 'smooth' });
+  }, [items.length]);
+
+  const onScroll = React.useCallback(() => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    const w = el.clientWidth || 1;
+    const i = Math.round(el.scrollLeft / w);
+    if (i !== idx) setIdx(Math.max(0, Math.min(items.length - 1, i)));
+  }, [idx, items.length]);
+
+  const onPointerDown = (e: React.PointerEvent) => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    if (e.button !== 0 && e.pointerType !== 'touch') return;
+    draggingRef.current = true;
+    clickGuardRef.current = false;
+    el.setPointerCapture(e.pointerId);
+    startXRef.current = e.clientX;
+    startScrollRef.current = el.scrollLeft;
+    deltaRef.current = 0;
+  };
+
+  const onPointerMove = (e: React.PointerEvent) => {
+    if (!draggingRef.current) return;
+    const el = scrollerRef.current;
+    if (!el) return;
+    e.preventDefault();
+    const dx = e.clientX - startXRef.current;
+    deltaRef.current = dx;
+    if (Math.abs(dx) > 6) clickGuardRef.current = true;
+    el.scrollLeft = startScrollRef.current - dx;
+  };
+
+  const onPointerUp = () => {
+    if (!draggingRef.current) return;
+    draggingRef.current = false;
+    const el = scrollerRef.current;
+    if (!el) return;
+    const w = el.clientWidth || 1;
+    const curr = el.scrollLeft / w;
+    const vel = -deltaRef.current;
+    const threshold = 0.18;
+    let target = Math.round(curr);
+    if (Math.abs(vel) > 20) {
+      target = vel > 0 ? Math.ceil(curr) : Math.floor(curr);
+    } else {
+      const frac = curr - Math.floor(curr);
+      if (frac > (1 - threshold)) target = Math.ceil(curr);
+      else if (frac < threshold)  target = Math.floor(curr);
+      else target = Math.round(curr);
+    }
+    snapTo(target);
+  };
+
+  const go = (i: number) => snapTo(i);
+
+  const onKey = (e: React.KeyboardEvent) => {
+    if (e.key === 'ArrowLeft') { e.preventDefault(); snapTo(idx - 1); }
+    if (e.key === 'ArrowRight') { e.preventDefault(); snapTo(idx + 1); }
+  };
+
+  if (!shouldRender) return null;
 
   return (
     <figure className="mt-2 sm:mt-3 overflow-hidden rounded-xl border border-white/10 bg-black/20" data-no-nav>
       <div className="relative">
         <div
-          className="flex overflow-x-auto snap-x snap-mandatory gap-0 p-0"
-          style={{ scrollBehavior: 'smooth' }}
+          ref={scrollerRef}
+          className="flex no-scrollbar snap-x snap-mandatory gap-0 p-0 overflow-x-auto"
+          style={{ scrollBehavior: 'smooth', touchAction: 'pan-y' }}
+          onScroll={onScroll}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
+          onPointerCancel={onPointerUp}
+          onKeyDown={onKey}
+          tabIndex={0}
+          aria-label="Media carousel"
         >
-          {items.map((m, idx) => (
-            <div key={m.url} className="relative shrink-0 basis-full snap-center px-2">
-
-              {m.kind === 'video' ? (
-                <VideoPlayer src={m.url} className="w-full h-auto max-h-[58vh] sm:max-h-[70vh]" />
-              ) : (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={m.url}
-                  alt={m.alt ?? ''}
-                  className="block w-full h-auto object-contain max-h-[58vh] sm:max-h-[70vh] cursor-zoom-in"
-                  onClick={(e) => { e.stopPropagation(); onOpen?.(idx); }}
-                />
-              )}
-              <div className="absolute left-2 bottom-2 rounded-full bg-black/60 text-xs px-2 py-1">
-                {idx + 1}/{items.length}
+          {items.map((m, i) => {
+            const handleClickImage = (e: React.MouseEvent) => {
+              if (clickGuardRef.current) { e.stopPropagation(); return; }
+              onOpen?.(i);
+            };
+            return (
+              <div key={m.url} className="relative shrink-0 basis-full snap-center px-2">
+                {m.kind === 'video' ? (
+                  // ✅ wrap VideoPlayer to stop propagation (no onClick prop on VideoPlayer)
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <VideoPlayer src={m.url} className="w-full h-auto max-h-[58vh] sm:max-h-[70vh]" />
+                  </div>
+                ) : (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={m.url}
+                    alt={m.alt ?? ''}
+                    className="block w-full h-auto object-contain max-h-[58vh] sm:max-h-[70vh] cursor-zoom-in"
+                    onClick={handleClickImage}
+                    draggable={false}
+                  />
+                )}
+                <div className="absolute left-3 bottom-2 rounded-full bg-black/60 text-xs px-2 py-1">
+                  {i + 1}/{items.length}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
+
+        {items.length > 1 && (
+          <div className="absolute inset-x-0 bottom-2 flex items-center justify-center gap-1.5 pointer-events-none">
+            {items.map((_, i) => (
+              <button
+                key={i}
+                type="button"
+                aria-label={`Go to slide ${i + 1}`}
+                className="pointer-events-auto rounded-full"
+                style={{
+                  width: i === idx ? 10 : 6,
+                  height: i === idx ? 10 : 6,
+                  background: i === idx ? 'white' : 'rgba(255,255,255,.55)',
+                  opacity: i === idx ? 0.95 : 0.75,
+                  transition: 'all 160ms ease',
+                  outline: 'none',
+                  border: 'none',
+                }}
+                onClick={(e) => { e.stopPropagation(); go(i); }}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </figure>
   );
 }
+
 
 type AnyHTMLElementRef =
   | React.RefObject<HTMLElement | null>
