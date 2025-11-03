@@ -9,6 +9,24 @@ import { createPortal } from 'react-dom';
 import { useScrollHide } from '../hooks/useScrollHide';
 
 const CHAT_MINI_DISMISS_KEY = 'chatMiniDismiss:v1';
+const CHAT_DING_KEY = 'chatLastDingByConv:v1';
+const NOTI_DING_KEY = 'notiLastDingMs:v1';
+
+function readChatDingMap(): Record<string, number> {
+  try {
+    const raw = localStorage.getItem(CHAT_DING_KEY);
+    return raw ? (JSON.parse(raw) as Record<string, number>) : {};
+  } catch { return {}; }
+}
+function writeChatDingMap(map: Record<string, number>) {
+  try { localStorage.setItem(CHAT_DING_KEY, JSON.stringify(map)); } catch {}
+}
+function readNotiDingMs(): number {
+  try { return Number(localStorage.getItem(NOTI_DING_KEY) || 0); } catch { return 0; }
+}
+function writeNotiDingMs(ms: number) {
+  try { localStorage.setItem(NOTI_DING_KEY, String(ms)); } catch {}
+}
 
 function readChatMiniDismiss(): Record<string, number> {
   try {
@@ -309,9 +327,7 @@ function NavContent() {
       window.removeEventListener('storage', read);
     };
   }, []);
-
-  const lastChatKeyRef = React.useRef<string | null>(null);
-  const lastNotiKeyRef = React.useRef<string | null>(null);
+  
   const isActive = (seg: string) =>
     pathname === `/${locale}${seg}` || pathname.startsWith(`/${locale}${seg}/`);
 
@@ -384,6 +400,7 @@ function NavContent() {
     userId: string;
     avatarUrl: string | null;
     unread: number;
+    lastMs: number;
   } | null>(null);
 
     React.useEffect(() => {
@@ -466,6 +483,7 @@ function NavContent() {
         userId: latestUnread.other.id,
         avatarUrl: latestUnread.other.avatarUrl ?? null,
         unread: latestUnread.unread ?? 0,
+        lastMs: lastMsgTs,
       });
     } catch {
       setHasUnreadChat(false);
@@ -511,6 +529,10 @@ function NavContent() {
         const map = readChatMiniDismiss();
         map[cid] = Date.now();         // „gesehen/unterdrücken bis etwas Neueres kommt“
         writeChatMiniDismiss(map);
+
+        const dingMap = readChatDingMap();
+        dingMap[cid] = Date.now();
+        writeChatDingMap(dingMap);
       }
     };
     window.addEventListener('chat:thread-opened', onOpen as EventListener);
@@ -522,33 +544,34 @@ function NavContent() {
   React.useEffect(() => {
     if (!miniUser || !prefs.sound) return;
 
-    const key = `${miniUser.conversationId}:${miniUser.unread}`;
-    if (lastChatKeyRef.current === key) return; // nichts Neues → kein Ton
-    lastChatKeyRef.current = key;
+    // Schon geklingelt für diesen Thread bei dieser Zeit?
+    const map = readChatDingMap();
+    const lastPlayed = map[miniUser.conversationId] || 0;
+    if (miniUser.lastMs <= lastPlayed) return;  // ⬅️ nichts Neues → kein Ton
 
-    if (document.visibilityState === 'visible') {
-      const t = setTimeout(() => {
-        ding();
-      }, 30);
-      return () => clearTimeout(t);
-    }
-  }, [miniUser, ding, prefs.sound]);
+    // Nur im sichtbaren Tab
+    if (document.visibilityState !== 'visible') return;
+
+    // Sofort persistieren (gegen Remounts) und dann spielen
+    map[miniUser.conversationId] = miniUser.lastMs;
+    writeChatDingMap(map);
+
+    const t = setTimeout(() => { ding(); }, 30);
+    return () => clearTimeout(t);
+  }, [miniUser, prefs.sound, ding]);
 
   // 🔔 Sound abspielen (Notifications)
   React.useEffect(() => {
     if (!miniNotiVisible || !latestNotiMs || !prefs.sound) return;
+    if (document.visibilityState !== 'visible') return;
 
-    const key = String(latestNotiMs);
-    if (lastNotiKeyRef.current === key) return;
-    lastNotiKeyRef.current = key;
+    const lastPlayed = readNotiDingMs();
+    if (latestNotiMs <= lastPlayed) return;   // nichts Neues
 
-    if (document.visibilityState === 'visible') {
-      const t = setTimeout(() => {
-        ding();
-      }, 30);
-      return () => clearTimeout(t);
-    }
-  }, [miniNotiVisible, latestNotiMs, ding, prefs.sound]);
+    writeNotiDingMs(latestNotiMs);
+    const t = setTimeout(() => { ding(); }, 30);
+    return () => clearTimeout(t);
+  }, [miniNotiVisible, latestNotiMs, prefs.sound, ding]);
 
   const navHeight = 'calc(clamp(24px, 2.8vw, 50px) + 20px + env(safe-area-inset-bottom))';
 

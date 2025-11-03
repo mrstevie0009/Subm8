@@ -229,17 +229,27 @@ export default function PostMediaPage() {
     ) : (
       <div
         ref={containerRef}
-        className="space-y-6 px-2 pb-10 pt-2"
+        className="space-y-6 px-2 pb-10 pt-2 snap-y snap-mandatory"
         style={{ overscrollBehaviorY: 'contain', WebkitOverflowScrolling: 'touch' }}
       >
         {items.map((m) => (
           <figure
             key={m.url}
-            className="grid place-items-center rounded-xl border border-white/10 bg-black/20 overflow-hidden"
-            style={{ minHeight: 'min(88svh, 720px)' }}
+            className="grid place-items-center rounded-xl border border-white/10 bg-black/20 overflow-hidden snap-start md:snap-center"
+            style={{
+              minHeight: 'min(88svh, 720px)',
+              scrollSnapStop: 'always',     // stoppt zuverlässig auf jedem Item
+              scrollMarginTop: '56px',      // ≈ Headerhöhe (48px) + etwas Puffer
+            }}
           >
             {m.kind === 'video' ? (
-              <VideoPlayer src={m.url} className="max-h-[88svh] w-auto" />
+              <VideoPlayer
+                src={m.url}
+                className="max-h-[88svh] w-auto"
+                autoPlay
+                muted
+                loop
+              />
             ) : (
               <Image
                 src={m.url}
