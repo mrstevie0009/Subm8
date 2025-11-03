@@ -13,6 +13,8 @@ type UserSlim = {
   displayName: string;
   avatarUrl: string | null;
   role: 'DOMME' | 'SUBMISSIVE';
+  premiumUntil?: string | null; 
+  isFirstAdopter?: boolean;  
 };
 
 type CommentRow = {
@@ -28,6 +30,8 @@ type CommentRow = {
     displayName: string;
     avatarUrl: string | null;
     role: 'DOMME' | 'SUBMISSIVE';
+    premiumUntil: Date | null;
+    isFirstAdopter: boolean | null;
   };
   _count: {
     likes: number;
@@ -107,7 +111,17 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
         parentId: true,
         mediaUrl: true,
         mediaAlt: true,
-        User: { select: { id: true, handle: true, displayName: true, avatarUrl: true, role: true } },
+        User: {
+      select: {
+        id: true,
+        handle: true,
+        displayName: true,
+        avatarUrl: true,
+        role: true,
+        premiumUntil: true,     // ⬅️ neu
+        isFirstAdopter: true,   // ⬅️ neu
+      },
+    },
         _count: { select: { likes: true, replies: true } },
       },
     });
@@ -129,7 +143,17 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
           parentId: true,
           mediaUrl: true,
           mediaAlt: true,
-          User: { select: { id: true, handle: true, displayName: true, avatarUrl: true, role: true } },
+          User: {
+      select: {
+        id: true,
+        handle: true,
+        displayName: true,
+        avatarUrl: true,
+        role: true,
+        premiumUntil: true,
+        isFirstAdopter: true,   
+      },
+    },
           _count: { select: { likes: true, replies: true } },
         },
       });
@@ -174,6 +198,8 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
           displayName: n.User.displayName,
           avatarUrl: n.User.avatarUrl,
           role: n.User.role,
+          premiumUntil: n.User.premiumUntil ? n.User.premiumUntil.toISOString() : null, 
+          isFirstAdopter: !!n.User.isFirstAdopter,                                      
         },
         counts: { likes: n._count.likes, replies: n._count.replies },
         viewer: { liked: likedSet.has(n.id) },

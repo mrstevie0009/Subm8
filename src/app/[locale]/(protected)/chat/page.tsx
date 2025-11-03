@@ -7,12 +7,16 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useLocale, useTranslations } from 'next-intl';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
+import { UserBadges } from '@/components/UserBadges';
 
 import { reportUserAction } from '@/app/actions/reports';
 import { blockUserAction } from '@/app/actions/blocks';
 
 const AVATAR_PH = '/images/avatar-placeholder.png';
 const PINS_STORAGE_KEY = 'chat:pinned:v1';
+
+const isPremiumActive = (iso?: string | null) =>
+  !!iso && new Date(iso).getTime() > Date.now();
 
 // ---- Envelope Prefixes (müssen mit Thread-Seite übereinstimmen) ----
 const TIPREQ_PREFIX  = 'TIPREQ::';
@@ -23,7 +27,7 @@ const ADREQ_PREFIX   = 'ADREQ::';
 const ADACC_PREFIX   = 'ADACC::';
 const REACT_PREFIX   = 'REACT::';
 const REPLY_PREFIX   = 'REPLY::';
-const CHAT_CACHE_KEY = 'chat:list:v1';
+const CHAT_CACHE_KEY = 'chat:list:v2';
 
 function readCachedItems(): Item[] | null {
   try {
@@ -132,10 +136,17 @@ function truncateMid(s: string, max = 80) {
 
 type Item = {
   id: string;
-  other: { id: string; username: string; displayName: string; avatarUrl: string | null };
-  lastMessageAt: string; // ISO
+  other: {
+    id: string;
+    username: string;
+    displayName: string;
+    avatarUrl: string | null;
+    role?: 'domme' | 'submissive' | 'DOMME' | 'SUBMISSIVE';   
+    premiumUntil?: string | null;                            
+    isFirstAdopter?: boolean;                                 
+  };
+  lastMessageAt: string;
   lastSnippet: string;
-  /** Wer hat die letzte Nachricht gesendet? Optional; wenn nicht vorhanden, wird other als Actor verwendet. */
   lastAuthorId?: string;
   unread: number;
   muted?: boolean;
@@ -265,6 +276,7 @@ function ChatRow({
 }) {
   const t = useTranslations('chat.chat');
   const tTime = useTranslations('common.time');
+  const b = useTranslations('common');
 
   const MEDIA_PREFIX = 'MEDIA::';
   function parseMediaEnvelope(raw?: string | null): 'image' | 'video' | 'audio' | 'file' | null {
@@ -530,53 +542,61 @@ function ChatRow({
       </div>
 
       <div className="min-w-0">
-        <div className="flex items-baseline gap-2">
-          <Link
-            href={profileHref}
-            prefetch={false}
-            className="font-medium truncate hover:underline"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {c.other.displayName}
-          </Link>
-          <Link
-            href={profileHref}
-            prefetch={false}
-            className="text-[11px] text-muted truncate hover:underline"
-            onClick={(e) => e.stopPropagation()}
-          >
+        {/* Obere Zeile: links Name+Badges, rechts die Vorschau füllt den ganzen Rest */}
+        <div className="flex items-center gap-2 min-w-0">
+          {/* links: Name + Badges, bekommt nur so viel Breite wie nötig */}
+          <div className="-mt-2 shrink-0 flex items-center gap-1">
+            <span className="font-medium truncate max-w-[40vw]">
+              {c.other.displayName}
+            </span>
+
+            <UserBadges
+              role={c.other.role ?? 'submissive'}
+              isPremium={isPremiumActive(c.other.premiumUntil)}
+              isFirstAdopter={!!c.other.isFirstAdopter}
+              size={16}
+              className="-ml-0.5"
+              premiumLabel={b('badges.verified')}
+              firstAdopterLabel={b('badges.firstAdopter')}
+            />
+          </div>
+
+          {/* rechts: Vorschau (nimmt komplette Restbreite ein) */}
+          <div className="self-center mt-2 flex items-center gap-1 min-w-0 ml-2 md:ml-3 text-[15px] md:text-[16px] text-white/85 truncate">
+            <span className="opacity-70 shrink-0">
+              {actorIsOther ? c.other.displayName : t('you')}:
+            </span>
+
+            {snippet.type === 'reaction' && (
+              <span aria-hidden className="shrink-0">{snippet.emoji}</span>
+            )}
+
+            {parseReplyEnvelope(c.lastSnippet) && (
+              <span className="shrink-0 opacity-80" aria-hidden>↩︎</span>
+            )}
+
+            <span className="truncate">
+              {snippet.text && snippet.text.trim().length > 0 ? snippet.text : '…'}
+            </span>
+          </div>
+        </div>
+
+        {/* Untere Zeile: Handle + kleine Status-Badges */}
+        <div className="-mt-2 flex items-center gap-2 text-[11px] text-muted min-w-0">
+          <span className="truncate">
             @{c.other.username}
-          </Link>
-          
+          </span>
+
           {c.muted && (
-            <span className="ml-1 text-[10px] px-1.5 py-[1px] rounded-full bg-white/10 text-white/70">
+            <span className="px-1.5 py-[1px] rounded-full bg-white/10 text-white/70">
               {t('row.badges.muted')}
             </span>
           )}
           {isPinned && (
-            <span className="ml-1 text-[10px] px-1.5 py-[1px] rounded-full bg-[var(--purple)]/15 text-[var(--purple)]">
+            <span className="px-1.5 py-[1px] rounded-full bg-[var(--purple)]/15 text-[var(--purple)]">
               {t('row.badges.pinned')}
             </span>
           )}
-        </div>
-
-        {/* Snippet (sichtbar mit Absender + Icons) */}
-        <div className="text-sm text-muted flex items-center gap-1.5 min-w-0">
-          <span className="shrink-0 text-white/80">
-            {actorIsOther ? c.other.displayName : t('you')}:
-          </span>
-
-          {snippet.type === 'reaction' && (
-            <span aria-hidden className="shrink-0">{snippet.emoji}</span>
-          )}
-
-          {parseReplyEnvelope(c.lastSnippet) && (
-            <span className="shrink-0 opacity-80" aria-hidden>↩︎</span>
-          )}
-
-          <span className="flex-1 min-w-0 truncate">
-            {snippet.text && snippet.text.trim().length > 0 ? snippet.text : '…'}
-          </span>
         </div>
       </div>
 

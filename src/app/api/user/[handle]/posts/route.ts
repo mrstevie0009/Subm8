@@ -80,7 +80,12 @@ export async function GET(req: Request, ctx: { params: { handle: string } }) {
     // Gemeinsamer Include-Block (als const, damit Prisma-Typen ableitbar sind)
     const commonInclude = {
       author: {
-        select: { id: true, handle: true, displayName: true, role: true, avatarUrl: true },
+        select: {
+          id: true, handle: true, displayName: true, role: true, avatarUrl: true,
+          // 🟣 neu:
+          isFirstAdopter: true,
+          premiumUntil: true,
+        },
       },
       uploaded: true,
       repostOf: {
@@ -91,7 +96,12 @@ export async function GET(req: Request, ctx: { params: { handle: string } }) {
           uploaded: true,
           createdAt: true,
           author: {
-            select: { id: true, handle: true, displayName: true, role: true, avatarUrl: true },
+            select: {
+              id: true, handle: true, displayName: true, role: true, avatarUrl: true,
+              // 🟣 neu:
+              isFirstAdopter: true,
+              premiumUntil: true,
+            },
           },
           _count: { select: { Like: true, Comment: true, reposts: true } },
         },
@@ -104,7 +114,12 @@ export async function GET(req: Request, ctx: { params: { handle: string } }) {
           uploaded: true,
           createdAt: true,
           author: {
-            select: { id: true, handle: true, displayName: true, role: true, avatarUrl: true },
+            select: {
+              id: true, handle: true, displayName: true, role: true, avatarUrl: true,
+              // 🟣 neu:
+              isFirstAdopter: true,
+              premiumUntil: true,
+            },
           },
         },
       },
@@ -163,6 +178,11 @@ export async function GET(req: Request, ctx: { params: { handle: string } }) {
           displayName: p.author.displayName,
           role: (p.author.role as Role) ?? null,
           avatarUrl: p.author.avatarUrl,
+          // 🟣 neu:
+          isFirstAdopter: (p.author).isFirstAdopter ?? false,
+          premiumUntil: (p.author).premiumUntil
+            ? new Date((p.author).premiumUntil).toISOString()
+            : null,
         },
         repostOf: isRepost
           ? {
@@ -178,6 +198,11 @@ export async function GET(req: Request, ctx: { params: { handle: string } }) {
                 displayName: p.repostOf!.author.displayName,
                 role: (p.repostOf!.author.role as Role) ?? null,
                 avatarUrl: p.repostOf!.author.avatarUrl,
+                // 🟣 neu:
+                isFirstAdopter: (p.repostOf!.author).isFirstAdopter ?? false,
+                premiumUntil: (p.repostOf!.author).premiumUntil
+                  ? new Date((p.repostOf!.author).premiumUntil).toISOString()
+                  : null,
               },
             }
           : null,
@@ -195,6 +220,11 @@ export async function GET(req: Request, ctx: { params: { handle: string } }) {
                 displayName: p.quoteOf!.author.displayName,
                 role: (p.quoteOf!.author.role as Role) ?? null,
                 avatarUrl: p.quoteOf!.author.avatarUrl,
+                // 🟣 neu:
+                isFirstAdopter: (p.quoteOf!.author).isFirstAdopter ?? false,
+                premiumUntil: (p.quoteOf!.author).premiumUntil
+                  ? new Date((p.quoteOf!.author).premiumUntil).toISOString()
+                  : null,
               },
             }
           : null,

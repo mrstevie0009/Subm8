@@ -9,6 +9,10 @@ import type { ChatUser } from '@/types/chat';
 import { blockUserAction, unblockUserAction } from '@/app/actions/blocks';
 import { reportUserAction } from '@/app/actions/reports';
 import { createPortal } from 'react-dom';
+import { UserBadges } from '@/components/UserBadges';
+
+const isPremiumActive = (iso?: string | null) =>
+  !!iso && new Date(iso).getTime() > Date.now();
 
 type Props = {
   other: ChatUser & { role: 'domme' | 'submissive' | 'DOMME' | 'SUBMISSIVE' };
@@ -27,6 +31,7 @@ export default function ChatHeader({
 }: Props) {
   const locale = useLocale();
   const t = useTranslations('chat.chatHeader');
+  const b = useTranslations('common')
 
   // Responsive Größen
   const iconSize = 'clamp(28px, 3.6vw, 34px)';
@@ -151,15 +156,28 @@ export default function ChatHeader({
               {loading ? (
                 <div className="h-[18px] w-40 max-w-[55vw] rounded bg-white/10 animate-pulse" aria-hidden />
               ) : (
-                <h1 className="font-semibold truncate" style={{ fontSize: titleSz, lineHeight: 1.1 }}>
-                  <Link
-                    href={profileHref}
-                    prefetch={false}
-                    className="hover:underline truncate"
-                    rel="author"
-                  >
-                    {other.displayName}
-                  </Link>
+                <h1 className="font-semibold" style={{ fontSize: titleSz, lineHeight: 1.1 }}>
+                  <span className="inline-flex items-center gap-1 max-w-full">
+                    <Link
+                      href={profileHref}
+                      prefetch={false}
+                      className="hover:underline truncate"
+                      rel="author"
+                    >
+                      {other.displayName}
+                    </Link>
+
+                    {/* 🟣 Badges direkt neben dem Namen */}
+                    <UserBadges
+                      role={other.role}
+                      isPremium={isPremiumActive(other.premiumUntil)}
+                      isFirstAdopter={!!other.isFirstAdopter}
+                      size={16}           // 16–18 passt gut zur Header-Zeile
+                      className="shrink-0"
+                      premiumLabel={b('badges.verified')}        // z.B. „Verifiziertes Konto“
+                      firstAdopterLabel={b('badges.firstAdopter')}
+                    />
+                  </span>
                 </h1>
               )}
 

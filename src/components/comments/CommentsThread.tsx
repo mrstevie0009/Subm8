@@ -6,6 +6,14 @@ import Image from 'next/image';
 import { addCommentAction } from '@/app/actions/comments';
 import { useTranslations } from 'next-intl';
 import { toast } from '@/lib/toast';
+import { UserBadges } from '@/components/UserBadges';
+
+const isPremiumActive = (iso?: string | null) =>
+  !!iso && new Date(iso).getTime() > Date.now();
+
+type DbRole = 'DOMME' | 'SUBMISSIVE';
+const toDbRole = (r: DbRole | string): DbRole =>
+  String(r).toUpperCase() === 'DOMME' ? 'DOMME' : 'SUBMISSIVE';
 
 const AVATAR_PH = '/images/avatar-placeholder.png';
 
@@ -145,6 +153,8 @@ type TreeComment = {
     displayName: string;
     avatarUrl: string | null;
     role: 'DOMME' | 'SUBMISSIVE';
+    premiumUntil?: string | null;
+    isFirstAdopter?: boolean; 
   };
   counts: { likes: number; replies: number };
   viewer: { liked: boolean };
@@ -268,6 +278,7 @@ function CommentNode({
 }) {
   const t = useTranslations('comments');
   const tTime = useTranslations('post');
+  const b = useTranslations('common');
   const [showReply, setShowReply] = React.useState(false);
   const [liked, setLiked] = React.useState(Boolean(node.viewer?.liked));
   const [likeCount, setLikeCount] = React.useState(node.counts.likes);
@@ -299,8 +310,20 @@ function CommentNode({
           </div>
 
           <div className="min-w-0 flex-1">
-            <div className="text-sm">
-              <span className="font-semibold">{node.author.displayName}</span>{' '}
+            <div className="text-sm flex items-center gap-1.5 flex-wrap">
+              <span className="font-semibold">{node.author.displayName}</span>
+
+              {/* ⬇️ Badge direkt neben dem Namen */}
+              <UserBadges
+                role={toDbRole(node.author.role)}
+                isPremium={isPremiumActive(node.author.premiumUntil)}
+                isFirstAdopter={!!node.author.isFirstAdopter}
+                size={16}
+                className="-ml-0.5"
+                premiumLabel={b('badges.verified')}
+                firstAdopterLabel={b('badges.firstAdopter')}
+              />
+
               <span className="text-muted">@{node.author.handle}</span>{' '}
               <span className="text-muted">· {timeAgoShort(node.createdAt, tTime)}</span>
             </div>

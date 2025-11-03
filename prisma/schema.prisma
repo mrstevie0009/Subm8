@@ -102,6 +102,10 @@ model User {
   verifiedChildren User[]    @relation("UserVerifiedBy") // inverse Seite für einfache Abfragen
   
   @@index([verifiedByUserId])
+
+  isFirstAdopter Boolean  @default(false)
+  premiumUntil   DateTime? // active premium if premiumUntil > now()
+  @@index([premiumUntil])
 }
 
 model SmsChallenge {

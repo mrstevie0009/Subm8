@@ -14,6 +14,23 @@ import { reportUserAction } from '@/app/actions/reports';
 import { useSession } from 'next-auth/react';
 import { toast } from '@/lib/toast';
 import BackButton from '@/components/BackButton';
+import { UserBadges } from '@/components/UserBadges';
+
+
+type DbRole = 'DOMME' | 'SUBMISSIVE';
+
+// Falls dein Profile.role mal klein- oder großgeschrieben sein kann:
+const toDbRole = (r: Profile['role'] | string): DbRole =>
+  String(r).toUpperCase() === 'DOMME' ? 'DOMME' : 'SUBMISSIVE';
+
+// Zusätzliche, optionale Felder, ohne globalen Typ ändern zu müssen
+type ProfileWithBadges = Profile & {
+  premiumUntil?: string | null;
+  isFirstAdopter?: boolean;
+};
+
+const isPremiumActive = (iso?: string | null) =>
+  !!iso && new Date(iso).getTime() > Date.now();
 
 const AVATAR_PH = '/images/avatar-placeholder.png';
 const BANNER_PH = '/images/banner-placeholder.png';
@@ -142,6 +159,7 @@ export default function ProfileHeader({
   // 🔤 Translations
   const tPost = useTranslations('post');      // für share-Overlay (vorhandene Keys)
   const tProf = useTranslations('profile.profile');   // neue Keys für ProfileHeader
+  const b = useTranslations('common');
 
   const AVATAR_BIG   = 'clamp(88px, 18vw, 136px)';
   const BANNER_H     = 'clamp(160px, 26vw, 260px)';
@@ -610,6 +628,9 @@ export default function ProfileHeader({
 
   // — Variablen werden genutzt
   const website   = (profile.websiteUrl ?? '').trim();
+  const pwb = profile as ProfileWithBadges;
+  const premiumActive = isPremiumActive(pwb.premiumUntil ?? null);
+  const firstAdopter = !!pwb.isFirstAdopter;
 
   // Tip-Button State (nur Domme-Profile)
   const [tipMenuOpen, setTipMenuOpen] = React.useState(false);
@@ -677,7 +698,19 @@ export default function ProfileHeader({
                   <Image src={avatarSrc} alt="" width={32} height={32} className="object-cover" />
                 </div>
                 <div className="min-w-0 mr-auto">
-                  <div className="text-[15px] font-semibold truncate">{profile.displayName}</div>
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <div className="text-[15px] font-semibold truncate">{profile.displayName}</div>
+
+                    <UserBadges
+                      role={toDbRole(profile.role)}
+                      isPremium={premiumActive}
+                      isFirstAdopter={firstAdopter}
+                      size={16}
+                      className="-ml-0.5 shrink-0"
+                      premiumLabel={b('badges.verified')}
+                      firstAdopterLabel={b('badges.firstAdopter')}
+                    />
+                  </div>
                 </div>
                 {!isOwner && !blockedEither && (
                   <button
@@ -744,27 +777,30 @@ export default function ProfileHeader({
     <div className="px-4 mt-2">
       <div className="ml-auto flex items-center gap-2 flex-nowrap justify-end">
         {isOwner ? (
-  <div className="flex items-center gap-2">
-    <Link
-      href={`/${locale}/u/${profile.username}/edit`}
-      className="px-3 sm:px-4 h-9 inline-flex items-center rounded-full border border-white/20 hover:bg-white/5 text-[12px] sm:text-[13px] whitespace-nowrap"
-    >
-      {tProf('editProfile')}
-    </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              href={`/${locale}/u/${profile.username}/edit`}
+              className="px-3 sm:px-4 h-9 inline-flex items-center rounded-full border border-white/20 hover:bg-white/5 text-[12px] sm:text-[13px] whitespace-nowrap"
+            >
+              {tProf('editProfile')}
+            </Link>
 
-    <button
-      type="button"
-      onClick={handleOfferClick}
-      className="h-9 inline-flex items-center rounded-full bg-[var(--purple)]/95 text-white text-[12px] sm:text-[13px] font-semibold shadow-[0_8px_30px_-12px_rgba(139,92,246,.9)]
-                hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--purple)]/60 px-2 sm:px-4 shrink-0 whitespace-nowrap"
-      aria-label={tProf('offerMenu')}
-      title={tProf('offerMenu')}
-    >
-      <GiftIcon className="w-[18px] h-[18px] sm:mr-1.5" />
-      <span className="hidden sm:inline">{tProf('offer')}</span>
-    </button>
-  </div>
-) : (
+            {/* ⬇️ Nur Dommes dürfen Offers haben */}
+            {profile.role === 'domme' && (
+              <button
+                type="button"
+                onClick={handleOfferClick}
+                className="h-9 inline-flex items-center rounded-full bg-[var(--purple)]/95 text-white text-[12px] sm:text-[13px] font-semibold shadow-[0_8px_30px_-12px_rgba(139,92,246,.9)]
+                          hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--purple)]/60 px-2 sm:px-4 shrink-0 whitespace-nowrap"
+                aria-label={tProf('offerMenu')}
+                title={tProf('offerMenu')}
+              >
+                <GiftIcon className="w-[18px] h-[18px] sm:mr-1.5" />
+                <span className="hidden sm:inline">{tProf('offer')}</span>
+              </button>
+            )}
+          </div>
+        ) : (
   <>
     {/* TIP links vom Chat (nur für Dommes & wenn nicht geblockt) */}
     {profile.role === 'domme' && !blockedEither && (
@@ -832,17 +868,19 @@ export default function ProfileHeader({
     )}
 
     {/* Offer */}
-    <button
-      type="button"
-      onClick={handleOfferClick}
-      className="h-9 inline-flex items-center rounded-full bg-[var(--purple)]/95 text-white text-[12px] sm:text-[13px] font-semibold shadow-[0_8px_30px_-12px_rgba(139,92,246,.9)]
-                hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--purple)]/60 px-2 sm:px-4 shrink-0 whitespace-nowrap"
-      aria-label={tProf('offerMenu')}
-      title={tProf('offerMenu')}
-    >
-      <GiftIcon className="w-[18px] h-[18px] sm:mr-1.5" />
-      <span className="hidden sm:inline">{tProf('offer')}</span>
-    </button>
+    {profile.role === 'domme' && !blockedEither && (
+      <button
+        type="button"
+        onClick={handleOfferClick}
+        className="h-9 inline-flex items-center rounded-full bg-[var(--purple)]/95 text-white text-[12px] sm:text-[13px] font-semibold shadow-[0_8px_30px_-12px_rgba(139,92,246,.9)]
+                  hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--purple)]/60 px-2 sm:px-4 shrink-0 whitespace-nowrap"
+        aria-label={tProf('offerMenu')}
+        title={tProf('offerMenu')}
+      >
+        <GiftIcon className="w-[18px] h-[18px] sm:mr-1.5" />
+        <span className="hidden sm:inline">{tProf('offer')}</span>
+      </button>
+    )}
 
     {/* Follow / Unfollow */}
     {!blockedEither ? (
@@ -925,9 +963,21 @@ export default function ProfileHeader({
     {/* Name + Handle rechts neben Avatar (eine Zeile) */}
     <div className="min-w-0 flex-1"
        style={{ marginTop: 'calc(var(--avatar) * -0)' }}>
-    <h1 className="text-[clamp(20px,2.6vw,24px)] font-semibold leading-none truncate">
-      {profile.displayName}
-    </h1>
+    <div className="flex items-center gap-1.5">
+      <h1 className="text-[clamp(20px,2.6vw,24px)] font-semibold leading-none truncate">
+        {profile.displayName}
+      </h1>
+
+      <UserBadges
+        role={toDbRole(profile.role)}
+        isPremium={premiumActive}
+        isFirstAdopter={firstAdopter}
+        size={18}
+        className="-ml-0.5"
+        premiumLabel={b('badges.verified')}
+        firstAdopterLabel={b('badges.firstAdopter')}
+      />
+    </div>
     <span className="text-white/70 text-sm leading-tight truncate">
       @{profile.username}
     </span>

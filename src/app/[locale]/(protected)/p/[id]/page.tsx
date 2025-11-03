@@ -27,7 +27,15 @@ export default async function PostDetailPage({ params }: { params: Promise<Param
     include: {
       Community: { select: { name: true, slug: true } },
       author: {
-        select: { id: true, handle: true, displayName: true, role: true, avatarUrl: true },
+        select: {
+          id: true,
+          handle: true,
+          displayName: true,
+          role: true,
+          avatarUrl: true,
+          premiumUntil: true,     // ⬅️ neu
+          isFirstAdopter: true,   // ⬅️ neu
+        },
       },
       uploaded: true, // <— alle Medien des Hauptposts
       repostOf: {
@@ -39,7 +47,15 @@ export default async function PostDetailPage({ params }: { params: Promise<Param
           createdAt: true,
           uploaded: true, // <— alle Medien des Originals (bei Repost)
           author: {
-            select: { id: true, handle: true, displayName: true, role: true, avatarUrl: true },
+            select: {
+              id: true,
+              handle: true,
+              displayName: true,
+              role: true,
+              avatarUrl: true,
+              premiumUntil: true,     // ⬅️ neu
+              isFirstAdopter: true,   // ⬅️ neu
+            },
           },
           _count: { select: { Like: true, Comment: true, reposts: true } },
         },
@@ -53,7 +69,15 @@ export default async function PostDetailPage({ params }: { params: Promise<Param
           createdAt: true,
           uploaded: true, // <— alle Medien der Quote
           author: {
-            select: { id: true, handle: true, displayName: true, role: true, avatarUrl: true },
+            select: {
+              id: true,
+              handle: true,
+              displayName: true,
+              role: true,
+              avatarUrl: true,
+              premiumUntil: true,     // ⬅️ neu
+              isFirstAdopter: true,   // ⬅️ neu
+            },
           },
         },
       },
@@ -65,55 +89,57 @@ export default async function PostDetailPage({ params }: { params: Promise<Param
 
   const isRepost = !!p.repostOf;
 
+  function mapAuthor(a: {
+    id: string;
+    handle: string;
+    displayName: string;
+    role: 'DOMME' | 'SUBMISSIVE';
+    avatarUrl: string | null;
+    premiumUntil: Date | null;
+    isFirstAdopter: boolean | null;
+  }) {
+    return {
+      id: a.id,
+      handle: a.handle,
+      displayName: a.displayName,
+      role: a.role,
+      avatarUrl: a.avatarUrl,
+      premiumUntil: a.premiumUntil ? a.premiumUntil.toISOString() : null, // ⬅️ String statt Date
+      isFirstAdopter: !!a.isFirstAdopter,
+    };
+  }
+
   const content: FeedPost['content'] = isRepost
-    ? {
-        id: p.repostOf!.id,
-        text: p.repostOf!.text ?? '',
-        mediaUrl: p.repostOf!.mediaUrl, // legacy
-        mediaAlt: p.repostOf!.mediaAlt, // legacy
-        uploaded: mapUploaded(p.repostOf!.uploaded), // ✅ alle Medien
-        createdAt: p.repostOf!.createdAt.toISOString(),
-        author: {
-          id: p.repostOf!.author.id,
-          handle: p.repostOf!.author.handle,
-          displayName: p.repostOf!.author.displayName,
-          role: p.repostOf!.author.role,
-          avatarUrl: p.repostOf!.author.avatarUrl,
-        },
-        quote: null,
-      }
-    : {
-        id: p.id,
-        text: p.text ?? '',
-        mediaUrl: p.mediaUrl, // legacy
-        mediaAlt: p.mediaAlt, // legacy
-        uploaded: mapUploaded(p.uploaded), // ✅ alle Medien
-        createdAt: p.createdAt.toISOString(),
-        author: {
-          id: p.author.id,
-          handle: p.author.handle,
-          displayName: p.author.displayName,
-          role: p.author.role,
-          avatarUrl: p.author.avatarUrl,
-        },
-        quote: p.quoteOf
-          ? {
-              id: p.quoteOf.id,
-              text: p.quoteOf.text ?? '',
-              mediaUrl: p.quoteOf.mediaUrl, // legacy
-              mediaAlt: p.quoteOf.mediaAlt, // legacy
-              uploaded: mapUploaded(p.quoteOf.uploaded), // ✅ alle Medien der Quote
-              createdAt: p.quoteOf.createdAt.toISOString(),
-              author: {
-                id: p.quoteOf.author.id,
-                handle: p.quoteOf.author.handle,
-                displayName: p.quoteOf.author.displayName,
-                role: p.quoteOf.author.role,
-                avatarUrl: p.quoteOf.author.avatarUrl,
-              },
-            }
-          : null,
-      };
+  ? {
+      id: p.repostOf!.id,
+      text: p.repostOf!.text ?? '',
+      mediaUrl: p.repostOf!.mediaUrl,
+      mediaAlt: p.repostOf!.mediaAlt,
+      uploaded: mapUploaded(p.repostOf!.uploaded),
+      createdAt: p.repostOf!.createdAt.toISOString(),
+      author: mapAuthor(p.repostOf!.author),        
+      quote: null,
+    }
+  : {
+      id: p.id,
+      text: p.text ?? '',
+      mediaUrl: p.mediaUrl,
+      mediaAlt: p.mediaAlt,
+      uploaded: mapUploaded(p.uploaded),
+      createdAt: p.createdAt.toISOString(),
+      author: mapAuthor(p.author),                     
+      quote: p.quoteOf
+        ? {
+            id: p.quoteOf.id,
+            text: p.quoteOf.text ?? '',
+            mediaUrl: p.quoteOf.mediaUrl,
+            mediaAlt: p.quoteOf.mediaAlt,
+            uploaded: mapUploaded(p.quoteOf.uploaded),
+            createdAt: p.quoteOf.createdAt.toISOString(),
+            author: mapAuthor(p.quoteOf.author),         
+          }
+        : null,
+    };
 
   const statSource = isRepost ? p.repostOf! : p;
 

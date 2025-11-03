@@ -16,5 +16,9 @@
     "h": "{count}h",
     "m": "{count}m",
     "now": "now"
+  },
+  "badges": {
+    "verified": "Verified account",
+    "firstAdopter": "First Adopter"
   }
 }

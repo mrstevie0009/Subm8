@@ -195,7 +195,16 @@ export async function GET(req: Request) {
     orderBy,
     include: {
       author: {
-        select: { id: true, handle: true, displayName: true, role: true, avatarUrl: true },
+        select: {
+          id: true,
+          handle: true,
+          displayName: true,
+          role: true,
+          avatarUrl: true,
+          // ⬇️ neu
+          premiumUntil: true,
+          isFirstAdopter: true,
+        },
       },
       uploaded: true,
       repostOf: {
@@ -214,6 +223,8 @@ export async function GET(req: Request) {
               displayName: true,
               role: true,
               avatarUrl: true,
+              premiumUntil: true,
+              isFirstAdopter: true,
             },
           },
           _count: { select: { Like: true, Comment: true, reposts: true } },
@@ -234,6 +245,8 @@ export async function GET(req: Request) {
               displayName: true,
               role: true,
               avatarUrl: true,
+              premiumUntil: true,
+              isFirstAdopter: true,
             },
           },
         },
@@ -305,6 +318,8 @@ export async function GET(req: Request) {
           displayName: p.author.displayName,
           role: p.author.role,
           avatarUrl: p.author.avatarUrl,
+          premiumUntil: p.author.premiumUntil,
+          isFirstAdopter: p.author.isFirstAdopter,
         },
 
         repostOf: isRepost
@@ -321,6 +336,8 @@ export async function GET(req: Request) {
                 displayName: p.repostOf!.author.displayName,
                 role: p.repostOf!.author.role,
                 avatarUrl: p.repostOf!.author.avatarUrl,
+                premiumUntil: p.repostOf!.author.premiumUntil,
+                isFirstAdopter: p.repostOf!.author.isFirstAdopter,
               },
             }
           : null,
@@ -339,6 +356,8 @@ export async function GET(req: Request) {
                 displayName: p.quoteOf!.author.displayName,
                 role: p.quoteOf!.author.role,
                 avatarUrl: p.quoteOf!.author.avatarUrl,
+                premiumUntil: p.quoteOf!.author.premiumUntil,
+                isFirstAdopter: p.quoteOf!.author.isFirstAdopter,
               },
             }
           : null,

@@ -33,6 +33,8 @@ type ApiPost = {
     displayName: string;
     role: 'DOMME' | 'SUBMISSIVE' | null;
     avatarUrl: string | null;
+    premiumUntil?: string | null;
+    isFirstAdopter?: boolean;
   };
   repostOf: null | {
     id: string;
@@ -47,6 +49,8 @@ type ApiPost = {
       displayName: string;
       role: 'DOMME' | 'SUBMISSIVE' | null;
       avatarUrl: string | null;
+      premiumUntil?: string | null;
+      isFirstAdopter?: boolean;
     };
   };
   quoteOf: null | {
@@ -62,6 +66,8 @@ type ApiPost = {
       displayName: string;
       role: 'DOMME' | 'SUBMISSIVE' | null;
       avatarUrl: string | null;
+      premiumUntil?: string | null;
+      isFirstAdopter?: boolean;
     };
   };
   viewer: {
@@ -93,6 +99,8 @@ function mapApiPost(p: ApiPost): FeedPost {
           displayName: p.repostOf!.author.displayName,
           role: p.repostOf!.author.role,
           avatarUrl: p.repostOf!.author.avatarUrl,
+          premiumUntil: p.repostOf!.author.premiumUntil ?? null,
+          isFirstAdopter: !!p.repostOf!.author.isFirstAdopter,
         },
         quote: null,
       }
@@ -109,6 +117,8 @@ function mapApiPost(p: ApiPost): FeedPost {
           displayName: p.author.displayName,
           role: p.author.role,
           avatarUrl: p.author.avatarUrl,
+          premiumUntil: p.author.premiumUntil ?? null,
+          isFirstAdopter: !!p.author.isFirstAdopter,
         },
         quote: p.quoteOf
           ? {
@@ -124,6 +134,8 @@ function mapApiPost(p: ApiPost): FeedPost {
                 displayName: p.quoteOf.author.displayName,
                 role: p.quoteOf.author.role,
                 avatarUrl: p.quoteOf.author.avatarUrl,
+                premiumUntil: p.quoteOf.author.premiumUntil ?? null,
+                isFirstAdopter: !!p.quoteOf.author.isFirstAdopter,
               },
             }
           : null,

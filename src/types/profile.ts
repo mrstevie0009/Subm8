@@ -11,7 +11,7 @@ export type Profile = {
   id: string;
   username: string;         // handle (ohne @)
   displayName: string;
-  role: RoleUI;             // 'domme' | 'sub' (UI)
+  role: RoleUI;             // 'domme' | 'sub'
   avatarUrl?: string | null;
   bannerUrl?: string | null;
   bio?: string | null;
@@ -20,5 +20,8 @@ export type Profile = {
   nsfwDefault?: boolean | null;
   ageVerifiedAt?: string | Date | null;
   websiteUrl?: string | null; // ⇐ neu
+  // 🟣 neue Felder:
+  isFirstAdopter?: boolean;     // zeigt das First-Adopter-Badge
+  premiumUntil?: string | null; // ISO-Date – aktiv, wenn in Zukunft
   stats: Stats;
 };

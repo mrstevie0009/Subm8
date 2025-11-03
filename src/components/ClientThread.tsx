@@ -1307,6 +1307,9 @@ export default function ChatThreadPage() {
     avatarUrl?: string;
     role: 'domme' | 'submissive';
     dmOpen: boolean;
+    // 🟣 neu:
+    isFirstAdopter?: boolean;
+    premiumUntil?: string | null;
   } | null>(null);
 
   const [viewerHasBlocked, setViewerHasBlocked] = React.useState(false);
@@ -1397,13 +1400,17 @@ export default function ChatThreadPage() {
       const disabled = (json.viewerHasBlocked ?? false) || (json.isBlockedByOther ?? false);
 
       setOther(prev => {
+        const o = (json as ThreadOk).other;
         const next = {
-          id: (json as ThreadOk).other.id,
-          username: (json as ThreadOk).other.handle,
-          displayName: (json as ThreadOk).other.displayName,
-          avatarUrl: (json as ThreadOk).other.avatarUrl ?? undefined,
-          role: mapRole((json as ThreadOk).other.role),
+          id: o.id,
+          username: o.handle,
+          displayName: o.displayName,
+          avatarUrl: o.avatarUrl ?? undefined,
+          role: mapRole(o.role),
           dmOpen: !disabled,
+          // 🟣 neu:
+          isFirstAdopter: !!o.isFirstAdopter,
+          premiumUntil: o.premiumUntil ?? null,
         };
         return prev &&
           prev.id === next.id &&
@@ -1411,7 +1418,9 @@ export default function ChatThreadPage() {
           prev.displayName === next.displayName &&
           prev.avatarUrl === next.avatarUrl &&
           prev.role === next.role &&
-          prev.dmOpen === next.dmOpen
+          prev.dmOpen === next.dmOpen &&
+          prev.isFirstAdopter === next.isFirstAdopter &&
+          prev.premiumUntil === next.premiumUntil
           ? prev
           : next;
       });
@@ -1437,12 +1446,15 @@ export default function ChatThreadPage() {
 
         const isReady = !!other && !loading;
         const placeholderOther = {
-        id: 'loading',
-        username: '...',
-        displayName: '…',
-        avatarUrl: undefined as string | undefined,
-        role: 'submissive' as const,
-        dmOpen: false,
+          id: 'loading',
+          username: '...',
+          displayName: '…',
+          avatarUrl: undefined as string | undefined,
+          role: 'submissive' as const,
+          dmOpen: false,
+          // 🟣 neu:
+          isFirstAdopter: false,
+          premiumUntil: null,
         };
 
   // NEW: super-schnelle Erstladung
@@ -1472,16 +1484,30 @@ export default function ChatThreadPage() {
       });
       setViewerHasBlocked(json.viewerHasBlocked ?? false);
       setIsBlockedByOther(json.isBlockedByOther ?? false);
-      setOther((prev) => {
+      setOther(prev => {
         const o = (json as ThreadOk).other;
-        const next = { id: o.id, username: o.handle, displayName: o.displayName, avatarUrl: o.avatarUrl ?? undefined, role: mapRole(o.role), dmOpen: !(json.viewerHasBlocked || json.isBlockedByOther) };
+        const next = {
+          id: o.id,
+          username: o.handle,
+          displayName: o.displayName,
+          avatarUrl: o.avatarUrl ?? undefined,
+          role: mapRole(o.role),
+          dmOpen: !(json.viewerHasBlocked || json.isBlockedByOther),
+          // 🟣 neu:
+          isFirstAdopter: !!o.isFirstAdopter,
+          premiumUntil: o.premiumUntil ?? null,
+        };
         return prev &&
           prev.id === next.id &&
           prev.username === next.username &&
           prev.displayName === next.displayName &&
           prev.avatarUrl === next.avatarUrl &&
           prev.role === next.role &&
-          prev.dmOpen === next.dmOpen ? prev : next;
+          prev.dmOpen === next.dmOpen &&
+          prev.isFirstAdopter === next.isFirstAdopter &&
+          prev.premiumUntil === next.premiumUntil
+          ? prev
+          : next;
       });
       const mapped: UiMessage[] = (json as ThreadOk).messages.map((m) => ({
         id: m.id, convoId: String(id), senderId: m.authorId,

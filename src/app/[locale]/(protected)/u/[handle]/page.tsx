@@ -39,6 +39,8 @@ export default async function ProfilePage({
       createdAt: true,
       websiteUrl: true,
       pinnedPostId: true,
+      premiumUntil: true,
+      isFirstAdopter: true,
       _count: { select: { followers: true, following: true, Post: true } },
     },
   });
@@ -87,6 +89,8 @@ export default async function ProfilePage({
     createdAt: user.createdAt,
     websiteUrl: user.websiteUrl ?? null,
     pinnedPostId: user.pinnedPostId ?? null,
+    premiumUntil: user.premiumUntil ? user.premiumUntil.toISOString?.() ?? String(user.premiumUntil) : null,
+    isFirstAdopter: !!user.isFirstAdopter,
     stats: {
       followers: user._count.followers ?? 0,
       following: user._count.following ?? 0,

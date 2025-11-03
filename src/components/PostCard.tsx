@@ -18,6 +18,10 @@ import QuoteOverlay from '@/components/quotes/QuoteOverlay';
 import VideoPlayer from '@/components/VideoPlayer';
 import { useSession } from 'next-auth/react';
 import { toast } from '@/lib/toast';
+import { UserBadges } from '@/components/UserBadges';
+
+const isPremiumActive = (iso?: string | null) =>
+  !!iso && new Date(iso).getTime() > Date.now();
 
 const AVATAR_PH = '/images/avatar-placeholder.png';
 
@@ -47,6 +51,8 @@ export type FeedPost = {
       displayName: string;
       role?: 'DOMME' | 'SUBMISSIVE' | null;
       avatarUrl?: string | null;
+      premiumUntil?: string | null;
+      isFirstAdopter?: boolean;
     };
     quote?: {
       id: string;
@@ -943,11 +949,9 @@ export default function PostCard({
 
   const isRepost = post.id !== c.id;
   const uiRole =
-    c.author.role === 'DOMME'
-      ? 'domme'
-      : c.author.role === 'SUBMISSIVE'
-      ? 'submissive'
-      : undefined;
+  c.author.role === 'DOMME' ? 'domme' :
+  c.author.role === 'SUBMISSIVE' ? 'submissive' :
+  undefined as 'domme' | 'submissive' | undefined;
 
   const saveInteractionSnapshot = React.useCallback(() => {
   try {
@@ -1943,12 +1947,25 @@ export default function PostCard({
         <div className="col-start-2 row-start-1 min-w-0">
           <div className="flex items-center flex-wrap">
             <div data-no-nav onClick={(e) => e.stopPropagation()}>
-              <ProfileLink
-                handle={c.author.handle}
-                className="font-semibold leading-tight text-[0.95rem] md:text-[1rem] hover:underline"
-              >
-                {c.author.displayName}
-              </ProfileLink>
+              <div className="flex items-center gap-1">
+                <ProfileLink
+                  handle={c.author.handle}
+                  className="font-semibold leading-tight text-[0.95rem] md:text-[1rem] hover:underline"
+                >
+                  {c.author.displayName}
+                </ProfileLink>
+
+                {/* Badge direkt neben dem Namen; shrink-0 verhindert Wegtruncaten */}
+                <UserBadges
+                  role={uiRole ?? 'submissive'}
+                  isPremium={isPremiumActive(c.author.premiumUntil)}
+                  isFirstAdopter={!!c.author.isFirstAdopter}
+                  size={16}
+                  className="shrink-0 -ml-0.5 translate-y-[1px]"
+                  premiumLabel={t('badges.verified')}
+                  firstAdopterLabel={t('badges.firstAdopter')}
+                />
+              </div>
             </div>
 
             <span aria-hidden style={{ display: 'inline-block', width: 8 }} />

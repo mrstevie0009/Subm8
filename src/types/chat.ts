@@ -22,15 +22,14 @@ export type ThreadOk = {
     displayName: string;
     avatarUrl: string | null;
     role: DbRole;
+    // 🟣 neu:
+    isFirstAdopter?: boolean;
+    premiumUntil?: string | null;
   };
   messages: ThreadMessageDto[];
   viewerHasBlocked: boolean;
   isBlockedByOther: boolean;
-
-  /** optional, wenn Server es mitsendet */
   otherTyping?: boolean;
-
-  /** optional, nur informativ */
   pageSize?: number;
 };
 
@@ -46,6 +45,10 @@ export type ChatUser = {
   online?: boolean;
   dmOpen?: boolean;     // darf Sub initiieren?
   nsfwVerified?: boolean;
+
+  // 🟣 neue Felder:
+  isFirstAdopter?: boolean;
+  premiumUntil?: string | null;
 };
 
 export type ChatMessage = {

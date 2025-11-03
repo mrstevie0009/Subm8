@@ -18,23 +18,36 @@ export async function GET() {
   // 1) Konversationen: nur leichte Felder + lastMessageId/At + Unread
   const convos = await prisma.conversation.findMany({
     where: { OR: [{ dommeId: me.id }, { subId: me.id }] },
-    orderBy: { updatedAt: 'desc' }, 
+    orderBy: { updatedAt: 'desc' },
     select: {
       id: true,
       createdAt: true,
       updatedAt: true,
       dommeId: true,
       subId: true,
-      domme: { select: { id: true, handle: true, displayName: true, avatarUrl: true } },
-      sub:   { select: { id: true, handle: true, displayName: true, avatarUrl: true } },
-
+      domme: { 
+        select: { 
+          id: true, handle: true, displayName: true, avatarUrl: true,
+          role: true,                 // <— NEU
+          premiumUntil: true,         // <— NEU
+          isFirstAdopter: true,       // <— NEU
+        } 
+      },
+      sub:   { 
+        select: { 
+          id: true, handle: true, displayName: true, avatarUrl: true,
+          role: true,                 // <— NEU
+          premiumUntil: true,         // <— NEU
+          isFirstAdopter: true,       // <— NEU
+        } 
+      },
       lastMessageId: true,
       lastMessageAt: true,
-
       unreadForDomme: true,
       unreadForSub: true,
     },
   });
+
 
   // 2) Last-Messages in einem Rutsch
   const lastIds = convos.map(c => c.lastMessageId).filter(Boolean) as string[];
@@ -91,6 +104,9 @@ export async function GET() {
         username: other.handle,
         displayName: other.displayName,
         avatarUrl: other.avatarUrl,
+        role: other.role,                         // <— NEU
+        premiumUntil: other.premiumUntil,         // <— NEU
+        isFirstAdopter: other.isFirstAdopter,     // <— NEU
       },
       lastMessageAt: (c.lastMessageAt ?? c.updatedAt ?? c.createdAt).toISOString(),
       lastSnippet,

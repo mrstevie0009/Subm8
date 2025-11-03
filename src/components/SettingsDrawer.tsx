@@ -9,8 +9,11 @@ import { useSession, signOut } from 'next-auth/react';
 import { useLocale, useTranslations } from 'next-intl';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { followAction, unfollowAction } from '@/app/actions/follow';
+import { UserBadges } from '@/components/UserBadges';
 
 const AVATAR_PH = '/images/avatar-placeholder.png';
+const isPremiumActive = (iso?: string | null) =>
+  !!iso && new Date(iso).getTime() > Date.now();
 
 type Props = { open: boolean; onClose: () => void };
 
@@ -28,6 +31,8 @@ type MeBasic = {
   handle: string;
   avatarUrl: string | null;
   role: 'DOMME' | 'SUBMISSIVE';
+  premiumUntil?: string | null;
+  isFirstAdopter?: boolean;
 };
 
 type LinkedMini = {
@@ -44,6 +49,7 @@ export default function SettingsDrawer({ open, onClose }: Props) {
   const pathname = usePathname();
   const search = useSearchParams();
   const t = useTranslations('settings.settings');
+  const b = useTranslations('common');
 
   const isAuth = Boolean(session?.user);
 
@@ -97,9 +103,16 @@ export default function SettingsDrawer({ open, onClose }: Props) {
   }, [open, isAuth]);
 
   const u =
-    (session?.user as
-      | { name?: string; handle?: string; image?: string | null; role?: string | null }
-      | undefined) ?? {};
+  (session?.user as
+    | {
+        name?: string;
+        handle?: string;
+        image?: string | null;
+        role?: string | null;
+        premiumUntil?: string | null;
+        isFirstAdopter?: boolean;
+      }
+    | undefined) ?? {};
 
   const displayName = meBasic?.displayName ?? u.name ?? t('guest');
   const handle = meBasic?.handle ?? u.handle ?? '';
@@ -113,6 +126,8 @@ export default function SettingsDrawer({ open, onClose }: Props) {
   const [followers, setFollowers] = React.useState<number>(0);
   const [following, setFollowing] = React.useState<number>(0);
   const [statsError, setStatsError] = React.useState<string | null>(null);
+  const premiumUntil = meBasic?.premiumUntil ?? u.premiumUntil ?? null;
+  const isFirstAdopter = (meBasic?.isFirstAdopter ?? u.isFirstAdopter) ? true : false;
 
   React.useEffect(() => {
     if (!open || !isAuth) return;
@@ -335,7 +350,18 @@ async function smartSignOut() {
             </div>
 
             <div style={{ lineHeight: 1.1, marginTop: 10, display: 'flex', flexDirection: 'column', gap: 2, flex: 1 }}>
-              <div style={{ fontWeight: 600 }}>{displayName}</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontWeight: 600 }}>{displayName}</span>
+                <UserBadges
+                  role={(roleRaw === 'DOMME' ? 'DOMME' : 'SUBMISSIVE')}
+                  isPremium={isPremiumActive(premiumUntil)}
+                  isFirstAdopter={isFirstAdopter}
+                  size={16}
+                  className="-ml-0.5 translate-y-[1px]"
+                  premiumLabel={b('badges.verified')}
+                  firstAdopterLabel={b('badges.firstAdopter')}
+                />
+              </div>
               <div style={{ opacity: 0.7, fontSize: 14 }}>{handle ? `@${handle}` : t('noHandle')}</div>
             </div>
 

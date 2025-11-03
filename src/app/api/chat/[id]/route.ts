@@ -87,8 +87,22 @@ export async function GET(_req: Request, { params }: Ctx) {
         id: true,
         dommeId: true,
         subId: true,
-        domme: { select: { id: true, handle: true, displayName: true, avatarUrl: true, role: true } },
-        sub:   { select: { id: true, handle: true, displayName: true, avatarUrl: true, role: true } },
+        domme: {
+          select: {
+            id: true, handle: true, displayName: true, avatarUrl: true, role: true,
+            // 🟣 neu:
+            isFirstAdopter: true,
+            premiumUntil: true,
+          },
+        },
+        sub: {
+          select: {
+            id: true, handle: true, displayName: true, avatarUrl: true, role: true,
+            // 🟣 neu:
+            isFirstAdopter: true,
+            premiumUntil: true,
+          },
+        },
       },
     });
     if (!convo) return Response.json({ ok: false, error: 'Not found' }, { status: 404 });
@@ -97,7 +111,19 @@ export async function GET(_req: Request, { params }: Ctx) {
     }
 
     const iAmDomme = convo.dommeId === me.id;
-    const other = iAmDomme ? convo.sub : convo.domme;
+    const otherRaw = iAmDomme ? convo.sub : convo.domme;
+
+    const other = {
+      id: otherRaw.id,
+      handle: otherRaw.handle,
+      displayName: otherRaw.displayName,
+      avatarUrl: otherRaw.avatarUrl,
+      role: otherRaw.role,
+      // 🟣 neu:
+      isFirstAdopter: otherRaw.isFirstAdopter ?? false,
+      premiumUntil: otherRaw.premiumUntil ? otherRaw.premiumUntil.toISOString() : null,
+    };
+
 
     // Eigenes Profil (Role + Avatar) sicher holen
     const meProfile = await prisma.user.findUnique({
