@@ -27,7 +27,12 @@ const AVATAR_PH = '/images/avatar-placeholder.png';
 
 
 /** —— Feed-Shape (mit optionaler Quote) + NEU: Multi-Media-Unterstützung —— */
-type ContentMedia = { url: string; alt?: string | null; kind?: 'image' | 'video' | 'gif' };
+type ContentMedia = {
+  url: string;
+  alt?: string | null;
+  kind?: 'image' | 'video' | 'gif';
+  mime?: string | null;
+};
 
 export type FeedPost = {
   id: string;
@@ -189,43 +194,67 @@ function isGifUrl(url?: string | null): boolean {
 const kindFromUrl = (url: string): 'image' | 'video' | 'gif' =>
   isVideoUrl(url) ? 'video' : isGifUrl(url) ? 'gif' : 'image';
 
+// ⬇️ NEU: MIME → kind
+function kindFromMime(mime?: string | null): 'image' | 'video' | 'gif' {
+  const m = (mime || '').toLowerCase();
+  if (m.startsWith('video/')) return 'video';
+  if (m === 'image/gif') return 'gif';
+  return 'image';
+}
+// ⬇️ NEU: bevorzugt kind, dann mime, dann URL
+function inferKind(input: { kind?: 'image'|'video'|'gif'; mime?: string | null; url: string }) {
+  if (input.kind) return input.kind;
+  if (input.mime) return kindFromMime(input.mime);
+  return kindFromUrl(input.url);
+}
+
 /** Vereinheitlicht alle möglichen Felder zu ContentMedia[] */
 type MediaContainer = {
   media?: ContentMedia[] | null;
   uploaded?: ContentMedia[] | null;
   mediaUrls?: string[] | null;
-  attachments?: Array<{ url: string; alt?: string | null; kind?: 'image' | 'video' | 'gif' }> | null;
+  attachments?: Array<{ url: string; alt?: string | null; kind?: 'image' | 'video' | 'gif'; mime?: string | null; type?: string | null; }> | null;
   mediaUrl?: string | null;
   mediaAlt?: string | null;
 };
 function normalizeMediaFields(src: MediaContainer): ContentMedia[] {
   const out: ContentMedia[] = [];
 
-  // bereits normalisierte Arrays
   const pushArr = (arr?: ContentMedia[] | null) => {
     if (!Array.isArray(arr)) return;
     for (const m of arr) {
-      if (m?.url) out.push({ url: m.url, alt: m.alt ?? null, kind: m.kind ?? kindFromUrl(m.url) });
+      if (m?.url) out.push({
+        url: m.url,
+        alt: m.alt ?? null,
+        kind: inferKind({ kind: m.kind, mime: (m).mime, url: m.url }),
+        mime: (m).mime ?? null,
+      });
     }
   };
   pushArr(src.media);
-  pushArr(src.uploaded);  // <— NEU
+  pushArr(src.uploaded); // behält mime falls vorhanden
 
-  // alternative Shapes
   if (Array.isArray(src.attachments)) {
-    for (const m of src.attachments) if (m?.url) out.push({ url: m.url, alt: m.alt ?? null, kind: m.kind ?? kindFromUrl(m.url) });
+    for (const m of src.attachments) if (m?.url) out.push({
+      url: m.url,
+      alt: m.alt ?? null,
+      kind: inferKind({ kind: m.kind, mime: (m).mime ?? (m).type, url: m.url }),
+      mime: (m).mime ?? (m).type ?? null,
+    });
   }
   if (Array.isArray(src.mediaUrls)) {
-    for (const url of src.mediaUrls) if (url) out.push({ url, alt: null, kind: kindFromUrl(url) });
+    for (const url of src.mediaUrls) if (url) out.push({
+      url, alt: null, kind: kindFromUrl(url), mime: null
+    });
   }
   if (src.mediaUrl) {
-    out.push({ url: src.mediaUrl, alt: src.mediaAlt ?? null, kind: kindFromUrl(src.mediaUrl) });
+    out.push({ url: src.mediaUrl, alt: src.mediaAlt ?? null, kind: kindFromUrl(src.mediaUrl), mime: null });
   }
 
-  // de-dupe
   const seen = new Set<string>();
   return out.filter(m => (seen.has(m.url) ? false : (seen.add(m.url), true)));
 }
+
 
 
 /** Einzelnes Medium (Bild/GIF/Video) */

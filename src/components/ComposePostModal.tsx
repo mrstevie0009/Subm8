@@ -448,12 +448,13 @@ export default function ComposePostModal({ open, onClose }: Props) {
         <div className="relative">
           <div className="flex overflow-x-auto snap-x snap-mandatory scroll-px-4 gap-1 p-1" style={{ scrollBehavior: 'smooth' }}>
             {media.map((m, idx) => (
-              <div key={m.id} className="relative shrink-0 snap-center w-full">
+              <div key={m.id} className="relative shrink-0 basis-full snap-center w-full">
                 {m.kind === 'video' ? (
                   <video
                     src={m.preview}
                     className="block w-full h-auto object-contain max-h-[48vh] sm:max-h-[60vh] bg-black"
                     controls
+                    preload="metadata"
                     playsInline
                     muted
                   />
@@ -532,46 +533,73 @@ export default function ComposePostModal({ open, onClose }: Props) {
 
         {/* Form als Column-Layout, Body scrollt */}
         <form
-          onSubmit={(e) => {
+          onSubmit={async (e) => {           //  ⬅️ hier async ergänzen
             e.preventDefault();
             const form = e.currentTarget as HTMLFormElement;
             const fd = new FormData(form);
 
-            // alle ausgewählten Medien anhängen
-            for (const m of media) fd.append('media', m.file);
-
-            // Redirect-Ziel setzen (falls nicht gesetzt)
+            // --- (A) Return-Ziel setzen, damit das Modal nicht erneut öffnet ---
             if (!fd.get('returnTo')) {
               const url = new URL(window.location.href);
               ['compose', 'post', 'modal', 'newPost'].forEach((k) => url.searchParams.delete(k));
               const clean = url.pathname + (url.search ? url.search : '');
               fd.set('returnTo', clean || url.pathname);
-
-              // Optional: URL *sofort* lokal bereinigen, damit auch ohne Redirect kein Re-Open passiert
-              try {
-                window.history.replaceState(null, '', clean || url.pathname);
-              } catch {}
+              try { window.history.replaceState(null, '', clean || url.pathname); } catch {}
             }
 
-            // Server Action starten – NICHT darauf warten
+            // --- PRE-UPLOAD Block bleibt unverändert ---
+            const toDirect = media.filter(m => m.kind === 'video' || m.file.size > 2_000_000);
+
+            let uploadedUrls: string[] = [];
+            if (toDirect.length) {
+              const r = await fetch('/api/upload-urls', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ files: toDirect.map(m => ({ name: m.file.name, type: m.file.type })) }),
+              });
+              if (!r.ok) {
+                toast.error('Konnte Upload-URLs nicht holen.');
+                return;
+              }
+              const { items } = (await r.json()) as { items: { uploadUrl: string; publicUrl: string }[] };
+
+              const results = await Promise.allSettled(items.map((it, i) =>
+                fetch(it.uploadUrl, {
+                  method: 'PUT',
+                  body: toDirect[i]!.file,
+                  headers: { 'Content-Type': toDirect[i]!.file.type || 'application/octet-stream' },
+                })
+              ));
+
+              const okIdx = results
+                .map((r, i) => (r.status === 'fulfilled' && r.value.ok ? i : -1))
+                .filter(i => i >= 0);
+
+              uploadedUrls = okIdx.map(i => items[i]!.publicUrl);
+
+              if (okIdx.length !== items.length) {
+                toast.error('Some Media Files could not be uploaded');
+              }
+            }
+
+            fd.delete('media');
+            for (const m of media) {
+              if (toDirect.includes(m)) continue;
+              fd.append('media', m.file);
+            }
+            for (const url of uploadedUrls) fd.append('uploadedUrl', url);
+
             startTransition(() => {
               // ts-expect-error — Client Action, React übergibt FormData
               void createPost(fd);
             });
 
-            // Einmaliges Re-Öffnen unterdrücken
             justSubmittedRef.current = true;
-
-            // Lokalen State aufräumen (optional aber empfehlenswert)
             try {
-              for (const m of media) {
-                if (m.preview?.startsWith('blob:')) URL.revokeObjectURL(m.preview);
-              }
+              for (const m of media) if (m.preview?.startsWith('blob:')) URL.revokeObjectURL(m.preview);
             } catch {}
             setMedia([]);
             setText('');
-
-            // UI sofort schließen + Feedback
             toast.posted(tt('post.published'));
             onClose();
           }}

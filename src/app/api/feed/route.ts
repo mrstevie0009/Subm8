@@ -27,10 +27,21 @@ function mapUploaded(
 ) {
   return (rows ?? []).map((u) => {
     const mime = u.type ?? null;
-    const kind =
-      mime === 'image/gif' ? 'gif' :
-      (mime && mime.startsWith('video/')) ? 'video' : 'image';
-    return { url: u.url, alt: u.alt ?? null, kind, mime };
+
+    // 1) Wenn mime vorhanden: daraus ableiten
+    if (mime) {
+      const kind =
+        mime === 'image/gif' ? 'gif' :
+        mime.startsWith('video/') ? 'video' : 'image';
+      return { url: u.url, alt: u.alt ?? null, kind, mime };
+    }
+
+    // 2) Fallback: aus URL ableiten (wichtig für vorab hochgeladene Dateien ohne mime)
+    const clean = (u.url || '').split('?')[0].toLowerCase();
+    const isVid = /\.(mp4|webm|ogg|ogv|mov|m4v|mkv)$/.test(clean);
+    const isGif = /\.gif$/.test(clean);
+    const kind = isVid ? 'video' : isGif ? 'gif' : 'image';
+    return { url: u.url, alt: u.alt ?? null, kind, mime: null };
   });
 }
 
@@ -201,19 +212,18 @@ export async function GET(req: Request) {
           displayName: true,
           role: true,
           avatarUrl: true,
-          // ⬇️ neu
           premiumUntil: true,
           isFirstAdopter: true,
         },
       },
-      uploaded: true,
+      uploaded: { select: { url: true, alt: true, type: true } },
       repostOf: {
         select: {
           id: true,
           text: true,
           mediaUrl: true,
           mediaAlt: true,
-          uploaded: true,
+          uploaded: { select: { url: true, alt: true, type: true } },
           createdAt: true,
           communityId: true,
           author: {
@@ -236,7 +246,7 @@ export async function GET(req: Request) {
           text: true,
           mediaUrl: true,
           mediaAlt: true,
-          uploaded: true,
+          uploaded: { select: { url: true, alt: true, type: true } },
           createdAt: true,
           author: {
             select: {

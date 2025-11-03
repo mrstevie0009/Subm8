@@ -15,6 +15,8 @@ const LS_VOL_KEY = 'vp:vol';
 const LS_MUTED_KEY = 'vp:muted';
 const LS_RATE_KEY = 'vp:rate';
 
+
+
 export default function VideoPlayer({
   src,
   poster,
@@ -40,6 +42,8 @@ export default function VideoPlayer({
 
   const containerRef = React.useRef<HTMLDivElement | null>(null);
   const hideTimer = React.useRef<number | null>(null);
+
+  
 
   // Load persisted settings
   React.useEffect(() => {
@@ -223,7 +227,7 @@ export default function VideoPlayer({
   return (
     <div
       ref={containerRef}
-      className={`relative rounded-xl overflow-hidden bg-black/60 border border-white/10 shadow-lg ${className ?? ''}`}
+      className="relative rounded-xl overflow-hidden bg-black/60 border border-white/10 shadow-lg"
       tabIndex={0}
       onKeyDown={onKey}
       onPointerMove={poke}
@@ -241,7 +245,7 @@ export default function VideoPlayer({
         ref={videoRef}
         src={src}
         poster={poster}
-        className="block w-full h-auto select-none"
+        className={`block w-full h-auto object-contain select-none ${className ?? ''}`}
         playsInline
         loop={loop}
         muted={mutedState}

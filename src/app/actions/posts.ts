@@ -69,6 +69,7 @@ export async function createPost(formData: FormData): Promise<void> {
     if (single instanceof File) mediaFiles = [single];
   }
   mediaFiles = mediaFiles.filter((f) => f && f.size > 0).slice(0, MAX_MEDIA_ITEMS);
+  const preUploaded = formData.getAll('uploadedUrl').map(v => String(v)).filter(Boolean);
 
   // Alt-Texte
   const mediaAltAll = formData
@@ -83,7 +84,7 @@ export async function createPost(formData: FormData): Promise<void> {
   const quoteOfId =
     typeof quoteOfIdRaw === 'string' && quoteOfIdRaw.length > 0 ? quoteOfIdRaw : null;
 
-  if (!text && mediaFiles.length === 0 && !quoteOfId) {
+  if (!text && mediaFiles.length === 0 && preUploaded.length === 0 && !quoteOfId) {
     redirect(toURL(returnTo, { error: 'Bitte Text, Bild/Video oder eine Quote auswählen.' }));
   }
 
@@ -142,6 +143,43 @@ export async function createPost(formData: FormData): Promise<void> {
         mediaUrl = publicUrl;
         mediaAlt = alt;
         mediaType = mime || null;
+      }
+    }
+  }
+  
+  // Bereits direkt auf R2 hochgeladene Dateien anhängen
+  if (preUploaded.length) {
+    for (const url of preUploaded) {
+      const lower = url.split('?')[0].toLowerCase();
+
+      const isVideo =
+        /\.(mp4|webm|mov|m4v|mkv|ogv|ogg)$/.test(lower);
+      const isGif = /\.gif$/.test(lower);
+
+      const kind: 'image' | 'video' | 'gif' =
+        isVideo ? 'video' : isGif ? 'gif' : 'image';
+
+      // → mime gleich mitliefern (wird unten in prisma.post.create -> uploaded.type gespeichert)
+      const mime =
+        /\.mp4$/.test(lower)  ? 'video/mp4'  :
+        /\.webm$/.test(lower) ? 'video/webm' :
+        /\.mov$/.test(lower)  ? 'video/quicktime' :
+        /\.m4v$/.test(lower)  ? 'video/x-m4v' :
+        /\.mkv$/.test(lower)  ? 'video/x-matroska' :
+        /\.ogv$/.test(lower)  ? 'video/ogg' :
+        /\.ogg$/.test(lower)  ? 'video/ogg' :
+        /\.gif$/.test(lower)  ? 'image/gif'  :
+        /\.png$/.test(lower)  ? 'image/png'  :
+        /\.jpe?g$/.test(lower)? 'image/jpeg' :
+        null;
+
+      uploaded.push({ url, kind, alt: null, mime });
+
+      // Legacy-Felder für das *erste* Medium setzen, falls noch leer
+      if (!mediaUrl) {
+        mediaUrl = url;
+        mediaAlt = null;
+        mediaType = mime || (isVideo ? 'video/*' : isGif ? 'image/gif' : 'image/*');
       }
     }
   }
