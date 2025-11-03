@@ -54,16 +54,6 @@ export default function SearchPage() {
   const [suggestions, setSuggestions] = React.useState<SearchUser[]>([]);
   const [loadingSug, setLoadingSug] = React.useState(false);
 
-  // Recent aus localStorage lesen
-  React.useEffect(() => {
-    try {
-      const raw = localStorage.getItem('subm8.search.recent');
-      if (raw) setRecent(JSON.parse(raw));
-      else setRecent(['more4eve', 'domme tips', 'vienna']);
-    } catch {
-      setRecent(['more4eve', 'domme tips', 'vienna']);
-    }
-  }, []);
   const saveRecent = React.useCallback((list: string[]) => {
     setRecent(list);
     try {

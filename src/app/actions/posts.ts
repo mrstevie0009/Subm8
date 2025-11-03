@@ -4,10 +4,14 @@
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/currentUser';
 import { revalidatePath } from 'next/cache';
-import { guardAndSave, envMaxUploadBytes } from '@/lib/uploadGuard';
+// ⬇️ guardAndSave raus – wir validieren nur Größe
+import { envMaxUploadBytes } from '@/lib/uploadGuard';
 import { takeToken } from '@/lib/ratelimit';
 import { postsPerMinute, rateIntervalMs } from '@/lib/config';
 import { redirect } from 'next/navigation';
+
+// ⬇️ NEU: Storage-Adapter verwenden
+import { getStorage, buildKey } from '@/lib/storage';
 
 function toURL(base: string, params: Record<string, string | number | undefined>) {
   const url = new URL(base, 'http://dummy');
@@ -34,12 +38,6 @@ function kindFromMime(mime: string): MediaKind {
 
 /**
  * Server Action: Post (mit optionalen Medien + Quote)
- * Erwartete FormData Felder:
- * - text
- * - media (ein oder mehrere Files)
- * - mediaAlt (optional; entweder einzeln oder mehrfach)
- * - quoteOfId (optional)
- * - returnTo (Redirect Ziel)
  */
 export async function createPost(formData: FormData): Promise<void> {
   const me = await getCurrentUser();
@@ -99,7 +97,10 @@ export async function createPost(formData: FormData): Promise<void> {
     }
   }
 
-  // Uploads
+  // ⬇️ NEU: Storage-Adapter besorgen (lokal oder S3/R2 je nach ENV)
+  const storage = getStorage();
+
+  // Legacy-Felder (erstes Medium)
   let mediaUrl: string | null = null;
   let mediaAlt: string | null = null;
   let mediaType: string | null = null;
@@ -113,22 +114,32 @@ export async function createPost(formData: FormData): Promise<void> {
       const isVideo = mime.startsWith('video/');
       const maxBytes = isVideo ? envMaxUploadBytes(200) : envMaxUploadBytes(10);
 
-      const res = await guardAndSave(file, { maxSize: maxBytes, publicSubdir: 'uploads' });
-      if (!res.ok) {
-        redirect(toURL(returnTo, { error: res.message }));
+      // ⬇️ Größe selbst prüfen (statt guardAndSave)
+      if (file.size > maxBytes) {
+        redirect(toURL(returnTo, { error: `Datei zu groß (${Math.round(file.size/1e6)}MB).` }));
       }
 
-      const url = res.publicPath;
+      // ⬇️ Key + Upload
+      const key = buildKey('post-media', file.name || 'upload.bin');
+      const { publicUrl } = await storage.put({
+        key,
+        data: await file.arrayBuffer(),
+        contentType: mime || 'application/octet-stream',
+        cacheControl: isVideo
+          ? 'public, max-age=604800' // 7d
+          : 'public, max-age=31536000, immutable', // 1y
+      });
+
       const kind = kindFromMime(mime);
       const alt =
         hasAltArray
           ? (mediaAltAll[i] ?? '').slice(0, 200) || null
           : (i === 0 && singleMediaAlt ? singleMediaAlt.slice(0, 200) : '') || null;
 
-      uploaded.push({ url, kind, alt, mime });
+      uploaded.push({ url: publicUrl, kind, alt, mime });
 
       if (i === 0) {
-        mediaUrl = url;
+        mediaUrl = publicUrl;
         mediaAlt = alt;
         mediaType = mime || null;
       }
@@ -145,13 +156,13 @@ export async function createPost(formData: FormData): Promise<void> {
         mediaType,
         quoteOfId,
 
-        // NEU: alle Medien in die Relation UploadedMedia schreiben
+        // Alle Medien in Relation speichern
         uploaded: uploaded.length
           ? {
               create: uploaded.map((m) => ({
                 url: m.url,
                 alt: m.alt ?? null,
-                type: m.mime ?? null, // z.B. "image/png" oder "video/mp4"
+                type: m.mime ?? null, // z.B. image/png, video/mp4
               })),
             }
           : undefined,
@@ -161,10 +172,9 @@ export async function createPost(formData: FormData): Promise<void> {
     redirect(toURL(returnTo, { error: 'Speichern fehlgeschlagen.' }));
   }
 
-  // Revalidieren
+  // Revalidate + zurück
   revalidatePath('/');
   revalidatePath(returnTo);
-
   redirect(returnTo);
 }
 
