@@ -1,3 +1,4 @@
+//src/lib/storage.ts
 // Einheitliche Schnittstelle für lokale Dev & S3/R2 Prod
 export type PutParams = {
   key: string;                // z.B. "post-media/2025/11/uuid.jpg"
@@ -15,7 +16,7 @@ function yyyymm(d = new Date()) {
   return [d.getFullYear(), String(d.getMonth() + 1).padStart(2, '0')].join('/');
 }
 
-export function buildKey(kind: 'post-media'|'avatars'|'banners'|'offers'|'profile', fileName: string) {
+export function buildKey(kind: 'post-media'|'avatars'|'banners'|'offers'|'profile'|'chat-media', fileName: string) {
   const ext = fileName.split('.').pop()?.toLowerCase() || 'bin';
   return `${kind}/${yyyymm()}/${crypto.randomUUID()}.${ext}`;
 }

@@ -64,6 +64,10 @@
     "you": "Du"
   },
   "chatComposer": {
+    "status": {
+      "sending": "Anhänge werden gesendet …",
+      "disabled": "Senden ist deaktiviert"
+    },
     "actions": {
       "actions": "Aktionen",
       "gif": "GIFs suchen",

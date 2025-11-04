@@ -5,47 +5,8 @@ import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/currentUser';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { promises as fs } from 'fs';
-import path from 'path';
 import { Role } from '@prisma/client';
 
-/** Save an uploaded File to /public/uploads/{dir}/<uuid>.<ext> */
-async function saveFile(file: File, dir: 'avatars' | 'banners'): Promise<string> {
-  const uploadsRoot = path.join(process.cwd(), 'public', 'uploads', dir);
-  await fs.mkdir(uploadsRoot, { recursive: true });
-
-  const mime = file.type || 'image/png';
-  const ext = mime.split('/')[1]?.toLowerCase() || 'png';
-
-  const filename = `${crypto.randomUUID()}.${ext}`;
-  const full = path.join(uploadsRoot, filename);
-
-  const buf = Buffer.from(await file.arrayBuffer());
-  await fs.writeFile(full, buf);
-
-  return `/uploads/${dir}/${filename}`;
-}
-
-/** Save a raw Buffer (with given mime) to /public/uploads/{dir}/<uuid>.<ext> */
-async function saveBuffer(buf: Buffer, mime: string, dir: 'avatars' | 'banners'): Promise<string> {
-  const uploadsRoot = path.join(process.cwd(), 'public', 'uploads', dir);
-  await fs.mkdir(uploadsRoot, { recursive: true });
-
-  const ext = mime.split('/')[1]?.toLowerCase() || 'png';
-  const filename = `${crypto.randomUUID()}.${ext}`;
-  const full = path.join(uploadsRoot, filename);
-
-  await fs.writeFile(full, buf);
-  return `/uploads/${dir}/${filename}`;
-}
-
-/** Parse a data: URL like "data:image/png;base64,AAAA..." */
-function parseDataUrlToBuffer(dataUrl: string): { buf: Buffer; mime: string } {
-  const m = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
-  if (!m) throw new Error('Invalid data URL');
-  const [, mime, b64] = m;
-  return { buf: Buffer.from(b64, 'base64'), mime };
-}
 
 export async function updateProfileAction(formData: FormData) {
   const me = await getCurrentUser();
@@ -62,24 +23,18 @@ export async function updateProfileAction(formData: FormData) {
 
   const prismaRole: Role = roleStr === 'domme' ? 'DOMME' : 'SUBMISSIVE';
 
-  let avatarUrl: string | null = null;
-  let bannerUrl: string | null = null;
+  const avatarUrlFromClient = formData.get('avatarUrl');
+  const bannerUrlFromClient = formData.get('bannerUrl');
 
-  const avatarCropped = formData.get('avatarCropped');
-  if (typeof avatarCropped === 'string' && avatarCropped.startsWith('data:')) {
-    const { buf, mime } = parseDataUrlToBuffer(avatarCropped);
-    avatarUrl = await saveBuffer(buf, mime, 'avatars');
-  } else {
-    const avatar = formData.get('avatar');
-    if (avatar instanceof File && avatar.size > 0) {
-      avatarUrl = await saveFile(avatar, 'avatars');
-    }
-  }
+  const avatarUrl =
+    typeof avatarUrlFromClient === 'string' && avatarUrlFromClient.length > 0
+      ? avatarUrlFromClient
+      : null;
 
-  const banner = formData.get('banner');
-  if (banner instanceof File && banner.size > 0) {
-    bannerUrl = await saveFile(banner, 'banners');
-  }
+  const bannerUrl =
+    typeof bannerUrlFromClient === 'string' && bannerUrlFromClient.length > 0
+      ? bannerUrlFromClient
+      : null;
 
   // Normalize website (store null when empty, cap to 255 chars)
   const websiteUrl =
@@ -92,7 +47,7 @@ export async function updateProfileAction(formData: FormData) {
     location: location || null,
     nsfwDefault,
     role: prismaRole,
-    websiteUrl, // ⇐ neu
+    websiteUrl,
   };
   if (avatarUrl !== null) data.avatarUrl = avatarUrl;
   if (bannerUrl !== null) data.bannerUrl = bannerUrl;

@@ -7,7 +7,6 @@ import { useTranslations } from 'next-intl';
 import AvatarCropper from '@/components/AvatarCropper';
 import BannerCropper from '@/components/BannerCropper';
 import OfferBgCropper from '@/components/OfferBgCropper';
-import { blobToDataUrl } from '@/utils/blobToDataUrl';
 
 const AVATAR_PH = '/images/avatar-placeholder.png';
 const BANNER_PH = '/images/banner-placeholder.png';
@@ -60,11 +59,12 @@ export default function EditProfileForm({
 
   const [cropOpen, setCropOpen] = React.useState(false);
   const [cropSrc, setCropSrc] = React.useState<string | null>(null);
-  const [avatarCroppedDataUrl, setAvatarCroppedDataUrl] = React.useState<string>('');
+  const [avatarFile, setAvatarFile] = React.useState<File | null>(null);
+
 
   const [bannerCropOpen, setBannerCropOpen] = React.useState(false);
   const [bannerCropSrc, setBannerCropSrc] = React.useState<string | null>(null);
-  const [bannerCroppedDataUrl, setBannerCroppedDataUrl] = React.useState<string>('');
+  const [bannerFile, setBannerFile] = React.useState<File | null>(null);
 
   // --- neue: kontrollierte Felder + Availability-Checks
   const [displayName, setDisplayName] = React.useState<string>(initial.displayName);
@@ -134,6 +134,23 @@ export default function EditProfileForm({
     }
   }, [unchangedDisplay]);
 
+  React.useEffect(() => {
+    setAvatarPreview(initial.avatarUrl || AVATAR_PH);
+    setBannerPreview(initial.bannerUrl || BANNER_PH);
+    setAvatarFile(null);
+    setBannerFile(null);
+    setCropOpen(false);
+    setBannerCropOpen(false);
+    setCropSrc(null);
+    setBannerCropSrc(null);
+  }, [initial.avatarUrl, initial.bannerUrl]);
+
+  // ⬇️ kontrollierte Felder nachziehen, wenn anderer User (oder Werte) kommt
+  React.useEffect(() => {
+    setDisplayName(initial.displayName);
+    setUsername(initial.username);
+  }, [initial.displayName, initial.username]);
+
   // debounce effects
   React.useEffect(() => {
     if (displayDebRef.current) window.clearTimeout(displayDebRef.current);
@@ -160,10 +177,70 @@ export default function EditProfileForm({
     validHandle(username) &&
     (unchangedHandle || handleState === 'ok' || handleState === 'idle');
 
-  const onSubmitGuard = (e: React.FormEvent) => {
+  const onSubmitGuard = async (e: React.FormEvent) => {
     if (!canSubmit) {
       e.preventDefault();
+      return;
     }
+    e.preventDefault();
+
+    const uploads: { avatarUrl?: string; bannerUrl?: string } = {};
+
+    try {
+      if (avatarFile) {
+        const pre = await fetch(`/api/upload-urls?kind=avatars`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ files: [{ name: avatarFile.name, type: avatarFile.type }] }),
+        });
+        const pj = await pre.json();
+        const it = pj?.items?.[0];
+        if (!it?.uploadUrl || !it?.publicUrl) throw new Error('avatar presign failed');
+        const put = await fetch(it.uploadUrl, {
+          method: 'PUT',
+          headers: { 'content-type': avatarFile.type || 'application/octet-stream' },
+          body: avatarFile,
+        });
+        if (!put.ok) throw new Error('avatar upload failed');
+        uploads.avatarUrl = it.publicUrl;
+      }
+
+      if (bannerFile) {
+        const pre = await fetch(`/api/upload-urls?kind=banners`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ files: [{ name: bannerFile.name, type: bannerFile.type }] }),
+        });
+        const pj = await pre.json();
+        const it = pj?.items?.[0];
+        if (!it?.uploadUrl || !it?.publicUrl) throw new Error('banner presign failed');
+        const put = await fetch(it.uploadUrl, {
+          method: 'PUT',
+          headers: { 'content-type': bannerFile.type || 'application/octet-stream' },
+          body: bannerFile,
+        });
+        if (!put.ok) throw new Error('banner upload failed');
+        uploads.bannerUrl = it.publicUrl;
+      }
+    } catch (err) {
+      console.error(err);
+      // TODO: toast('Upload failed')
+      return;
+    }
+
+    // FormData für Server Action – nur URLs übergeben
+    const fd = new FormData();
+    fd.append('locale', locale);
+    fd.append('displayName', displayName);
+    fd.append('username', username);
+    fd.append('bio', (document.querySelector('textarea[name="bio"]') as HTMLTextAreaElement)?.value ?? '');
+    fd.append('location', (document.querySelector('input[name="location"]') as HTMLInputElement)?.value ?? '');
+    fd.append('websiteUrl', (document.querySelector('input[name="websiteUrl"]') as HTMLInputElement)?.value ?? '');
+    fd.append('role', initial.role);
+    if (uploads.avatarUrl) fd.append('avatarUrl', uploads.avatarUrl);
+    if (uploads.bannerUrl) fd.append('bannerUrl', uploads.bannerUrl);
+
+    await action(fd);
   };
 
   const revoke = (url?: string | null) => {
@@ -199,9 +276,6 @@ export default function EditProfileForm({
 
   return (
     <form
-      action={action}
-      method="POST"
-      encType="multipart/form-data"
       className="relative rounded-app border border-sub overflow-hidden shadow-app"
       onSubmit={onSubmitGuard}
     >
@@ -332,8 +406,6 @@ export default function EditProfileForm({
 
       {/* Hidden */}
       <input type="hidden" name="locale" value={locale} />
-      <input type="hidden" name="avatarCropped" value={avatarCroppedDataUrl} />
-      <input type="hidden" name="bannerCropped" value={bannerCroppedDataUrl} />
 
       {/* Fields */}
       <div className="p-4 grid gap-3">
@@ -483,13 +555,10 @@ export default function EditProfileForm({
           setCropOpen(false);
           revoke(cropSrc);
           setCropSrc(null);
-          const url = URL.createObjectURL(blob);
-          setAvatarPreview((prev) => {
-            revoke(prev);
-            return url;
-          });
-          const b64 = await blobToDataUrl(blob);
-          setAvatarCroppedDataUrl(b64);
+          const file = new File([blob], `avatar_${Date.now()}.png`, { type: 'image/png' });
+          const url = URL.createObjectURL(file);
+          setAvatarPreview((prev) => { revoke(prev); return url; });
+          setAvatarFile(file); // ✨ wichtig
         }}
       />
 
@@ -506,13 +575,10 @@ export default function EditProfileForm({
           setBannerCropOpen(false);
           revoke(bannerCropSrc);
           setBannerCropSrc(null);
-          const url = URL.createObjectURL(blob);
-          setBannerPreview((prev) => {
-            revoke(prev);
-            return url;
-          });
-          const b64 = await blobToDataUrl(blob);
-          setBannerCroppedDataUrl(b64);
+          const file = new File([blob], `banner_${Date.now()}.png`, { type: 'image/png' });
+          const url = URL.createObjectURL(file);
+          setBannerPreview((prev) => { revoke(prev); return url; });
+          setBannerFile(file); // ✨ wichtig
         }}
       />
 

@@ -2,7 +2,7 @@
 'use client';
 
 import * as React from 'react';
-import { createPortal } from 'react-dom';
+import { createPortal, flushSync } from 'react-dom';
 import { useTranslations } from 'next-intl';
 import MentionSuggestChat from '@/components/MentionSuggestChat';
 import TipRequestCreateModal from '@/components/TipRequestCreateModal';
@@ -20,6 +20,10 @@ import { useKeyboardInset } from '@/hooks/useKeyboardInset';
 
 // 🆕 Reply envelope prefix (client-only)
 const REPLY_PREFIX = 'REPLY::';
+const awaitMaybe = (v: unknown) => Promise.resolve(v);
+const nextFrame = () => new Promise<void>((resolve) => {
+  requestAnimationFrame(() => resolve());
+});
 
 type RoleLike = 'domme' | 'submissive' | 'DOMME' | 'SUBMISSIVE';
 type TipRequestPayload = { amountCents: number; note?: string; currency?: string };
@@ -38,17 +42,17 @@ type Props = {
   viewerRole: RoleLike;
   selfUserId: string;
   targetHandle: string;
-  onSend: (text: string) => void;
+  onSend: (text: string) => Promise<void> | void;
   onTip: () => void;
-  onUpload?: (file: File, caption?: string) => void;
-  onCreateTipRequest?: (payload: TipRequestPayload) => void;
-  onCreateAutoDrainRequest?: (payload: AutoDrainRequestPayload) => void;
+  onUpload?: (file: File, caption?: string) => Promise<void> | void;
+  onCreateTipRequest?: (payload: TipRequestPayload) => Promise<void> | void;
+  onCreateAutoDrainRequest?: (payload: AutoDrainRequestPayload) => Promise<void> | void;
   onTypingPing?: (active: boolean) => void;
 
   // 🆕 Reply support (optional, non-breaking)
   replyTo?: ReplyTargetLite | null;
   onCancelReply?: () => void;
-  onCreateReply?: (p: { to: string; text: string }) => void;
+  onCreateReply?: (p: { to: string; text: string }) => Promise<void> | void;
   onCreateReaction?: (p: { to: string; emoji: string; op?: 'add' | 'remove' }) => void;
 
   loading?: boolean;
@@ -373,7 +377,13 @@ export default function ChatComposer({
   const router = useRouter();
   const { data: session } = useSession();
   const ageOk = !!session?.user?.ageVerified;
-  const isDisabled = !!disabled || loading;
+  // Busy-State während Upload/Send
+  const [sending, setSending] = React.useState(false);
+  // Einheitlicher Disable-Flag für die UI
+  const uiDisabled = !!disabled || loading || sending;
+  // Ref, um ESLint-Deps sauber zu halten (siehe submit)
+  const sendingRef = React.useRef(false);
+  React.useEffect(() => { sendingRef.current = sending; }, [sending]);
 
   const [verifyOpen, setVerifyOpen] = React.useState(false);
   useKeyboardInset();
@@ -461,12 +471,12 @@ export default function ChatComposer({
   const typingTimerRef = React.useRef<number | null>(null);
 
   const startTyping = React.useCallback(() => {
-    if (disabled || typingActiveRef.current) return;
+    if (uiDisabled || typingActiveRef.current) return;
     typingActiveRef.current = true;
     onTypingPing?.(true);
     if (typingTimerRef.current) window.clearInterval(typingTimerRef.current);
     typingTimerRef.current = window.setInterval(() => onTypingPing?.(true), 3000);
-  }, [disabled, onTypingPing]);
+  }, [uiDisabled, onTypingPing]);
 
   const stopTyping = React.useCallback(() => {
     if (!typingActiveRef.current) return;
@@ -529,7 +539,7 @@ export default function ChatComposer({
   };
 
   async function startRecording() {
-    if (disabled) return;
+    if (uiDisabled) return;
     setRecError(null);
 
     if (!canRecord()) {
@@ -587,7 +597,7 @@ export default function ChatComposer({
     const file = new File([audioBlobRef.current], `voice_${Date.now()}.${ext}`, {
       type: audioBlobRef.current.type || 'audio/webm',
     });
-    await onUpload(file);
+    await awaitMaybe(onUpload(file));
     resetPreview();
   }
 
@@ -624,49 +634,77 @@ export default function ChatComposer({
   }
 
   const submit = React.useCallback(async () => {
-    if (disabled) return;
+    if (uiDisabled || sendingRef.current) return;
     const tMsg = text.trim();
 
-    // Dateien zuerst senden …
+    // ------- Dateien zuerst senden -------
     if ((mediaPreviews.length > 0 || gifPreviews.length > 0) && onUpload) {
-      const all = [...mediaPreviews, ...gifPreviews];
-      for (let i = 0; i < all.length; i++) {
-        const { file } = all[i];
-        const cap = i === 0 ? (tMsg || undefined) : undefined;
-        await onUpload(file, cap);
+      flushSync(() => setSending(true)); // Paint erzwingen
+      await nextFrame();                 // <-- garantiert sichtbares Paint
+      try {
+        const all = [...mediaPreviews, ...gifPreviews];
+        for (let i = 0; i < all.length; i++) {
+          const { file } = all[i];
+          const cap = i === 0 ? (tMsg || undefined) : undefined;
+          await awaitMaybe(onUpload(file, cap)); // <-- wirklich warten
+        }
+        clearAllPreviews();
+        setText('');
+        stopTyping();
+        requestAnimationFrame(() => autosize());
+      } finally {
+        setSending(false);
       }
-      clearAllPreviews();
-      setText('');
-      stopTyping();
-      requestAnimationFrame(() => autosize());
       return;
     }
 
-    // Nichts zu senden?
+    // ------- Nichts zu senden? -------
     if (!tMsg && !replyTo) return;
 
+    // ------- Reply -------
     if (replyTo) {
-      if (onCreateReply) {
-        onCreateReply({ to: replyTo.id, text: tMsg });
-      } else {
-        // Fallback, falls Page veraltet ist
-        onSend(`${REPLY_PREFIX}${JSON.stringify({ to: replyTo.id, text: tMsg })}`);
+      flushSync(() => setSending(true));
+      await nextFrame(); // <--
+      try {
+        if (onCreateReply) {
+          await awaitMaybe(onCreateReply({ to: replyTo.id, text: tMsg }));
+        } else {
+          await awaitMaybe(onSend(`${REPLY_PREFIX}${JSON.stringify({ to: replyTo.id, text: tMsg })}`));
+        }
+        setText('');
+        stopTyping();
+        requestAnimationFrame(() => autosize());
+        onCancelReply?.();
+      } finally {
+        setSending(false);
       }
-      setText('');
-      stopTyping();
-      requestAnimationFrame(() => autosize());
-      onCancelReply?.();
       return;
     }
 
-    // normaler Text
-    onSend(tMsg);
-    setText('');
-    stopTyping();
-    requestAnimationFrame(() => autosize());
+    // ------- Plain Text -------
+    flushSync(() => setSending(true));
+    await nextFrame();
+    try {
+      await awaitMaybe(onSend(tMsg));
+      setText('');
+      stopTyping();
+      requestAnimationFrame(() => autosize());
+    } finally {
+      setSending(false);
+    }
   }, [
-    disabled, text, onUpload, mediaPreviews, gifPreviews, clearAllPreviews,
-    stopTyping, autosize, replyTo, onCreateReply, onSend, onCancelReply
+    uiDisabled,
+    text,
+    onUpload,
+    mediaPreviews,
+    gifPreviews,
+    clearAllPreviews,
+    stopTyping,
+    autosize,
+    replyTo,
+    onCreateReply,
+    onSend,
+    onCancelReply
   ]);
 
   const hasAnyAttach = mediaPreviews.length > 0 || gifPreviews.length > 0;
@@ -735,8 +773,19 @@ export default function ChatComposer({
           <div className="h-6 w-2/3 rounded-lg bg-white/10 animate-pulse" />
         </div>
       )}
+      {sending && (
+        <div className="mx-auto mb-2 max-w-[760px]">
+          <div className="flex items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-[13px]">
+            <UploadIcon />
+            <span>{t('status.sending') /* z.B. "Anhänge werden gesendet …" */}</span>
+          </div>
+          <div className="mt-2 h-1 overflow-hidden rounded bg-white/10">
+            <div className="h-full w-1/3 animate-pulse bg-[var(--purple)]" />
+          </div>
+        </div>
+      )}
 
-      <div className="rounded-3xl border border-white/10 bg-white/[.06] shadow-[0_2px_16px_rgba(0,0,0,.25)] px-3 py-2">
+      <div className={`rounded-3xl border border-white/10 bg-white/[.06] shadow-[0_2px_16px_rgba(0,0,0,.25)] px-3 py-2 ${sending ? 'pointer-events-none' : ''}`}>
         {/* VORSCHAUEN: Medien & GIFs als Grid */}
         {(mediaPreviews.length > 0 || gifPreviews.length > 0) && (
           <div className="mb-2 pl-2">
@@ -757,33 +806,46 @@ export default function ChatComposer({
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={url} alt="" className="h-24 w-full rounded-lg border border-white/10 object-cover" />
                     )}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (idx < mediaPreviews.length) {
-                          const i = idx;
-                          setMediaPreviews((arr) => {
-                            const next = [...arr];
-                            revoke(next[i]?.url);
-                            next.splice(i, 1);
-                            return next;
-                          });
-                        } else {
-                          const i = idx - mediaPreviews.length;
-                          setGifPreviews((arr) => {
-                            const next = [...arr];
-                            revoke(next[i]?.url);
-                            next.splice(i, 1);
-                            return next;
-                          });
-                        }
-                        if (!text.trim() && (mediaPreviews.length + gifPreviews.length - 1) === 0) stopTyping();
-                      }}
-                      className="absolute -right-2 -top-2 h-7 w-7 grid place-items-center rounded-full bg-black/70 border border-white/20 hover:bg-black/85"
-                      title={t('actions.remove')}
-                    >
-                      ✕
-                    </button>
+                    {/* Entfernen nur, wenn nicht gerade gesendet wird */}
+                    {!sending && (
+                      <button
+                        type="button"
+                        onClick={() => { /* remove logic unverändert */ 
+                          if (idx < mediaPreviews.length) {
+                            const i = idx;
+                            setMediaPreviews((arr) => {
+                              const next = [...arr];
+                              revoke(next[i]?.url);
+                              next.splice(i, 1);
+                              return next;
+                            });
+                          } else {
+                            const i = idx - mediaPreviews.length;
+                            setGifPreviews((arr) => {
+                              const next = [...arr];
+                              revoke(next[i]?.url);
+                              next.splice(i, 1);
+                              return next;
+                            });
+                          }
+                          if (!text.trim() && (mediaPreviews.length + gifPreviews.length - 1) === 0) stopTyping();
+                        }}
+                        className="absolute -right-2 -top-2 h-7 w-7 grid place-items-center rounded-full bg-black/70 border border-white/20 hover:bg-black/85"
+                        title={t('actions.remove')}
+                      >
+                        ✕
+                      </button>
+                    )}
+
+                    {/* Busy-Overlay während Upload */}
+                    {sending && (
+                      <div className="absolute inset-0 grid place-items-center rounded-lg bg-black/60">
+                        <div className="flex flex-col items-center gap-2 text-[13px]">
+                          <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                          <span className="text-white/90">Senden …</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -798,7 +860,7 @@ export default function ChatComposer({
               ref={taRef}
               rows={1}
               value={text}
-              disabled={isDisabled} // CHANGED
+              disabled={uiDisabled} // CHANGED
               onChange={(e) => {
                 const v = e.target.value;
                 setText(v);
@@ -816,7 +878,7 @@ export default function ChatComposer({
               onBlur={() => {
                 if (!hasAnyAttach && !text.trim()) stopTyping();
               }}
-              placeholder={isDisabled ? t('placeholders.closed') : t('placeholders.message')} // CHANGED
+              placeholder={uiDisabled ? t('placeholders.closed') : t('placeholders.message')} // CHANGED
               className="w-full resize-none bg-transparent outline-none placeholder:text-muted
                         text-[14px] leading-5 pl-2 pr-0 pt-1 pb-1 rounded-2xl no-scrollbar break-anywhere"
               style={{ minHeight: 40, maxHeight, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}
@@ -830,7 +892,7 @@ export default function ChatComposer({
                 aria-label={t('actions.upload')}
                 title={t('actions.upload')}
                 onClick={(e) => {
-                  if (isDisabled) { e.preventDefault(); return; }
+                  if (uiDisabled) { e.preventDefault(); return; }
                   if (!ageOk) {
                     e.preventDefault();      // verhindert das Öffnen des Dateidialogs
                     setVerifyOpen(true);     // öffnet das Veriff-Prompt
@@ -842,7 +904,7 @@ export default function ChatComposer({
                   className="hidden"
                   accept="image/*,video/*"
                   multiple
-                  disabled={isDisabled}
+                  disabled={uiDisabled}
                   onChange={(e) => {
                     const files = Array.from(e.target.files || []);
                     if (files.length) {
@@ -863,7 +925,7 @@ export default function ChatComposer({
               <button
                 type="button"
                 onClick={() => setGifOpen(true)}
-                disabled={isDisabled} // CHANGED
+                disabled={uiDisabled} // CHANGED
                 className={`${circle} border border-white/12 bg-transparent hover:bg-white/10 disabled:opacity-50`}
                 style={{ width: toolSize, height: toolSize }}
                 aria-label={t('actions.gif')}
@@ -877,11 +939,11 @@ export default function ChatComposer({
                 <button
                   type="button"
                   onClick={() => {
-                    if (isDisabled) return; // NEW
+                    if (uiDisabled) return; // NEW
                     if (!ageOk) { setVerifyOpen(true); return; }
                     onTip();
                   }}
-                  disabled={isDisabled} // CHANGED
+                  disabled={uiDisabled} // CHANGED
                   className={`${circle} border border-white/12 bg-transparent hover:bg-white/10 disabled:opacity-50`}
                   style={{ width: toolSize, height: toolSize }}
                   aria-label={t('actions.tip')}
@@ -895,11 +957,11 @@ export default function ChatComposer({
                     ref={plusBtnRef}
                     type="button"
                     onClick={() => {
-                      if (isDisabled) return; // NEW
+                      if (uiDisabled) return; // NEW
                       if (!ageOk) { setVerifyOpen(true); return; }
                       openMenu();
                     }}
-                    disabled={isDisabled} // CHANGED
+                    disabled={uiDisabled} // CHANGED
                     className={`${circle} border border-white/12 bg-transparent hover:bg-white/10 disabled:opacity-50`}
                     style={{ width: toolSize, height: toolSize }}
                     aria-label={t('actions.openActions')}
@@ -950,7 +1012,7 @@ export default function ChatComposer({
           {/* Mic */}
           <button
             type="button"
-            disabled={isDisabled} // CHANGED
+            disabled={uiDisabled} // CHANGED
             className={`${circle} border border-white/12 bg-transparent hover:bg-white/10 disabled:opacity-50`}
             style={{ width: sendSize, height: sendSize }}
             aria-label={t('actions.voice.holdAria')}
@@ -974,13 +1036,28 @@ export default function ChatComposer({
           <button
             type="button"
             onClick={() => void submit()}
-            disabled={isDisabled || (!text.trim() && !hasAnyAttach && !replyTo)} // CHANGED
-            className={`${circle} bg-[var(--purple)] text-white hover:opacity-95 disabled:opacity-50`}
+            disabled={uiDisabled || (!text.trim() && !hasAnyAttach && !replyTo)}
+            aria-disabled={uiDisabled}
+            aria-busy={sending}
+            title={
+              sending
+                ? t('status.sending')                // z.B. "Senden ..."
+                : uiDisabled
+                ? 'disabled'               // optionaler i18n key
+                : t('actions.send')
+            }
+            className={`${circle} bg-[var(--purple)] text-white
+                        ${uiDisabled ? 'opacity-40 grayscale cursor-not-allowed' : 'hover:opacity-95'}`}
             style={{ width: sendSize, height: sendSize }}
             aria-label={t('actions.sendMessageAria')}
-            title={t('actions.send')}
           >
-            <SendIcon />
+            {sending ? (
+              <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+            ) : uiDisabled ? (
+              <LockIcon />
+            ) : (
+              <SendIcon />
+            )}
           </button>
         </div>
       </div>
@@ -1077,6 +1154,25 @@ export default function ChatComposer({
       </>
       )}
     </div>
+  );
+}
+
+function LockIcon({ size = 18 }: { size?: number }) {
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden fill="none" stroke="currentColor" strokeWidth="2">
+      <rect x="4" y="10" width="16" height="10" rx="2" />
+      <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+    </svg>
+  );
+}
+
+function UploadIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <path d="M7 10l5-5 5 5" />
+      <path d="M12 15V5" />
+    </svg>
   );
 }
 

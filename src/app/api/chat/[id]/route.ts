@@ -1,9 +1,7 @@
 // src/app/api/chat/[id]/route.ts
-import path from 'node:path';
-import { promises as fs } from 'node:fs';
-import { randomUUID } from 'node:crypto';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/currentUser';
+import { getStorage, buildKey } from '@/lib/storage';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,12 +14,8 @@ type DbRole = 'DOMME' | 'SUBMISSIVE';
 const MAX_UPLOAD_MB = Number(process.env.CHAT_UPLOAD_MAX_MB || '100');
 const MAX_TEXT = 4000;
 const MAX_ENVELOPE_TEXT = 16000; // z. B. 16k
-const ENVELOPE_RE = /^(REPLY|TIPREQ|TIPPAID|ADREQ|ADACC|OWNREQ|OWNACC)::/;
 
-function sanitizeFileName(name: string) {
-  const base = name.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9._-]/g, '');
-  return base.length ? base : `upload_${Date.now()}`;
-}
+const ENVELOPE_RE = /^(REPLY|TIPREQ|TIPPAID|ADREQ|ADACC|OWNREQ|OWNACC)::/;
 
 function isAllowedMime(type: string) {
   return /^image\//.test(type) || /^video\//.test(type) || /^audio\//.test(type);
@@ -296,17 +290,22 @@ export async function POST(req: Request, { params }: Ctx) {
           );
         }
 
-        const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
-        await fs.mkdir(uploadsDir, { recursive: true });
-
-        const safe = sanitizeFileName(file.name);
-        const filename = `${randomUUID()}_${safe}`;
-        const absPath = path.join(uploadsDir, filename);
-
-        const buf = Buffer.from(await file.arrayBuffer());
-        await fs.writeFile(absPath, buf);
-
-        mediaUrl = `/uploads/${encodeURIComponent(filename)}`;
+        // ⬇️ NEU: Upload nach R2/S3 via Storage-Adapter
+        const storage = getStorage();
+        const key = buildKey('chat-media', file.name || 'upload.bin');
+        const isVideo = /^video\//.test(type);
+        const isAudio = /^audio\//.test(type);
+        const cacheControl =
+          isVideo ? 'public, max-age=604800' :               // 7 Tage
+          isAudio ? 'public, max-age=2592000' :              // 30 Tage
+                    'public, max-age=31536000, immutable';   // 1 Jahr
+        const { publicUrl } = await storage.put({
+          key,
+          data: await file.arrayBuffer(),
+          contentType: type,
+          cacheControl,
+        });
+        mediaUrl = publicUrl;
         mediaType = type;
       }
 
@@ -353,8 +352,13 @@ export async function POST(req: Request, { params }: Ctx) {
       });
     }
 
-    // JSON: text only OR typing ping
-    const body = (await req.json().catch(() => null)) as { text?: string; typing?: boolean } | null;
+    // JSON: text only OR typing ping OR pre-uploaded media (via presign)
+    const body = (await req.json().catch(() => null)) as {
+      text?: string;
+      typing?: boolean;
+      mediaUrl?: string;
+      mediaType?: string;
+    } | null;
 
     // Typing ping
     if (body && typeof body.typing === 'boolean') {
@@ -368,17 +372,35 @@ export async function POST(req: Request, { params }: Ctx) {
 
     // Normaler Text
     const text = (body?.text ?? '').toString().trim();
-    if (!text) return Response.json({ ok: false, error: 'Empty message' }, { status: 400 });
+    const bodyMediaUrl = typeof body?.mediaUrl === 'string' && body.mediaUrl ? body.mediaUrl : null;
+    const bodyMediaType = typeof body?.mediaType === 'string' && body.mediaType ? body.mediaType : null;
 
-    const isEnvelope = ENVELOPE_RE.test(text);
-    if (text.length > (isEnvelope ? MAX_ENVELOPE_TEXT : MAX_TEXT)) {
-      return Response.json({ ok: false, error: 'Too long' }, { status: 400 });
+    if (!text && !bodyMediaUrl) {
+      return Response.json({ ok: false, error: 'Empty message' }, { status: 400 });
     }
-    if (text.length > 4000) return Response.json({ ok: false, error: 'Too long' }, { status: 400 });
+
+    if (text) {
+      const isEnvelope = ENVELOPE_RE.test(text);
+      if (text.length > (isEnvelope ? MAX_ENVELOPE_TEXT : MAX_TEXT)) {
+        return Response.json({ ok: false, error: 'Too long' }, { status: 400 });
+      }
+      if (text.length > 4000) return Response.json({ ok: false, error: 'Too long' }, { status: 400 });
+    }
+
+    // Optional: Mime guarden, falls mediaType mitkommt
+    if (bodyMediaType && !isAllowedMime(bodyMediaType)) {
+      return Response.json({ ok: false, error: 'Unsupported file type' }, { status: 400 });
+    }
 
     const msg = await prisma.message.create({
-      data: { conversationId: id, authorId: me.id, text },
-      select: { id: true, createdAt: true, authorId: true, text: true },
+      data: {
+        conversationId: id,
+        authorId: me.id,
+        text: text || null,
+        mediaUrl: bodyMediaUrl,
+        mediaType: bodyMediaType || null,
+      },
+      select: { id: true, createdAt: true, authorId: true, text: true, mediaUrl: true, mediaType: true },
     });
 
     await prisma.conversation.update({
@@ -402,6 +424,8 @@ export async function POST(req: Request, { params }: Ctx) {
         at: msg.createdAt.toISOString(),
         authorId: msg.authorId,
         text: msg.text,
+        mediaUrl: (msg).mediaUrl ?? null,
+        mediaType: (msg).mediaType ?? null,
       },
     });
   } catch (e) {

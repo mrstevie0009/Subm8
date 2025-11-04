@@ -1598,10 +1598,35 @@ export default function ChatThreadPage() {
 
       // Netzwerk
       if (file) {
-        const fd = new FormData();
-        fd.append('text', text);
-        fd.append('file', file);
-        await fetch(`/api/chat/${id}`, { method: 'POST', body: fd });
+        // 1) Presign für chat-media holen
+        const pre = await fetch(`/api/upload-urls?kind=chat-media`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ files: [{ name: file.name, type: file.type || 'application/octet-stream' }] }),
+        });
+        if (!pre.ok) throw new Error('Failed to presign upload URL');
+        const pj = await pre.json();
+        const item = pj?.items?.[0];
+        if (!item?.uploadUrl || !item?.publicUrl) throw new Error('Invalid presign response');
+
+        // 2) Direkt in R2 hochladen
+        const put = await fetch(item.uploadUrl, {
+          method: 'PUT',
+          headers: { 'content-type': file.type || 'application/octet-stream' },
+          body: file,
+        });
+        if (!put.ok) throw new Error('Upload to R2 failed');
+
+        // 3) Chat-Message als JSON mit mediaUrl + mediaType anlegen
+        await fetch(`/api/chat/${id}`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            text,
+            mediaUrl: item.publicUrl,
+            mediaType: file.type || 'application/octet-stream',
+          }),
+        });
       } else {
         await fetch(`/api/chat/${id}`, {
           method: 'POST',
@@ -1623,19 +1648,13 @@ export default function ChatThreadPage() {
     [id, load, viewerHasBlocked, isBlockedByOther, scrollToBottom]
   );
 
-  const pinAndSend = React.useCallback((text: string) => {
-    // 1) ab jetzt „Bottom-Modus“
+  const raf = () => new Promise<void>(r => requestAnimationFrame(() => r()));
+  const pinAndSend = React.useCallback(async (text: string) => {
     setStickBottom(true);
-
-    // 2) gib dem Composer Zeit zum Schrumpfen (autosize im ChatComposer)
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        // vorsorglich schon mal unten
-        scrollToBottom('auto');
-        // 3) jetzt wirklich schicken (macht dann noch ein load())
-        void sendMessage({ text });
-      });
-    });
+    await raf();          
+    await raf();
+    scrollToBottom('auto');
+    await sendMessage({ text });         
   }, [sendMessage, scrollToBottom]);
 
 
@@ -2384,33 +2403,34 @@ export default function ChatThreadPage() {
         disabledNotice={disabled ? disabledNotice : (!isReady ? t('loading') : undefined)}
         selfUserId={meId ?? ''}
         targetHandle={(other?.username ?? '')}
-        onSend={(text) => isReady ? pinAndSend(text) : undefined}
+        onSend={async (text) => {
+          if (!isReady) return;
+          await pinAndSend(text);          // Promise an den Composer zurückgeben
+        }}
         onTip={() => isReady ? setTipOpen(true) : undefined}
         onUpload={(file, caption) => isReady ? sendMessage({ text: caption || '', file }) : undefined}
         replyTo={replyTarget}
         onCancelReply={() => setReplyTarget(null)}
-        onCreateReply={(p) => {
+        onCreateReply={async (p) => {
           if (!isReady) return;
           setStickBottom(true);
-          requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-              scrollToBottom('auto');
-              void sendMessage({ text: `${REPLY_PREFIX}${JSON.stringify({ to: p.to, text: p.text })}` });
-              setReplyTarget(null);
-            });
-          });
+          await new Promise<void>(r => requestAnimationFrame(() => requestAnimationFrame(() => r())));
+          scrollToBottom('auto');
+          await sendMessage({ text: `${REPLY_PREFIX}${JSON.stringify({ to: p.to, text: p.text })}` });
+          setReplyTarget(null);
         }}
-        onCreateTipRequest={(p) => {
-            if (!isReady) return;
-            const { amountCents, currency = 'EUR', note } = p;
-            const payload = { amountCents, currency, note: note?.trim() || undefined };
-            void sendMessage({ text: `${TIPREQ_PREFIX}${JSON.stringify(payload)}` });
+        onCreateTipRequest={async (p) => {
+          if (!isReady) return;
+          const { amountCents, currency = 'EUR', note } = p;
+          const payload = { amountCents, currency, note: note?.trim() || undefined };
+          await sendMessage({ text: `${TIPREQ_PREFIX}${JSON.stringify(payload)}` });
         }}
-        onCreateAutoDrainRequest={(p) => {
-            if (!isReady) return;
-            const { amountCents, currency = 'EUR', cadence } = p;
-            const payload = { amountCents, currency, cadence };
-            void sendMessage({ text: `${ADREQ_PREFIX}${JSON.stringify(payload)}` });
+
+        onCreateAutoDrainRequest={async (p) => {
+          if (!isReady) return;
+          const { amountCents, currency = 'EUR', cadence } = p;
+          const payload = { amountCents, currency, cadence };
+          await sendMessage({ text: `${ADREQ_PREFIX}${JSON.stringify(payload)}` });
         }}
       />
 

@@ -347,9 +347,9 @@ export default function EditProfileTabs({
 
 
       {tab === 'general' ? (
-        <EditFormComponent locale={locale} initial={initial} action={action} />
+        <EditFormComponent key={userId} locale={locale} initial={initial} action={action} />
       ) : (
-        <OwnershipTab userId={userId} handle={handle} />
+        <OwnershipTab key={userId} userId={userId} handle={handle} />
       )}
     </main>
   );

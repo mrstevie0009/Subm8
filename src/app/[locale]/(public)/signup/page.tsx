@@ -102,12 +102,25 @@ export default function SignupStartPage() {
   const [splashHost, setSplashHost] = React.useState<HTMLElement | null>(null);
   const [splashAlive, setSplashAlive] = React.useState(true);
 
-  // Host finden und stabilen Child-Container anlegen
   React.useEffect(() => {
-    setSplashHost(document.getElementById('boot-splash-lottie'));
+    if (typeof window === 'undefined') return;
+
+    const isAuthScope = document.body?.dataset?.scope === 'auth';
+    const pathOk = /\/[^/]+\/(signin|signup)(\?|$)/.test(location.pathname);
+    const el = document.getElementById('boot-splash-lottie') as HTMLElement | null;
+
+    if (!isAuthScope || !pathOk || !el) {
+      setSplashHost(null);
+      return;
+    }
+    setSplashHost(el);
+
     const onDone = () => setSplashAlive(false);
     window.addEventListener('boot:splash-done', onDone, { once: true });
-    return () => window.removeEventListener('boot:splash-done', onDone);
+    return () => {
+      window.removeEventListener('boot:splash-done', onDone);
+      setSplashHost(null);
+    };
   }, []);
 
   // Event senden: Layout blendet SSR-Splash aus

@@ -19,6 +19,20 @@ import { UserBadges } from '@/components/UserBadges';
 
 type DbRole = 'DOMME' | 'SUBMISSIVE';
 
+const CDN_BASE =
+  process.env.NEXT_PUBLIC_CDN_BASE ||
+  process.env.S3_PUBLIC_BASE_URL || // fallback if you already expose it
+  '';
+
+function cdnify(u?: string | null): string {
+  if (!u) return '';
+  if (/^https?:\/\//i.test(u)) return u;               // already absolute (e.g., R2/CF public URL)
+  if (CDN_BASE && u.startsWith('/uploads/')) {
+    return `${CDN_BASE.replace(/\/$/, '')}${u}`;       // map legacy local path to CDN
+  }
+  return u;                                            // leave anything else untouched (placeholders, data:, etc.)
+}
+
 // Falls dein Profile.role mal klein- oder großgeschrieben sein kann:
 const toDbRole = (r: Profile['role'] | string): DbRole =>
   String(r).toUpperCase() === 'DOMME' ? 'DOMME' : 'SUBMISSIVE';
@@ -164,8 +178,8 @@ export default function ProfileHeader({
   const AVATAR_BIG   = 'clamp(88px, 18vw, 136px)';
   const BANNER_H     = 'clamp(160px, 26vw, 260px)';
 
-  const [bannerSrc, setBannerSrc] = React.useState<string>(profile.bannerUrl || BANNER_PH);
-  const [avatarSrc, setAvatarSrc] = React.useState<string>(profile.avatarUrl || AVATAR_PH);
+  const [bannerSrc, setBannerSrc] = React.useState<string>(cdnify(profile.bannerUrl) || BANNER_PH);
+  const [avatarSrc, setAvatarSrc] = React.useState<string>(cdnify(profile.avatarUrl) || AVATAR_PH);
   // Loading-States für angenehme Skeleton-Fades
   const [bannerLoaded, setBannerLoaded] = React.useState(false);
   const [avatarLoaded, setAvatarLoaded] = React.useState(false);
@@ -184,6 +198,11 @@ export default function ProfileHeader({
 
   const [mounted, setMounted] = React.useState(false);
   React.useEffect(() => setMounted(true), []);
+
+  React.useEffect(() => {
+    setBannerSrc(cdnify(profile.bannerUrl) || BANNER_PH);
+    setAvatarSrc(cdnify(profile.avatarUrl) || AVATAR_PH);
+  }, [profile.bannerUrl, profile.avatarUrl]);
 
   // ---- Compact Header Logik
   const [compact, setCompact] = React.useState(false);
@@ -494,7 +513,7 @@ export default function ProfileHeader({
                     >
                       <div className="relative size-10 overflow-hidden rounded-full bg-white/10 shrink-0">
                         <Image
-                          src={c.other.avatarUrl || AVATAR_PH}
+                          src={cdnify(c.other.avatarUrl) || AVATAR_PH}
                           alt=""
                           fill
                           className="object-cover"

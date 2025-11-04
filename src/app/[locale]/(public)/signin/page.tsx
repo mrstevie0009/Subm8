@@ -62,16 +62,29 @@ export default function SignInPage() {
 
   // ---- Splash-Portal-Ziel finden (SSR-Splash im Layout) ----
   const [splashHost, setSplashHost] = React.useState<HTMLElement | null>(null);
+  const [mounted, setMounted] = React.useState(false);
 
   React.useEffect(() => {
-    setSplashHost(document.getElementById('boot-splash-lottie'));
+    setMounted(true);
+    if (typeof window === 'undefined') return;
+
+    const isAuthScope = document.body?.dataset?.scope === 'auth';
+    const pathOk = /\/[^/]+\/(signin|signup)(\?|$)/.test(location.pathname);
+    const el = document.getElementById('boot-splash-lottie') as HTMLElement | null;
+
+    // Harte Guards
+    if (!isAuthScope || !pathOk || !el) {
+      setSplashHost(null);
+      return;
+    }
+    setSplashHost(el);
+
+    return () => setSplashHost(null);
   }, []);
 
   // ---- Event senden: Layout blendet SSR-Splash aus ----
   const signalSplashDone = React.useCallback(() => {
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new Event('boot:splash-done'));
-    }
+    window.dispatchEvent(new Event('boot:splash-done'));
   }, []);
 
   function resetAll() {
@@ -248,9 +261,10 @@ export default function SignInPage() {
                  [background-image:radial-gradient(00%_40%_at_50%_0%,rgba(255,255,255,.08),transparent_60%)]"
     >
       {/* Lottie wird in den SSR-Splash (Layout) portaliert */}
-      {splashHost &&
+      {mounted && splashHost &&
         createPortal(
           <Lottie
+            key="boot-splash"
             animationData={heartThrow as unknown as object}
             loop={false}
             autoplay

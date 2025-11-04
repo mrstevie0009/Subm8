@@ -64,6 +64,10 @@
     "you": "You"
   },
   "chatComposer": {
+    "status": {
+      "sending": "Sending attachments…",
+      "disabled": "Sending is disabled"
+    },
     "actions": {
       "actions": "Actions",
       "gif": "Search GIFs",
