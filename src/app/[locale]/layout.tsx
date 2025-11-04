@@ -60,14 +60,8 @@ export default async function RootLayout({ children, params }: LayoutProps) {
     }
 
   return (
-    <html lang={locale}>
-      <body className="bg-black text-white min-h-[100svh]">
-        <NextIntlClientProvider locale={locale} messages={messages}>
-          <Providers>
-            {children}
-          </Providers>
-        </NextIntlClientProvider>
-      </body>
-    </html>
-  )
+    <NextIntlClientProvider locale={locale} messages={messages}>
+      <Providers>{children}</Providers>
+    </NextIntlClientProvider>
+  );
 }

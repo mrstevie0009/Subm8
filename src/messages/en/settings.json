@@ -64,6 +64,7 @@
     },
     "title": "Security & access",
     "twofa": {
+      "smsCodeAria": "6-digit SMS verification code",
       "active": "Active: App-based 2FA is enabled.",
       "confirm": "Confirm",
       "disable": "Disable",

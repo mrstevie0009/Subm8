@@ -64,6 +64,7 @@
     },
     "title": "Sicherheit & Zugriff",
     "twofa": {
+      "smsCodeAria": "6-stelliger SMS-Bestätigungscode",
       "active": "Aktiv: App-basierte 2FA ist eingeschaltet.",
       "confirm": "Bestätigen",
       "disable": "Deaktivieren",

@@ -64,6 +64,7 @@
     },
     "title": "Sécurité & accès",
     "twofa": {
+      "smsCodeAria": "Code de vérification SMS à 6 chiffres",
       "active": "Actif : 2FA par application est activée.",
       "confirm": "Confirmer",
       "disable": "Désactiver",
