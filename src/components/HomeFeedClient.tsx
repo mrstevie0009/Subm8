@@ -6,6 +6,13 @@ import { useSearchParams } from 'next/navigation';
 import PostCard from '@/components/PostCard';
 import type { FeedPost } from '@/components/PostCard';
 
+// Lottie (dynamisch, um SSR-Probleme zu vermeiden)
+import dynamic from 'next/dynamic';
+const Lottie = dynamic(() => import('lottie-react'), { ssr: false });
+
+// Deine Lottie-Datei
+import heartPress from '@/lotties/Heart-press-lottie.json';
+
 
 
 type Props = {
@@ -535,19 +542,17 @@ export default function HomeFeedClient({ initialItems }: Props) {
               aria-label="Loading"
               role="status"
             >
-              {/* Host-Box, damit der Video-Layer sicher Platz hat */}
+              {/* Host-Box, damit die Animation sicher Platz hat (80×80 vom Button) */}
               <div className="w-full h-full">
-                <video
-                  key="heart-loader"
-                  src="/animations/heart-squish.mp4"  // ⬅ liegt in /public/animations/
-                  autoPlay
+                <Lottie
+                  animationData={heartPress}
                   loop
-                  muted
-                  playsInline
-                  preload="auto"
-                  className="w-full h-full object-contain opacity-0 transition-opacity duration-150"
-                  onCanPlay={(e) => { (e.currentTarget.style.opacity = '1'); }}
-                  style={{ filter: 'drop-shadow(0 0 4px rgba(255,255,255,0.18))' }}
+                  autoplay
+                  style={{
+                    width: '75%',
+                    height: '75%',
+                    filter: 'drop-shadow(0 0 4px rgba(255,255,255,0.18))',
+                  }}
                 />
               </div>
             </div>
