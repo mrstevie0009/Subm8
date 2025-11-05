@@ -844,6 +844,9 @@ function NewChatDialog({
   locale: string;
   onStarted: (conversationId: string) => void;
 }) {
+  const tn = useTranslations('chat.newChat');
+  const tRole = (r?: string) =>
+    r?.toLowerCase() === 'domme' ? tn('role.domme') : tn('role.sub');
   const panelRef = React.useRef<HTMLDivElement>(null);
   const [qLive, setQLive] = React.useState('');
   const [q, setQ] = React.useState('');
@@ -971,7 +974,7 @@ function NewChatDialog({
       onClose();
       onStarted(String(j.id));
     } catch (e) {
-      setError('Konnte Chat nicht starten.');
+      setError(tn('errorStartChat'));
       console.warn('POST /api/chat/start failed:', e);
     } finally {
       setLoading(false);
@@ -1015,7 +1018,7 @@ function NewChatDialog({
       onClose();
       onStarted(String(j.id));
     } catch (e) {
-      setError('Konnte Gruppenchat nicht starten.');
+      setError(tn('errorStartGroup'));
       console.warn('POST /api/chat/start-group failed:', e);
     } finally {
       setLoading(false);
@@ -1071,7 +1074,7 @@ function NewChatDialog({
         </span>
 
         <span className="text-xs px-2 py-[2px] rounded-full bg-[var(--purple)]/15 text-[var(--purple)] mr-2">
-          {u.role?.toString().toLowerCase() === 'domme' ? 'domme' : 'sub'}
+          {tRole(u.role)}
         </span>
 
         {/* Checkbox rechts */}
@@ -1080,7 +1083,7 @@ function NewChatDialog({
           className="size-5 accent-[var(--purple)]"
           onChange={() => toggleSelect(u)}
           checked={isChecked}
-          aria-label={`Select ${u.displayName}`}
+          aria-label={tn('checkboxAria', { name: u.displayName })}
           onClick={(e) => e.stopPropagation()}
         />
       </div>
@@ -1097,10 +1100,12 @@ function NewChatDialog({
         >
           {/* Header mit Start-Button */}
           <div className="p-3 border-b border-white/10 flex items-center justify-between gap-3">
-            <div className="font-semibold">Neuen Chat starten</div>
+            <div className="font-semibold">{tn('title')}</div>
             <div className="flex items-center gap-2">
               {selectedIds.length > 0 && (
-                <span className="text-xs text-white/70">{selectedIds.length} ausgewählt</span>
+                <span className="text-xs text-white/70">
+                  {tn('selectedCount', { count: selectedIds.length })}
+                </span>
               )}
               <button
                 type="button"
@@ -1112,10 +1117,10 @@ function NewChatDialog({
                     : 'bg-[var(--purple)] text-white hover:opacity-95'
                 }`}
               >
-                {selectedIds.length <= 1 ? 'Starten' : 'Gruppenchat starten'}
+                {selectedIds.length <= 1 ? tn('startOne') : tn('startGroup')}
               </button>
 
-              <button onClick={onClose} className="p-2 rounded-lg hover:bg-white/10" aria-label="Schließen">
+              <button onClick={onClose} className="p-2 rounded-lg hover:bg-white/10" aria-label={tn('closeAria')}>
                 <svg viewBox="0 0 24 24" width="18" height="18">
                   <path d="M6 6l12 12M18 6l-12 12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
                 </svg>
@@ -1136,7 +1141,7 @@ function NewChatDialog({
                   if (!qLive || !/@$/.test(qLive)) setQLive((s) => (s?.startsWith('@') ? s : '@' + (s || '')));
                 }}
                 onKeyDown={onKeyDownInput}
-                placeholder="Name oder Handle suchen…"
+                placeholder={tn('search.placeholder')}
                 className="w-full rounded-xl bg-white/[.06] border border-white/10 pl-3 pr-3 py-2 outline-none focus:ring-2 focus:ring-[var(--purple)]/30"
                 autoFocus
               />
@@ -1144,10 +1149,10 @@ function NewChatDialog({
 
             {/* Ergebnisse */}
             <div className="mt-3 max-h-[50vh] overflow-auto space-y-1">
-              {loading && <div className="text-sm text-white/70 px-1 py-2">Lade…</div>}
-              {error && <div className="text-sm text-red-400 px-1 py-2">{error}</div>}
+              {loading && <div className="text-sm text-white/70 px-1 py-2">{tn('loading')}</div>}
+              {error && <div className="text-sm text-red-400 px-1 py-2">{tn('errorGeneric')}</div>}
               {!loading && !error && !results.length && q && (
-                <div className="text-sm text-white/70 px-1 py-2">Keine Treffer.</div>
+                <div className="text-sm text-white/70 px-1 py-2">{tn('noResults')}</div>
               )}
               {results.map((u, idx) => (
                 <Item key={u.id} u={u} idx={idx} />
@@ -1155,7 +1160,7 @@ function NewChatDialog({
             </div>
 
             <div className="mt-3 text-xs text-white/50">
-              Tipp: Enter toggelt Auswahl. Mit mehreren Auswahlpersonen wird ein Gruppenchat gestartet.
+              {tn('hint')}
             </div>
           </div>
         </div>
@@ -1418,7 +1423,7 @@ export default function ChatListPage() {
             type="button"
             onClick={() => setNewChatOpen(true)}
             className="p-2 rounded-lg hover:bg-white/5 inline-grid place-items-center"
-            aria-label="Neuen Chat starten"
+            aria-label={t('toolbar.newChatAria')}
             style={{ width: 'clamp(40px, 5vw, 48px)', height: 'clamp(40px, 5vw, 48px)' }}
           >
             <svg viewBox="0 0 24 24" aria-hidden="true" className="pointer-events-none"

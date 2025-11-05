@@ -66,6 +66,7 @@
       "tipRequest": "Trinkgeld-Anfrage: {amount}"
     },
     "toolbar": {
+      "newChatAria": "Neuen Chat starten",
       "filters": {
         "all": "Alle",
         "pinned": "Angeheftet",
@@ -76,6 +77,27 @@
     },
     "you": "Du"
   },
+  "newChat": {
+      "title": "Neuen Chat starten",
+      "selectedCount": "{count} ausgewählt",
+      "startOne": "Starten",
+      "startGroup": "Gruppenchat starten",
+      "closeAria": "Schließen",
+      "search": {
+        "placeholder": "Name oder Handle suchen…"
+      },
+      "loading": "Lade…",
+      "errorGeneric": "Etwas ist schiefgelaufen.",
+      "errorStartChat": "Konnte Chat nicht starten.",
+      "errorStartGroup": "Konnte Gruppenchat nicht starten.",
+      "noResults": "Keine Treffer.",
+      "hint": "Tipp: Enter toggelt die Auswahl. Mit mehreren ausgewählten Personen wird ein Gruppenchat gestartet.",
+      "checkboxAria": "{name} auswählen",
+      "role": {
+        "domme": "domme",
+        "sub": "sub"
+      }
+    },
   "chatComposer": {
     "status": {
       "sending": "Anhänge werden gesendet …",

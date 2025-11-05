@@ -66,6 +66,7 @@
       "tipRequest": "Demande de pourboire : {amount}"
     },
     "toolbar": {
+      "newChatAria": "Démarrer une nouvelle discussion",
       "filters": {
         "all": "Tous",
         "pinned": "Épinglés",
@@ -76,6 +77,27 @@
     },
     "you": "Vous"
   },
+  "newChat": {
+      "title": "Démarrer une nouvelle discussion",
+      "selectedCount": "{count} sélectionné(s)",
+      "startOne": "Démarrer",
+      "startGroup": "Démarrer une discussion de groupe",
+      "closeAria": "Fermer",
+      "search": {
+        "placeholder": "Rechercher par nom ou handle…"
+      },
+      "loading": "Chargement…",
+      "errorGeneric": "Une erreur s’est produite.",
+      "errorStartChat": "Impossible de démarrer la discussion.",
+      "errorStartGroup": "Impossible de démarrer la discussion de groupe.",
+      "noResults": "Aucun résultat.",
+      "hint": "Astuce : appuyez sur Entrée pour (dé)sélectionner. Avec plusieurs personnes sélectionnées, une discussion de groupe commence.",
+      "checkboxAria": "Sélectionner {name}",
+      "role": {
+        "domme": "domme",
+        "sub": "sub"
+      }
+    },
   "chatComposer": {
     "status": {
       "sending": "Envoi des pièces jointes…",

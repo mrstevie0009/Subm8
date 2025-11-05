@@ -66,6 +66,7 @@
       "tipRequest": "Tip request: {amount}"
     },
     "toolbar": {
+      "newChatAria": "Start a new chat",
       "filters": {
         "all": "All",
         "pinned": "Pinned",
@@ -76,6 +77,27 @@
     },
     "you": "You"
   },
+  "newChat": {
+      "title": "Start a new chat",
+      "selectedCount": "{count} selected",
+      "startOne": "Start",
+      "startGroup": "Start group chat",
+      "closeAria": "Close",
+      "search": {
+        "placeholder": "Search by name or handle…"
+      },
+      "loading": "Loading…",
+      "errorGeneric": "Something went wrong.",
+      "errorStartChat": "Couldn't start the chat.",
+      "errorStartGroup": "Couldn't start the group chat.",
+      "noResults": "No results.",
+      "hint": "Tip: Press Enter to toggle selection. Selecting multiple people starts a group chat.",
+      "checkboxAria": "Select {name}",
+      "role": {
+        "domme": "domme",
+        "sub": "sub"
+      }
+    },
   "chatComposer": {
     "status": {
       "sending": "Sending attachments…",

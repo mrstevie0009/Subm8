@@ -66,6 +66,7 @@
       "tipRequest": "Solicitud de propina: {amount}"
     },
     "toolbar": {
+      "newChatAria": "Iniciar un chat nuevo",
       "filters": {
         "all": "Todas",
         "pinned": "Fijadas",
@@ -76,6 +77,27 @@
     },
     "you": "Tú"
   },
+  "newChat": {
+      "title": "Iniciar un chat nuevo",
+      "selectedCount": "{count} seleccionado(s)",
+      "startOne": "Iniciar",
+      "startGroup": "Iniciar chat grupal",
+      "closeAria": "Cerrar",
+      "search": {
+        "placeholder": "Buscar por nombre o @handle…"
+      },
+      "loading": "Cargando…",
+      "errorGeneric": "Algo salió mal.",
+      "errorStartChat": "No se pudo iniciar el chat.",
+      "errorStartGroup": "No se pudo iniciar el chat grupal.",
+      "noResults": "Sin resultados.",
+      "hint": "Consejo: Pulsa Enter para alternar la selección. Con varias personas seleccionadas se inicia un chat grupal.",
+      "checkboxAria": "Seleccionar a {name}",
+      "role": {
+        "domme": "domme",
+        "sub": "sub"
+      }
+    },
   "chatComposer": {
     "status": {
       "sending": "Enviando archivos adjuntos…",
