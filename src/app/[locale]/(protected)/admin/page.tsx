@@ -116,6 +116,18 @@ export async function resolveReportsAction(form: FormData) {
   revalidatePath('/[locale]/admin', 'page');
 }
 
+export async function resolveGroupReportsAction(form: FormData) {
+  'use server';
+  await assertAdmin();
+  const conversationId = String(form.get('conversationId') ?? '');
+  if (!conversationId) throw new Error('conversationId missing');
+
+  // simplest "resolve": delete the report rows for that conversation
+  await prisma.conversationReport.deleteMany({ where: { conversationId } });
+
+  revalidatePath('/[locale]/admin', 'page');
+}
+
 /* ------------------------------ Data Loading ------------------------------ */
 
 type RevenueRow = {
@@ -196,6 +208,33 @@ async function loadAggregatedReports() {
   return { postReports, userReports };
 }
 
+type GroupReportAgg = {
+  targetId: string;           // conversationId
+  count: number;
+  firstReportedAt: Date;
+  lastReportedAt: Date;
+  handleOrSnippet: string | null; // we’ll use the conversation title or “Group”
+};
+
+async function loadAggregatedGroupReports() {
+  // No resolvedAt on ConversationReport (by design), so we list all open rows.
+  // We aggregate by conversation and show the latest + count.
+  const rows = await prisma.$queryRaw<GroupReportAgg[]>`
+    SELECT
+      r."conversationId"     AS "targetId",
+      COUNT(*)::int          AS count,
+      MIN(r."createdAt")     AS "firstReportedAt",
+      MAX(r."createdAt")     AS "lastReportedAt",
+      COALESCE(NULLIF(c."title", ''), 'Group') AS "handleOrSnippet"
+    FROM "ConversationReport" r
+    LEFT JOIN "Conversation" c ON c.id = r."conversationId"
+    GROUP BY r."conversationId", c."title"
+    ORDER BY count DESC, "lastReportedAt" DESC
+    LIMIT 100
+  `;
+  return rows;
+}
+
 async function loadLatestPosts(limit = 30) {
   return prisma.post.findMany({
     orderBy: { createdAt: 'desc' },
@@ -243,9 +282,10 @@ export default async function AdminPage({
     redirect(`/${locale}/signin`);
   }
 
-  const [revenue, reports, posts, users, previewPost] = await Promise.all([
+  const [revenue, reports, groupReports, posts, users, previewPost] = await Promise.all([
     loadRevenue(200),
     loadAggregatedReports(),
+    loadAggregatedGroupReports(), // 👈 dieses Ergebnis landet jetzt in groupReports
     loadLatestPosts(30),
     loadLatestUsers(30),
     previewPostId ? loadPostPreview(previewPostId) : Promise.resolve(null),
@@ -332,28 +372,40 @@ export default async function AdminPage({
           </section>
 
           {/* Reports */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-            <ReportCard
-              title="Gemeldete Posts"
-              rows={reports.postReports}
-              resolveName="postId"
-              targetType="POST"
-              onResolve={resolveReportsAction}
-              onDelete={deletePostAction}
-              deleteLabel="Post löschen"
-              locale={locale}
-            />
-            <ReportCard
-              title="Gemeldete Nutzer"
-              rows={reports.userReports}
-              resolveName="userId"
-              targetType="USER"
-              onResolve={resolveReportsAction}
-              onDelete={deactivateOrDeleteUserAction}
-              deleteLabel="Nutzer deaktivieren/löschen"
-              locale={locale}
-            />
-          </div>
+<div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+  <ReportCard
+    title="Gemeldete Posts"
+    rows={reports.postReports}
+    resolveName="postId"
+    targetType="POST"
+    onResolve={resolveReportsAction}
+    onDelete={deletePostAction}
+    deleteLabel="Post löschen"
+    locale={locale}
+  />
+  <ReportCard
+    title="Gemeldete Nutzer"
+    rows={reports.userReports}
+    resolveName="userId"
+    targetType="USER"
+    onResolve={resolveReportsAction}
+    onDelete={deactivateOrDeleteUserAction}
+    deleteLabel="Nutzer deaktivieren/löschen"
+    locale={locale}
+  />
+  {/* 👇 NEW: Group reports */}
+  <ReportCard
+    title="Gemeldete Gruppen"
+    rows={groupReports}
+    resolveName="conversationId"
+    targetType="GROUP" // informational only (not used by the action)
+    onResolve={resolveGroupReportsAction}
+    locale={locale}
+    // link to your group info page:
+    linkBuilder={(id) => `/${locale}/chat/${id}/info`}
+    // no delete button for groups (we only resolve)
+  />
+</div>
 
           {/* Moderation: Neueste Posts */}
           <section className="rounded-lg border border-white/10 p-4">
@@ -435,11 +487,12 @@ function ReportCard(props: {
   title: string;
   rows: { targetId: string; count: number; firstReportedAt: Date; lastReportedAt: Date; handleOrSnippet: string | null }[];
   resolveName: string;
-  targetType: 'POST' | 'USER';
+  targetType: 'POST' | 'USER' | 'GROUP';
   onResolve: (form: FormData) => Promise<void>;
-  onDelete: (form: FormData) => Promise<void>;
-  deleteLabel: string;
+  onDelete?: (form: FormData) => Promise<void>;
+  deleteLabel?: string;
   locale: string;
+  linkBuilder?: (id: string) => string;
 }) {
   return (
     <section className="rounded-lg border border-white/10">
@@ -449,35 +502,41 @@ function ReportCard(props: {
       </div>
       <div className="divide-y divide-white/10">
         {props.rows.length === 0 && <p className="p-4 text-sm text-white/60">Keine Meldungen.</p>}
-        {props.rows.map((r) => (
-          <div key={r.targetId} className="p-3 flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              {/* Klick öffnet das Preview-Modal via Query */}
-              <Link href={`/${props.locale}/admin?previewPost=${r.targetId}`} className="text-sm truncate hover:underline">
-                {r.handleOrSnippet ?? r.targetId}
-              </Link>
-              <p className="text-xs text-white/50">
-                {r.count} Meldung(en) · zuletzt {new Date(r.lastReportedAt).toLocaleString()}
-              </p>
+        {props.rows.map((r) => {
+          const href = props.linkBuilder ? props.linkBuilder(r.targetId) : `/${props.locale}/admin`;
+          return (
+            <div key={r.targetId} className="p-3 flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <Link href={href} className="text-sm truncate hover:underline">
+                  {r.handleOrSnippet ?? r.targetId}
+                </Link>
+                <p className="text-xs text-white/50">
+                  {r.count} Meldung(en) · zuletzt {new Date(r.lastReportedAt).toLocaleString()}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <form action={props.onResolve}>
+                  {/* For groups we only need the id field name */}
+                  <input type="hidden" name={props.resolveName} value={r.targetId} />
+                  {/* Keep targetType to be consistent; resolveGroupReportsAction ignores it. */}
+                  <input type="hidden" name="targetType" value={props.targetType} />
+                  <button className="text-xs rounded-full border border-white/15 px-3 py-1 hover:bg-white/10">
+                    Als gelöst markieren
+                  </button>
+                </form>
+
+                {props.onDelete && props.deleteLabel && (
+                  <form action={props.onDelete}>
+                    <input type="hidden" name={props.resolveName} value={r.targetId} />
+                    <button className="text-xs rounded-full border border-red-400/40 text-red-200/90 px-3 py-1 hover:bg-red-500/10">
+                      {props.deleteLabel}
+                    </button>
+                  </form>
+                )}
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <form action={props.onResolve}>
-                <input type="hidden" name="targetType" value={props.targetType} />
-                <input type="hidden" name="targetId" value={r.targetId} />
-                {/* optional: <input type="hidden" name="note" value="checked" /> */}
-                <button className="text-xs rounded-full border border-white/15 px-3 py-1 hover:bg-white/10">
-                  Als gelöst markieren
-                </button>
-              </form>
-              <form action={props.onDelete}>
-                <input type="hidden" name={props.resolveName} value={r.targetId} />
-                <button className="text-xs rounded-full border border-red-400/40 text-red-200/90 px-3 py-1 hover:bg-red-500/10">
-                  {props.deleteLabel}
-                </button>
-              </form>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </section>
   );

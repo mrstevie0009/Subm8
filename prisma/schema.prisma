@@ -71,6 +71,7 @@ model User {
 
   notificationSettings UserNotificationSettings?
   reportsMade          ContentReport[]
+  conversationReports ConversationReport[] @relation("ConversationReportsByUser")
 
   // Gegenrelation für CommentLike
   commentLikes CommentLike[]
@@ -193,6 +194,7 @@ model Conversation {
   updatedAt DateTime         @updatedAt
   type      ConversationType @default(DM)
   title     String?
+  avatarUrl  String?
 
   createdById String?
   createdBy   User?   @relation("ConversationCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
@@ -215,6 +217,8 @@ model Conversation {
   lastMessageId  String?              @unique
   lastMessageAt  DateTime?
 
+  reports       ConversationReport[] 
+
   @@unique([type, dommeId, subId], name: "Conversation_type_domme_sub_unique")
   @@index([dommeId])
   @@index([subId])
@@ -235,6 +239,8 @@ model ConversationMember {
 
   // Unread je Mitglied (für GROUP maßgeblich)
   unreadCount Int @default(0)
+
+  muted Boolean @default(false)
 
   // (Optional nützlich) Zeitstempel für "zuletzt gelesen"
   lastReadAt DateTime?
@@ -687,6 +693,19 @@ model ContentReport {
 
   @@index([targetType, targetId])
   @@index([resolvedAt])
+}
+
+model ConversationReport {
+  id             String   @id @default(cuid())
+  conversationId String
+  reporterId     String
+  reason         String
+  createdAt      DateTime @default(now())
+
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  reporter       User         @relation("ConversationReportsByUser", fields: [reporterId], references: [id])
+
+  @@index([conversationId, createdAt])
 }
 
 model UserNotificationSettings {

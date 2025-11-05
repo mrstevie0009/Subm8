@@ -1,5 +1,18 @@
 {
   "chat": {
+    "groupInfo": {
+      "title": "Group information",
+      "back": "Back",
+      "loading": "Loading…",
+      "loadingMembers": "Loading members…",
+      "members": "{count, plural, one {# person} other {# people}}",
+      "people": "People",
+      "addPeople": "Add people",
+      "muteMentions": "Mute mentions",
+      "reportConversation": "Report conversation",
+      "leaveConversation": "Leave conversation",
+      "noMembers": "No members yet."
+    },
     "empty": {
       "subtitle": "Start a new chat from a profile.",
       "title": "No conversations"
@@ -127,16 +140,25 @@
     }
   },
   "chatHeader": {
+    "group": {
+    "members": "{count, plural, one {# member} other {# members}}",
+    "membersLoading": "Loading members…",
+    "untitled": "Group"
+  },
     "aria": {
       "back": "Back",
       "more": "More",
-      "profile": "Profile of {name}"
+      "profile": "Profile of {name}",
+      "viewGroup": "View group"
     },
     "badges": {
       "blockedYou": "Has blocked you",
       "youBlocked": "Blocked by you"
     },
     "menu": {
+      "viewGroup": "View group",
+      "leaveGroup": "Leave group",
+      "reportGroup": "Report group",
       "block": "Block user",
       "mute": "Mute conversation",
       "muteSoon": "Mute conversation — coming soon",

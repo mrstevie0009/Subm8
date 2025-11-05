@@ -53,6 +53,7 @@ export async function GET() {
     select: {
       id: true,
       title: true,
+      avatarUrl: true,
       createdAt: true,
       updatedAt: true,
       lastMessageId: true,
@@ -184,7 +185,7 @@ const groupItems: GroupItem[] = groups.map<GroupItem>((g) => {
     kind: 'group',
     id: g.id,
     title: g.title ?? 'Group',
-    groupAvatarUrl: null,
+    groupAvatarUrl: g.avatarUrl ?? null,
     lastMessageAt: (g.lastMessageAt ?? g.updatedAt ?? g.createdAt).toISOString(),
     lastSnippet,
     lastAuthorId: last?.authorId ?? null,

@@ -159,7 +159,7 @@ export async function GET(_req: Request, { params }: Ctx) {
       id: otherRaw.id,
       handle: otherRaw.handle,
       displayName: otherRaw.displayName,
-      avatarUrl: otherRaw.avatarUrl,
+      avatarUrl: otherRaw.avatarUrl && otherRaw.avatarUrl.trim() ? otherRaw.avatarUrl : null,
       role: otherRaw.role,
       // 🟣 neu:
       isFirstAdopter: otherRaw.isFirstAdopter ?? false,
@@ -176,8 +176,9 @@ export async function GET(_req: Request, { params }: Ctx) {
     const meRole: DbRole | null =
       (hasRoleField(me) ? me.role ?? null : null) ?? meProfile?.role ?? null;
 
-    const meAvatarUrl: string | null =
+    const meAvatarUrlRaw =
       (hasAvatarField(me) ? me.avatarUrl ?? null : null) ?? meProfile?.avatarUrl ?? null;
+    const meAvatarUrl = meAvatarUrlRaw && meAvatarUrlRaw.trim() ? meAvatarUrlRaw : null;
 
     // Block-Status in beide Richtungen
     const { viewerHasBlocked, isBlockedByOther } = await getBlockFlags(me.id, other.id);

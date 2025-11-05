@@ -1,5 +1,18 @@
 {
   "chat": {
+    "groupInfo": {
+      "title": "Información del grupo",
+      "back": "Atrás",
+      "loading": "Cargando…",
+      "loadingMembers": "Cargando miembros…",
+      "members": "{count, plural, one {# persona} other {# personas}}",
+      "people": "Personas",
+      "addPeople": "Añadir personas",
+      "muteMentions": "Silenciar menciones",
+      "reportConversation": "Denunciar conversación",
+      "leaveConversation": "Salir de la conversación",
+      "noMembers": "Aún no hay miembros."
+    },
     "empty": {
       "subtitle": "Inicia un chat nuevo desde un perfil.",
       "title": "Sin conversaciones"
@@ -127,16 +140,25 @@
     }
   },
   "chatHeader": {
+    "group": {
+    "members": "{count, plural, one {# miembro} other {# miembros}}",
+    "membersLoading": "Cargando miembros…",
+    "untitled": "Grupo"
+    },
     "aria": {
       "back": "Atrás",
       "more": "Más",
-      "profile": "Perfil de {name}"
+      "profile": "Perfil de {name}",
+      "viewGroup": "Ver grupo"
     },
     "badges": {
       "blockedYou": "Te ha bloqueado",
       "youBlocked": "Bloqueado por ti"
     },
     "menu": {
+      "viewGroup": "Ver grupo",
+      "leaveGroup": "Salir del grupo",
+      "reportGroup": "Denunciar grupo",
       "block": "Bloquear usuario",
       "mute": "Silenciar conversación",
       "muteSoon": "Silenciar conversación — próximamente",

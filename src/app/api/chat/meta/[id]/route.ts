@@ -18,11 +18,13 @@ export async function GET(_req: Request, { params }: Ctx) {
   const convo = await prisma.conversation.findUnique({
     where: { id },
     select: {
-      id: true,
-      type: true,
-      dommeId: true,
-      subId: true,
-      title: true,
+        id: true,
+        type: true,
+        dommeId: true,
+        subId: true,
+        title: true,
+        avatarUrl: true, // ← NEW
+        _count: { select: { members: true } },
     },
   });
 
@@ -48,11 +50,13 @@ export async function GET(_req: Request, { params }: Ctx) {
   const payload = {
     ok: true,
     id: convo.id,
-    type: convo.type,            // 'DM' | 'GROUP'
+    type: convo.type,
     member,
     role,
-    title: convo.title ?? null,  // hilfreich für Header
-  };
+    title: convo.title ?? null,
+    avatarUrl: convo.avatarUrl && convo.avatarUrl.trim() ? convo.avatarUrl : null,
+    memberCount: convo._count?.members ?? null,
+    };
 
   if (!member) {
     // Liefere type im Body mit, aber kennzeichne Forbidden via Status

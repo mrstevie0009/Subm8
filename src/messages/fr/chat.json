@@ -1,5 +1,18 @@
 {
   "chat": {
+    "groupInfo": {
+      "title": "Informations du groupe",
+      "back": "Retour",
+      "loading": "Chargement…",
+      "loadingMembers": "Chargement des membres…",
+      "members": "{count, plural, one {# personne} other {# personnes}}",
+      "people": "Personnes",
+      "addPeople": "Ajouter des personnes",
+      "muteMentions": "Mettre les mentions en sourdine",
+      "reportConversation": "Signaler la conversation",
+      "leaveConversation": "Quitter la conversation",
+      "noMembers": "Aucun membre pour le moment."
+    },
     "empty": {
       "subtitle": "Commencez une nouvelle conversation depuis un profil.",
       "title": "Aucune conversation"
@@ -127,16 +140,25 @@
     }
   },
   "chatHeader": {
+    "group": {
+    "members": "{count, plural, one {# membre} other {# membres}}",
+    "membersLoading": "Chargement des membres…",
+    "untitled": "Groupe"
+    },
     "aria": {
       "back": "Retour",
       "more": "Plus",
-      "profile": "Profil de {name}"
+      "profile": "Profil de {name}",
+      "viewGroup": "Voir le groupe"
     },
     "badges": {
       "blockedYou": "Vous a bloqué",
       "youBlocked": "Bloqué par vous"
     },
     "menu": {
+      "viewGroup": "Voir le groupe",
+     "leaveGroup": "Quitter le groupe",
+      "reportGroup": "Signaler le groupe",
       "block": "Bloquer l’utilisateur",
       "mute": "Mettre la conversation en sourdine",
       "muteSoon": "Mettre la conversation en sourdine — bientôt disponible",

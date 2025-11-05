@@ -24,6 +24,14 @@ export async function GET(req: Request, { params }: Ctx) {
     const me = await getCurrentUser();
     if (!me) return Response.json({ ok: false, error: 'Not authenticated' }, { status: 401 });
 
+    // ⬇️ NEW: fetch my profile so we can include my avatar (and role)
+    const meProfile = await prisma.user.findUnique({
+    where: { id: me.id },
+    select: { avatarUrl: true, role: true },
+    });
+    const meAvatarUrl =
+    meProfile?.avatarUrl && meProfile.avatarUrl.trim() ? meProfile.avatarUrl : null;
+
     const url = new URL(req.url);
     const fast = url.searchParams.get('fast') === '1';
     const take = Number(url.searchParams.get('take') || (fast ? '30' : '200'));
@@ -33,14 +41,16 @@ export async function GET(req: Request, { params }: Ctx) {
       select: {
         id: true,
         type: true,
-        title: true, // ✅ existiert im Schema
+        title: true,
+        avatarUrl: true, 
         members: {
-          select: {
+            select: {
             userId: true,
+            role: true,
             user: { select: { id: true, handle: true, displayName: true, avatarUrl: true, role: true } },
-          },
+            },
         },
-      },
+        },
     });
     if (!convo) return Response.json({ ok: false, error: 'Not found' }, { status: 404 });
     if (convo.type !== $Enums.ConversationType.GROUP) {
@@ -74,19 +84,23 @@ export async function GET(req: Request, { params }: Ctx) {
 
     return Response.json({
       ok: true,
-      me: { id: me.id },
+      me: {
+            id: me.id,
+            role: meProfile?.role ?? null,          
+            avatarUrl: meAvatarUrl,                 
+        },
       group: {
         id: convo.id,
         name: convo.title ?? 'Group',
-        avatarUrl: null, // kein Feld in Conversation – später optional nachrüsten
+        avatarUrl: convo.avatarUrl ?? null,
         members: convo.members.map((m) => ({
-          id: m.user.id,
-          handle: m.user.handle,
-          displayName: m.user.displayName,
-          avatarUrl: m.user.avatarUrl,
-          role: m.user.role,
+            id: m.user.id,
+            handle: m.user.handle,
+            displayName: m.user.displayName,
+            avatarUrl: m.user.avatarUrl && m.user.avatarUrl.trim() ? m.user.avatarUrl : null,
+            role: m.role,
         })),
-      },
+        },
       typingUserIds: typingRows.map((r) => r.userId),
       messages: msgs.map((m) => ({
         id: m.id,
@@ -95,7 +109,7 @@ export async function GET(req: Request, { params }: Ctx) {
         text: m.text,
         mediaUrl: m.mediaUrl,
         mediaType: m.mediaType,
-        read: m.authorId === me.id, // MVP: kein Read-Tracking je Mitglied
+        read: m.authorId === me.id, 
       })),
       pageSize: take,
     });

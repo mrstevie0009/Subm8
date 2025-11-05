@@ -15,17 +15,18 @@ const isPremiumActive = (iso?: string | null) =>
   !!iso && new Date(iso).getTime() > Date.now();
 
 type Props = {
-  // DM (bestehend)
   other?: (ChatUser & { role: 'domme' | 'submissive' | 'DOMME' | 'SUBMISSIVE' }) | null;
   viewerHasBlocked?: boolean;
   isBlockedByOther?: boolean;
   onBlockStateChange?: (blockedEither: boolean) => void;
   loading?: boolean;
 
-  // NEU für Gruppen
   mode?: 'dm' | 'group';
   memberCount?: number;
   title?: string;
+
+  conversationId?: string;
+  groupAvatarUrl?: string | null;
 };
 
 export default function ChatHeader({
@@ -37,6 +38,8 @@ export default function ChatHeader({
   mode = 'dm',
   memberCount,
   title,
+  conversationId,
+  groupAvatarUrl,
 }: Props) {
   const locale = useLocale();
   const t = useTranslations('chat.chatHeader');
@@ -118,6 +121,11 @@ export default function ChatHeader({
 
   const profileHref = !isGroup && other ? `/${locale}/u/${other.username}` : `/${locale}/chat`;
 
+  const infoHref =
+  isGroup && typeof conversationId === 'string'
+    ? `/${locale}/chat/${conversationId}/info`
+    : profileHref;
+
   return (
     <header className="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-black/65 backdrop-blur">
       <div className="mx-auto w-full max-w-[760px] px-3 py-2 overflow-x-hidden">
@@ -135,16 +143,21 @@ export default function ChatHeader({
           {/* Avatar */}
           {loading ? (
             <div className="relative overflow-hidden rounded-full border border-white/15 bg-white/10 animate-pulse block"
-                 style={{ width: avatar, height: avatar }} aria-hidden />
-          ) : isGroup ? (
-            // einfacher Gruppen-Avatar (Icon)
-            <div className="relative overflow-hidden rounded-full border border-white/15 bg-white/10 grid place-items-center"
-                 style={{ width: avatar, height: avatar }} aria-hidden>
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" className="opacity-90">
-                <path d="M16 11a4 4 0 1 0-8 0 4 4 0 0 0 8 0Zm-6.5 4.5a5.5 5.5 0 0 0-5.5 5.5h16a5.5 5.5 0 0 0-5.5-5.5h-5Z"/>
-              </svg>
-            </div>
-          ) : (
+                style={{ width: avatar, height: avatar }} aria-hidden />
+            ) : isGroup ? (
+            <Link href={infoHref} prefetch={false}
+                    aria-label={t('aria.viewGroup')}
+                    className="relative overflow-hidden rounded-full border border-white/15 bg-white/10"
+                    style={{ width: avatar, height: avatar }}>
+                {groupAvatarUrl ? (
+                <Image src={groupAvatarUrl} alt="" fill className="object-cover" sizes={avatar} />
+                ) : (
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" className="opacity-90">
+                    <path d="M16 11a4 4 0 1 0-8 0 4 4 0 0 0 8 0Zm-6.5 4.5a5.5 5.5 0 0 0-5.5 5.5h16a5.5 5.5 0 0 0-5.5-5.5h-5Z"/>
+                </svg>
+                )}
+            </Link>
+            ) : (
             <Link href={profileHref!} prefetch={false}
                   aria-label={t('aria.profile', { name: other!.displayName })}
                   className="relative overflow-hidden rounded-full border border-white/15 bg-white/10 block"
@@ -163,7 +176,9 @@ export default function ChatHeader({
                 <h1 className="font-semibold" style={{ fontSize: titleSz, lineHeight: 1.1 }}>
                   <span className="inline-flex items-center gap-1 max-w-full">
                     {isGroup ? (
-                      <span className="truncate">{title || t('group.untitled')}</span>
+                    <Link href={infoHref} prefetch={false} className="truncate hover:underline">
+                        {title || t('group.untitled')}
+                    </Link>
                     ) : (
                       <Link href={profileHref!} prefetch={false} className="hover:underline truncate" rel="author">
                         {other!.displayName}
@@ -247,8 +262,8 @@ export default function ChatHeader({
             {isGroup ? (
               <>
                 <button className="w-full text-left px-3 py-2 rounded hover:bg-white/10"
-                        onClick={() => { setMenuOpen(false); /* TODO: open group detail */ }}>
-                  {t('menu.viewGroup')}
+                        onClick={() => { setMenuOpen(false); window.location.href = infoHref; }}>
+                    {t('menu.viewGroup')}
                 </button>
                 <button className="w-full text-left px-3 py-2 rounded hover:bg-white/10"
                         onClick={() => { setMenuOpen(false); /* TODO: leave group */ }}>

@@ -5,7 +5,7 @@ import * as React from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import Image from 'next/image';
-import ChatHeader from '@/components/ChatHeader';
+import ChatHeader from '@/components/ChatHeaderGroup';
 import ChatComposer from '@/components/ChatGroupComposer';
 import type { ReplyTargetLite } from '@/components/ChatGroupComposer';
 import TipModal from '@/components/TipModal';
@@ -29,9 +29,21 @@ type UiMessage = ChatMessage & {
   mediaType?: string;
 };
 
-type Meta =
-  | { ok:true; id:string; type:'DM'|'GROUP'; member:true; role?: 'ADMIN'|'MEMBER'; title:string|null }
-  | { ok:false; type:'DM'|'GROUP'; member:false; error:string };
+type MetaOk = {
+  ok: true;
+  id: string;
+  type: 'DM' | 'GROUP';
+  member: true;
+  role?: 'ADMIN' | 'MEMBER';
+  title: string | null;
+  memberCount?: number;
+  avatarUrl?: string | null;
+};
+type MetaErr = { ok: false; type: 'DM' | 'GROUP'; member: false; error: string };
+
+type Meta = MetaOk | MetaErr;
+
+const isMetaOk = (m: Meta | null): m is MetaOk => !!m && m.ok === true;
 
 function extractError(x: unknown): string | null {
   if (x && typeof x === 'object' && 'error' in x) {
@@ -53,6 +65,7 @@ function useChatMetaBaseUrl(id: string) {
         setMetaErr(null);
         const r = await fetch(`/api/chat/meta/${id}`, { cache: 'no-store' });
         const j = (await r.json()) as Meta;
+        setMeta(j);
         if (cancelled) return;
         setMeta(j);
         if (!r.ok) {
@@ -73,7 +86,7 @@ function useChatMetaBaseUrl(id: string) {
     return kind === 'group' ? `/api/chat/group/${id}` : `/api/chat/${id}`;
   }, [kind, id]);
 
-  return { kind, baseUrl, meta, metaErr };
+  return { kind, baseUrl, meta, metaErr, setMeta };
 }
 
 /* ========= (1) STABIL: shallowEqualMsg + stableMergeMessages im Modul-Scope ========= */
@@ -105,6 +118,7 @@ function stableMergeMessages(prev: UiMessage[], next: UiMessage[]) {
 }
 
 const AVATAR_PH = '/images/avatar-placeholder.png';
+const safeAvatar = (s?: string | null) => (s && s.trim().length ? s : AVATAR_PH);
 
 /* ------------ Envelope helpers ------------ */
 const TIPREQ_PREFIX = 'TIPREQ::';
@@ -428,7 +442,15 @@ function AudioBubble({
   return (
     <div className="flex items-center gap-3 w-full max-w-full">
       <div className="relative shrink-0 w-10 h-10 rounded-full overflow-hidden border border-white/10">
-        <Image src={avatarUrl ?? AVATAR_PH} alt="" fill sizes="40px" className="object-cover" priority={false} />
+        <Image
+            src={safeAvatar(avatarUrl)}
+            alt=""
+            fill
+            sizes="40px"
+            className="object-cover"
+            priority={false}
+            unoptimized
+        />
       </div>
 
       <div className={`flex items-center gap-3 rounded-2xl px-3 py-2 ${bubbleBase} w-0 flex-1 min-w-0`}>
@@ -1039,6 +1061,43 @@ function TypingDots({ mine = false }: { mine?: boolean }) {
   );
 }
 
+function ChatRow({
+  mine,
+  avatarUrl,
+  name,
+  handle,
+  children,
+}: {
+  mine: boolean;
+  avatarUrl?: string | null;
+  name?: string | null;
+  handle?: string | null;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className={`flex items-start gap-2 ${mine ? 'justify-end' : 'justify-start'}`}>
+      {/* Avatar */}
+      <div className={`relative w-8 h-8 rounded-full overflow-hidden border border-white/12 shrink-0 ${mine ? 'order-2' : ''}`}>
+        <Image
+            src={safeAvatar(avatarUrl)}
+            alt=""
+            fill
+            sizes="32px"
+            className="object-cover"
+            unoptimized
+        />
+      </div>
+
+      {/* Inhalt */}
+      <div className={`min-w-0 ${mine ? 'order-1 items-end text-right' : ''}`}>
+        <div className={`text-[11px] text-white/60 mb-1 ${mine ? 'opacity-80' : ''}`}>
+          {name || 'User'}{handle ? ` · @${handle}` : ''}
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
 
 /* ------------ Long-Press + ContextMenu helper ------------ */
 function useLongPress(
@@ -1149,7 +1208,7 @@ function ActionsPopover({ state, onClose, onReply, onReact }: {
           ))}
           <button
             type="button"
-            className="ml-1 px-2 py-1 text-sm rounded-lg border border-white/15 hover:bg-white/10 navigator.vibrate?.(10)"
+            className="ml-1 px-2 py-1 text-sm rounded-lg border border-white/15 hover:bg-white/10"
             onClick={() => setShowPicker(true)}
             aria-label={t('actions.moreEmojis')}
             title={t('actions.moreEmojis')}
@@ -1315,13 +1374,28 @@ export default function ChatThreadPage() {
   const t = useTranslations('chat.chatThread');
   const tVerify = useTranslations('verify');
   const { id } = useParams<{ id: string }>();
-  const { kind, baseUrl, meta } = useChatMetaBaseUrl(String(id));
+  const { kind, baseUrl, meta, setMeta } = useChatMetaBaseUrl(String(id));
   const searchParams = useSearchParams();
   const locale = useLocale();
   const router = useRouter();
   const { data: session } = useSession();
   const ageOk = !!session?.user?.ageVerified;
   const [replyTarget, setReplyTarget] = React.useState<ReplyTargetLite | null>(null);
+
+  type GroupAvatarUpdatedDetail = {
+    conversationId: string | number;
+    url?: string | null;
+    };
+
+  React.useEffect(() => {
+    const onUpd = (ev: Event) => {
+        const { conversationId, url } = (ev as CustomEvent<GroupAvatarUpdatedDetail>).detail ?? {};
+        if (String(conversationId) !== String(id) || !url) return;
+        setMeta((m) => (isMetaOk(m) ? { ...m, avatarUrl: url ?? undefined } : m));
+    };
+    window.addEventListener('chat:group-avatar-updated', onUpd as EventListener);
+    return () => window.removeEventListener('chat:group-avatar-updated', onUpd as EventListener);
+    }, [id, setMeta]);
 
   const startAgeVerification = React.useCallback(async () => {
     try {
@@ -1346,6 +1420,10 @@ export default function ChatThreadPage() {
   const [meRole, setMeRole] = React.useState<'domme' | 'submissive' | null>(null);
   const [meAvatarUrl, setMeAvatarUrl] = React.useState<string | null>(null);
 
+  // 🟣 NEW: Gruppen-Member Metadaten (Map nach id)
+  type MemberMeta = { id: string; handle?: string | null; displayName?: string | null; avatarUrl?: string | null };
+  const [memberById, setMemberById] = React.useState<Record<string, MemberMeta>>({});
+
   const [other, setOther] = React.useState<{
     id: string;
     username: string;
@@ -1366,6 +1444,7 @@ export default function ChatThreadPage() {
   const [loading, setLoading] = React.useState(true);
 
   const [otherTyping, setOtherTyping] = React.useState(false);
+  const [groupMemberCount, setGroupMemberCount] = React.useState<number | undefined>(undefined);
 
   const [tipOpen, setTipOpen] = React.useState(false);
   const [accept, setAccept] = React.useState<{
@@ -1418,6 +1497,13 @@ export default function ChatThreadPage() {
 
   const mapRole = React.useCallback((r: DbRole): 'domme' | 'submissive' => (r === 'DOMME' ? 'domme' : 'submissive'), []);
 
+  // 🟣 NEW: Sender-Meta für Gruppen/DM
+  const getSenderMeta = React.useCallback((uid: string) => {
+    if (uid === meId) return { displayName: t('you'), handle: null as string | null, avatarUrl: meAvatarUrl };
+    const m = memberById[uid];
+    return m ?? { displayName: 'User', handle: null, avatarUrl: AVATAR_PH };
+  }, [meId, meAvatarUrl, memberById, t]);
+
   /* ========= (3) Anti-Race: letzte Request-ID merken ========= */
   const latestReqRef = React.useRef(0);
 
@@ -1457,6 +1543,44 @@ export default function ChatThreadPage() {
       });
       setViewerHasBlocked(json.viewerHasBlocked ?? false);
       setIsBlockedByOther(json.isBlockedByOther ?? false);
+
+      // Wenn Group: Mitglieder aus der Antwort zählen und für den Header merken
+    if (kind === 'group') {
+        const maybeGroup = (json as Record<string, unknown>)?.['group'];
+        let cnt: number | undefined = undefined;
+        if (maybeGroup && typeof maybeGroup === 'object') {
+            const members = (maybeGroup as { members?: unknown }).members;
+            if (Array.isArray(members)) cnt = members.length;
+        }
+         setGroupMemberCount(cnt);
+
+        // 🟣 NEW: Member-Map idempotent befüllen
+        const rawMembers = (maybeGroup as { members?: unknown }).members;
+        const members = Array.isArray(rawMembers) ? (rawMembers as MemberMeta[]) : [];
+        if (members.length) {
+          setMemberById(prev => {
+            const next = { ...prev };
+            for (const m of members) {
+              if (!m?.id) continue;
+              const prevM = next[m.id];
+              if (
+                !prevM ||
+                prevM.displayName !== (m.displayName ?? null) ||
+                prevM.handle !== (m.handle ?? null) ||
+                prevM.avatarUrl !== (m.avatarUrl ?? null)
+              ) {
+                next[m.id] = {
+                  id: m.id,
+                  handle: m.handle ?? null,
+                  displayName: m.displayName ?? null,
+                  avatarUrl: m.avatarUrl ?? null,
+                };
+              }
+            }
+            return next;
+          });
+        }
+        }
 
       const disabled = (json.viewerHasBlocked ?? false) || (json.isBlockedByOther ?? false);
 
@@ -1552,6 +1676,45 @@ export default function ChatThreadPage() {
       });
       setViewerHasBlocked(json.viewerHasBlocked ?? false);
       setIsBlockedByOther(json.isBlockedByOther ?? false);
+
+      // Wenn Group: schnellen Count aus der Fast-Antwort übernehmen
+    if (kind === 'group') {
+        const maybeGroup = (json as Record<string, unknown>)?.['group'];
+        let cnt: number | undefined = undefined;
+        if (maybeGroup && typeof maybeGroup === 'object') {
+            const members = (maybeGroup as { members?: unknown }).members;
+            if (Array.isArray(members)) cnt = members.length;
+        }
+         setGroupMemberCount(cnt);
+
+        // 🟣 NEW: Member-Map idempotent befüllen (Fast-Paint)
+        const rawMembers = (maybeGroup as { members?: unknown }).members;
+        const members = Array.isArray(rawMembers) ? (rawMembers as MemberMeta[]) : [];
+        if (members.length) {
+          setMemberById(prev => {
+            const next = { ...prev };
+            for (const m of members) {
+              if (!m?.id) continue;
+              const prevM = next[m.id];
+              if (
+                !prevM ||
+                prevM.displayName !== (m.displayName ?? null) ||
+                prevM.handle !== (m.handle ?? null) ||
+                prevM.avatarUrl !== (m.avatarUrl ?? null)
+              ) {
+                next[m.id] = {
+                  id: m.id,
+                  handle: m.handle ?? null,
+                  displayName: m.displayName ?? null,
+                  avatarUrl: m.avatarUrl ?? null,
+                };
+              }
+            }
+            return next;
+          });
+        }
+        }
+
       if (kind === 'dm') {
         setOther(prev => {
             const o = (json as ThreadOk).other;
@@ -1918,6 +2081,34 @@ export default function ChatThreadPage() {
     const mine = meId ? m.senderId === meId : false;
     React.useDebugValue(rxKey);
 
+    // 🟣 NEW: Sender-Meta + Wrapper für Gruppenlayout
+    const sender = getSenderMeta(m.senderId);
+
+    function Wrap({ children }: { children: React.ReactNode; rx?: Record<string, { count: number; by: Set<string> }> }) {
+      if (kind === 'group') {
+        return (
+          <ChatRow
+            mine={mine}
+            avatarUrl={mine ? meAvatarUrl : sender.avatarUrl}
+            name={mine ? t('you') : (sender.displayName || 'User')}
+            handle={mine ? null : (sender.handle || null)}
+          >
+            {children}
+          </ChatRow>
+        );
+      }
+      // DM: Original-Layout
+      return (
+        <div className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
+          {children}
+        </div>
+      );
+    }
+
+    function BubbleContainer({ children }: { children: React.ReactNode }) {
+      return <div className="relative max-w-[75%] w-fit pb-5">{children}</div>;
+    }
+
     const longPress = useLongPress(
       (e) => openActionsAt(e, m.id, mine),
       { delay: 420 }
@@ -1966,8 +2157,8 @@ export default function ChatThreadPage() {
         : 'bg-white/[.07] border-white/10';
       const reactions = reactionsByMsg.get(m.id);
       return (
-        <div className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
-          <div className="relative max-w-[75%] w-fit pb-5">
+        <Wrap rx={reactions}>
+            <BubbleContainer>
             <div
               className={`inline-block rounded-2xl px-3 py-2 border break-words ${bubbleCls}`}
               title={new Date(m.createdAt).toLocaleString()}
@@ -1990,8 +2181,8 @@ export default function ChatThreadPage() {
               </div>
             </div>
             <ReactionsCorner mine={mine} summary={reactions} />
-          </div>
-        </div>
+          </BubbleContainer>
+        </Wrap>
       );
     }
 
@@ -2231,33 +2422,35 @@ export default function ChatThreadPage() {
     if (m.mediaUrl && (isImage(m.mediaUrl, m.mediaType) || isVideo(m.mediaUrl, m.mediaType))) {
       const reactions = reactionsByMsg.get(m.id);
       return (
-        <div className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
-          <div className="relative inline-block pb-5" {...longPress}>
-            {!ageOk ? (
-              <ChatBlurredMediaGate
-                mediaUrl={isImage(m.mediaUrl, m.mediaType) ? m.mediaUrl : undefined}
-                onStartVeriff={startAgeVerification}
-                title={tVerify('modal.title')}
-                subtitle={tVerify('modal.message')}
-                cta={tVerify('modal.confirm')}
-              />
-            ) : isVideo(m.mediaUrl, m.mediaType) ? (
-              <video
-                src={m.mediaUrl}
-                controls
-                playsInline
-                className="block max-w-[75vw] md:max-w-[560px] h-auto max-h-[60vh] rounded-xl border border-white/10 object-contain"
-              />
-            ) : (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={m.mediaUrl}
-                alt=""
-                loading="lazy"
-                decoding="async"
-                className="block max-w-[75vw] md:max-w-[560px] h-auto max-h-[60vh] rounded-xl border border-white/10 object-contain"
-              />
-            )}
+        <Wrap rx={reactions}>
+          <BubbleContainer>
+            <div className="relative inline-block" {...longPress}>
+              {!ageOk ? (
+                <ChatBlurredMediaGate
+                  mediaUrl={isImage(m.mediaUrl, m.mediaType) ? m.mediaUrl : undefined}
+                  onStartVeriff={startAgeVerification}
+                  title={tVerify('modal.title')}
+                  subtitle={tVerify('modal.message')}
+                  cta={tVerify('modal.confirm')}
+                />
+              ) : isVideo(m.mediaUrl, m.mediaType) ? (
+                <video
+                  src={m.mediaUrl}
+                  controls
+                  playsInline
+                  className="block max-w-[75vw] md:max-w-[560px] h-auto max-h-[60vh] rounded-xl border border-white/10 object-contain"
+                />
+              ) : (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={m.mediaUrl}
+                  alt=""
+                  loading="lazy"
+                  decoding="async"
+                  className="block max-w-[75vw] md:max-w-[560px] h-auto max-h-[60vh] rounded-xl border border-white/10 object-contain"
+                />
+              )}
+            </div>
 
             {m.text && (
               <div className={`mt-1 text-[13px] ${mine ? 'text-white/90' : 'text-white/80'}`}>
@@ -2270,33 +2463,37 @@ export default function ChatThreadPage() {
             </div>
 
             <ReactionsCorner mine={mine} summary={reactions} />
-          </div>
-        </div>
+          </BubbleContainer>
+        </Wrap>
       );
     }
 
     /* ---------------- AUDIO ---------------- */
     if (m.mediaUrl && isAudio(m.mediaUrl, m.mediaType)) {
-      const reactions = reactionsByMsg.get(m.id);
-      return (
-        <div className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
-          <div className="relative inline-block pb-5 w-full max-w-[75vw] md:max-w-[560px]" {...longPress}>
-            <AudioBubble src={m.mediaUrl} mine={mine} avatarUrl={mine ? meAvatarUrl : other?.avatarUrl} />
-            {m.text && (
-              <div className={`mt-1 ${mine ? 'text-white' : 'text-white/90'}`}>
-                <RichText text={m.text} locale={locale} validateMentions variant={mine ? 'chat' : 'default'} />
-              </div>
-            )}
+        const reactions = reactionsByMsg.get(m.id);
+        const sender = getSenderMeta(m.senderId);
 
-            <div className="text-[11px] mt-1 text-white/60 text-right">
-              {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+        return (
+            <Wrap rx={reactions}>
+            <div className="relative inline-block pb-5 w-full max-w-[75vw] md:max-w-[560px]" {...longPress}>
+                <AudioBubble
+                src={m.mediaUrl}
+                mine={mine}
+                avatarUrl={mine ? meAvatarUrl : sender.avatarUrl}
+                />
+                {m.text && (
+                <div className={`mt-1 ${mine ? 'text-white' : 'text-white/90'}`}>
+                    <RichText text={m.text} locale={locale} validateMentions variant={mine ? 'chat' : 'default'} />
+                </div>
+                )}
+                <div className="text-[11px] mt-1 text-white/60 text-right">
+                {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </div>
+                <ReactionsCorner mine={mine} summary={reactions} />
             </div>
-
-            <ReactionsCorner mine={mine} summary={reactions} />
-          </div>
-        </div>
-      );
-    }
+            </Wrap>
+        );
+        }
 
     /* ---------------- INVITE LINK PREVIEW ---------------- */
     const inv = parseInviteLink(m.text);
@@ -2373,13 +2570,13 @@ export default function ChatThreadPage() {
     }
 
     /* ---------------- TEXT ---------------- */
-    const mineBubble = mine
+     const mineBubble = mine
       ? 'bg-[var(--purple)]/90 border-[var(--purple)]/40 text-white'
       : 'bg-white/[.07] border-white/10';
     const reactions = reactionsByMsg.get(m.id);
     return (
-      <div className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
-        <div className="relative max-w-[75%] w-fit pb-5">
+      <Wrap rx={reactions}>
+        <BubbleContainer>
           <div
             className={`inline-block rounded-2xl px-3 py-2 border break-words ${mineBubble}`}
             title={new Date(m.createdAt).toLocaleString()}
@@ -2403,8 +2600,8 @@ export default function ChatThreadPage() {
             </div>
           </div>
           <ReactionsCorner mine={mine} summary={reactions} />
-        </div>
-      </div>
+        </BubbleContainer>
+      </Wrap>
     );
   },(prev, next) => {
       return prev.m === next.m && prev.rxKey === next.rxKey;
@@ -2413,6 +2610,9 @@ export default function ChatThreadPage() {
   return (
     <>
       <ChatHeader
+        mode={kind === 'group' ? 'group' : 'dm'}
+        conversationId={String(id)} 
+        groupAvatarUrl={isMetaOk(meta) ? (meta.avatarUrl ?? null) : null}
         other={kind === 'dm'
             ? (other ?? placeholderOther)
             : {
@@ -2429,6 +2629,11 @@ export default function ChatThreadPage() {
         viewerHasBlocked={viewerHasBlocked}
         isBlockedByOther={isBlockedByOther}
         loading={loading || (kind === 'dm' && !other)}
+        
+        title={meta?.ok ? (meta.title ?? 'Group') : undefined}
+        memberCount={(meta && meta.ok && typeof meta.memberCount === 'number')
+        ? meta.memberCount
+        : groupMemberCount}
         />
 
       <main

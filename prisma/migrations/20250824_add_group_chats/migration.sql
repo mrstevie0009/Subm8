@@ -1,4 +1,4 @@
--- ==============================================================
+-- ==============================================================   20250824_add_group_chats
 -- Group Chats Migration (robust + idempotent)
 --  - Enums: ConversationType, ConversationMemberRole
 --  - Conversation: ensure table + columns (type, title, createdById, updatedAt,
