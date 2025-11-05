@@ -21,8 +21,16 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
 
   if (!convo) return NextResponse.json({ ok: false, error: 'NOT_FOUND' }, { status: 404 });
 
+  if (!convo.domme || !convo.sub) {
+    return NextResponse.json({ ok: false, error: 'CONVERSATION_INCONSISTENT' }, { status: 409 });
+  }
+
   const meIsDomme = convo.domme.id === me.id;
   const other = meIsDomme ? convo.sub : convo.domme;
+
+  if (!other) {
+    return NextResponse.json({ ok: false, error: 'FORBIDDEN' }, { status: 403 });
+  }
 
   return NextResponse.json({
     ok: true,

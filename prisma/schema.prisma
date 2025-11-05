@@ -98,13 +98,17 @@ model User {
   verifiedAt  DateTime?
 
   verifiedByUserId String?
-  verifiedBy       User?     @relation("UserVerifiedBy", fields: [verifiedByUserId], references: [id], onDelete: SetNull)
-  verifiedChildren User[]    @relation("UserVerifiedBy") // inverse Seite für einfache Abfragen
-  
-  @@index([verifiedByUserId])
+  verifiedBy       User?   @relation("UserVerifiedBy", fields: [verifiedByUserId], references: [id], onDelete: SetNull)
+  verifiedChildren User[]  @relation("UserVerifiedBy") // inverse Seite für einfache Abfragen
 
-  isFirstAdopter Boolean  @default(false)
+  isFirstAdopter Boolean   @default(false)
   premiumUntil   DateTime? // active premium if premiumUntil > now()
+
+  conversationsCreated Conversation[] @relation("ConversationCreatedBy")
+
+  conversationMemberships ConversationMember[] // NEU: Gruppenteilnahmen
+
+  @@index([verifiedByUserId])
   @@index([premiumUntil])
 }
 
@@ -184,31 +188,63 @@ model Follow {
 }
 
 model Conversation {
-  id            String    @id @default(cuid())
-  createdAt     DateTime  @default(now())
-  dommeId       String
-  subId         String
-  openedByDomme Boolean   @default(true)
-  domme         User      @relation("domme", fields: [dommeId], references: [id], onDelete: Cascade)
-  sub           User      @relation("sub", fields: [subId], references: [id], onDelete: Cascade)
-  messages      Message[]
-  tips          Tip[]
+  id        String           @id @default(cuid())
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  type      ConversationType @default(DM)
+  title     String?
 
-  updatedAt     DateTime  @updatedAt // für Sortierung
-  lastMessageId String?   @unique // direkte Join auf Message
-  lastMessageAt DateTime? // falls du Zeit ohne Join brauchst
+  createdById String?
+  createdBy   User?   @relation("ConversationCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
 
-  // (optional) Unread pro Seite:
-  unreadForDomme Int @default(0)
-  unreadForSub   Int @default(0)
+  dommeId       String?
+  subId         String?
+  openedByDomme Boolean @default(true)
+  domme         User?   @relation("domme", fields: [dommeId], references: [id], onDelete: Cascade)
+  sub           User?   @relation("sub", fields: [subId], references: [id], onDelete: Cascade)
 
-  @@unique([dommeId, subId])
+  unreadForDomme Int                  @default(0)
+  unreadForSub   Int                  @default(0)
+
+  hiddenForDomme DateTime?
+  hiddenForSub   DateTime?
+
+  members        ConversationMember[]
+  messages       Message[]
+  tips           Tip[]
+  lastMessageId  String?              @unique
+  lastMessageAt  DateTime?
+
+  @@unique([type, dommeId, subId], name: "Conversation_type_domme_sub_unique")
   @@index([dommeId])
   @@index([subId])
-  @@index([updatedAt(sort: Desc)]) // super schnell für Liste
-  @@index([dommeId, updatedAt(sort: Desc)], name: "Conversation_domme_updated_idx")
-  @@index([subId, updatedAt(sort: Desc)], name: "Conversation_sub_updated_idx")
+  @@index([createdById]) // (optional aber sinnvoll)
+  @@index([updatedAt(sort: Desc)], name: "Conversation_updated_desc_idx")
   @@index([lastMessageAt(sort: Desc)], name: "Conversation_lastMessageAt_desc_idx")
+
+  @@index([type, dommeId, hiddenForDomme], name: "Conversation_dm_domme_hidden_idx")
+  @@index([type, subId,   hiddenForSub],   name: "Conversation_dm_sub_hidden_idx")
+}
+
+model ConversationMember {
+  conversationId String
+  userId         String
+
+  // Rolle in der Gruppe (ADMIN/MEMBER)
+  role ConversationMemberRole @default(MEMBER)
+
+  // Unread je Mitglied (für GROUP maßgeblich)
+  unreadCount Int @default(0)
+
+  // (Optional nützlich) Zeitstempel für "zuletzt gelesen"
+  lastReadAt DateTime?
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([conversationId, userId])
+  @@index([userId])
+  @@index([conversationId])
 }
 
 model Message {
@@ -560,6 +596,17 @@ model Wallet {
 /**
  * ---------- Evidence & Finance Ledgers ----------
  */
+
+// ---- Chats ----
+enum ConversationType {
+  DM
+  GROUP
+}
+
+enum ConversationMemberRole {
+  ADMIN
+  MEMBER
+}
 
 enum EvidenceType {
   IP_GEO

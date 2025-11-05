@@ -6,7 +6,7 @@ import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useLocale, useTranslations } from 'next-intl';
-import { useRouter, usePathname, useSearchParams } from 'next/navigation';
+import { useRouter} from 'next/navigation';
 import { UserBadges } from '@/components/UserBadges';
 
 import { reportUserAction } from '@/app/actions/reports';
@@ -27,16 +27,16 @@ const ADREQ_PREFIX   = 'ADREQ::';
 const ADACC_PREFIX   = 'ADACC::';
 const REACT_PREFIX   = 'REACT::';
 const REPLY_PREFIX   = 'REPLY::';
-const CHAT_CACHE_KEY = 'chat:list:v2';
+const CHAT_CACHE_KEY = 'chat:list:v3';
 
 function readCachedItems(): Item[] | null {
   try {
     const raw = localStorage.getItem(CHAT_CACHE_KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as { ts: number; items: Item[] };
+    const parsed = JSON.parse(raw) as { ts: number; items: unknown[] };
     // max 3 Minuten gültig
     if (Date.now() - parsed.ts > 3 * 60 * 1000) return null;
-    return parsed.items || null;
+    return normalizeList(parsed.items || []);
   } catch { return null; }
 }
 
@@ -84,21 +84,6 @@ function parseReplyEnvelope(raw?: string | null): ReplyPayload | null {
   return null;
 }
 
-function withQuery(
-  pathname: string | null,
-  search: ReturnType<typeof useSearchParams>,
-  patch: Record<string, string | undefined>
-) {
-  const p = pathname ?? '/';
-  const next = new URLSearchParams(search.toString());
-  for (const [k, v] of Object.entries(patch)) {
-    if (v == null || v === '') next.delete(k);
-    else next.set(k, v);
-  }
-  const qs = next.toString();
-  return qs ? `${p}?${qs}` : p;
-}
-
 /* ---------- Erkennung von geteilten App-Links (Post/Profil/allg. Link) ---------- */
 type LinkKind =
   | { kind: 'post' }
@@ -134,24 +119,152 @@ function truncateMid(s: string, max = 80) {
   return t.slice(0, max - 1) + '…';
 }
 
-type Item = {
-  id: string;
-  other: {
-    id: string;
+type Item =
+  | {
+      kind: 'dm';
+      id: string;
+      other: {
+        id: string;
+        username: string;
+        displayName: string;
+        avatarUrl: string | null;
+        role?: 'domme' | 'submissive' | 'DOMME' | 'SUBMISSIVE';
+        premiumUntil?: string | null;
+        isFirstAdopter?: boolean;
+      };
+      lastMessageAt: string;
+      lastSnippet: string;
+      lastAuthorId?: string;
+      lastAuthorName?: string; // optional, falls API es liefert
+      unread: number;
+      muted?: boolean;
+      lastMediaType?: 'image' | 'video' | 'audio' | 'file';
+    }
+  | {
+      kind: 'group';
+      id: string;
+      title: string;
+      groupAvatarUrl?: string | null;
+      memberCount?: number;
+      lastMessageAt: string;
+      lastSnippet: string;
+      lastAuthorId?: string;
+      lastAuthorName?: string; // optional
+      unread: number;
+      muted?: boolean;
+      lastMediaType?: 'image' | 'video' | 'audio' | 'file';
+    };
+
+function isDM(i: Item): i is Extract<Item, { kind: 'dm' }> {
+  return i.kind === 'dm';
+}
+
+// --- Normalizer: formt API-/Cache-Items in unser striktes Item-Shape ---
+type UnknownItem = Partial<{
+  kind: 'dm' | 'group' | string;
+  id: string | number;
+  title: string;
+  groupAvatarUrl: string | null;
+  memberCount: number;
+  lastMessageAt: string;
+  lastSnippet: string;
+  lastAuthorId: string;
+  lastAuthorName: string;
+  unread: number | string;
+  muted: boolean;
+  lastMediaType: 'image' | 'video' | 'audio' | 'file' | string;
+  other: Partial<{
+    id: string | number;
     username: string;
     displayName: string;
     avatarUrl: string | null;
-    role?: 'domme' | 'submissive' | 'DOMME' | 'SUBMISSIVE';   
-    premiumUntil?: string | null;                            
-    isFirstAdopter?: boolean;                                 
+    role?: 'domme' | 'submissive' | 'DOMME' | 'SUBMISSIVE' | string;
+    premiumUntil?: string | null;
+    isFirstAdopter?: boolean;
+  }> | null;
+}>;
+
+// 🔧 helpers to satisfy strict Item types
+type RoleStrict = 'domme' | 'submissive' | 'DOMME' | 'SUBMISSIVE';
+type MediaStrict = 'image' | 'video' | 'audio' | 'file';
+
+function safeISO(val?: string): string {
+  return typeof val === 'string' && val.length > 0
+    ? val
+    : new Date(0).toISOString(); // Fallback
+}
+
+function asMediaType(v?: string): MediaStrict | undefined {
+  return v === 'image' || v === 'video' || v === 'audio' || v === 'file' ? v : undefined;
+}
+
+function asRole(v?: string): RoleStrict | undefined {
+  return v === 'domme' || v === 'submissive' || v === 'DOMME' || v === 'SUBMISSIVE' ? v : undefined;
+}
+
+function normalizeItem(x: UnknownItem): Item {
+  if (x?.kind === 'group') {
+    return {
+      kind: 'group',
+      id: String(x.id),
+      title: x.title ?? 'Group',
+      groupAvatarUrl: x.groupAvatarUrl ?? null,
+      memberCount: typeof x.memberCount === 'number' ? x.memberCount : undefined,
+      lastMessageAt: safeISO(x.lastMessageAt),       // 🔒 always string
+      lastSnippet: x.lastSnippet ?? '',
+      lastAuthorId: x.lastAuthorId,
+      lastAuthorName: x.lastAuthorName,
+      unread: Number(x.unread || 0),
+      muted: !!x.muted,
+      lastMediaType: asMediaType(x.lastMediaType),   // 🔒 narrow media type
+    };
+  }
+
+  if (x?.other) {
+    return {
+      kind: 'dm',
+      id: String(x.id),
+      other: {
+        id: String(x.other.id),
+        username: String(x.other.username),
+        displayName: String(x.other.displayName),
+        avatarUrl: x.other.avatarUrl ?? null,
+        role: asRole(x.other.role),                 // 🔒 narrow role
+        premiumUntil: x.other.premiumUntil ?? null,
+        isFirstAdopter: !!x.other.isFirstAdopter,
+      },
+      lastMessageAt: safeISO(x.lastMessageAt),       // 🔒 always string
+      lastSnippet: x.lastSnippet ?? '',
+      lastAuthorId: x.lastAuthorId,
+      lastAuthorName: x.lastAuthorName,
+      unread: Number(x.unread || 0),
+      muted: !!x.muted,
+      lastMediaType: asMediaType(x.lastMediaType),   // 🔒 narrow media type
+    };
+  }
+
+  // Fallback → Group
+  return {
+    kind: 'group',
+    id: String(x.id),
+    title: x.title ?? 'Group',
+    groupAvatarUrl: x.groupAvatarUrl ?? null,
+    memberCount: typeof x.memberCount === 'number' ? x.memberCount : undefined,
+    lastMessageAt: safeISO(x.lastMessageAt),         // 🔒 always string
+    lastSnippet: x.lastSnippet ?? '',
+    lastAuthorId: x.lastAuthorId,
+    lastAuthorName: x.lastAuthorName,
+    unread: Number(x.unread || 0),
+    muted: !!x.muted,
+    lastMediaType: asMediaType(x.lastMediaType),     // 🔒 narrow media type
   };
-  lastMessageAt: string;
-  lastSnippet: string;
-  lastAuthorId?: string;
-  unread: number;
-  muted?: boolean;
-  lastMediaType?: 'image' | 'video' | 'audio' | 'file';
-};
+}
+
+function normalizeList(list: unknown[]): Item[] {
+  return Array.isArray(list)
+    ? list.map((el) => normalizeItem(el as UnknownItem))
+    : [];
+}
 
 /* ------------ ActionMenu (Portal) ------------ */
 type MenuProps = {
@@ -248,8 +361,13 @@ function ActionMenu({ anchorRect, onClose, children }: MenuProps) {
   };
 
   const panel = (
-    <div style={containerStyle}>
-      <div ref={panelRef} className="rounded-xl border border-white/12 bg-black/90 backdrop-blur p-1 shadow-2xl">
+    <div style={containerStyle}
+        onPointerDown={(e)=>e.stopPropagation()}
+        onClick={(e)=>e.stopPropagation()}>
+      <div ref={panelRef}
+          className="rounded-xl border bg-black/90 backdrop-blur p-1 shadow-2xl"
+          onPointerDown={(e)=>e.stopPropagation()}
+          onClick={(e)=>e.stopPropagation()}>
         {children}
       </div>
     </div>
@@ -464,55 +582,50 @@ function ChatRow({
     openMenu();
   };
 
-  const handleClickCapture: React.MouseEventHandler<HTMLDivElement> = (e) => {
-    if (suppressClick.current) {
-      e.preventDefault();
-      e.stopPropagation();
-      suppressClick.current = false;
-    }
-  };
-
   function openChat() {
+    if (menuOpen) return;
     router.push(`/${locale}/chat/${c.id}`);
   }
   const onKeyRow: React.KeyboardEventHandler<HTMLDivElement> = (e) => {
+    if (menuOpen) {                 
+      e.preventDefault();
+      return;
+    }
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
       openChat();
     }
   };
 
-  async function toggleMute() {
-    try {
-      onMutedChange(c.id, !c.muted);
-    } finally {
-      setMenuOpen(false);
-    }
+  async function toggleMute(e?: React.MouseEvent) {
+    e?.stopPropagation();
+    try { onMutedChange(c.id, !c.muted); } finally { setMenuOpen(false); }
   }
-  async function deleteChat() {
+  async function deleteChat(e?: React.MouseEvent) {
+    e?.stopPropagation();
     try {
       await fetch(`/api/chat/${c.id}`, { method: 'DELETE' });
       onDeleted(c.id);
-    } catch {
-      // optional toast
-    } finally {
-      setMenuOpen(false);
-    }
+    } finally { setMenuOpen(false); }
   }
-  function togglePin() {
+  function togglePin(e?: React.MouseEvent) {
+    e?.stopPropagation();
     onPinnedChange(c.id, !isPinned);
     setMenuOpen(false);
   }
 
-  const profileHref = `/${locale}/u/${c.other.username}`;
+  const profileHref = isDM(c) ? `/${locale}/u/${c.other.username}` : undefined;
 
   // Wer hat die letzte Nachricht gesendet? Standard: other
-  const actorIsOther = c.lastAuthorId ? c.lastAuthorId === c.other.id : true;
-  const actorName = actorIsOther ? c.other.displayName : t('you');
+  const actorNameDM = isDM(c)
+    ? (c.lastAuthorId
+        ? (c.lastAuthorId === c.other.id ? c.other.displayName : t('you'))
+        : c.other.displayName)
+    : (c.lastAuthorName || t('you')); // Group: wenn Name fehlt, fallback "you"/du
 
   const snippet = React.useMemo(
-    () => formatSnippet(c.lastSnippet, actorName),
-    [c.lastSnippet, actorName, formatSnippet]
+    () => formatSnippet(c.lastSnippet, actorNameDM),
+    [c.lastSnippet, actorNameDM, formatSnippet]
   );
 
   return (
@@ -524,21 +637,57 @@ function ChatRow({
       tabIndex={0}
       onClick={openChat}
       onKeyDown={onKeyRow}
+      onPointerDownCapture={(e) => {
+        // only intercept if the original target is inside THIS row
+        const t = e.target as Node | null;
+        if (!rowRef.current?.contains(t)) return;     // ← allow portal clicks
+        if (menuOpen) e.stopPropagation();
+      }}
+      onPointerUpCapture={(e) => {
+        const t = e.target as Node | null;
+        if (!rowRef.current?.contains(t)) return;     // ← allow portal clicks
+        if (menuOpen) { e.preventDefault(); e.stopPropagation(); }
+      }}
+      onClickCapture={(e) => {
+        const t = e.target as Node | null;
+        if (!rowRef.current?.contains(t)) return;     // ← allow portal clicks
+        if (menuOpen) { e.preventDefault(); e.stopPropagation(); }
+        if (suppressClick.current) {
+          e.preventDefault();
+          e.stopPropagation();
+          suppressClick.current = false;
+        }
+      }}
       onPointerDown={handlePointerDown}
       onPointerUp={handlePointerUp}
       onPointerLeave={handlePointerLeave}
       onContextMenu={handleContextMenu}
-      onClickCapture={handleClickCapture}
     >
       <div className="shrink-0 w-[3.2em] flex flex-col items-center">
-        <Link
-          href={profileHref}
-          prefetch={false}
-          className="size-[3.2em] rounded-full overflow-hidden grid place-items-center bg-white/10 relative"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <Image src={c.other.avatarUrl || AVATAR_PH} alt="" fill className="object-cover" sizes="3.2em" />
-        </Link>
+        {isDM(c) ? (
+          <Link
+            href={profileHref!}
+            prefetch={false}
+            className="size-[3.2em] rounded-full overflow-hidden grid place-items-center bg-white/10 relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Image src={c.other.avatarUrl || AVATAR_PH} alt="" fill className="object-cover" sizes="3.2em" />
+          </Link>
+        ) : (
+          <span
+            className="size-[3.2em] rounded-xl overflow-hidden grid place-items-center bg-white/10 relative"
+            // Gruppen-Avatar (oder Placeholder-Icon)
+            title="Group"
+          >
+            <Image
+              src={c.groupAvatarUrl || AVATAR_PH}
+              alt=""
+              fill
+              className="object-cover"
+              sizes="3.2em"
+            />
+          </span>
+        )}
       </div>
 
       <div className="min-w-0">
@@ -547,25 +696,37 @@ function ChatRow({
           {/* links: Name + Badges, bekommt nur so viel Breite wie nötig */}
           <div className="-mt-2 shrink-0 flex items-center gap-1">
             <span className="font-medium truncate max-w-[40vw]">
-              {c.other.displayName}
+              {isDM(c) ? c.other.displayName : (c.title || 'Group')}
             </span>
 
-            <UserBadges
-              role={c.other.role ?? 'submissive'}
-              isPremium={isPremiumActive(c.other.premiumUntil)}
-              isFirstAdopter={!!c.other.isFirstAdopter}
-              size={16}
-              className="-ml-0.5"
-              premiumLabel={b('badges.verified')}
-              firstAdopterLabel={b('badges.firstAdopter')}
-            />
+            {isDM(c) ? (
+              <UserBadges
+                role={c.other.role ?? 'submissive'}
+                isPremium={isPremiumActive(c.other.premiumUntil)}
+                isFirstAdopter={!!c.other.isFirstAdopter}
+                size={16}
+                className="-ml-0.5"
+                premiumLabel={b('badges.verified')}
+                firstAdopterLabel={b('badges.firstAdopter')}
+              />
+            ) : (
+              // kleine Gruppen-Pill (optional)
+              <span className="px-1.5 py-[1px] rounded-full bg-white/10 text-white/70 text-[11px]">
+                Group{typeof c.memberCount === 'number' ? ` · ${c.memberCount}` : ''}
+              </span>
+            )}
           </div>
 
           {/* rechts: Vorschau (nimmt komplette Restbreite ein) */}
           <div className="self-center mt-2 flex items-center gap-1 min-w-0 ml-2 md:ml-3 text-[15px] md:text-[16px] text-white/85 truncate">
-            <span className="opacity-70 shrink-0">
-              {actorIsOther ? c.other.displayName : t('you')}:
-            </span>
+            {isDM(c) ? (
+              <span className="opacity-70 shrink-0">
+                {actorNameDM}:
+              </span>
+            ) : (
+              // Group: kein harter Prefix-Name, nur dezentes Pfeilchen
+              <span className="shrink-0 opacity-80" aria-hidden>↳</span>
+            )}
 
             {snippet.type === 'reaction' && (
               <span aria-hidden className="shrink-0">{snippet.emoji}</span>
@@ -584,7 +745,7 @@ function ChatRow({
         {/* Untere Zeile: Handle + kleine Status-Badges */}
         <div className="-mt-2 flex items-center gap-2 text-[11px] text-muted min-w-0">
           <span className="truncate">
-            @{c.other.username}
+            {isDM(c) ? `@${c.other.username}` : (c.title || 'Group')}
           </span>
 
           {c.muted && (
@@ -609,34 +770,40 @@ function ChatRow({
 
       {menuOpen && anchor && (
         <ActionMenu anchorRect={anchor} onClose={() => setMenuOpen(false)}>
-          <button type="button" className="w-full text-left px-3 py-2 rounded-lg hover:bg-white/10" onClick={togglePin}>
+          <button type="button" className="w-full text-left px-3 py-2 rounded-lg hover:bg-white/10" onClick={(e)=>togglePin(e)}>
             {isPinned ? t('row.menu.unpin') : t('row.menu.pin')}
           </button>
 
           <div className="h-px my-1 bg-white/10" />
 
-          <button type="button" className="w-full text-left px-3 py-2 rounded-lg hover:bg-white/10" onClick={toggleMute}>
+          <button type="button" className="w-full text-left px-3 py-2 rounded-lg hover:bg-white/10" onClick={(e)=>toggleMute(e)}>
             {c.muted ? t('row.menu.unmute') : t('row.menu.mute')}
           </button>
 
-          <form action={reportUserAction} onSubmit={() => setMenuOpen(false)} className="contents">
-            <input type="hidden" name="handle" value={c.other.username} />
-            <input type="hidden" name="reason" value="OTHER" />
-            <button className="w-full text-left px-3 py-2 rounded-lg hover:bg-white/10 text-red-300">
-              {t('row.menu.report')}
-            </button>
-          </form>
+          {isDM(c) && (
+            <>
+              <form action={reportUserAction} onSubmit={() => setMenuOpen(false)} className="contents">
+                <input type="hidden" name="handle" value={c.other.username} />
+                <input type="hidden" name="reason" value="OTHER" />
+                <button className="w-full text-left px-3 py-2 rounded-lg hover:bg-white/10 text-red-300">
+                  {t('row.menu.report')}
+                </button>
+              </form>
 
-          <form action={blockUserAction} onSubmit={() => setMenuOpen(false)} className="contents">
-            <input type="hidden" name="blockedHandle" value={c.other.username} />
-            <button className="w-full text-left px-3 py-2 rounded-lg hover:bg-white/10 text-red-300">
-              {t('row.menu.block')}
-            </button>
-          </form>
+              <form action={blockUserAction} onSubmit={() => setMenuOpen(false)} className="contents">
+                <input type="hidden" name="blockedHandle" value={c.other.username} />
+                <button className="w-full text-left px-3 py-2 rounded-lg hover:bg-white/10 text-red-300">
+                  {t('row.menu.block')}
+                </button>
+              </form>
+
+              <div className="h-px my-1 bg-white/10" />
+            </>
+          )}
 
           <div className="h-px my-1 bg-white/10" />
 
-          <button type="button" className="w-full text-left px-3 py-2 rounded-lg hover:bg-white/10 text-red-400" onClick={deleteChat}>
+          <button type="button" className="w-full text-left px-3 py-2 rounded-lg hover:bg-white/10 text-red-400" onClick={(e)=>deleteChat(e)}>
             {t('row.menu.delete')}
           </button>
         </ActionMenu>
@@ -667,6 +834,340 @@ function ChatRowSkeleton() {
   );
 }
 
+function NewChatDialog({
+  open,
+  onClose,
+  onStarted,
+}: {
+  open: boolean;
+  onClose: () => void;
+  locale: string;
+  onStarted: (conversationId: string) => void;
+}) {
+  const panelRef = React.useRef<HTMLDivElement>(null);
+  const [qLive, setQLive] = React.useState('');
+  const [q, setQ] = React.useState('');
+  const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  const [results, setResults] = React.useState<
+    Array<{ id: string; handle: string; displayName: string; avatarUrl: string | null; role?: string }>
+  >([]);
+  const [activeIdx, setActiveIdx] = React.useState<number>(-1); // keyboard focus
+
+  // ▼ NEW: multi-select
+  const [selected, setSelected] = React.useState<
+    Map<string, { id: string; handle: string; displayName: string }>
+  >(new Map());
+
+  const toggleSelect = React.useCallback((u: { id: string; handle: string; displayName: string }) => {
+    setSelected((prev) => {
+      const next = new Map(prev);
+      if (next.has(u.id)) next.delete(u.id);
+      else next.set(u.id, u);
+      return next;
+    });
+  }, []);
+
+  const clearSelection = () => setSelected(new Map());
+  const selectedIds = React.useMemo(() => Array.from(selected.keys()), [selected]);
+  const selectedList = React.useMemo(() => Array.from(selected.values()), [selected]);
+
+  // Outside close handlers
+  React.useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    const onDown = (e: PointerEvent) => {
+      const t = e.target as HTMLElement;
+      if (panelRef.current && panelRef.current.contains(t)) return;
+      onClose();
+    };
+    document.addEventListener('keydown', onKey);
+    document.addEventListener('pointerdown', onDown, { passive: true });
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('pointerdown', onDown);
+    };
+  }, [open, onClose]);
+
+  // Debounce + @-Cleanup
+  React.useEffect(() => {
+    if (!open) return;
+    const t = setTimeout(() => {
+      const cleaned = qLive.trim().replace(/^@+/, '');
+      setQ(cleaned);
+    }, 180);
+    return () => clearTimeout(t);
+  }, [qLive, open]);
+
+  // Fetch search
+  React.useEffect(() => {
+    if (!open) return;
+    if (!q) {
+      setResults([]);
+      setError(null);
+      setActiveIdx(-1);
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await fetch(`/api/users/search?q=${encodeURIComponent(q)}`, { cache: 'no-store' });
+        if (!res.ok) {
+          const txt = await res.text().catch(() => '');
+          throw new Error(`HTTP ${res.status} ${txt?.slice(0, 120)}`);
+        }
+        const j = await res.json().catch(() => null);
+        const list = Array.isArray(j?.items) ? j.items : Array.isArray(j?.users) ? j.users : [];
+        if (!Array.isArray(list)) throw new Error('Bad JSON');
+        if (!cancelled) {
+          setResults(list);
+          setActiveIdx(list.length ? 0 : -1);
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setResults([]);
+          setActiveIdx(-1);
+          setError('Suche fehlgeschlagen.');
+          console.warn('users/search failed:', e);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [q, open]);
+
+  // Existing 1:1 start
+  async function startChat(userId: string, handle?: string) {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/chat/start', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        // ⬇️ Server erwartet toUserId ODER toHandle
+        body: JSON.stringify({ toUserId: userId, toHandle: handle }),
+      });
+
+      // nützlicheres Debugging:
+      const txt = await res.text();
+      let j = null;
+      try {
+        j = JSON.parse(txt);
+      } catch {}
+
+      if (!res.ok || !j?.ok || !j?.id) {
+        throw new Error(j?.error || `HTTP ${res.status} ${txt.slice(0, 120)}`);
+      }
+
+      onClose();
+      onStarted(String(j.id));
+    } catch (e) {
+      setError('Konnte Chat nicht starten.');
+      console.warn('POST /api/chat/start failed:', e);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // ▼ NEW: start group (or 1:1 if only one selected)
+  async function startSelected() {
+    if (selectedIds.length === 0) return;
+
+    // 1 User => wie bisher 1:1 starten
+    if (selectedIds.length === 1) {
+      const u = selectedList[0];
+      await startChat(u.id, u.handle);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    try {
+      // kurzer, humaner Titel: "Alice, Bob +2"
+      const titleParts = selectedList.slice(0, 2).map((u) => u.displayName);
+      const title = titleParts.join(', ') + (selectedIds.length > 2 ? ` +${selectedIds.length - 2}` : '');
+
+      const res = await fetch('/api/chat/start-group', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ memberIds: selectedIds, title }),
+      });
+      const txt = await res.text();
+      let j = null;
+      try {
+        j = JSON.parse(txt);
+      } catch {}
+
+      if (!res.ok || !j?.ok || !j?.id) {
+        throw new Error(j?.error || `HTTP ${res.status} ${txt.slice(0, 120)}`);
+      }
+
+      clearSelection();
+      onClose();
+      onStarted(String(j.id));
+    } catch (e) {
+      setError('Konnte Gruppenchat nicht starten.');
+      console.warn('POST /api/chat/start-group failed:', e);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Keyboard navigation / Enter toggles selection (not auto-start)
+  const onKeyDownInput: React.KeyboardEventHandler<HTMLInputElement> = (e) => {
+    if (!results.length) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setActiveIdx((i) => (i + 1) % results.length);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setActiveIdx((i) => (i - 1 + results.length) % results.length);
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      const u = results[activeIdx];
+      if (u) toggleSelect(u);
+    }
+  };
+
+  if (!open) return null;
+
+  // Result row with checkbox
+  const Item = ({
+    u,
+    idx,
+  }: {
+    u: { id: string; handle: string; displayName: string; avatarUrl: string | null; role?: string };
+    idx: number;
+  }) => {
+    const isActive = idx === activeIdx;
+    const isChecked = selected.has(u.id);
+    return (
+      <div
+        onMouseEnter={() => setActiveIdx(idx)}
+        onClick={() => toggleSelect(u)}
+        className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer ${
+          isActive ? 'bg-white/10' : 'hover:bg-white/10'
+        }`}
+        role="button"
+        tabIndex={0}
+      >
+        <span className="size-9 rounded-full overflow-hidden grid place-items-center bg-white/10 shrink-0">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={u.avatarUrl || AVATAR_PH} alt="" className="w-full h-full object-cover" />
+        </span>
+
+        <span className="min-w-0 flex-1">
+          <span className="block font-medium truncate">{u.displayName}</span>
+          <span className="block text-xs text-white/70 truncate">@{u.handle}</span>
+        </span>
+
+        <span className="text-xs px-2 py-[2px] rounded-full bg-[var(--purple)]/15 text-[var(--purple)] mr-2">
+          {u.role?.toString().toLowerCase() === 'domme' ? 'domme' : 'sub'}
+        </span>
+
+        {/* Checkbox rechts */}
+        <input
+          type="checkbox"
+          className="size-5 accent-[var(--purple)]"
+          onChange={() => toggleSelect(u)}
+          checked={isChecked}
+          aria-label={`Select ${u.displayName}`}
+          onClick={(e) => e.stopPropagation()}
+        />
+      </div>
+    );
+  };
+
+  return createPortal(
+    <div className="fixed inset-0 z-[2147483600]">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+      <div className="absolute inset-0 grid place-items-center px-3">
+        <div
+          ref={panelRef}
+          className="w-full max-w-[560px] rounded-2xl border border-white/12 bg-neutral-900 shadow-2xl"
+        >
+          {/* Header mit Start-Button */}
+          <div className="p-3 border-b border-white/10 flex items-center justify-between gap-3">
+            <div className="font-semibold">Neuen Chat starten</div>
+            <div className="flex items-center gap-2">
+              {selectedIds.length > 0 && (
+                <span className="text-xs text-white/70">{selectedIds.length} ausgewählt</span>
+              )}
+              <button
+                type="button"
+                onClick={startSelected}
+                disabled={selectedIds.length === 0 || loading}
+                className={`px-3 py-1.5 rounded-lg ${
+                  selectedIds.length === 0 || loading
+                    ? 'bg-white/10 text-white/50 cursor-not-allowed'
+                    : 'bg-[var(--purple)] text-white hover:opacity-95'
+                }`}
+              >
+                {selectedIds.length <= 1 ? 'Starten' : 'Gruppenchat starten'}
+              </button>
+
+              <button onClick={onClose} className="p-2 rounded-lg hover:bg-white/10" aria-label="Schließen">
+                <svg viewBox="0 0 24 24" width="18" height="18">
+                  <path d="M6 6l12 12M18 6l-12 12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div className="p-3">
+            {/* Suche */}
+            <div className="relative">
+              <input
+                value={qLive}
+                onChange={(e) => {
+                  setQLive(e.target.value);
+                  setActiveIdx(-1);
+                }}
+                onFocus={() => {
+                  if (!qLive || !/@$/.test(qLive)) setQLive((s) => (s?.startsWith('@') ? s : '@' + (s || '')));
+                }}
+                onKeyDown={onKeyDownInput}
+                placeholder="Name oder Handle suchen…"
+                className="w-full rounded-xl bg-white/[.06] border border-white/10 pl-3 pr-3 py-2 outline-none focus:ring-2 focus:ring-[var(--purple)]/30"
+                autoFocus
+              />
+            </div>
+
+            {/* Ergebnisse */}
+            <div className="mt-3 max-h-[50vh] overflow-auto space-y-1">
+              {loading && <div className="text-sm text-white/70 px-1 py-2">Lade…</div>}
+              {error && <div className="text-sm text-red-400 px-1 py-2">{error}</div>}
+              {!loading && !error && !results.length && q && (
+                <div className="text-sm text-white/70 px-1 py-2">Keine Treffer.</div>
+              )}
+              {results.map((u, idx) => (
+                <Item key={u.id} u={u} idx={idx} />
+              ))}
+            </div>
+
+            <div className="mt-3 text-xs text-white/50">
+              Tipp: Enter toggelt Auswahl. Mit mehreren Auswahlpersonen wird ein Gruppenchat gestartet.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+
+
+
 /* ------------ Seite ------------ */
 export default function ChatListPage() {
   React.useEffect(() => {
@@ -677,8 +1178,6 @@ export default function ChatListPage() {
   const t = useTranslations('chat.chat');
   const locale = useLocale();
   const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
 
   const [items, setItems] = React.useState<Item[]>([]);
   const [q, setQ] = React.useState('');
@@ -742,14 +1241,15 @@ export default function ChatListPage() {
       clearTimeout(timer);
 
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
       const json = await res.json();
-      if (!json?.ok) throw new Error(json?.error || 'Unknown error');
+        if (!json?.ok) throw new Error(json?.error || 'Unknown error');
 
-      if (cancelled || myReq !== latestReqRef.current) return;
+        if (cancelled || myReq !== latestReqRef.current) return;
 
-      const fresh = json.items as Item[];
-      setItems(fresh);
-      writeCachedItems(fresh);
+        const fresh = normalizeList(json.items);
+        setItems(fresh);
+        writeCachedItems(fresh);
     } catch (e) {
       const msg = e instanceof Error ? e.message : t('loadingError');
       if (!cancelled && myReq === latestReqRef.current) setError(msg);
@@ -769,12 +1269,11 @@ export default function ChatListPage() {
       try {
         const res = await fetch('/api/chat', { cache: 'no-store' });
         const j = await res.json().catch(() => null);
-        if (!j?.ok || myReq !== latestReqRef.current) return;
-        const fresh = j.items as Item[];
+          if (!j?.ok || myReq !== latestReqRef.current) return;
+          const fresh = normalizeList(j.items);
 
-        // nur updaten wenn sich wirklich was ändert (len oder IDs/Zeitstempel)
-        const before = items.map(i => `${i.id}:${i.lastMessageAt}:${i.unread}`).join('|');
-        const after  = fresh.map(i => `${i.id}:${i.lastMessageAt}:${i.unread}`).join('|');
+          const before = items.map(i => `${i.id}:${i.lastMessageAt}:${i.unread}`).join('|');
+          const after  = fresh.map(i => `${i.id}:${i.lastMessageAt}:${i.unread}`).join('|');
         if (before !== after) {
           setItems(fresh);
           writeCachedItems(fresh);
@@ -837,12 +1336,20 @@ export default function ChatListPage() {
 
     let base = !qq
       ? items
-      : items.filter(
-          (i) =>
-            i.other.displayName.toLowerCase().includes(qq) ||
-            i.other.username.toLowerCase().includes(qq) ||
-            i.lastSnippet.toLowerCase().includes(qq)
-        );
+      : items.filter((i) => {
+          if (isDM(i)) {
+            return (
+              i.other.displayName.toLowerCase().includes(qq) ||
+              i.other.username.toLowerCase().includes(qq) ||
+              i.lastSnippet.toLowerCase().includes(qq)
+            );
+          } else {
+            return (
+              (i.title?.toLowerCase().includes(qq) ?? false) ||
+              i.lastSnippet.toLowerCase().includes(qq)
+            );
+          }
+        });
 
     if (filter === 'unread') {
       base = base.filter((i) => i.unread > 0);
@@ -862,9 +1369,10 @@ export default function ChatListPage() {
     }
   }, [items, q, filter, pinned]);
 
-  const openSettings = () => {
-    const href = withQuery(pathname, searchParams, { settings: '1' });
-    router.push(href, { scroll: false });
+  const [newChatOpen, setNewChatOpen] = React.useState(false);
+
+  const handleNewChatStarted = (conversationId: string) => {
+    router.push(`/${locale}/chat/${conversationId}`);
   };
 
   return (
@@ -905,19 +1413,23 @@ export default function ChatListPage() {
             />
           </div>
 
-          {/* Settings-Button */}
+          {/* Neuer-Chat Button (lila Plus) */}
           <button
             type="button"
-            onClick={openSettings}
+            onClick={() => setNewChatOpen(true)}
             className="p-2 rounded-lg hover:bg-white/5 inline-grid place-items-center"
-            aria-label={t('toolbar.settingsAria')}
-            style={{ width: 'clamp(28px, 3.6vw, 36px)', height: 'clamp(28px, 3.6vw, 36px)' }}
+            aria-label="Neuen Chat starten"
+            style={{ width: 'clamp(40px, 5vw, 48px)', height: 'clamp(40px, 5vw, 48px)' }}
           >
-            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className="pointer-events-none"
-                 style={{ color: 'rgba(255,255,255,.95)', width: '70%', height: '70%' }}>
-              <rect x="3" y="6" width="18" height="2" rx="1" />
-              <rect x="3" y="11" width="18" height="2" rx="1" />
-              <rect x="3" y="16" width="18" height="2" rx="1" />
+            <svg viewBox="0 0 24 24" aria-hidden="true" className="pointer-events-none"
+                style={{ width: '82%', height: '82%' }}>
+              <path
+                d="M12 5v14M5 12h14"
+                stroke="var(--purple)"
+                strokeWidth="2.6"
+                strokeLinecap="round"
+                fill="none"
+              />
             </svg>
           </button>
         </div>
@@ -969,6 +1481,12 @@ export default function ChatListPage() {
           ))}
         </div>
       )}
+      <NewChatDialog
+        open={newChatOpen}
+        onClose={() => setNewChatOpen(false)}
+        locale={locale}
+        onStarted={handleNewChatStarted}
+      />
     </main>
   );
 }

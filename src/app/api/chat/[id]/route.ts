@@ -2,8 +2,44 @@
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/currentUser';
 import { getStorage, buildKey } from '@/lib/storage';
+import { $Enums } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
+
+export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
+  const me = await getCurrentUser();
+  if (!me) return Response.json({ ok: false, error: 'unauth' }, { status: 401 });
+
+  const convo = await prisma.conversation.findUnique({
+    where: { id: params.id },
+    select: { id: true, type: true, dommeId: true, subId: true },
+  });
+  if (!convo) return Response.json({ ok: false, error: 'not_found' }, { status: 404 });
+
+  if (convo.type === $Enums.ConversationType.GROUP) {
+    // Gruppe verlassen → Membership löschen
+    await prisma.conversationMember.deleteMany({
+      where: { conversationId: convo.id, userId: me.id },
+    });
+    return Response.json({ ok: true });
+  }
+
+  // DM: nur Teilnehmer dürfen „löschen“ (verstecken)
+  const iAmDomme = convo.dommeId === me.id;
+  const iAmSub   = convo.subId === me.id;
+  if (!iAmDomme && !iAmSub) {
+    return Response.json({ ok: false, error: 'forbidden' }, { status: 403 });
+  }
+
+  await prisma.conversation.update({
+    where: { id: convo.id },
+    data: iAmDomme
+      ? { hiddenForDomme: new Date(), unreadForDomme: 0 }
+      : { hiddenForSub:   new Date(), unreadForSub:   0 },
+  });
+
+  return Response.json({ ok: true });
+}
 
 type Ctx = { params: Promise<{ id: string }> };
 type DbRole = 'DOMME' | 'SUBMISSIVE';
@@ -79,6 +115,7 @@ export async function GET(_req: Request, { params }: Ctx) {
       where: { id },
       select: {
         id: true,
+        type: true,
         dommeId: true,
         subId: true,
         domme: {
@@ -100,12 +137,23 @@ export async function GET(_req: Request, { params }: Ctx) {
       },
     });
     if (!convo) return Response.json({ ok: false, error: 'Not found' }, { status: 404 });
+    if (convo.type !== $Enums.ConversationType.DM) {
+      return Response.json({ ok: false, error: 'NOT_A_DM' }, { status: 400 });
+    }
+    // dann Membership checken
     if (convo.dommeId !== me.id && convo.subId !== me.id) {
       return Response.json({ ok: false, error: 'Forbidden' }, { status: 403 });
     }
 
     const iAmDomme = convo.dommeId === me.id;
     const otherRaw = iAmDomme ? convo.sub : convo.domme;
+
+    if (!otherRaw) {
+      return Response.json(
+        { ok: false, error: 'CONVERSATION_INCONSISTENT' },
+        { status: 409 }
+      );
+    }
 
     const other = {
       id: otherRaw.id,
@@ -232,6 +280,8 @@ export async function GET(_req: Request, { params }: Ctx) {
   }
 }
 
+
+
 /* -------------------------------- POST ---------------------------------- */
 
 export async function POST(req: Request, { params }: Ctx) {
@@ -242,14 +292,26 @@ export async function POST(req: Request, { params }: Ctx) {
 
     const convo = await prisma.conversation.findUnique({
       where: { id },
-      select: { id: true, dommeId: true, subId: true },
+      select: { id: true, type: true, dommeId: true, subId: true }, 
     });
+
     if (!convo) return Response.json({ ok: false, error: 'Not found' }, { status: 404 });
     if (convo.dommeId !== me.id && convo.subId !== me.id) {
       return Response.json({ ok: false, error: 'Forbidden' }, { status: 403 });
     }
 
+    if (convo.type !== $Enums.ConversationType.DM) {
+      return Response.json({ ok: false, error: 'NOT_A_DM' }, { status: 400 });
+    }
+
     const otherUserId = convo.dommeId === me.id ? convo.subId : convo.dommeId;
+
+    if (!otherUserId) {
+      return Response.json(
+        { ok: false, error: 'CONVERSATION_INCONSISTENT' },
+        { status: 409 }
+      );
+    }
     const { viewerHasBlocked, isBlockedByOther } = await getBlockFlags(me.id, otherUserId);
     if (viewerHasBlocked || isBlockedByOther) {
       return Response.json({ ok: false, error: 'INTERACTION_BLOCKED' }, { status: 403 });
@@ -332,10 +394,10 @@ export async function POST(req: Request, { params }: Ctx) {
         data: {
           lastMessageId: created.id,
           lastMessageAt: created.createdAt,
-          // unread für die GEGENSEITE erhöhen:
           ...(me.id === convo.dommeId
-            ? { unreadForSub: { increment: 1 } }
-            : { unreadForDomme: { increment: 1 } }),
+            ? { unreadForSub: { increment: 1 }, hiddenForSub: null }     // Empfänger wieder sichtbar machen
+            : { unreadForDomme: { increment: 1 }, hiddenForDomme: null } // Empfänger wieder sichtbar machen
+          ),
         },
       });
 
@@ -409,8 +471,9 @@ export async function POST(req: Request, { params }: Ctx) {
         lastMessageId: msg.id,
         lastMessageAt: msg.createdAt,
         ...(me.id === convo.dommeId
-          ? { unreadForSub: { increment: 1 } }
-          : { unreadForDomme: { increment: 1 } }),
+          ? { unreadForSub: { increment: 1 }, hiddenForSub: null }     // Empfänger wieder sichtbar machen
+          : { unreadForDomme: { increment: 1 }, hiddenForDomme: null } // Empfänger wieder sichtbar machen
+        ),
       },
     });
 

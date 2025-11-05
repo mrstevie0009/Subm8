@@ -1,4 +1,4 @@
-// src/components/ClientThread.tsx
+// src/components/GroupThread.tsx
 'use client';
 
 import * as React from 'react';

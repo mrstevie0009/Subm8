@@ -1,13 +1,26 @@
 // src/app/api/chat/route.ts
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/currentUser';
+import { $Enums, Prisma } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
 
+// --- selektiertes Shape für DMs (as const, damit TS die Felder "domme"/"sub" kennt)
+const dmSelect = {
+  id: true, createdAt: true, updatedAt: true,
+  dommeId: true, subId: true,
+  domme: { select: { id: true, handle: true, displayName: true, avatarUrl: true, role: true, premiumUntil: true, isFirstAdopter: true } },
+  sub:   { select: { id: true, handle: true, displayName: true, avatarUrl: true, role: true, premiumUntil: true, isFirstAdopter: true } },
+  lastMessageId: true,
+  lastMessageAt: true,
+  unreadForDomme: true,
+  unreadForSub: true,
+} as const;
+
+type DMRow = Prisma.ConversationGetPayload<{ select: typeof dmSelect }>;
+
 export async function GET() {
   const me = await getCurrentUser();
-
-  // 👇 Statt 401: leere Antwort (wie gehabt)
   if (!me) {
     return Response.json(
       { ok: true, items: [] },
@@ -15,67 +28,104 @@ export async function GET() {
     );
   }
 
-  // 1) Konversationen: nur leichte Felder + lastMessageId/At + Unread
-  const convos = await prisma.conversation.findMany({
-    where: { OR: [{ dommeId: me.id }, { subId: me.id }] },
+  /* ---------------- DMs (wie bisher) ---------------- */
+  const dms: DMRow[] = await prisma.conversation.findMany({
+    where: {
+      type: $Enums.ConversationType.DM,
+      OR: [
+        { dommeId: me.id, hiddenForDomme: null },
+        { subId:   me.id, hiddenForSub:   null },
+      ],
+    },
+    orderBy: { updatedAt: 'desc' },
+    select: dmSelect,
+  });
+
+  /* ---------------- Groups ----------------
+     Wichtig: gleiche Tabelle, Filter über type=GROUP + Mitgliedschaft
+  ----------------------------------------------------- */
+  const groups = await prisma.conversation.findMany({
+    where: {
+      type: $Enums.ConversationType.GROUP,
+      members: { some: { userId: me.id } },   // Mitglied sein
+    },
     orderBy: { updatedAt: 'desc' },
     select: {
       id: true,
+      title: true,
       createdAt: true,
       updatedAt: true,
-      dommeId: true,
-      subId: true,
-      domme: { 
-        select: { 
-          id: true, handle: true, displayName: true, avatarUrl: true,
-          role: true,                 // <— NEU
-          premiumUntil: true,         // <— NEU
-          isFirstAdopter: true,       // <— NEU
-        } 
-      },
-      sub:   { 
-        select: { 
-          id: true, handle: true, displayName: true, avatarUrl: true,
-          role: true,                 // <— NEU
-          premiumUntil: true,         // <— NEU
-          isFirstAdopter: true,       // <— NEU
-        } 
-      },
       lastMessageId: true,
       lastMessageAt: true,
-      unreadForDomme: true,
-      unreadForSub: true,
+      // Unread für den aktuellen User
+      members: {
+        where: { userId: me.id },
+        select: { unreadCount: true },
+      },
+      // Falls du irgendwann ein Gruppen-Avatarfeld in Conversation hast:
+      // avatarUrl: true,
     },
   });
 
-
-  // 2) Last-Messages in einem Rutsch
-  const lastIds = convos.map(c => c.lastMessageId).filter(Boolean) as string[];
-
+  /* ---------------- Letzte Messages (für beide Typen) ---------------- */
+  const lastIds = [
+    ...dms.map(c => c.lastMessageId).filter(Boolean) as string[],
+    ...groups.map(g => g.lastMessageId).filter(Boolean) as string[],
+  ];
   const lastMsgs = lastIds.length
     ? await prisma.message.findMany({
         where: { id: { in: lastIds } },
         select: {
-          id: true,
-          text: true,
-          createdAt: true,
-          authorId: true,
-          mediaType: true,
-          mediaUrl: true,
+          id: true, text: true, createdAt: true, authorId: true,
+          mediaType: true, mediaUrl: true,
         },
       })
     : [];
-
   const lastById = new Map(lastMsgs.map(m => [String(m.id), m]));
 
-  /// 3) Shape für Frontend
-  const items = convos.map(c => {
-    const iAmDomme = c.dommeId === me.id;
-    const other = iAmDomme ? c.sub : c.domme;
-    const last = c.lastMessageId ? lastById.get(String(c.lastMessageId)) : undefined;
+  // --- shared types for the response (match your chat list normalizer)
+type MediaKind = 'image' | 'video' | 'audio' | 'file';
 
-    // Media-Kategorie ableiten
-    const mediaKind =
+type DMItem = {
+  id: string;
+  other: {
+    id: string;
+    username: string;
+    displayName: string;
+    avatarUrl: string | null;
+    role: $Enums.Role;
+    premiumUntil: string | null;
+    isFirstAdopter: boolean;
+  };
+  lastMessageAt: string;
+  lastSnippet: string;
+  lastAuthorId: string | null;
+  unread: number;
+  lastMediaType?: MediaKind;
+};
+
+type GroupItem = {
+  kind: 'group';
+  id: string;
+  title: string;
+  groupAvatarUrl: string | null;
+  memberCount?: number;
+  lastMessageAt: string;
+  lastSnippet: string;
+  lastAuthorId: string | null;
+  unread: number;
+  lastMediaType?: MediaKind;
+};
+
+// -------------- normalize DMs --------------
+const dmItems: DMItem[] = dms
+  .map<DMItem | undefined>((dm) => {
+    const iAmDomme = dm.dommeId === me.id;
+    const other = iAmDomme ? dm.sub : dm.domme;
+    if (!other) return undefined;
+
+    const last = dm.lastMessageId ? lastById.get(String(dm.lastMessageId)) : undefined;
+    const mediaKind: MediaKind | undefined =
       last?.mediaType
         ? last.mediaType.startsWith('image/') ? 'image'
           : last.mediaType.startsWith('video/') ? 'video'
@@ -83,40 +133,73 @@ export async function GET() {
           : 'file'
         : undefined;
 
-    // 🔧 NEU: Zero-Width & NBSP entfernen, dann trimmen
-    const rawText = (last?.text ?? '');
-    const normalizedText = rawText
-      // zero-width chars & BOM & NBSP entfernen
+    const normalizedText = (last?.text ?? '')
       .replace(/[\u200B-\u200D\uFEFF\u00A0]/g, ' ')
-      // Mehrfach-Spaces zu einem Space
       .replace(/\s+/g, ' ')
       .trim();
 
-    // 1) Wenn nach Normalisierung noch Text übrig ist → den nehmen
-    // 2) Sonst, falls Media vorhanden → MEDIA::… Envelope
-    // 3) Sonst leer (Konvo ohne Messages)
     const lastSnippet = normalizedText || (mediaKind ? `MEDIA::${mediaKind}` : '');
 
     return {
-      id: c.id,
+      id: dm.id,
       other: {
         id: other.id,
         username: other.handle,
         displayName: other.displayName,
         avatarUrl: other.avatarUrl,
-        role: other.role,                         // <— NEU
-        premiumUntil: other.premiumUntil,         // <— NEU
-        isFirstAdopter: other.isFirstAdopter,     // <— NEU
+        role: other.role,
+        premiumUntil: other.premiumUntil ? other.premiumUntil.toISOString() : null,
+        isFirstAdopter: other.isFirstAdopter ?? false,
       },
-      lastMessageAt: (c.lastMessageAt ?? c.updatedAt ?? c.createdAt).toISOString(),
+      lastMessageAt: (dm.lastMessageAt ?? dm.updatedAt ?? dm.createdAt).toISOString(),
       lastSnippet,
-      lastAuthorId: last?.authorId,
-      unread: iAmDomme ? c.unreadForDomme : c.unreadForSub,
+      lastAuthorId: last?.authorId ?? null,
+      unread: iAmDomme ? dm.unreadForDomme : dm.unreadForSub,
+      lastMediaType: mediaKind,
     };
-  });
+  })
+  .filter((x): x is DMItem => !!x);
 
-  return Response.json(
-    { ok: true, items },
-    { headers: { 'cache-control': 'private, no-store' } },
-  );
+// -------------- normalize Groups --------------
+const groupItems: GroupItem[] = groups.map<GroupItem>((g) => {
+  const last = g.lastMessageId ? lastById.get(String(g.lastMessageId)) : undefined;
+
+  const mediaKind: MediaKind | undefined =
+    last?.mediaType
+      ? last.mediaType.startsWith('image/') ? 'image'
+        : last.mediaType.startsWith('video/') ? 'video'
+        : last.mediaType.startsWith('audio/') ? 'audio'
+        : 'file'
+      : undefined;
+
+  const normalizedText = (last?.text ?? '')
+    .replace(/[\u200B-\u200D\uFEFF\u00A0]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const lastSnippet = normalizedText || (mediaKind ? `MEDIA::${mediaKind}` : '');
+  const unread = g.members[0]?.unreadCount ?? 0;
+
+  return {
+    kind: 'group',
+    id: g.id,
+    title: g.title ?? 'Group',
+    groupAvatarUrl: null,
+    lastMessageAt: (g.lastMessageAt ?? g.updatedAt ?? g.createdAt).toISOString(),
+    lastSnippet,
+    lastAuthorId: last?.authorId ?? null,
+    unread,
+    lastMediaType: mediaKind,
+  };
+});
+
+// -------------- union + sort (by lastMessageAt) --------------
+const items = [...dmItems, ...groupItems].sort(
+  (a, b) => +new Date(b.lastMessageAt) - +new Date(a.lastMessageAt)
+);
+
+return Response.json(
+  { ok: true, items },
+  { headers: { 'cache-control': 'private, no-store' } },
+);
 }
