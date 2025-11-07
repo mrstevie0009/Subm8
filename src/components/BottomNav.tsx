@@ -122,7 +122,6 @@ type TabProps = {
 
 function Tab({ href, label, active, render, badge, innerRef }: TabProps) {
   const color = active ? 'var(--purple)' : 'rgba(255,255,255,.95)';
-  const size = 'clamp(24px, 2.8vw, 50px)';
   return (
     <Link
       ref={innerRef}
@@ -130,7 +129,7 @@ function Tab({ href, label, active, render, badge, innerRef }: TabProps) {
       aria-label={label}
       aria-current={active ? 'page' : undefined}
       className="relative inline-grid place-items-center rounded hover:bg-white/5 select-none"
-      style={{ width: size, height: size, padding: 8 }}
+      style={{ width: 'var(--icon-size)', height: 'var(--icon-size)', padding: 8 }}
     >
       {badge && (
         <span
@@ -294,10 +293,19 @@ function MiniPopup({ anchorEl, avatarUrl, unreadCount, hidden, variant = 'chat',
 
 /* --------------------------------------------------- */
 
+type CSSVars = React.CSSProperties & {
+  ['--icon-size']?: string;
+};
+
 function NavContent() {
   const pathname = usePathname();
   const locale = useLocale();
   const ding = useDing();
+  const ICON_MIN = 30;             
+  const ICON_MAX = 30;              
+  const ICON_FLUID = '5vw';
+  const iconSize = `clamp(${ICON_MIN}px, ${ICON_FLUID}, ${ICON_MAX}px)`;
+  const navHeight = `calc(${iconSize} + 20px + env(safe-area-inset-bottom))`;
   // UI-Preferences
   const [prefs, setPrefs] = React.useState<{ sound: boolean; popup: boolean }>(() => {
     if (typeof window === 'undefined') return { sound: true, popup: true };
@@ -573,29 +581,30 @@ function NavContent() {
     return () => clearTimeout(t);
   }, [miniNotiVisible, latestNotiMs, prefs.sound, ding]);
 
-  const navHeight = 'calc(clamp(24px, 2.8vw, 50px) + 20px + env(safe-area-inset-bottom))';
-
   return (
     <>
       <nav
         role="navigation"
         aria-label="Bottom navigation"
-        style={{
-          position: 'fixed',
-          left: 0,
-          right: 0,
-          bottom: 0,
-          height: navHeight,
-          paddingBottom: 'env(safe-area-inset-bottom)',
-          background: 'rgba(0,0,0,.60)',
-          backdropFilter: 'blur(10px)',
-          WebkitBackdropFilter: 'blur(10px)',
-          borderTop: '1px solid rgba(255,255,255,.10)',
-          zIndex: 2147483647,
-          transform: hidden ? 'translateY(100%)' : 'translateY(0)',
-          transition: 'transform 220ms ease',
-          willChange: 'transform',
-        }}
+        style={
+          {
+            position: 'fixed',
+            left: 0,
+            right: 0,
+            bottom: 0,
+            height: navHeight,
+            paddingBottom: 'env(safe-area-inset-bottom)',
+            background: 'rgba(0,0,0,.60)',
+            backdropFilter: 'blur(10px)',
+            WebkitBackdropFilter: 'blur(10px)',
+            borderTop: '1px solid rgba(255,255,255,.10)',
+            zIndex: 2147483647,
+            transform: hidden ? 'translateY(100%)' : 'translateY(0)',
+            transition: 'transform 220ms ease',
+            willChange: 'transform',
+            ['--icon-size']: iconSize, // sauber getypt
+          } as CSSVars
+        }
       >
         <div
           className="mx-auto h-full grid justify-items-center items-center"

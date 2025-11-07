@@ -45,11 +45,8 @@ export default function ChatThreadPage() {
   }, [id]);
 
   if (!meta) {
-    return (
-      <main className="flex items-center justify-center min-h-[60vh] text-white/70">
-        Loading chat…
-      </main>
-    );
+    // nichts anzeigen: der Child-Thread rendert sein eigenes Skeleton
+    return <GroupThread />;
   }
 
   if (!meta.ok) {

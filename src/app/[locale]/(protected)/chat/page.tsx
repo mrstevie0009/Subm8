@@ -8,6 +8,7 @@ import Image from 'next/image';
 import { useLocale, useTranslations } from 'next-intl';
 import { useRouter} from 'next/navigation';
 import { UserBadges } from '@/components/UserBadges';
+import { useSession } from 'next-auth/react'; 
 
 import { reportUserAction } from '@/app/actions/reports';
 import { blockUserAction } from '@/app/actions/blocks';
@@ -834,6 +835,53 @@ function ChatRowSkeleton() {
   );
 }
 
+// --- Verify Prompt (identisch zum Stil im ProfileHeader) ---
+function VerifyPrompt({
+  open,
+  onClose,
+  onStart,
+  title = 'Altersnachweis erforderlich',
+  message = 'Verifiziere einmalig dein Alter, um diese Funktion zu nutzen.',
+  confirmLabel = 'Jetzt verifizieren',
+  cancelLabel = 'Abbrechen',
+}: {
+  open: boolean;
+  onClose: () => void;
+  onStart: () => void | Promise<void>;
+  title?: string;
+  message?: string;
+  confirmLabel?: string;
+  cancelLabel?: string;
+}) {
+  React.useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[2147483604] flex items-center justify-center" role="dialog" aria-modal="true" data-no-nav onClick={onClose}>
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+      <div className="relative w-[min(520px,92vw)] rounded-2xl border border-white/12 bg-[#0b0b0d] p-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <h2 className="text-[18px] font-semibold">{title}</h2>
+        <p className="mt-2 text-white/80">{message}</p>
+        <div className="mt-4 flex items-center justify-end gap-2">
+          <button type="button" className="px-3 py-2 rounded-lg border border-white/15 hover:bg-white/10" onClick={onClose}>
+            {cancelLabel}
+          </button>
+          <button type="button" className="px-4 py-2 rounded-lg bg-[var(--purple)] hover:opacity-95 text-white" onClick={() => void onStart()}>
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
 function NewChatDialog({
   open,
   onClose,
@@ -1181,8 +1229,12 @@ export default function ChatListPage() {
     }
   }, []);
   const t = useTranslations('chat.chat');
+  const tVerify = useTranslations('verify');
   const locale = useLocale();
   const router = useRouter();
+  const { data: session } = useSession();             
+  const ageOk = !!session?.user?.ageVerified;         
+  const [verifyOpen, setVerifyOpen] = React.useState(false);
 
   const [items, setItems] = React.useState<Item[]>([]);
   const [q, setQ] = React.useState('');
@@ -1198,6 +1250,26 @@ export default function ChatListPage() {
 
   type Filter = 'all' | 'unread' | 'pinned';
   const [filter, setFilter] = React.useState<Filter>('all');
+
+  const startAgeVerification = React.useCallback(async () => {
+   try {
+     const back =
+       typeof window !== 'undefined'
+         ? `${window.location.pathname}${window.location.search}`
+         : `/${locale}`;
+     if (!session) {
+       router.push(`/${locale}/signin?callbackUrl=${encodeURIComponent(back)}`);
+       return;
+     }
+     const res = await fetch(`/api/veriff/start?back=${encodeURIComponent(back)}&locale=${locale}`, { method: 'POST' });
+     const j = await res.json().catch(() => null);
+     if (!res.ok || !j?.url) throw new Error(j?.details || j?.error || `HTTP ${res.status}`);
+     router.push(j.url as string);
+   } catch {
+     // optional: toast.error(...)
+     console.warn('Veriff start failed');
+   }
+ }, [locale, router, session]);
 
   React.useEffect(() => {
     const onVis = () => {
@@ -1421,7 +1493,10 @@ export default function ChatListPage() {
           {/* Neuer-Chat Button (lila Plus) */}
           <button
             type="button"
-            onClick={() => setNewChatOpen(true)}
+            onClick={() => {
+              if (!ageOk) { setVerifyOpen(true); return; }
+              setNewChatOpen(true);
+            }}
             className="p-2 rounded-lg hover:bg-white/5 inline-grid place-items-center"
             aria-label={t('toolbar.newChatAria')}
             style={{ width: 'clamp(40px, 5vw, 48px)', height: 'clamp(40px, 5vw, 48px)' }}
@@ -1492,6 +1567,16 @@ export default function ChatListPage() {
         locale={locale}
         onStarted={handleNewChatStarted}
       />
+
+      <VerifyPrompt
+        open={verifyOpen}
+        onClose={() => setVerifyOpen(false)}
+        onStart={startAgeVerification}
+        title={tVerify('modal.title')}
+        message={tVerify('modal.message')}
+        confirmLabel={tVerify('modal.confirm')}
+        cancelLabel={tVerify('modal.cancel')}
+     />
     </main>
   );
 }
