@@ -398,14 +398,53 @@ async function smartSignOut() {
 
           {isAuth && (
             <div style={{ display: 'flex', gap: 16, marginTop: 10, fontSize: 14 }}>
-              <div title={statsError ?? undefined}>
-                <span style={{ fontWeight: 600 }}>{following}</span>{' '}
-                <span style={{ opacity: 0.7 }}>{t('statsFollowing')}</span>
-              </div>
-              <div title={statsError ?? undefined}>
-                <span style={{ fontWeight: 600 }}>{followers}</span>{' '}
-                <span style={{ opacity: 0.7 }}>{t('statsFollowers')}</span>
-              </div>
+              {handle ? (
+                <>
+                  <Link
+                    href={`/${locale}/u/${handle}/following`}
+                    prefetch={false}
+                    onClick={onClose}
+                    className="group inline-flex items-baseline gap-1.5 hover:opacity-95"
+                    title={statsError ?? undefined}
+                    aria-label={`${following.toLocaleString(locale)} ${t('statsFollowing')}`}
+                  >
+                    <span className="tabular-nums font-extrabold text-white">
+                      {following.toLocaleString(locale)}
+                    </span>
+                    <span className="text-white/70 group-hover:text-white/80">
+                      {t('statsFollowing')}
+                    </span>
+                  </Link>
+
+                  <Link
+                    href={`/${locale}/u/${handle}/followers`}
+                    prefetch={false}
+                    onClick={onClose}
+                    className="group inline-flex items-baseline gap-1.5 hover:opacity-95"
+                    title={statsError ?? undefined}
+                    aria-label={`${followers.toLocaleString(locale)} ${t('statsFollowers')}`}
+                  >
+                    <span className="tabular-nums font-extrabold text-white">
+                      {followers.toLocaleString(locale)}
+                    </span>
+                    <span className="text-white/70 group-hover:text-white/80">
+                      {t('statsFollowers')}
+                    </span>
+                  </Link>
+                </>
+              ) : (
+                // Fallback: kein Handle bekannt → nicht klickbar
+                <>
+                  <div title={statsError ?? undefined}>
+                    <span style={{ fontWeight: 600 }}>{following}</span>{' '}
+                    <span style={{ opacity: 0.7 }}>{t('statsFollowing')}</span>
+                  </div>
+                  <div title={statsError ?? undefined}>
+                    <span style={{ fontWeight: 600 }}>{followers}</span>{' '}
+                    <span style={{ opacity: 0.7 }}>{t('statsFollowers')}</span>
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>

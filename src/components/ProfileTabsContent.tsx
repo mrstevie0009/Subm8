@@ -27,6 +27,8 @@ type ApiUserLite = {
   displayName: string;
   avatarUrl: string | undefined;
   role?: 'DOMME' | 'SUBMISSIVE' | null;
+  premiumUntil?: string | null;    
+  isFirstAdopter?: boolean;
 };
 
 type ApiPost = {
@@ -80,6 +82,8 @@ function mapToFeedPost(p: ApiPost): FeedPost {
     displayName: 'Unknown',
     avatarUrl: undefined,
     role: null,
+    premiumUntil: null,    
+    isFirstAdopter: false,
   };
 
   const isRepost = !!p.repostOf;
@@ -105,6 +109,8 @@ function mapToFeedPost(p: ApiPost): FeedPost {
         displayName: contentAuthor.displayName,
         avatarUrl: contentAuthor.avatarUrl ?? undefined,
         role: contentAuthor.role ?? null,
+        premiumUntil: contentAuthor.premiumUntil ?? null, 
+        isFirstAdopter: !!contentAuthor.isFirstAdopter, 
       },
       quote: isQuote
         ? {
@@ -119,6 +125,8 @@ function mapToFeedPost(p: ApiPost): FeedPost {
               displayName: p.quoteOf!.author.displayName,
               role: p.quoteOf!.author.role ?? null,
               avatarUrl: p.quoteOf!.author.avatarUrl ?? undefined,
+              premiumUntil: p.quoteOf!.author.premiumUntil ?? null, // ⬅️
+            isFirstAdopter: !!p.quoteOf!.author.isFirstAdopter,
             },
           }
         : undefined,

@@ -45,7 +45,7 @@ export type FeedPost = {
     mediaAlt?: string | null;
     /** Neu: Mehrere Medien */
     media?: ContentMedia[] | null;
-    uploaded?: ContentMedia[] | null;     // <— HINZU
+    uploaded?: ContentMedia[] | null;    
     /** Alternative API-Shapes */
     mediaUrls?: string[] | null;
     attachments?: Array<{ url: string; alt?: string | null; kind?: 'image' | 'video' | 'gif' }> | null;
@@ -65,7 +65,7 @@ export type FeedPost = {
       mediaUrl?: string | null;
       mediaAlt?: string | null;
       media?: ContentMedia[] | null;
-      uploaded?: ContentMedia[] | null;     // <— HINZU
+      uploaded?: ContentMedia[] | null;    
       mediaUrls?: string[] | null;
       attachments?: Array<{ url: string; alt?: string | null; kind?: 'image' | 'video' | 'gif' }> | null;
       createdAt: string;
@@ -75,6 +75,8 @@ export type FeedPost = {
         displayName: string;
         role?: 'DOMME' | 'SUBMISSIVE' | null;
         avatarUrl?: string | null;
+        premiumUntil?: string | null;
+        isFirstAdopter?: boolean;
       };
     } | null;
   };
