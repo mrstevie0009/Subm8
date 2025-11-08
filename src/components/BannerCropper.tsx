@@ -1,3 +1,4 @@
+//src/components/BannerCropper.tsx
 'use client';
 
 import * as React from 'react';
@@ -38,7 +39,7 @@ export default function BannerCropper({ open, imageSrc, onCancel, onComplete }: 
       style={{
         position: 'fixed',
         inset: 0,
-        zIndex: 2147483600,
+        zIndex: 2147483700,
         background: 'rgba(0,0,0,0.65)',
         backdropFilter: 'blur(6px)',
         WebkitBackdropFilter: 'blur(6px)',

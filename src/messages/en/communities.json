@@ -10,6 +10,8 @@
         "close": "Close"
       },
       "banner": {
+        "uploading": "uploading...",
+        "ready": "ready",
         "choose": "Choose image",
         "help": "PNG/JPG/WebP/GIF, max ~10 MB. Drag & drop supported.",
         "label": "Banner (optional)"
@@ -135,6 +137,12 @@
     }
   },
   "communitiesPage": {
+    "delete": {
+    "title": "Delete community",
+    "button": "Delete",
+    "confirm": "Permanently delete this community? All posts and memberships will be lost.",
+    "success": "Community deleted."
+    },
     "blocked": {
       "dommesOnly": "Dommes only",
       "inviteOnly": "Invite only — invitation required",
@@ -160,6 +168,8 @@
   },
   "community": {
     "composer": {
+      "ready": "ready",
+      "uploading": "uploading...",
       "errors": {
         "generic": "Posting failed.",
         "onlyImageOrVideo": "Only image or video files are allowed."

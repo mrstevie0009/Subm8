@@ -10,6 +10,8 @@
         "close": "Fermer"
       },
       "banner": {
+        "uploading": "téléchargement...",
+        "ready": "prêt",
         "choose": "Choisir une image",
         "help": "PNG/JPG/WebP/GIF, max ~10 Mo. Glisser-déposer pris en charge.",
         "label": "Bannière (optionnel)"
@@ -135,6 +137,12 @@
     }
   },
   "communitiesPage": {
+    "delete": {
+      "title": "Supprimer la communauté",
+      "button": "Supprimer",
+      "confirm": "Supprimer définitivement cette communauté ? Toutes les publications et les adhésions seront perdues.",
+      "success": "Communauté supprimée."
+    },
     "blocked": {
       "dommesOnly": "Dommes uniquement",
       "inviteOnly": "Sur invitation — invitation requise",
@@ -160,6 +168,8 @@
   },
   "community": {
     "composer": {
+      "ready": "prêt",
+      "uploading": "téléchargement...",
       "errors": {
         "generic": "Échec de la publication.",
         "onlyImageOrVideo": "Seuls les fichiers image ou vidéo sont autorisés."

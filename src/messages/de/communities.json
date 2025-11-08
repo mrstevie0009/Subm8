@@ -10,6 +10,8 @@
         "close": "Schließen"
       },
       "banner": {
+        "uploading": "lädt hoch...",
+        "ready": "bereit",
         "choose": "Bild auswählen",
         "help": "PNG/JPG/WebP/GIF, max. ~10 MB. Drag & Drop wird unterstützt.",
         "label": "Banner (optional)"
@@ -135,6 +137,12 @@
     }
   },
   "communitiesPage": {
+    "delete": {
+    "title": "Community löschen",
+    "button": "Löschen",
+    "confirm": "Diese Community wirklich dauerhaft löschen? Alle Posts und Mitgliederverknüpfungen gehen verloren.",
+    "success": "Community gelöscht."
+    },
     "blocked": {
       "dommesOnly": "Nur Dommes",
       "inviteOnly": "Nur mit Einladung — Einladung erforderlich",
@@ -160,6 +168,8 @@
   },
   "community": {
     "composer": {
+      "ready": "bereit",
+      "uploading": "lädt hoch...",
       "errors": {
         "generic": "Posten fehlgeschlagen.",
         "onlyImageOrVideo": "Nur Bild- oder Videodateien sind erlaubt."

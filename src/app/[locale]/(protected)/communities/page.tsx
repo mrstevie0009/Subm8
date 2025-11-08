@@ -6,16 +6,18 @@ import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
 import CommunityJoinButton from '@/components/CommunityJoinButton';
 import CreateCommunityButton from '@/components/CreateCommunityButton';
+import { toast } from '@/lib/toast';
+import { createPortal } from 'react-dom';
 
 const COMMS_CACHE_DISCOVER = 'communities:discover:v1';
 const COMMS_CACHE_YOURS    = 'communities:yours:v1';
+
 function readCachedCommunities(key: string) {
   try {
     const raw = localStorage.getItem(key);
     if (!raw) return null;
     const { ts, items } = JSON.parse(raw) as { ts: number; items: CommunityItem[] };
-    // bis 3 Minuten frisch
-    if (Date.now() - ts > 3 * 60 * 1000) return null;
+    if (Date.now() - ts > 3 * 60 * 1000) return null; // bis 3 Minuten frisch
     return items as CommunityItem[];
   } catch { return null; }
 }
@@ -39,6 +41,8 @@ type CommunityItem = {
   joined: boolean;
   policy: JoinPolicy;
   bannerUrl?: string | null;
+  /** vom Server geliefert */
+  isOwner?: boolean;
 };
 
 // Policy-Badge Klassen (nur Styling)
@@ -88,11 +92,13 @@ function CommunityCardSkeleton() {
     </article>
   );
 }
+
 export default function CommunitiesPage() {
   const locale = useLocale();
   const t = useTranslations('communities.communitiesPage');
+  const ttt = useTranslations('communities.communities.create');
+  const tt = useTranslations('home.toast');
 
-  // Policy-Label via i18n
   const policyLabel = React.useCallback(
     (p: JoinPolicy) =>
       p === 'OPEN'
@@ -110,7 +116,6 @@ export default function CommunitiesPage() {
   const [mine, setMine] = React.useState<CommunityItem[]>([]);
   const [loading, setLoading] = React.useState(false);
 
-  // Viewer-Rolle (für Ausgrauen/Disable)
   const [viewerRole, setViewerRole] = React.useState<Role>(null);
   const latestReqRef = React.useRef(0);
   const pollRef = React.useRef<number | null>(null);
@@ -224,12 +229,69 @@ export default function CommunitiesPage() {
 
   }, [tab, discover, mine]);
 
+  /* ------------------------ Delete Modal State & Logic ------------------------ */
+  const [deleteOpen, setDeleteOpen] = React.useState(false);
+  const [deleteTarget, setDeleteTarget] = React.useState<{ slug: string; name: string } | null>(null);
+  const [deleting, setDeleting] = React.useState(false);
+
+  function openDelete(c: { slug: string; name: string }) {
+    setDeleteTarget({ slug: c.slug, name: c.name });
+    setDeleteOpen(true);
+  }
+  // 1) closeDelete stabil machen
+  const closeDelete = React.useCallback(() => {
+    if (deleting) return;
+    setDeleteOpen(false);
+    setDeleteTarget(null);
+  }, [deleting]);
+
+  // 2) Effect-Dependencies anpassen
+  React.useEffect(() => {
+      if (!deleteOpen) return;
+      const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') closeDelete(); };
+      window.addEventListener('keydown', onKey);
+      return () => window.removeEventListener('keydown', onKey);
+  }, [deleteOpen, closeDelete]);
+
+  async function confirmDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    const slug = deleteTarget.slug;
+    try {
+      const res = await fetch(`/api/communities/${encodeURIComponent(slug)}`, { method: 'DELETE' });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok || !j?.ok) {
+        toast.error(tt('generic.failedTitle'), j?.error || `HTTP ${res.status}`);
+        return;
+      }
+
+      // Aus aktuellem Tab entfernen
+      if (tab === 'discover') {
+        const next = discover.filter((c) => c.slug !== slug);
+        setDiscover(next);
+        writeCachedCommunities(COMMS_CACHE_DISCOVER, next);
+      } else {
+        const next = mine.filter((c) => c.slug !== slug);
+        setMine(next);
+        writeCachedCommunities(COMMS_CACHE_YOURS, next);
+      }
+
+      toast.show({ title: t('delete.success'), variant: 'success', durationMs: 1800 });
+      closeDelete();
+    } catch (e) {
+      toast.error(tt('generic.failedTitle'), e instanceof Error ? e.message : 'Failed');
+    } finally {
+      setDeleting(false);
+    }
+  }
+  /* --------------------------------------------------------------------------- */
+
   const list = tab === 'discover' ? discover : mine;
 
   return (
     <div className="max-w-5xl mx-auto">
       {/* Header + Tabs */}
-      <div className="sticky top-[calc(var(--header-h))] z-10 bg-black/80 backdrop-blur border-b border-white/10">
+      <div className="sticky top=[calc(var(--header-h))] top-[calc(var(--header-h))] z-10 bg-black/80 backdrop-blur border-b border-white/10">
         <div className="px-4 py-3 flex items-center justify-between">
           <div className="text-lg font-semibold">{t('title')}</div>
           <CreateCommunityButton />
@@ -271,9 +333,7 @@ export default function CommunitiesPage() {
             return (
               <article
                 key={c.id}
-                className={`relative rounded-app border border-sub shadow-app overflow-hidden flex flex-col ${
-                  blocked ? 'opacity-60 saturate-50' : ''
-                }`}
+                className={`relative rounded-app border border-sub shadow-app overflow-hidden flex flex-col ${blocked ? 'opacity-60 saturate-50' : ''}`}
                 data-disabled={blocked ? true : undefined}
               >
                 {/* Banner */}
@@ -283,35 +343,33 @@ export default function CommunitiesPage() {
                   <div className="absolute inset-0 bg-gradient-to-b from-black/0 to-black/30" />
                 </div>
 
+                {c.isOwner && (
+                  <button
+                    type="button"
+                    title={t('delete.title')}
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); openDelete(c); }}
+                    className="absolute top-2 right-2 z-20 px-3 h-8 rounded-full
+                              bg-black text-red-200 border border-red-400/40
+                              hover:bg-black/80 shadow"
+                    data-no-nav
+                  >
+                    {t('delete.button')}
+                  </button>
+                )}
+
                 {/* Body */}
                 <div className="p-3 flex-1 flex flex-col">
                   <div className="flex items-start gap-3">
-                    {/* simple letter avatar */}
                     <div className="shrink-0 size-10 rounded-full grid place-items-center bg-white/10 border border-white/20">
                       <span className="font-semibold">{c.name.charAt(0).toUpperCase()}</span>
                     </div>
                     <div className="min-w-0">
                       <div className="font-semibold truncate">{c.name}</div>
                       <div className="text-sm opacity-70 truncate">@{c.slug}</div>
-
-                      {/* Policy-Badge */}
                       <div className="mt-1">
-                        <span
-                          className={`inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full border ${policyClasses(
-                            c.policy
-                          )}`}
-                        >
-                          {/* kleines Icon für Invite */}
+                        <span className={`inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full border ${policyClasses(c.policy)}`}>
                           {c.policy === 'INVITE_ONLY' && (
-                            <svg
-                              viewBox="0 0 24 24"
-                              width="12"
-                              height="12"
-                              aria-hidden
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                            >
+                            <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden fill="none" stroke="currentColor" strokeWidth="2">
                               <rect x="4" y="10" width="16" height="10" rx="2" />
                               <path d="M8 10V7a4 4 0 1 1 8 0v3" />
                             </svg>
@@ -327,17 +385,8 @@ export default function CommunitiesPage() {
                   <div className="mt-auto pt-3 flex items-center justify-between relative z-20">
                     <Link
                       href={`/${locale}/communities/${c.slug}/members`}
-                      className="
-                        inline-flex items-center gap-2
-                        rounded-full border border-white/12
-                        bg-white/[.06] hover:bg-white/[.1]
-                        px-3 py-1.5
-                        text-sm text-white
-                        transition focus:outline-none focus:ring-2 focus:ring-[var(--purple)]/60
-                        shadow-sm hover:shadow
-                      "
+                      className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/[.06] hover:bg-white/[.1] px-3 py-1.5 text-sm text-white transition focus:outline-none focus:ring-2 focus:ring-[var(--purple)]/60 shadow-sm hover:shadow"
                       aria-label={`${Intl.NumberFormat(locale).format(c.members)} members – open members list`}
-                      // verhindert, dass der Card-Overlay-Link diesen klickt
                       data-no-nav
                     >
                       <UsersIcon className="opacity-90" />
@@ -347,13 +396,15 @@ export default function CommunitiesPage() {
                       </span>
                     </Link>
 
-                    <CommunityJoinButton
-                      slug={c.slug}
-                      initialJoined={c.joined}
-                      initialMembers={c.members}
-                      policy={c.policy}
-                      viewerRole={viewerRole}
-                    />
+                    <div className="flex items-center gap-2">
+                      <CommunityJoinButton
+                        slug={c.slug}
+                        initialJoined={c.joined}
+                        initialMembers={c.members}
+                        policy={c.policy}
+                        viewerRole={viewerRole}
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -378,27 +429,86 @@ export default function CommunitiesPage() {
             );
           })}
       </div>
+
+      {/* Delete confirmation modal */}
+      {deleteOpen && createPortal(
+        <div role="dialog" aria-modal="true" aria-labelledby="delTitle" className="fixed inset-0 z-[2147483646]">
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={closeDelete} />
+          {/* Sheet */}
+          <div
+            className="absolute left-1/2 top-1/2 w-[min(560px,92vw)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-white/12 bg-[#101114] shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between">
+              <div id="delTitle" className="text-base sm:text-lg font-semibold">
+                {t('delete.title')}
+              </div>
+              <button
+                type="button"
+                onClick={closeDelete}
+                className="inline-grid place-items-center size-8 rounded-lg hover:bg-white/10"
+                aria-label="Close"
+              >
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8">
+                  <path d="M6 6l12 12M18 6L6 18" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="px-5 py-4 space-y-2">
+              <p className="text-white/90">{t('delete.confirm')}</p>
+              {deleteTarget?.name && (
+                <p className="text-sm text-white/60">
+                  <span className="opacity-80">Community:</span> <span className="font-medium">{deleteTarget.name}</span>
+                </p>
+              )}
+            </div>
+
+            <div className="px-5 py-4 border-t border-white/10 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                disabled={deleting}
+                onClick={closeDelete}
+                className="px-4 h-9 rounded-full border border-white/15 hover:bg-white/10 disabled:opacity-50"
+              >
+                {ttt('actions.cancel', { default: 'Cancel' })}
+              </button>
+              <button
+                type="button"
+                onClick={confirmDelete}
+                disabled={deleting}
+                className="px-4 h-9 rounded-full bg-red-600/90 hover:bg-red-600 text-white disabled:opacity-50"
+              >
+                {deleting ? t('loading', { default: 'Deleting…' }) : t('delete.button')}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
+
   function UsersIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      width="18"
-      height="18"
-      aria-hidden
-      className={className}
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2" />
-      <circle cx="9" cy="7" r="4" />
-      <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-    </svg>
-  );
-}
+    return (
+      <svg
+        viewBox="0 0 24 24"
+        width="18"
+        height="18"
+        aria-hidden
+        className={className}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+      </svg>
+    );
+  }
 }

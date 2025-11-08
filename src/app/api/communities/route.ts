@@ -1,4 +1,3 @@
-//src/app/api/communities/route.ts
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuth } from '@/lib/auth';
@@ -45,6 +44,8 @@ type CommunityOut = {
   joined: boolean;
   policy: JoinPolicy;
   bannerUrl?: string | null;
+  /** Nur für die UI: darf löschen */
+  isOwner?: boolean;
 };
 
 export async function GET(req: Request) {
@@ -54,7 +55,7 @@ export async function GET(req: Request) {
   const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') || '24', 10) || 24, 1), 100);
 
   const session = await getAuth().catch(() => null);
-  const meId = (session?.user as { id?: string } | undefined)?.id;
+  const meId = (session?.user as { id?: string } | undefined)?.id || null;
 
   if (mine) {
     if (!meId) return NextResponse.json({ ok: true, items: [] });
@@ -84,6 +85,7 @@ export async function GET(req: Request) {
       joined: true,
       policy: prismaToApiPolicy(c.joinPolicy),
       bannerUrl: c.bannerUrl,
+      isOwner: meId === c.createdById,
     }));
     return NextResponse.json({ ok: true, items });
   }
@@ -129,6 +131,7 @@ export async function GET(req: Request) {
     joined: joinedSet ? joinedSet.has(c.id) : false,
     policy: prismaToApiPolicy(c.joinPolicy),
     bannerUrl: c.bannerUrl,
+    isOwner: meId ? meId === c.createdById : false,
   }));
 
   return NextResponse.json({ ok: true, items });
@@ -146,7 +149,23 @@ export async function POST(req: Request) {
     let name = '', handleRaw = '', description = '', policyKey: JoinPolicy = 'OPEN';
     let bannerUrl: string | undefined;
 
-    if (ct.startsWith('multipart/form-data')) {
+    if (ct.startsWith('application/json')) {
+      const body = (await req.json().catch(() => ({}))) as {
+        name?: string;
+        handle?: string;
+        description?: string;
+        policy?: JoinPolicy;
+        bannerUrl?: string;
+      };
+      name = (body?.name || '').toString().trim();
+      handleRaw = (body?.handle || '').toString();
+      description = (body?.description || '').toString().trim();
+      if (body?.policy && POLICY_TO_PRISMA[body.policy]) policyKey = body.policy;
+
+      if (body?.bannerUrl && /^https?:\/\//i.test(body.bannerUrl)) {
+        bannerUrl = body.bannerUrl;
+      }
+    } else if (ct.startsWith('multipart/form-data')) {
       const fd = await req.formData();
       name = (fd.get('name') ?? '').toString().trim();
       handleRaw = (fd.get('handle') ?? '').toString();
@@ -169,16 +188,7 @@ export async function POST(req: Request) {
         bannerUrl = saved.publicPath;
       }
     } else {
-      const body = (await req.json().catch(() => ({}))) as {
-        name?: string;
-        handle?: string;
-        description?: string;
-        policy?: JoinPolicy;
-      };
-      name = (body?.name || '').toString().trim();
-      handleRaw = (body?.handle || '').toString();
-      description = (body?.description || '').toString().trim();
-      if (body?.policy && POLICY_TO_PRISMA[body.policy]) policyKey = body.policy;
+      return NextResponse.json({ ok: false, error: 'UNSUPPORTED_CONTENT_TYPE' }, { status: 415 });
     }
 
     if (name.length < 3) {
@@ -208,7 +218,7 @@ export async function POST(req: Request) {
         bannerUrl: bannerUrl ?? null,
       },
       select: {
-        id: true, slug: true, name: true, description: true, bannerUrl: true, joinPolicy: true,
+        id: true, slug: true, name: true, description: true, bannerUrl: true, joinPolicy: true, createdById: true,
       },
     });
 
@@ -225,6 +235,7 @@ export async function POST(req: Request) {
       policy: prismaToApiPolicy(created.joinPolicy),
       members: 1,
       joined: true,
+      isOwner: true,
     };
 
     return NextResponse.json({ ok: true, community: out });
