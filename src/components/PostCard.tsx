@@ -289,7 +289,7 @@ function SingleMedia({
           }
         }}
       >
-        <VideoPlayer src={m.url} className="w-full h-auto max-h-[58vh] sm:max-h-[70vh]" />
+        <VideoPlayer src={m.url} className="w-full h-auto max-h-[58vh] sm:max-h-[70vh]" onActivate={() => onOpen?.(index)}/>
       </figure>
     );
   }

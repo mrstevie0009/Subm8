@@ -401,7 +401,7 @@ async function smartSignOut() {
               {handle ? (
                 <>
                   <Link
-                    href={`/${locale}/u/${handle}/following`}
+                    href={`/${locale}/u/${handle}/followers?tab=following`}
                     prefetch={false}
                     onClick={onClose}
                     className="group inline-flex items-baseline gap-1.5 hover:opacity-95"
@@ -417,7 +417,7 @@ async function smartSignOut() {
                   </Link>
 
                   <Link
-                    href={`/${locale}/u/${handle}/followers`}
+                    href={`/${locale}/u/${handle}/followers?tab=followers`}
                     prefetch={false}
                     onClick={onClose}
                     className="group inline-flex items-baseline gap-1.5 hover:opacity-95"

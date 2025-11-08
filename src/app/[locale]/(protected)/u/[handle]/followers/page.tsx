@@ -1,108 +1,122 @@
+// src/app/[locale]/(protected)/u/[handle]/followers/page.tsx
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/currentUser';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import Image from 'next/image';
-import FollowInlineButton from '@/components/FollowInlineButton';
-
-const AVATAR_PH = '/images/avatar-placeholder.png';
+import FollowersUnifiedClient, { type UserLite } from '@/components/FollowersUnifiedClient';
 
 type Params = { locale: string; handle: string };
+type Tab = 'followers' | 'following' | 'vFollowing' | 'vFollowers';
 
-export default async function FollowersPage({ params }: { params: Promise<Params> }) {
+export default async function FollowersUnifiedPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<Params>;
+  searchParams?: { tab?: string };
+}) {
   const { locale, handle } = await params;
-
-  const user = await prisma.user.findUnique({
-    where: { handle: handle.toLowerCase() },
-    select: { id: true, handle: true, displayName: true },
-  });
-  if (!user) notFound();
+  const initialTab = (searchParams?.tab as Tab) || 'followers';
 
   const me = await getCurrentUser().catch(() => null);
 
-  // Follower dieses Profils
-  const rows = await prisma.follow.findMany({
-    where: { followeeId: user.id },
+  const user = await prisma.user.findUnique({
+    where: { handle: handle.toLowerCase() },
     select: {
-      follower: {
-        select: {
-          id: true,
-          handle: true,
-          displayName: true,
-          avatarUrl: true,
-          role: true,
-        },
-      },
-      createdAt: true,
+      id: true, handle: true, displayName: true,
+      _count: { select: { followers: true, following: true } },
     },
-    orderBy: { createdAt: 'desc' },
   });
-  const followers = rows.map((r) => r.follower);
+  if (!user) notFound();
 
-  // Folge ich diese Follower bereits?
-  let iFollow = new Set<string>();
-  if (me && followers.length > 0) {
+  const [followersRows, followingRows] = await Promise.all([
+    prisma.follow.findMany({
+      where: { followeeId: user.id },
+      select: {
+        follower: {
+          select: {
+            id: true, handle: true, displayName: true, avatarUrl: true, role: true,
+            premiumUntil: true, isFirstAdopter: true,
+          },
+        },
+        createdAt: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    }),
+    prisma.follow.findMany({
+      where: { followerId: user.id },
+      select: {
+        followee: {
+          select: {
+            id: true, handle: true, displayName: true, avatarUrl: true, role: true,
+            premiumUntil: true, isFirstAdopter: true,
+          },
+        },
+        createdAt: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    }),
+  ]);
+
+  const followers = followersRows.map(r => r.follower) satisfies UserLite[];
+  const following = followingRows.map(r => r.followee) satisfies UserLite[];
+
+  const isVerified = (u: Pick<UserLite, 'premiumUntil' | 'isFirstAdopter'>) => {
+    const until = u.premiumUntil ? new Date(u.premiumUntil) : null;
+    return (until && until.getTime() > Date.now()) || !!u.isFirstAdopter;
+  };
+
+  // Neu: getrennte Verified-Listen
+  const verifiedFollowing = following.filter(isVerified);
+  const verifiedFollowers = followers.filter(isVerified);
+
+  // Für “folge ich schon?” Lookup
+  const allIds = Array.from(new Set([...followers, ...following].map(u => u.id)));
+  let viewerFollows = new Set<string>();
+  if (me && allIds.length > 0) {
     const mine = await prisma.follow.findMany({
-      where: { followerId: me.id, followeeId: { in: followers.map((u) => u.id) } },
+      where: { followerId: me.id, followeeId: { in: allIds } },
       select: { followeeId: true },
     });
-    iFollow = new Set(mine.map((m) => m.followeeId));
+    viewerFollows = new Set(mine.map(m => m.followeeId));
   }
 
   return (
-    <section className="max-w-2xl mx-auto grid gap-4">
-      {/* Header-Card */}
-      <header className="rounded-app border border-sub shadow-app px-3 py-3 sm:px-4 sm:py-4">
-        <div className="flex items-center gap-2">
-          <Link
-            href={`/${locale}/u/${user.handle}`}
-            aria-label="Back to profile"
-            className="inline-grid place-items-center size-9 rounded-full border border-white/15 hover:bg-white/5"
-          >
-            <BackIcon />
-          </Link>
-          <div className="min-w-0">
-            <h1 className="text-lg sm:text-xl font-bold leading-tight">Followers</h1>
-            <div className="text-xs sm:text-sm opacity-70 truncate">
-              {followers.length} {followers.length === 1 ? 'follower' : 'followers'} of @{user.handle}
+    <section className="max-w-2xl mx-auto">
+      <div className="rounded-app border border-sub shadow-app overflow-hidden">
+        <header className="px-3 py-3 sm:px-4 sm:py-4">
+          <div className="flex items-center gap-2">
+            <Link
+              href={`/${locale}/u/${user.handle}`}
+              aria-label="Back to profile"
+              className="inline-grid place-items-center size-9 rounded-full border border-white/15 hover:bg-white/5"
+            >
+              <BackIcon />
+            </Link>
+            <div className="min-w-0">
+              <h1 className="text-lg sm:text-xl font-bold leading-tight">{user.displayName}</h1>
+              <div className="text-xs sm:text-sm opacity-70 truncate">@{user.handle}</div>
             </div>
           </div>
-        </div>
-      </header>
+        </header>
 
-      {/* Liste */}
-      <ul className="rounded-app border border-sub shadow-app divide-y divide-white/10">
-        {followers.map((u) => (
-          <li key={u.id} className="px-3 py-3 sm:px-4 sm:py-3 flex items-center justify-between gap-3">
-            <Link
-              href={`/${locale}/u/${u.handle}`}
-              className="flex items-center gap-3 min-w-0"
-            >
-              <Image
-                src={u.avatarUrl || AVATAR_PH}
-                alt=""
-                width={44}
-                height={44}
-                className="rounded-full object-cover border border-white/15"
-              />
-              <div className="min-w-0">
-                <div className="font-medium truncate">{u.displayName}</div>
-                <div className="text-sm opacity-70 truncate">@{u.handle}</div>
-              </div>
-            </Link>
-            <div className="shrink-0">
-              <FollowInlineButton
-                targetUserId={u.id}
-                initialFollowing={me ? iFollow.has(u.id) : false}
-              />
-            </div>
-          </li>
-        ))}
-
-        {followers.length === 0 && (
-          <li className="px-4 py-10 text-center opacity-70">No followers yet.</li>
-        )}
-      </ul>
+        <FollowersUnifiedClient
+          locale={locale}
+          meId={me?.id ?? null}
+          counts={{
+            followers: user._count.followers,
+            following: user._count.following,
+            vFollowing: verifiedFollowing.length,
+            vFollowers: verifiedFollowers.length,
+          }}
+          followers={followers}
+          following={following}
+          verifiedFollowing={verifiedFollowing}
+          verifiedFollowers={verifiedFollowers}
+          viewerFollows={Array.from(viewerFollows)}
+          initialTab={initialTab} 
+        />
+      </div>
     </section>
   );
 }

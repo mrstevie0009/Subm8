@@ -1,3 +1,4 @@
+//src/app/[locale]/(protected)/communities/page.tsx
 'use client';
 
 import * as React from 'react';
@@ -324,9 +325,28 @@ export default function CommunitiesPage() {
                   <p className="mt-2 text-sm opacity-90 line-clamp-2">{c.description}</p>
 
                   <div className="mt-auto pt-3 flex items-center justify-between relative z-20">
-                    <span className="text-sm opacity-80">
-                      {t('members', { count: Intl.NumberFormat().format(c.members) })}
-                    </span>
+                    <Link
+                      href={`/${locale}/communities/${c.slug}/members`}
+                      className="
+                        inline-flex items-center gap-2
+                        rounded-full border border-white/12
+                        bg-white/[.06] hover:bg-white/[.1]
+                        px-3 py-1.5
+                        text-sm text-white
+                        transition focus:outline-none focus:ring-2 focus:ring-[var(--purple)]/60
+                        shadow-sm hover:shadow
+                      "
+                      aria-label={`${Intl.NumberFormat(locale).format(c.members)} members – open members list`}
+                      // verhindert, dass der Card-Overlay-Link diesen klickt
+                      data-no-nav
+                    >
+                      <UsersIcon className="opacity-90" />
+                      <span className="font-medium">Members</span>
+                      <span className="text-xs px-1.5 py-0.5 rounded-full bg-white/10 tabular-nums">
+                        {Intl.NumberFormat(locale).format(c.members)}
+                      </span>
+                    </Link>
+
                     <CommunityJoinButton
                       slug={c.slug}
                       initialJoined={c.joined}
@@ -360,4 +380,25 @@ export default function CommunitiesPage() {
       </div>
     </div>
   );
+  function UsersIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="18"
+      height="18"
+      aria-hidden
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
+  );
+}
 }

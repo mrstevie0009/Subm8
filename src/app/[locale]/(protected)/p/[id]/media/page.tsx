@@ -125,6 +125,7 @@ export default function PostMediaPage() {
 
   const [snapStats, setSnapStats] = React.useState<{ likes?: number; comments?: number; reposts?: number }>();
   const [snapViewer, setSnapViewer] = React.useState<{ liked?: boolean; bookmarked?: boolean; reposted?: boolean }>();
+  const [uiVisible, setUiVisible] = React.useState(true);
 
   const [items, setItems] = React.useState<ContentMedia[] | null>(null);
   const containerRef = React.useRef<HTMLDivElement>(null);
@@ -188,7 +189,7 @@ export default function PostMediaPage() {
 
   // Beim ersten Render nach Load ggf. zum i-th Element scrollen
   React.useEffect(() => {
-    if (!items || !containerRef.current) return;
+    if (!items || items.length <= 1 || !containerRef.current) return;
     const idx = Math.min(Math.max(0, startIdx), Math.max(0, items.length - 1));
     const el = containerRef.current.children[idx] as HTMLElement | undefined;
     el?.scrollIntoView({ block: 'center', behavior: 'smooth' });
@@ -214,61 +215,134 @@ export default function PostMediaPage() {
   // UI
   return (
     <div className="min-h-[100svh] bg-black text-white flex flex-col">
-    {/* Immer sichtbarer (fixed) Header */}
-    <PostDetailHeader fixed />
-
-    {/* Spacer in gleicher Höhe wie der Header (≈ 48px) */}
-    <div aria-hidden className="h-12" />
-
-    {!ageOk ? (
-      <BlurredGate onStartVeriff={startAgeVerification} />
-    ) : !items ? (
-      <div className="flex-1 grid place-items-center text-white/70">Lade Medien…</div>
-    ) : items.length === 0 ? (
-      <div className="flex-1 grid place-items-center text-white/70">Keine Medien gefunden.</div>
-    ) : (
-      <div
-        ref={containerRef}
-        className="space-y-6 px-2 pb-10 pt-2 snap-y snap-mandatory"
-        style={{ overscrollBehaviorY: 'contain', WebkitOverflowScrolling: 'touch' }}
-      >
-        {items.map((m) => (
-          <figure
-            key={m.url}
-            className="grid place-items-center rounded-xl border border-white/10 bg-black/20 overflow-hidden snap-start md:snap-center"
-            style={{
-              minHeight: 'min(88svh, 720px)',
-              scrollSnapStop: 'always',     // stoppt zuverlässig auf jedem Item
-              scrollMarginTop: '56px',      // ≈ Headerhöhe (48px) + etwas Puffer
-            }}
-          >
-            {m.kind === 'video' ? (
-              <VideoPlayer
-                src={m.url}
-                className="max-h-[88svh] w-auto"
-                autoPlay
-                muted
-                loop
-              />
-            ) : (
-              <Image
-                src={m.url}
-                alt={m.alt ?? ''}
-                width={1080}
-                height={1920}
-                className="max-h-[88svh] w-auto object-contain"
-                unoptimized
-              />
-            )}
-          </figure>
-        ))}
-        <PostActionsBar
-            postId={id}
-            stats={snapStats} 
-            viewer={snapViewer}
-        />
+      {/* Fixed Topbar – minimal */}
+      <div className={`fixed inset-x-0 top-0 z-30 transition-opacity ${uiVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+        <PostDetailHeader fixed />
       </div>
-    )}
-  </div>
-);
+
+      {/* Inhalt */}
+      {!ageOk ? (
+        <BlurredGate onStartVeriff={startAgeVerification} />
+      ) : !items ? (
+        <div className="flex-1 grid place-items-center text-white/70">Lade Medien…</div>
+      ) : items.length === 0 ? (
+        <div className="flex-1 grid place-items-center text-white/70">Keine Medien gefunden.</div>
+      ) : items.length === 1 ? (
+        /* ------- SINGLE VIEWER: kein Scroll, Medium füllt Viewport ------- */
+        <div className="flex-1 overflow-hidden">
+          <figure
+            className="relative grid place-items-center"
+            style={{ minHeight: 'calc(100svh - 48px)' }}
+            onClick={() => setUiVisible(v => !v)}
+          >
+            {(() => {
+              const k = items[0].kind;
+              const isGif = k === 'gif';
+              const isVideoLike = k === 'video' || isGif;
+
+              return isVideoLike ? (
+                <VideoPlayer
+                  src={items[0].url}
+                  className="max-h-[calc(100svh-48px)] max-w-[100vw] w-auto h-auto"
+                  autoPlay
+                  muted
+                  loop
+                  showScrubber={uiVisible}
+                  rightTag={isGif ? 'GIF' : undefined}
+                  clickToToggle
+                />
+              ) : (
+                <Image
+                  src={items[0].url}
+                  alt={items[0].alt ?? ''}
+                  width={1920}
+                  height={1080}
+                  className="max-h-[calc(100svh-48px)] max-w-[100vw] w-auto h-auto object-contain select-none"
+                  unoptimized
+                  priority
+                />
+              );
+            })()}
+
+            {/* sanfte Lesbarkeits-Overlays */}
+            <div className={`pointer-events-none absolute top-0 inset-x-0 h-24 bg-gradient-to-b from-black/70 to-transparent transition-opacity ${uiVisible ? 'opacity-100' : 'opacity-0'}`} />
+            <div className={`pointer-events-none absolute bottom-0 inset-x-0 h-28 bg-gradient-to-t from-black/70 to-transparent transition-opacity ${uiVisible ? 'opacity-100' : 'opacity-0'}`} />
+          </figure>
+
+          {/* Floating Actions unten */}
+          <div className={`fixed inset-x-0 bottom-0 z-30 px-3 pb-[env(safe-area-inset-bottom,12px)] transition-transform ${uiVisible ? 'translate-y-0' : 'translate-y-28'}`}>
+            <div className="mx-auto w-full max-w-screen-sm">
+              <div className="rounded-2xl border border-white/12 bg-black/70 backdrop-blur px-3 py-2">
+                <PostActionsBar postId={id} stats={snapStats} viewer={snapViewer} />
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        /* ------- MULTI VIEWER: wie gehabt mit Snap-Scroll ------- */
+        <div
+          ref={containerRef}
+          className="flex-1 overflow-y-auto snap-y snap-mandatory"
+          style={{ WebkitOverflowScrolling: 'touch', overscrollBehaviorY: 'contain' }}
+        >
+          <div className="h-12" aria-hidden /> {/* Abstand unter Header */}
+
+          {items.map((m, i) => {
+            const isGif = m.kind === 'gif';
+            const isVideoLike = m.kind === 'video' || isGif;
+
+            return (
+              <figure
+                key={m.url}
+                className="relative snap-start md:snap-center grid place-items-center"
+                style={{ minHeight: 'calc(100svh - 48px)', scrollSnapStop: 'always' }}
+                onClick={() => setUiVisible(v => !v)}
+              >
+                {isVideoLike ? (
+                  <VideoPlayer
+                    src={m.url}
+                    className="max-h-[calc(100svh-48px)] max-w-[100vw] w-auto h-auto"
+                    autoPlay
+                    muted
+                    loop
+                    showScrubber
+                    rightTag={isGif ? 'GIF' : undefined}
+                    clickToToggle
+                  />
+                ) : (
+                  <Image
+                    src={m.url}
+                    alt={m.alt ?? ''}
+                    width={1920}
+                    height={1080}
+                    className="max-h-[calc(100svh-48px)] max-w-[100vw] w-auto h-auto object-contain select-none"
+                    unoptimized
+                  />
+                )}
+
+              {/* Index-Pill */}
+              <div className={`absolute right-3 top-3 z-20 transition-opacity ${uiVisible ? 'opacity-95' : 'opacity-0 pointer-events-none'}`}>
+                <span className="rounded-full bg-black/65 border border-white/15 px-2 py-1 text-xs">
+                  {i + 1}/{items.length}
+                </span>
+              </div>
+
+              <div className={`pointer-events-none absolute top-0 inset-x-0 h-24 bg-gradient-to-b from-black/70 to-transparent transition-opacity ${uiVisible ? 'opacity-100' : 'opacity-0'}`} />
+              <div className={`pointer-events-none absolute bottom-0 inset-x-0 h-28 bg-gradient-to-t from-black/70 to-transparent transition-opacity ${uiVisible ? 'opacity-100' : 'opacity-0'}`} />
+            </figure>
+          );
+        })}
+
+          {/* Floating Actions unten */}
+          <div className={`fixed inset-x-0 bottom-0 z-30 px-3 pb-[env(safe-area-inset-bottom,12px)] transition-transform ${uiVisible ? 'translate-y-0' : 'translate-y-28'}`}>
+            <div className="mx-auto w-full max-w-screen-sm">
+              <div className="rounded-2xl border border-white/12 bg-black/70 backdrop-blur px-3 py-2">
+                <PostActionsBar postId={id} stats={snapStats} viewer={snapViewer} />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }

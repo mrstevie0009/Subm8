@@ -1118,7 +1118,7 @@ export default function ProfileHeader({
       {/* Follow-Stats unter Joined – größer & bold */}
       <div className="mt-2 flex gap-6 text-[clamp(14px,1.6vw,16px)]">
         <Link
-          href={`/${locale}/u/${profile.username}/following`}
+          href={`/${locale}/u/${profile.username}/followers?tab=following`}
           className="group inline-flex items-baseline hover:opacity-95"
           prefetch={false}
           aria-label={`${stats.following.toLocaleString(locale)} ${t('statsFollowing')}`}
@@ -1132,7 +1132,7 @@ export default function ProfileHeader({
         </Link>
 
         <Link
-          href={`/${locale}/u/${profile.username}/followers`}
+          href={`/${locale}/u/${profile.username}/followers?tab=followers`}
           className="group inline-flex items-baseline hover:opacity-95"
           prefetch={false}
           aria-label={`${displayFollowers.toLocaleString(locale)} ${t('statsFollowers')}`}
