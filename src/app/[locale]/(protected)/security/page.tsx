@@ -526,13 +526,38 @@ export default async function SecurityPage({ params }: { params: Awaitable<Param
               )}
 
               {!smsActive && !phoneReady && (
-                <p className="text-sm text-white/60">
-                  {t('twofa.smsAddPhoneHintStart')}{' '}
-                  <Link href={`/${locale}/settings`} className="underline decoration-white/30 hover:decoration-white">
-                    {tRoot('links.settings')}
-                  </Link>{' '}
-                  {t('twofa.smsAddPhoneHintEnd')}
-                </p>
+                <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-white/70">
+                  <span>{t('twofa.smsAddPhoneHintStart')}</span>
+
+                  <Link
+                    href={`/${locale}/profile`}
+                    aria-label={tRoot('links.settings')}
+                    title={tRoot('links.settings')}
+                    className="
+                      inline-flex items-center gap-1.5
+                      px-3 py-1.5 rounded-full
+                      border border-white/15 bg-white/10
+                      hover:bg-white/15 active:bg-white/20
+                      transition shadow-sm
+                      focus:outline-none focus:ring-2 focus:ring-[var(--purple)]/50
+                    "
+                  >
+                    {/* kleines Zahnrad-Icon */}
+                    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.8">
+                      <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" />
+                      <path d="M19.4 15a1.8 1.8 0 0 0 .36 2l.07.07a2 2 0 1 1-2.83 2.83l-.07-.07a1.8 1.8 0 0 0-2-.36 1.8 1.8 0 0 0-1 1.6V21a2 2 0 1 1-4 0v-.07a1.8 1.8 0 0 0-1-1.6 1.8 1.8 0 0 0-2 .36l-.07.07A2 2 0 1 1 3.5 17l.07-.07a1.8 1.8 0 0 0 .36-2 1.8 1.8 0 0 0-1.6-1H2.25a2 2 0 1 1 0-4h.07a1.8 1.8 0 0 0 1.6-1 1.8 1.8 0 0 0-.36-2L3.5 6.07A2 2 0 1 1 6.33 3.24l.07.07a1.8 1.8 0 0 0 2 .36h.01A1.8 1.8 0 0 0 9.4 2.1V2a2 2 0 1 1 4 0v.07a1.8 1.8 0 0 0 1 1.6 1.8 1.8 0 0 0 2-.36l.07-.07A2 2 0 1 1 20.76 6.33l-.07.07a1.8 1.8 0 0 0-.36 2 1.8 1.8 0 0 0 1.6 1h.07a2 2 0 1 1 0 4h-.07a1.8 1.8 0 0 0-1.6 1Z" />
+                    </svg>
+
+                    <span className="font-medium">{tRoot('links.settings')}</span>
+
+                    {/* Chevron für „klickbar“ */}
+                    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.8">
+                      <path d="m9 6 6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </Link>
+
+                  <span>{t('twofa.smsAddPhoneHintEnd')}</span>
+                </div>
               )}
 
               {smsActive && (

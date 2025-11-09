@@ -733,6 +733,68 @@ export default function ProfileHeader({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOwner, profile.username]);
 
+  function BioCard({
+    bio,
+    isOwner,
+  }: {
+    bio?: string | null;
+    isOwner: boolean;
+    editHref: string;
+  }) {
+    const tProf = useTranslations('profile.profile');
+    const [expanded, setExpanded] = React.useState(false);
+
+    const clean = (bio ?? '').trim();
+    const empty = clean.length === 0;
+
+    // Besucher*innen, keine Bio: dezente Box für konsistente Optik
+    if (empty && !isOwner) {
+      return (
+        <div className="mt-3 rounded-app border border-sub bg-card p-3">
+          <div className="text-sm text-white/60">
+            {tProf('bio.emptyOther', { default: 'Keine Bio angegeben.' })}
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="mt-3 rounded-app border border-sub bg-card p-4">
+        <div className="text-sm font-semibold text-white/90 mb-2">
+          {tProf('bio.title', { default: 'Bio' })}
+        </div>
+
+        {empty ? (
+          <div className="text-sm text-white/70">
+            {tProf('bio.emptySelf', { default: 'Du hast noch keine Bio.' })}
+          </div>
+        ) : (
+          <>
+            <p
+              className={`text-[15px] leading-relaxed text-white/90 whitespace-pre-wrap ${
+                expanded ? '' : 'line-clamp-5'
+              }`}
+            >
+              {clean}
+            </p>
+
+            {clean.length > 260 && (
+              <button
+                type="button"
+                className="mt-2 text-sm text-[var(--purple)] hover:underline"
+                onClick={() => setExpanded((v) => !v)}
+              >
+                {expanded
+                  ? tProf('bio.showLess', { default: 'Weniger anzeigen' })
+                  : tProf('bio.showMore', { default: 'Mehr anzeigen' })}
+              </button>
+            )}
+          </>
+        )}
+      </div>
+    );
+  }
+
   return (
     <section
       className="rounded-app border border-sub overflow-hidden shadow-app relative"
@@ -1066,7 +1128,7 @@ export default function ProfileHeader({
       <div ref={sentinelRef} aria-hidden className="h-1" />
 
       {/* Content */}
-      <div className="px-4 pb-0 pt-[calc(var(--avatar)*0.6+12px)]">
+      <div className="px-4 pb-0 pt-[calc(var(--avatar)*0.25)]">
         {/* Header-Zeile: Avatar liegt absolut am Banner, hier nur Spacer */}
         <div className="flex gap-3 pt-2 items-start">
           <div className="shrink-0" style={{ width: 'var(--avatar)' }} aria-hidden />
@@ -1074,11 +1136,11 @@ export default function ProfileHeader({
         </div>
 
       {/* Bio & Meta */}
-      {profile.bio && profile.bio.trim() && (
-        <p className="mt-3 text-[15px] leading-relaxed text-white/90 whitespace-pre-wrap">
-          {profile.bio}
-        </p>
-      )}
+      <BioCard
+        bio={profile.bio}
+        isOwner={isOwner}
+        editHref={`/${locale}/u/${profile.username}/edit`}
+      />
 
       <div className="mt-3 flex items-center text-[12px] leading-[1.35] text-white/65 flex-wrap gap-x-3 gap-y-1">
         {profile.location && (

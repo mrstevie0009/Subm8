@@ -47,7 +47,10 @@ function cn(...classes: Array<string | false | undefined>) {
 }
 
 // Relatives times using i18n keys from common.time
-function timeAgoIntl(date: Date, tTime: (key: string, values?: Record<string, unknown>) => string): string {
+function timeAgoIntl(
+  date: Date,
+  tTime: (key: string, values?: Record<string, string | number | Date>) => string
+): string {
   const s = Math.floor((Date.now() - date.getTime()) / 1000);
   if (s < 60) return tTime('now');
   const m = Math.floor(s / 60);
@@ -114,7 +117,7 @@ export default function NotificationsPage() {
         const j: { ok: boolean; items?: ApiNoti[] } = await res.json();
         if (!cancelled && j?.ok && Array.isArray(j.items)) {
           const mapped: Noti[] = j.items.map((n) => {
-            const rel = timeAgoIntl(new Date(n.time), (key) => tTime(key));
+            const rel = timeAgoIntl(new Date(n.time), tTime);
             const base: NotiBase = {
               id: n.id,
               time: rel,

@@ -1,3 +1,4 @@
+// src/components/FollowInlineButton.tsx
 'use client';
 
 import * as React from 'react';

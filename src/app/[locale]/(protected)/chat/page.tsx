@@ -1228,6 +1228,9 @@ export default function ChatListPage() {
       window.history.scrollRestoration = 'manual';
     }
   }, []);
+  const [nextCursor, setNextCursor] = React.useState<string | null>(null);
+  const [hasMore, setHasMore] = React.useState(true);
+  const [loadingMore, setLoadingMore] = React.useState(false);
   const t = useTranslations('chat.chat');
   const tVerify = useTranslations('verify');
   const locale = useLocale();
@@ -1314,7 +1317,7 @@ export default function ChatListPage() {
       setError(null);
       const ctrl = new AbortController();
       const timer = setTimeout(() => ctrl.abort(), 12000); // Safety-Timeout
-      const res = await fetch('/api/chat', { cache: 'no-store', signal: ctrl.signal });
+      const res = await fetch(`/api/chat?take=25`, { cache: 'no-store', signal: ctrl.signal });
       clearTimeout(timer);
 
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -1327,6 +1330,8 @@ export default function ChatListPage() {
         const fresh = normalizeList(json.items);
         setItems(fresh);
         writeCachedItems(fresh);
+        setNextCursor(json?.cursors?.next ?? null);
+        setHasMore(Boolean(json?.cursors?.next));
     } catch (e) {
       const msg = e instanceof Error ? e.message : t('loadingError');
       if (!cancelled && myReq === latestReqRef.current) setError(msg);
@@ -1344,17 +1349,25 @@ export default function ChatListPage() {
       // wenn gerade getippt/gefiltert → trotzdem leise aktualisieren
       const myReq = ++latestReqRef.current;
       try {
-        const res = await fetch('/api/chat', { cache: 'no-store' });
+        const res = await fetch(`/api/chat?take=25`, { cache: 'no-store' });
         const j = await res.json().catch(() => null);
-          if (!j?.ok || myReq !== latestReqRef.current) return;
-          const fresh = normalizeList(j.items);
+        if (!j?.ok || myReq !== latestReqRef.current) return;
+        const freshTop = normalizeList(j.items);
 
-          const before = items.map(i => `${i.id}:${i.lastMessageAt}:${i.unread}`).join('|');
-          const after  = fresh.map(i => `${i.id}:${i.lastMessageAt}:${i.unread}`).join('|');
-        if (before !== after) {
-          setItems(fresh);
-          writeCachedItems(fresh);
-        }
+        // Wir mergen NUR die Top-Seite in bestehende items (danach neu sortieren)
+        setItems((prev) => {
+          const map = new Map(prev.map(it => [it.id, it]));
+          for (const f of freshTop) {
+            map.set(f.id, f);
+          }
+          const merged = Array.from(map.values());
+          merged.sort((a, b) => +new Date(b.lastMessageAt) - +new Date(a.lastMessageAt));
+          return merged;
+        });
+
+        // Cursor oben aktualisieren (nur informativ)
+        setNextCursor(j?.cursors?.next ?? null);
+        setHasMore(Boolean(j?.cursors?.next));
       } catch {}
     };
 
@@ -1370,6 +1383,43 @@ export default function ChatListPage() {
       if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
     };
   }, [items]);
+
+  const loadMore = React.useCallback(async () => {
+    if (loadingMore || !hasMore || !nextCursor) return;
+    setLoadingMore(true);
+    try {
+      const res = await fetch(`/api/chat?take=25&after=${encodeURIComponent(nextCursor)}`, { cache: 'no-store' });
+      const j = await res.json().catch(() => null);
+      if (!j?.ok) return;
+      const more = normalizeList(j.items);
+
+      setItems((prev) => {
+        const ids = new Set(prev.map(i => i.id));
+        const appended = more.filter(i => !ids.has(i.id));
+        const next = [...prev, ...appended];
+        next.sort((a, b) => +new Date(b.lastMessageAt) - +new Date(a.lastMessageAt));
+        return next;
+      });
+
+      setNextCursor(j?.cursors?.next ?? null);
+      setHasMore(Boolean(j?.cursors?.next));
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [loadingMore, hasMore, nextCursor]);
+
+  // Window-Scroll am Seitenende
+  React.useEffect(() => {
+    const onScroll = () => {
+      const scrollPos = window.scrollY + window.innerHeight;
+      const docH = document.documentElement.scrollHeight || document.body.scrollHeight;
+      if (docH - scrollPos < 240) {
+        void loadMore();
+      }
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, [loadMore]);
 
   React.useEffect(() => {
     if (items.length === 0) return;
@@ -1547,19 +1597,42 @@ export default function ChatListPage() {
           </div>
         </div>
       ) : (
-        <div className="space-y-2 mt-2">
-          {filtered.map((c) => (
-            <ChatRow
-              key={c.id}
-              c={c}
-              locale={locale}
-              isPinned={pinned.has(c.id)}
-              onPinnedChange={handlePinnedChange}
-              onDeleted={handleDeleted}
-              onMutedChange={handleMutedChange}
-            />
-          ))}
-        </div>
+        <>
+          <div className="space-y-2 mt-2">
+            {filtered.map((c) => (
+              <ChatRow
+                key={c.id}
+                c={c}
+                locale={locale}
+                isPinned={pinned.has(c.id)}
+                onPinnedChange={handlePinnedChange}
+                onDeleted={handleDeleted}
+                onMutedChange={handleMutedChange}
+              />
+            ))}
+          </div>
+
+          {/* Bottom Loader / End Marker */}
+          <div className="py-3 flex items-center justify-center">
+            {loadingMore ? (
+              <span className="text-sm text-white/70">
+                {t('list.loadingMore', { default: 'Ältere Chats werden geladen…' })}
+              </span>
+            ) : hasMore ? (
+              <button
+                type="button"
+                onClick={() => void loadMore()}
+                className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-sm"
+              >
+                {t('list.loadMore', { default: 'Mehr laden' })}
+              </button>
+            ) : (
+              <span className="text-sm text-white/50">
+                {t('list.endReached', { default: 'Keine weiteren Chats.' })}
+              </span>
+            )}
+          </div>
+        </>
       )}
       <NewChatDialog
         open={newChatOpen}

@@ -3,7 +3,21 @@ import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/currentUser';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import FollowersUnifiedClient, { type UserLite } from '@/components/FollowersUnifiedClient';
+import FollowersUnifiedClient from '@/components/FollowersUnifiedClient';
+
+type UserPick = {
+  id: string;
+  handle: string;
+  displayName: string;
+  avatarUrl: string | null;
+  role: 'DOMME' | 'SUBMISSIVE' | string;
+  premiumUntil: Date | string | null;
+  isFirstAdopter: boolean | null;
+};
+
+// Rückgabetypen der vier Abfragen (jede liefert genau eine der beiden Formen)
+type FollowRowFollower = { id: string; follower: UserPick };
+type FollowRowFollowee = { id: string; followee: UserPick };
 
 type Params = { locale: string; handle: string };
 type Tab = 'followers' | 'following' | 'vFollowing' | 'vFollowers';
@@ -19,7 +33,6 @@ export default async function FollowersUnifiedPage({
   const initialTab = (searchParams?.tab as Tab) || 'followers';
 
   const me = await getCurrentUser().catch(() => null);
-
   const user = await prisma.user.findUnique({
     where: { handle: handle.toLowerCase() },
     select: {
@@ -29,57 +42,95 @@ export default async function FollowersUnifiedPage({
   });
   if (!user) notFound();
 
-  const [followersRows, followingRows] = await Promise.all([
-    prisma.follow.findMany({
-      where: { followeeId: user.id },
-      select: {
-        follower: {
-          select: {
-            id: true, handle: true, displayName: true, avatarUrl: true, role: true,
-            premiumUntil: true, isFirstAdopter: true,
-          },
-        },
-        createdAt: true,
-      },
-      orderBy: { createdAt: 'desc' },
-    }),
-    prisma.follow.findMany({
-      where: { followerId: user.id },
-      select: {
-        followee: {
-          select: {
-            id: true, handle: true, displayName: true, avatarUrl: true, role: true,
-            premiumUntil: true, isFirstAdopter: true,
-          },
-        },
-        createdAt: true,
-      },
-      orderBy: { createdAt: 'desc' },
-    }),
-  ]);
-
-  const followers = followersRows.map(r => r.follower) satisfies UserLite[];
-  const following = followingRows.map(r => r.followee) satisfies UserLite[];
-
-  const isVerified = (u: Pick<UserLite, 'premiumUntil' | 'isFirstAdopter'>) => {
-    const until = u.premiumUntil ? new Date(u.premiumUntil) : null;
-    return (until && until.getTime() > Date.now()) || !!u.isFirstAdopter;
+  const now = new Date();
+  const verifiedWhere = {
+    OR: [{ premiumUntil: { gt: now } }, { isFirstAdopter: true }],
   };
 
-  // Neu: getrennte Verified-Listen
-  const verifiedFollowing = following.filter(isVerified);
-  const verifiedFollowers = followers.filter(isVerified);
+  // Counts für Tabs (leichtgewichtige COUNTs mit Where)
+  const [vFollowersCount, vFollowingCount] = await Promise.all([
+    prisma.follow.count({ where: { followeeId: user.id, follower: verifiedWhere }}),
+    prisma.follow.count({ where: { followerId: user.id, followee: verifiedWhere }}),
+  ]);
 
-  // Für “folge ich schon?” Lookup
-  const allIds = Array.from(new Set([...followers, ...following].map(u => u.id)));
-  let viewerFollows = new Set<string>();
-  if (me && allIds.length > 0) {
-    const mine = await prisma.follow.findMany({
-      where: { followerId: me.id, followeeId: { in: allIds } },
-      select: { followeeId: true },
-    });
-    viewerFollows = new Set(mine.map(m => m.followeeId));
-  }
+  // Erste Seite der initialen Tab-Liste vom API-Query "nachbauen", damit SSR die Seite direkt befüllt ist
+  const take = 30;
+  const commonOrder = [{ createdAt: 'desc' as const }, { id: 'desc' as const }];
+
+  const initialRows =
+    initialTab === 'followers'
+      ? await prisma.follow.findMany({
+          where: { followeeId: user.id },
+          select: {
+            id: true,
+            follower: {
+              select: {
+                id: true, handle: true, displayName: true, avatarUrl: true, role: true,
+                premiumUntil: true, isFirstAdopter: true,
+              },
+            },
+          },
+          orderBy: commonOrder,
+          take,
+        })
+      : initialTab === 'following'
+      ? await prisma.follow.findMany({
+          where: { followerId: user.id },
+          select: {
+            id: true,
+            followee: {
+              select: {
+                id: true, handle: true, displayName: true, avatarUrl: true, role: true,
+                premiumUntil: true, isFirstAdopter: true,
+              },
+            },
+          },
+          orderBy: commonOrder,
+          take,
+        })
+      : initialTab === 'vFollowers'
+      ? await prisma.follow.findMany({
+          where: { followeeId: user.id, follower: verifiedWhere },
+          select: {
+            id: true,
+            follower: {
+              select: {
+                id: true, handle: true, displayName: true, avatarUrl: true, role: true,
+                premiumUntil: true, isFirstAdopter: true,
+              },
+            },
+          },
+          orderBy: commonOrder,
+          take,
+        })
+      : await prisma.follow.findMany({
+          where: { followerId: user.id, followee: verifiedWhere },
+          select: {
+            id: true,
+            followee: {
+              select: {
+                id: true, handle: true, displayName: true, avatarUrl: true, role: true,
+                premiumUntil: true, isFirstAdopter: true,
+              },
+            },
+          },
+          orderBy: commonOrder,
+          take,
+        });
+
+  const initialUsers: UserPick[] = initialRows.map((r) =>
+  (initialTab === 'followers' || initialTab === 'vFollowers'
+    ? (r as FollowRowFollower).follower
+    : (r as FollowRowFollowee).followee)
+);
+  const initialIds = initialUsers.map((u) => u.id);
+  const myFollows = me && initialIds.length
+    ? await prisma.follow.findMany({
+        where: { followerId: me.id, followeeId: { in: initialIds } },
+        select: { followeeId: true },
+      })
+    : [];
+  const initialFollowingSet = new Set(myFollows.map(m => m.followeeId));
 
   return (
     <section className="max-w-2xl mx-auto">
@@ -102,19 +153,26 @@ export default async function FollowersUnifiedPage({
 
         <FollowersUnifiedClient
           locale={locale}
+          handle={user.handle}
           meId={me?.id ?? null}
           counts={{
             followers: user._count.followers,
             following: user._count.following,
-            vFollowing: verifiedFollowing.length,
-            vFollowers: verifiedFollowers.length,
+            vFollowers: vFollowersCount,
+            vFollowing: vFollowingCount,
           }}
-          followers={followers}
-          following={following}
-          verifiedFollowing={verifiedFollowing}
-          verifiedFollowers={verifiedFollowers}
-          viewerFollows={Array.from(viewerFollows)}
-          initialTab={initialTab} 
+          initialTab={initialTab}
+          initialItems={initialUsers.map(u => ({
+            id: u.id,
+            handle: u.handle,
+            displayName: u.displayName,
+            avatarUrl: u.avatarUrl,
+            role: u.role,
+            premiumUntil: u.premiumUntil,
+            isFirstAdopter: u.isFirstAdopter,
+            initialFollowing: initialFollowingSet.has(u.id),
+          }))}
+          initialNextCursor={initialRows.length === take ? initialRows[initialRows.length - 1].id : null}
         />
       </div>
     </section>

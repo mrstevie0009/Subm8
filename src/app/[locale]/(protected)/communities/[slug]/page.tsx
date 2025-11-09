@@ -161,7 +161,7 @@ export default async function CommunityPage({ params }: { params: Promise<Params
         },
         _count: { select: { Like: true, Comment: true, reposts: true } },
       },
-      take: 30,
+      take: 20,
     }),
     me
       ? prisma.like.findMany({ where: { userId: me.id }, select: { postId: true } })

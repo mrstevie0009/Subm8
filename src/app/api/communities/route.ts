@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getAuth } from '@/lib/auth';
 import { randomUUID } from 'node:crypto';
 import { guardAndSave, envMaxUploadBytes } from '@/lib/uploadGuard';
-import { CommunityJoinPolicy } from '@prisma/client';
+import { CommunityJoinPolicy, Prisma } from '@prisma/client';
 
 export const runtime = 'nodejs';
 
@@ -24,17 +24,6 @@ function prismaToApiPolicy(p: CommunityJoinPolicy): JoinPolicy {
   }
 }
 
-function slugify(input: string) {
-  const base = input
-    .trim().toLowerCase()
-    .replace(/^@/, '')
-    .replace(/[^a-z0-9\-_\s]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^[-_]+|[-_]+$/g, '');
-  return base || `c-${Math.random().toString(36).slice(2, 8)}`;
-}
-
 type CommunityOut = {
   id: string;
   slug: string;
@@ -48,21 +37,61 @@ type CommunityOut = {
   isOwner?: boolean;
 };
 
+type Tab = 'discover' | 'yours';
+
+function encodeCursor(d: Date, id: string) {
+  return `${d.getTime()}_${id}`;
+}
+function decodeCursor(token: string | null | undefined): { createdAt: Date; id: string } | null {
+  if (!token) return null;
+  const [msStr, id] = token.split('_');
+  const ms = Number(msStr);
+  if (!id || !Number.isFinite(ms)) return null;
+  return { createdAt: new Date(ms), id };
+}
+
 export async function GET(req: Request) {
   const url = new URL(req.url);
-  const mine = url.searchParams.get('mine') === '1';
+  const tabParam = (url.searchParams.get('tab') || '').toLowerCase();
+  const tab: Tab = tabParam === 'yours' ? 'yours' : 'discover';
   const q = (url.searchParams.get('q') || '').trim();
-  const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') || '24', 10) || 24, 1), 100);
+  const takeRaw = parseInt(url.searchParams.get('take') || '24', 10);
+  const take = Math.min(Math.max(isNaN(takeRaw) ? 24 : takeRaw, 1), 100);
+  const cursorToken = url.searchParams.get('cursor');
 
   const session = await getAuth().catch(() => null);
   const meId = (session?.user as { id?: string } | undefined)?.id || null;
 
-  if (mine) {
-    if (!meId) return NextResponse.json({ ok: true, items: [] });
+  // stabiler Sort für Keyset-Pagination
+  const orderBy: Prisma.CommunityOrderByWithRelationInput[] = [
+    { createdAt: 'desc' },
+    { id: 'desc' },
+  ];
+
+  if (tab === 'yours') {
+    if (!meId) return NextResponse.json({ ok: true, items: [], nextCursor: null });
+
+    const decoded = decodeCursor(cursorToken);
 
     const rows = await prisma.community.findMany({
       where: { CommunityMember: { some: { userId: meId } } },
-      orderBy: { createdAt: 'desc' },
+      ...(decoded
+        ? {
+            // keyset pagination auf (createdAt DESC, id DESC)
+            where: {
+              AND: [
+                { CommunityMember: { some: { userId: meId } } },
+                {
+                  OR: [
+                    { createdAt: { lt: decoded.createdAt } },
+                    { AND: [{ createdAt: decoded.createdAt }, { id: { lt: decoded.id } }] },
+                  ],
+                },
+              ],
+            },
+          }
+        : {}),
+      orderBy,
       select: {
         id: true,
         slug: true,
@@ -71,9 +100,10 @@ export async function GET(req: Request) {
         createdById: true,
         joinPolicy: true,
         bannerUrl: true,
+        createdAt: true,
         _count: { select: { CommunityMember: true } },
       },
-      take: limit,
+      take,
     });
 
     const items: CommunityOut[] = rows.map((c) => ({
@@ -87,19 +117,42 @@ export async function GET(req: Request) {
       bannerUrl: c.bannerUrl,
       isOwner: meId === c.createdById,
     }));
-    return NextResponse.json({ ok: true, items });
+
+    const last = rows[rows.length - 1] || null;
+    const nextCursor = last ? encodeCursor(last.createdAt, last.id) : null;
+
+    return NextResponse.json({ ok: true, items, nextCursor });
   }
 
+  // DISCOVER (optional mit q-Filter), gleicher Sort + Cursor
+  const decoded = decodeCursor(cursorToken);
+
+  const baseWhere: Prisma.CommunityWhereInput | undefined = q
+    ? {
+        OR: [
+          { name: { contains: q, mode: 'insensitive' } },
+          { slug: { contains: q, mode: 'insensitive' } },
+        ],
+      }
+    : undefined;
+
+  const whereWithCursor: Prisma.CommunityWhereInput | undefined = decoded
+    ? {
+        AND: [
+          ...(baseWhere ? [baseWhere] as Prisma.CommunityWhereInput[] : []),
+          {
+            OR: [
+              { createdAt: { lt: decoded.createdAt } },
+              { AND: [{ createdAt: decoded.createdAt }, { id: { lt: decoded.id } }] },
+            ],
+          },
+        ],
+      }
+    : baseWhere;
+
   const rows = await prisma.community.findMany({
-    where: q
-      ? {
-          OR: [
-            { name: { contains: q, mode: 'insensitive' } },
-            { slug: { contains: q, mode: 'insensitive' } },
-          ],
-        }
-      : undefined,
-    orderBy: { CommunityMember: { _count: 'desc' } },
+    where: whereWithCursor,
+    orderBy,
     select: {
       id: true,
       slug: true,
@@ -108,9 +161,10 @@ export async function GET(req: Request) {
       createdById: true,
       joinPolicy: true,
       bannerUrl: true,
+      createdAt: true,
       _count: { select: { CommunityMember: true } },
     },
-    take: limit,
+    take,
   });
 
   let joinedSet: Set<string> | null = null;
@@ -134,7 +188,10 @@ export async function GET(req: Request) {
     isOwner: meId ? meId === c.createdById : false,
   }));
 
-  return NextResponse.json({ ok: true, items });
+  const last = rows[rows.length - 1] || null;
+  const nextCursor = last ? encodeCursor(last.createdAt, last.id) : null;
+
+  return NextResponse.json({ ok: true, items, nextCursor });
 }
 
 export async function POST(req: Request) {
@@ -193,6 +250,17 @@ export async function POST(req: Request) {
 
     if (name.length < 3) {
       return NextResponse.json({ ok: false, error: 'NAME_TOO_SHORT' }, { status: 400 });
+    }
+
+    function slugify(input: string) {
+      const base = input
+        .trim().toLowerCase()
+        .replace(/^@/, '')
+        .replace(/[^a-z0-9\-_\s]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^[-_]+|[-_]+$/g, '');
+      return base || `c-${Math.random().toString(36).slice(2, 8)}`;
     }
 
     let slug = slugify(handleRaw || name);

@@ -117,6 +117,22 @@ function stableMergeMessages(prev: UiMessage[], next: UiMessage[]) {
   });
 }
 
+function appendUnique(prev: UiMessage[], incoming: UiMessage[]) {
+  const have = new Set(prev.map(x => x.id));
+  const onlyNew = incoming.filter(x => !have.has(x.id));
+  if (onlyNew.length === 0) return prev;
+  const next = [...prev, ...onlyNew];
+  return stableMergeMessages(prev, next);
+}
+
+function prependUnique(prev: UiMessage[], incoming: UiMessage[]) {
+  const have = new Set(prev.map(x => x.id));
+  const onlyNew = incoming.filter(x => !have.has(x.id));
+  if (onlyNew.length === 0) return prev;
+  const next = [...onlyNew, ...prev];
+  return stableMergeMessages(prev, next);
+}
+
 const AVATAR_PH = '/images/avatar-placeholder.png';
 const safeAvatar = (s?: string | null) => (s && s.trim().length ? s : AVATAR_PH);
 
@@ -1444,6 +1460,14 @@ export default function ChatThreadPage() {
   const [loading, setLoading] = React.useState(true);
 
   const [otherTyping, setOtherTyping] = React.useState(false);
+
+
+  const [olderCursor, setOlderCursor] = React.useState<string | null>(null);
+  const [loadingOlder, setLoadingOlder] = React.useState(false);
+  const [hasMoreOlder, setHasMoreOlder] = React.useState(true);
+
+  const [newestCursor, setNewestCursor] = React.useState<string | null>(null);
+
   const [groupMemberCount, setGroupMemberCount] = React.useState<number | undefined>(undefined);
 
   const [tipOpen, setTipOpen] = React.useState(false);
@@ -1479,6 +1503,36 @@ export default function ChatThreadPage() {
         window.dispatchEvent(ev);
     }
     }, [id, kind, other]);
+
+    const [stickBottom, setStickBottom] = React.useState(true);
+    const scrollToBottom = React.useCallback((behavior: ScrollBehavior = 'auto') => {
+      const el = scrollerRef.current;
+      if (!el) return;
+      el.scrollTo({ top: el.scrollHeight, behavior });
+    }, []);
+
+    const loadNewerSince = React.useCallback(async () => {
+    if (!baseUrl || !newestCursor) return;
+    try {
+      const r = await fetch(`${baseUrl}?since=${encodeURIComponent(newestCursor)}&take=50`, { cache: 'no-store' });
+      const j: ThreadResponse = await r.json();
+      if (!j.ok) throw new Error(j.error || 'poll failed');
+
+      const mapped: UiMessage[] = (j as ThreadOk).messages.map((m) => ({
+        id: m.id, convoId: String(id), senderId: m.authorId,
+        text: m.text ?? (m.mediaUrl ? '' : ''), createdAt: m.at, seen: m.read,
+        mediaUrl: m.mediaUrl ?? undefined, mediaType: m.mediaType ?? undefined,
+      }));
+      if (!mapped.length) return;
+
+      setMessages(prev => appendUnique(prev, mapped));
+
+      const last = mapped[mapped.length - 1];
+      setNewestCursor(`${new Date(last.createdAt).getTime()}_${last.id}`);
+
+      if (stickBottom) scrollToBottom('smooth');
+    } catch {}
+  }, [baseUrl, id, newestCursor, stickBottom, scrollToBottom]);
 
   const didMarkReadRef = React.useRef(false);
   React.useEffect(() => {
@@ -1652,8 +1706,8 @@ export default function ChatThreadPage() {
     if (!baseUrl) return;
     const myReq = ++latestReqRef.current;
     try {
-      const res = await fetch(`${baseUrl}?fast=1&take=30`, { cache: 'no-store' });
-      const json: ThreadResponse & { pageSize?: number; otherTyping?: boolean } = await res.json();
+      const res = await fetch(`${baseUrl}?latest=1&take=30`, { cache: 'no-store' });
+      const json: ThreadResponse & { cursors?: { older: string | null; newest: string | null } } = await res.json();
       if (myReq !== latestReqRef.current) return;
       if (!json.ok) throw new Error(json.error || 'Failed to load');
 
@@ -1750,6 +1804,15 @@ export default function ChatThreadPage() {
         mediaUrl: m.mediaUrl ?? undefined, mediaType: m.mediaType ?? undefined,
       }));
       setMessages((prev) => stableMergeMessages(prev, mapped));
+
+      setOlderCursor(json.cursors?.older ?? null);
+      setNewestCursor(
+        json.cursors?.newest ??
+        (mapped.length
+          ? `${new Date(mapped[mapped.length - 1].createdAt).getTime()}_${mapped[mapped.length - 1].id}`
+          : null)
+      );
+      setHasMoreOlder(Boolean(json.cursors?.older));
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load');
     } finally {
@@ -1792,25 +1855,19 @@ export default function ChatThreadPage() {
     if (!baseUrl) return; 
     let cancelled = false;
     (async () => {
-      if (!cancelled) await loadFastFirstPaint();
+      if (!cancelled) await loadFastFirstPaint(); 
     })();
-    const tick = () => { if (!document.hidden) void load(); };
+    const tick = () => { if (!document.hidden) void loadNewerSince(); };
     const tmr = setInterval(tick, 4000);
     return () => {
       cancelled = true;
       clearInterval(tmr);
     };
-  }, [baseUrl, load, loadFastFirstPaint]); 
+  }, [baseUrl, loadFastFirstPaint, loadNewerSince]);
 
-  const [stickBottom, setStickBottom] = React.useState(true);
   const scrollerRef = React.useRef<HTMLDivElement | null>(null);
-  
   const listRef = React.useRef<HTMLDivElement | null>(null);
-  const scrollToBottom = React.useCallback((behavior: ScrollBehavior = 'auto') => {
-    const el = scrollerRef.current;
-    if (!el) return;
-    el.scrollTo({ top: el.scrollHeight, behavior });
-  }, []);
+
 
   // Beim ersten Render nach dem Laden ganz nach unten
   React.useLayoutEffect(() => {
@@ -1917,11 +1974,49 @@ export default function ChatThreadPage() {
     return dist < 80; // px
   }, []);
 
-  
+  const loadOlder = React.useCallback(async () => {
+    if (!baseUrl || loadingOlder || !hasMoreOlder || !olderCursor) return;
+    setLoadingOlder(true);
+    const el = scrollerRef.current;
+    const prevH = el ? el.scrollHeight : 0;
+
+    try {
+      const r = await fetch(`${baseUrl}?before=${encodeURIComponent(olderCursor)}&take=30`, { cache: 'no-store' });
+      const j: ThreadResponse & { cursors?: { older: string | null } } = await r.json();
+      if (!j.ok) throw new Error(j.error || 'load older failed');
+
+      const mapped: UiMessage[] = (j as ThreadOk).messages.map((m) => ({
+        id: m.id, convoId: String(id), senderId: m.authorId,
+        text: m.text ?? (m.mediaUrl ? '' : ''), createdAt: m.at, seen: m.read,
+        mediaUrl: m.mediaUrl ?? undefined, mediaType: m.mediaType ?? undefined,
+      }));
+
+      // Prepend und stabil mergen
+      setMessages(prev => prependUnique(prev, mapped));
+
+      setOlderCursor(j.cursors?.older ?? null);
+      setHasMoreOlder(Boolean(j.cursors?.older));
+
+      // Scroll-Offset kompensieren
+      requestAnimationFrame(() => {
+        const nowH = el ? el.scrollHeight : 0;
+        if (el) el.scrollTop += (nowH - prevH);
+      });
+    } finally {
+      setLoadingOlder(false);
+    }
+  }, [baseUrl, id, loadingOlder, hasMoreOlder, olderCursor]);
 
   const onScrollList = React.useCallback(() => {
-    setStickBottom(isNearBottom());
-  }, [isNearBottom]);
+    const nearBottom = isNearBottom();
+    setStickBottom(nearBottom);
+
+    const el = scrollerRef.current;
+    if (!el) return;
+    if (el.scrollTop <= 80) {
+      void loadOlder();
+    }
+  }, [isNearBottom, loadOlder]);
 
   // welche Reaktion habe ICH aktuell auf msgId?
   const getMyReactionFor = React.useCallback((msgId: string): string | null => {
@@ -2669,6 +2764,11 @@ export default function ChatThreadPage() {
                 </div>
                 ) : (
                 <div ref={listRef} className="space-y-2 pb-6">
+                  {loadingOlder && (
+                    <div className="flex justify-center py-2 text-[12px] text-white/70">
+                      {t('loadingOlder', { default: 'Older messages are being loaded…' })}
+                    </div>
+                  )}
                   {messages.map((m) => (
                     <MessageItem key={m.id} m={m} rxKey={reactionDigestByMsg.get(m.id) ?? ''} />
                   ))}

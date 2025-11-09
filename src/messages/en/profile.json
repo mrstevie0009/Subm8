@@ -71,6 +71,14 @@
     }
   },
   "profile": {
+    "bio": {
+        "title": "Bio",
+        "emptyOther": "No bio provided.",
+        "emptySelf": "You haven't added a bio yet.",
+        "edit": "Edit",
+        "showMore": "Show more",
+        "showLess": "Show less"
+      },
     "autodrain": "Autodrain",
     "blockUser": "Block user",
     "blockedBy": "This user has blocked you",

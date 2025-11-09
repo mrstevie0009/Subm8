@@ -17,6 +17,11 @@
       "subtitle": "Commencez une nouvelle conversation depuis un profil.",
       "title": "Aucune conversation"
     },
+    "list": {
+      "loadingMore": "Chargement des conversations plus anciennes…",
+      "loadMore": "Charger plus",
+      "endReached": "Plus de conversations."
+    },
     "header": {
       "subtitle": "{total} conversations • {unread} non lues",
       "title": "Messages"
@@ -194,6 +199,7 @@
     }
   },
   "chatThread": {
+    "loadingOlder": "Chargement des anciens messages…",
     "actions": {
       "accept": "Accepter",
       "decline": "Refuser",

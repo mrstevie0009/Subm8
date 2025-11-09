@@ -1,4 +1,3 @@
-//src/app/[locale]/(protected)/communities/page.tsx
 'use client';
 
 import * as React from 'react';
@@ -9,23 +8,11 @@ import CreateCommunityButton from '@/components/CreateCommunityButton';
 import { toast } from '@/lib/toast';
 import { createPortal } from 'react-dom';
 
-const COMMS_CACHE_DISCOVER = 'communities:discover:v1';
-const COMMS_CACHE_YOURS    = 'communities:yours:v1';
+const COMMS_CACHE_DISCOVER = 'communities:discover:v2';
+const COMMS_CACHE_YOURS    = 'communities:yours:v2';
 
-function readCachedCommunities(key: string) {
-  try {
-    const raw = localStorage.getItem(key);
-    if (!raw) return null;
-    const { ts, items } = JSON.parse(raw) as { ts: number; items: CommunityItem[] };
-    if (Date.now() - ts > 3 * 60 * 1000) return null; // bis 3 Minuten frisch
-    return items as CommunityItem[];
-  } catch { return null; }
-}
-function writeCachedCommunities(key: string, items: CommunityItem[]) {
-  try {
-    localStorage.setItem(key, JSON.stringify({ ts: Date.now(), items }));
-  } catch {}
-}
+const PAGE_SIZE_DISCOVER = 24;
+const PAGE_SIZE_YOURS    = 24;
 
 const BANNER_PH = '/images/banner-placeholder.png';
 
@@ -44,6 +31,27 @@ type CommunityItem = {
   /** vom Server geliefert */
   isOwner?: boolean;
 };
+
+type PagedResponse = {
+  ok: true;
+  items: CommunityItem[];
+  nextCursor: string | null;
+};
+
+function readCachedCommunities(key: string) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const { ts, page1 } = JSON.parse(raw) as { ts: number; page1: PagedResponse };
+    if (Date.now() - ts > 3 * 60 * 1000) return null; // bis 3 Minuten frisch
+    return page1 as PagedResponse;
+  } catch { return null; }
+}
+function writeCachedCommunities(key: string, page1: PagedResponse) {
+  try {
+    localStorage.setItem(key, JSON.stringify({ ts: Date.now(), page1 }));
+  } catch {}
+}
 
 // Policy-Badge Klassen (nur Styling)
 function policyClasses(p: JoinPolicy) {
@@ -93,6 +101,19 @@ function CommunityCardSkeleton() {
   );
 }
 
+const mergeById = (prev: CommunityItem[], next: CommunityItem[]) => {
+  const seen = new Set(prev.map(i => i.id));
+  const out = [...prev];
+  for (const it of next) {
+    if (!seen.has(it.id)) {
+      out.push(it);
+      seen.add(it.id);
+    }
+  }
+  return out;
+};
+
+
 export default function CommunitiesPage() {
   const locale = useLocale();
   const t = useTranslations('communities.communitiesPage');
@@ -112,13 +133,39 @@ export default function CommunitiesPage() {
   );
 
   const [tab, setTab] = React.useState<'discover' | 'yours'>('discover');
+
+  // getrennte Paginated-States pro Tab
   const [discover, setDiscover] = React.useState<CommunityItem[]>([]);
+  const [discoverCursor, setDiscoverCursor] = React.useState<string | null>(null);
+  const [discoverLoading, setDiscoverLoading] = React.useState<boolean>(false);
+  const [discoverInitialLoaded, setDiscoverInitialLoaded] = React.useState<boolean>(false);
+
   const [mine, setMine] = React.useState<CommunityItem[]>([]);
-  const [loading, setLoading] = React.useState(false);
+  const [mineCursor, setMineCursor] = React.useState<string | null>(null);
+  const [mineLoading, setMineLoading] = React.useState<boolean>(false);
+  const [mineInitialLoaded, setMineInitialLoaded] = React.useState<boolean>(false);
 
   const [viewerRole, setViewerRole] = React.useState<Role>(null);
-  const latestReqRef = React.useRef(0);
-  const pollRef = React.useRef<number | null>(null);
+
+  const refreshFirstPage = React.useCallback(async (which: 'discover' | 'yours') => {
+    const take = which === 'discover' ? PAGE_SIZE_DISCOVER : PAGE_SIZE_YOURS;
+    const res = await fetch(`/api/communities?tab=${which}&take=${take}`, { cache: 'no-store' });
+    const j = await res.json();
+    if (j?.ok) {
+      if (which === 'discover') {
+        setDiscover(j.items);
+        setDiscoverCursor(j.nextCursor);
+        setDiscoverInitialLoaded(true);
+      } else {
+        setMine(j.items);
+        setMineCursor(j.nextCursor);
+        setMineInitialLoaded(true);
+      }
+    }
+  }, []);
+
+
+  // viewer role
   React.useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -127,107 +174,101 @@ export default function CommunitiesPage() {
         if (!r.ok) return;
         const j = await r.json().catch(() => null);
         if (!cancelled && j && 'role' in j) {
-          const v = j.role as Role;
-          setViewerRole(v ?? null);
-        }
-      } catch {
-        // ignore
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  React.useEffect(() => {
-    let cancelled = false;
-    const myReq = ++latestReqRef.current;
-
-    (async () => {
-      setLoading(true);
-
-      // 1) Cache sofort anzeigen
-      const cacheKey = tab === 'discover' ? COMMS_CACHE_DISCOVER : COMMS_CACHE_YOURS;
-      const cached = readCachedCommunities(cacheKey);
-      if (!cancelled && cached) {
-        if (tab === 'discover') setDiscover(cached);
-        else setMine(cached);
-        setLoading(false); // UI sofort sichtbar
-      }
-
-      // 2) Netzwerk – frische Daten
-      try {
-        const ctrl = new AbortController();
-        const tmo = setTimeout(() => ctrl.abort(), 12000);
-
-        const url =
-          tab === 'discover'
-            ? '/api/communities?limit=24'
-            : '/api/communities?mine=1&limit=48';
-
-        const res = await fetch(url, { cache: 'no-store', signal: ctrl.signal });
-        clearTimeout(tmo);
-
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const j = (await res.json()) as { ok: boolean; items: CommunityItem[] };
-        if (!j?.ok) throw new Error('Bad payload');
-
-        if (cancelled || myReq !== latestReqRef.current) return;
-
-        if (tab === 'discover') setDiscover(j.items);
-        else setMine(j.items);
-
-        writeCachedCommunities(cacheKey, j.items);
-      } catch {
-        /* leise: wir haben evtl. Cache gezeigt */
-      } finally {
-        if (!cancelled && myReq === latestReqRef.current) setLoading(false);
-      }
-    })();
-
-    return () => { cancelled = true; };
-  }, [tab]);
-
-  React.useEffect(() => {
-    const tick = async () => {
-      const myReq = ++latestReqRef.current;
-      try {
-        const url =
-          tab === 'discover'
-            ? '/api/communities?limit=24'
-            : '/api/communities?mine=1&limit=48';
-
-        const res = await fetch(url, { cache: 'no-store' });
-        const j = await res.json().catch(() => null);
-        if (!j?.ok || myReq !== latestReqRef.current) return;
-
-        const fresh = j.items as CommunityItem[];
-        const before = (tab === 'discover' ? discover : mine)
-          .map(i => `${i.id}:${i.members}:${i.joined}`)
-          .join('|');
-        const after = fresh.map(i => `${i.id}:${i.members}:${i.joined}`).join('|');
-
-        if (before !== after) {
-          if (tab === 'discover') setDiscover(fresh);
-          else setMine(fresh);
-          writeCachedCommunities(tab === 'discover' ? COMMS_CACHE_DISCOVER : COMMS_CACHE_YOURS, fresh);
+          const v = (j.role ?? null) as Role;
+          setViewerRole(v);
         }
       } catch {}
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  // erste Seite laden (mit Cache) für beide Tabs lazy-on-first-open
+  React.useEffect(() => {
+    const key = tab === 'discover' ? COMMS_CACHE_DISCOVER : COMMS_CACHE_YOURS;
+    const load = async () => {
+      if (tab === 'discover' && discoverInitialLoaded) return;
+      if (tab === 'yours' && mineInitialLoaded) return;
+
+      const cached = readCachedCommunities(key);
+    if (cached?.ok && cached.items.length > 0) {
+      if (tab === 'discover') {
+        setDiscover(cached.items);
+        setDiscoverCursor(cached.nextCursor);
+        setDiscoverInitialLoaded(true);
+      } else {
+        setMine(cached.items);
+        setMineCursor(cached.nextCursor);
+        setMineInitialLoaded(true);
+      }
+      void refreshFirstPage(tab);
+      return; 
+    }
+
+      await fetchMore(); // lädt erste Seite
     };
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab]);
 
-    const onVis = () => { if (!document.hidden) tick(); };
-    document.addEventListener('visibilitychange', onVis);
+  async function fetchMore() {
+    if (tab === 'discover') {
+      if (discoverLoading) return;
+      if (discoverCursor === null && discoverInitialLoaded) return; // nichts mehr
+      setDiscoverLoading(true);
+      try {
+        const cursorQS = discoverInitialLoaded && discoverCursor ? `&cursor=${encodeURIComponent(discoverCursor)}` : '';
+        const res = await fetch(`/api/communities?tab=discover&take=${PAGE_SIZE_DISCOVER}${cursorQS}`, { cache: 'no-store' });
+        const j = (await res.json()) as PagedResponse | { ok: false };
+        if ('ok' in j && j.ok) {
+          const merged = discoverInitialLoaded ? mergeById(discover, j.items) : j.items;
+          setDiscover(merged);
+          setDiscoverCursor(j.nextCursor);
+          setDiscoverInitialLoaded(true);
+          // Page-1 in Cache speichern (nur wenn es die erste Seite ist)
+          if (!cursorQS) writeCachedCommunities(COMMS_CACHE_DISCOVER, j);
+        }
+      } finally {
+        setDiscoverLoading(false);
+      }
+      return;
+    }
 
-    pollRef.current = window.setInterval(() => {
-      if (!document.hidden) tick();
-    }, 15000);
+    // YOURS
+    if (mineLoading) return;
+    if (mineCursor === null && mineInitialLoaded) return;
+    setMineLoading(true);
+    try {
+      const cursorQS = mineInitialLoaded && mineCursor ? `&cursor=${encodeURIComponent(mineCursor)}` : '';
+      const res = await fetch(`/api/communities?tab=yours&take=${PAGE_SIZE_YOURS}${cursorQS}`, { cache: 'no-store' });
+      const j = (await res.json()) as PagedResponse | { ok: false };
+      if ('ok' in j && j.ok) {
+        const merged = mineInitialLoaded ? mergeById(mine, j.items) : j.items;
+        setMine(merged);
+        setMineCursor(j.nextCursor);
+        setMineInitialLoaded(true);
+        if (!cursorQS) writeCachedCommunities(COMMS_CACHE_YOURS, j);
+      }
+    } finally {
+      setMineLoading(false);
+    }
+  }
 
-    return () => {
-      document.removeEventListener('visibilitychange', onVis);
-      if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
-    };
-
-  }, [tab, discover, mine]);
+  // Infinite-Scroll via IntersectionObserver
+  const sentinelRef = React.useRef<HTMLDivElement | null>(null);
+  React.useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver((entries) => {
+      for (const e of entries) {
+        if (e.isIntersecting) {
+          void fetchMore();
+        }
+      }
+    }, { rootMargin: '600px 0px 600px 0px' }); // frühzeitig nachladen
+    obs.observe(el);
+    return () => obs.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, discoverCursor, mineCursor, discoverInitialLoaded, mineInitialLoaded, discoverLoading, mineLoading]);
 
   /* ------------------------ Delete Modal State & Logic ------------------------ */
   const [deleteOpen, setDeleteOpen] = React.useState(false);
@@ -238,19 +279,17 @@ export default function CommunitiesPage() {
     setDeleteTarget({ slug: c.slug, name: c.name });
     setDeleteOpen(true);
   }
-  // 1) closeDelete stabil machen
   const closeDelete = React.useCallback(() => {
     if (deleting) return;
     setDeleteOpen(false);
     setDeleteTarget(null);
   }, [deleting]);
 
-  // 2) Effect-Dependencies anpassen
   React.useEffect(() => {
-      if (!deleteOpen) return;
-      const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') closeDelete(); };
-      window.addEventListener('keydown', onKey);
-      return () => window.removeEventListener('keydown', onKey);
+    if (!deleteOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') closeDelete(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
   }, [deleteOpen, closeDelete]);
 
   async function confirmDelete() {
@@ -265,15 +304,12 @@ export default function CommunitiesPage() {
         return;
       }
 
-      // Aus aktuellem Tab entfernen
       if (tab === 'discover') {
         const next = discover.filter((c) => c.slug !== slug);
         setDiscover(next);
-        writeCachedCommunities(COMMS_CACHE_DISCOVER, next);
       } else {
         const next = mine.filter((c) => c.slug !== slug);
         setMine(next);
-        writeCachedCommunities(COMMS_CACHE_YOURS, next);
       }
 
       toast.show({ title: t('delete.success'), variant: 'success', durationMs: 1800 });
@@ -287,6 +323,9 @@ export default function CommunitiesPage() {
   /* --------------------------------------------------------------------------- */
 
   const list = tab === 'discover' ? discover : mine;
+  const loading = tab === 'discover' ? discoverLoading && !discoverInitialLoaded
+                                     : mineLoading && !mineInitialLoaded;
+  const hasMore = tab === 'discover' ? discoverCursor !== null : mineCursor !== null;
 
   return (
     <div className="max-w-5xl mx-auto">
@@ -315,11 +354,7 @@ export default function CommunitiesPage() {
 
       {/* Grid */}
       <div className="p-4 grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {loading && (
-          <>
-            {Array.from({ length: 9 }).map((_, i) => <CommunityCardSkeleton key={i} />)}
-          </>
-        )}
+        {loading && Array.from({ length: 9 }).map((_, i) => <CommunityCardSkeleton key={`sk-${i}`} />)}
 
         {!loading && list.length === 0 && (
           <div className="col-span-full text-center opacity-70 py-10">
@@ -332,7 +367,7 @@ export default function CommunitiesPage() {
             const blocked = !c.joined && !canJoinByRole(c.policy, viewerRole);
             return (
               <article
-                key={c.id}
+                key={`${c.id}:${c.slug}`}
                 className={`relative rounded-app border border-sub shadow-app overflow-hidden flex flex-col ${blocked ? 'opacity-60 saturate-50' : ''}`}
                 data-disabled={blocked ? true : undefined}
               >
@@ -428,6 +463,15 @@ export default function CommunitiesPage() {
               </article>
             );
           })}
+
+        {/* Nachlade-Sentinel */}
+        <div ref={sentinelRef} className="col-span-full h-10" />
+        {/* Append-Loader */}
+        {(tab === 'discover' ? discoverLoading : mineLoading) && (tab === 'discover' ? discoverInitialLoaded : mineInitialLoaded) && hasMore && (
+          <>
+            {Array.from({ length: 3 }).map((_, i) => <CommunityCardSkeleton key={`more-${i}`} />)}
+          </>
+        )}
       </div>
 
       {/* Delete confirmation modal */}

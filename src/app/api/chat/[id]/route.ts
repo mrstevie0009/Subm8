@@ -99,17 +99,34 @@ async function clearTyping(conversationId: string, userId: string) {
   );
 }
 
+/* ---------- Cursor-Helpers (NEU) ---------- */
+function encodeCursor(d: Date, id: string) {
+  return `${d.getTime()}_${id}`;
+}
+function decodeCursor(s: string | null) {
+  if (!s) return null;
+  const [ms, id] = s.split('_');
+  const t = Number(ms);
+  if (!Number.isFinite(t) || !id) return null;
+  return { at: new Date(t), id };
+}
+
 /* -------------------------------- GET ----------------------------------- */
 
 export async function GET(_req: Request, { params }: Ctx) {
   try {
     const { id } = await params;
-    const url = new URL(_req.url);
-    const fast = url.searchParams.get('fast') === '1';
-    const take = Number(url.searchParams.get('take') || (fast ? '30' : '200'));
 
     const me = await getCurrentUser();
     if (!me) return Response.json({ ok: false, error: 'Not authenticated' }, { status: 401 });
+
+    const url = new URL(_req.url);
+    const fast = url.searchParams.get('fast') === '1';
+    const latestParam = url.searchParams.get('latest') === '1';
+    const beforeParam = decodeCursor(url.searchParams.get('before'));
+    const sinceParam  = decodeCursor(url.searchParams.get('since'));
+    // take begrenzen: 1..100 (default: latest?30:200 wie bisher)
+    const take = Math.min(Math.max(Number(url.searchParams.get('take') || (latestParam ? 30 : 200)), 1), 100);
 
     const convo = await prisma.conversation.findUnique({
       where: { id },
@@ -121,7 +138,6 @@ export async function GET(_req: Request, { params }: Ctx) {
         domme: {
           select: {
             id: true, handle: true, displayName: true, avatarUrl: true, role: true,
-            // 🟣 neu:
             isFirstAdopter: true,
             premiumUntil: true,
           },
@@ -129,7 +145,6 @@ export async function GET(_req: Request, { params }: Ctx) {
         sub: {
           select: {
             id: true, handle: true, displayName: true, avatarUrl: true, role: true,
-            // 🟣 neu:
             isFirstAdopter: true,
             premiumUntil: true,
           },
@@ -140,7 +155,7 @@ export async function GET(_req: Request, { params }: Ctx) {
     if (convo.type !== $Enums.ConversationType.DM) {
       return Response.json({ ok: false, error: 'NOT_A_DM' }, { status: 400 });
     }
-    // dann Membership checken
+    // Membership prüfen
     if (convo.dommeId !== me.id && convo.subId !== me.id) {
       return Response.json({ ok: false, error: 'Forbidden' }, { status: 403 });
     }
@@ -161,11 +176,9 @@ export async function GET(_req: Request, { params }: Ctx) {
       displayName: otherRaw.displayName,
       avatarUrl: otherRaw.avatarUrl && otherRaw.avatarUrl.trim() ? otherRaw.avatarUrl : null,
       role: otherRaw.role,
-      // 🟣 neu:
       isFirstAdopter: otherRaw.isFirstAdopter ?? false,
       premiumUntil: otherRaw.premiumUntil ? otherRaw.premiumUntil.toISOString() : null,
     };
-
 
     // Eigenes Profil (Role + Avatar) sicher holen
     const meProfile = await prisma.user.findUnique({
@@ -183,7 +196,7 @@ export async function GET(_req: Request, { params }: Ctx) {
     // Block-Status in beide Richtungen
     const { viewerHasBlocked, isBlockedByOther } = await getBlockFlags(me.id, other.id);
 
-    // --- streng typisiert ohne `any`
+    // --- Message-Query (Cursor-Pagination) ---
     type MessageBase = {
       id: string;
       createdAt: Date;
@@ -195,6 +208,7 @@ export async function GET(_req: Request, { params }: Ctx) {
     type MessageWithReads = MessageBase & { reads: { readerUserId: string }[] };
     type MessageMaybeReads = MessageBase | MessageWithReads;
 
+    const baseWhere = { conversationId: id } as const;
     const baseSelect = {
       id: true,
       createdAt: true,
@@ -204,25 +218,87 @@ export async function GET(_req: Request, { params }: Ctx) {
       mediaType: true,
     } as const;
 
-    const messages = await prisma.message.findMany({
-      where: { conversationId: id },
-      orderBy: { createdAt: 'asc' },
-      take,
-      select: fast
-        ? baseSelect
-        : {
-            ...baseSelect,
-            reads: { where: { readerUserId: me.id }, select: { readerUserId: true } },
-          },
-    }) as unknown as MessageMaybeReads[];
+    let messagesDb: MessageMaybeReads[] = [];
+
+    if (latestParam) {
+      // letzte N → DESC limit, dann fürs UI aufsteigend sortieren
+      const rows = await prisma.message.findMany({
+        where: baseWhere,
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        take,
+        select: fast
+          ? baseSelect
+          : {
+              ...baseSelect,
+              reads: { where: { readerUserId: me.id }, select: { readerUserId: true } },
+            },
+      });
+      messagesDb = rows.reverse();
+
+    } else if (beforeParam) {
+      // ältere als Cursor → DESC limit, danach aufsteigend
+      const rows = await prisma.message.findMany({
+        where: {
+          ...baseWhere,
+          OR: [
+            { createdAt: { lt: beforeParam.at } },
+            { createdAt: beforeParam.at, id: { lt: beforeParam.id } },
+          ],
+        },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        take,
+        select: fast
+          ? baseSelect
+          : {
+              ...baseSelect,
+              reads: { where: { readerUserId: me.id }, select: { readerUserId: true } },
+            },
+      });
+      messagesDb = rows.reverse();
+
+    } else if (sinceParam) {
+      // neuere als Cursor → direkt aufsteigend
+      messagesDb = await prisma.message.findMany({
+        where: {
+          ...baseWhere,
+          OR: [
+            { createdAt: { gt: sinceParam.at } },
+            { createdAt: sinceParam.at, id: { gt: sinceParam.id } },
+          ],
+        },
+        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+        take,
+        select: fast
+          ? baseSelect
+          : {
+              ...baseSelect,
+              reads: { where: { readerUserId: me.id }, select: { readerUserId: true } },
+            },
+      });
+
+    } else {
+      // Fallback: wie bisher → letzte N (damit wir nicht massiv laden), dann ASC
+      const rows = await prisma.message.findMany({
+        where: baseWhere,
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        take,
+        select: fast
+          ? baseSelect
+          : {
+              ...baseSelect,
+              reads: { where: { readerUserId: me.id }, select: { readerUserId: true } },
+            },
+      });
+      messagesDb = rows.reverse();
+    }
 
     // Type Guard für Messages mit Reads
     const hasReads = (m: MessageMaybeReads): m is MessageWithReads =>
       Object.prototype.hasOwnProperty.call(m, 'reads');
 
-    // Fast-Mode: keine DB-Writes (Reads); regulär wie gehabt
-    if (!fast) {
-      const unreadIds = messages
+    // Read-Marking nur im nicht-fast Modus
+    if (!fast && messagesDb.length) {
+      const unreadIds = (messagesDb as MessageMaybeReads[])
         .filter((m) => hasReads(m) && m.authorId !== me.id && m.reads.length === 0)
         .map((m) => m.id);
       if (unreadIds.length) {
@@ -233,16 +309,17 @@ export async function GET(_req: Request, { params }: Ctx) {
       }
     }
 
-     try {
+    // Unread-Counter nullen (wie vorher), tolerant
+    try {
       await prisma.conversation.update({
         where: { id },
         data: iAmDomme ? { unreadForDomme: 0 } : { unreadForSub: 0 },
       });
     } catch {
-      // still akzeptieren
+      // ignore
     }
 
-    // otherTyping (letzte 8s)
+    // otherTyping (letzte 8 Sekunden)
     const typingRow = await prisma.$queryRawUnsafe<{ exists: boolean }[]>(
       `SELECT EXISTS (
          SELECT 1 FROM ${TYPING_TABLE}
@@ -253,6 +330,42 @@ export async function GET(_req: Request, { params }: Ctx) {
     );
     const otherTyping = Boolean(typingRow?.[0]?.exists);
 
+    // olderCursor nur für latest/before berechnen
+    let olderCursor: string | null = null;
+    if (messagesDb.length && (latestParam || beforeParam || (!latestParam && !beforeParam && !sinceParam))) {
+      const first = messagesDb[0];
+      const older = await prisma.message.findFirst({
+        where: {
+          ...baseWhere,
+          OR: [
+            { createdAt: { lt: first.createdAt } },
+            { createdAt: first.createdAt, id: { lt: first.id } },
+          ],
+        },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        select: { id: true, createdAt: true },
+      });
+      olderCursor = older ? encodeCursor(older.createdAt, older.id) : null;
+    }
+
+    const mapped = messagesDb.map((m) => {
+      const read = fast ? m.authorId === me.id : (hasReads(m) ? m.reads.length > 0 : m.authorId === me.id);
+      return {
+        id: m.id,
+        at: m.createdAt.toISOString(),
+        authorId: m.authorId,
+        text: m.text,
+        mediaUrl: m.mediaUrl,
+        mediaType: m.mediaType,
+        read,
+      };
+    });
+
+    const newestCursor =
+      mapped.length
+        ? encodeCursor(new Date(mapped[mapped.length - 1].at), mapped[mapped.length - 1].id)
+        : null;
+
     return Response.json({
       ok: true,
       me: { id: me.id, role: meRole ?? undefined, avatarUrl: meAvatarUrl },
@@ -260,28 +373,18 @@ export async function GET(_req: Request, { params }: Ctx) {
       otherTyping,
       viewerHasBlocked,
       isBlockedByOther,
-      messages: messages
-        .map((m) => {
-          const read = fast ? m.authorId === me.id : (hasReads(m) ? m.reads.length > 0 : m.authorId === me.id);
-          return {
-            id: m.id,
-            at: m.createdAt.toISOString(),
-            authorId: m.authorId,
-            text: m.text,
-            mediaUrl: m.mediaUrl,
-            mediaType: m.mediaType,
-            read,
-          };
-        }),
+      messages: mapped,
       pageSize: take,
+      cursors: {
+        older: (latestParam || beforeParam) ? olderCursor : (sinceParam ? null : olderCursor),
+        newest: newestCursor,
+      },
     });
   } catch (e) {
     console.error('GET /api/chat/[id] failed:', e);
     return Response.json({ ok: false, error: 'Internal server error' }, { status: 500 });
   }
 }
-
-
 
 /* -------------------------------- POST ---------------------------------- */
 
@@ -293,7 +396,7 @@ export async function POST(req: Request, { params }: Ctx) {
 
     const convo = await prisma.conversation.findUnique({
       where: { id },
-      select: { id: true, type: true, dommeId: true, subId: true }, 
+      select: { id: true, type: true, dommeId: true, subId: true },
     });
 
     if (!convo) return Response.json({ ok: false, error: 'Not found' }, { status: 404 });
@@ -353,7 +456,7 @@ export async function POST(req: Request, { params }: Ctx) {
           );
         }
 
-        // ⬇️ NEU: Upload nach R2/S3 via Storage-Adapter
+        // ⬇️ Upload nach R2/S3 via Storage-Adapter
         const storage = getStorage();
         const key = buildKey('chat-media', file.name || 'upload.bin');
         const isVideo = /^video\//.test(type);
@@ -401,6 +504,9 @@ export async function POST(req: Request, { params }: Ctx) {
           ),
         },
       });
+
+      // beim Senden: Typing-State räumen (best effort)
+      await clearTyping(id, me.id).catch(() => {});
 
       return Response.json({
         ok: true,

@@ -19,11 +19,35 @@ const dmSelect = {
 
 type DMRow = Prisma.ConversationGetPayload<{ select: typeof dmSelect }>;
 
-export async function GET() {
+export async function GET(req: Request) {
+  const url = new URL(req.url);
+  const takeRaw = url.searchParams.get('take');
+  const after = url.searchParams.get('after'); // Format: "<ms>_<id>"
+
+  // sanft clampen
+  const TAKE_DEFAULT = 25;
+  const TAKE_MAX = 100;
+  const take = Math.min(
+    TAKE_MAX,
+    Math.max(1, Number.isFinite(Number(takeRaw)) ? Number(takeRaw) : TAKE_DEFAULT)
+  );
+
+  // Cursor-Encoder/Decoder (Zeit + ID als Tiebreaker)
+  const encodeCursor = (it: { lastMessageAt: string; id: string }) =>
+    `${new Date(it.lastMessageAt).getTime()}_${it.id}`;
+
+  const decodeCursor = (cur?: string | null) => {
+    if (!cur) return null;
+    const m = cur.match(/^(\d+)_([^_]+)$/);
+    if (!m) return null;
+    return { ms: Number(m[1]), id: m[2] };
+  };
+
+  const afterCur = decodeCursor(after);
   const me = await getCurrentUser();
   if (!me) {
     return Response.json(
-      { ok: true, items: [] },
+      { ok: true, items: [], cursors: { next: null } },
       { status: 200, headers: { 'cache-control': 'private, no-store' } },
     );
   }
@@ -199,8 +223,25 @@ const items = [...dmItems, ...groupItems].sort(
   (a, b) => +new Date(b.lastMessageAt) - +new Date(a.lastMessageAt)
 );
 
+let start = 0;
+if (afterCur) {
+  // Finde den Index der Cursor-Position (Element mit gleicher Zeit und ID)
+  const idx = items.findIndex(
+    (x) =>
+      new Date(x.lastMessageAt).getTime() === afterCur.ms &&
+      x.id === afterCur.id
+  );
+  start = idx >= 0 ? idx + 1 : 0;
+}
+
+const page = items.slice(start, start + take);
+const next =
+  start + take < items.length && page.length
+    ? encodeCursor(page[page.length - 1])
+    : null;
+
 return Response.json(
-  { ok: true, items },
+  { ok: true, items: page, cursors: { next } },
   { headers: { 'cache-control': 'private, no-store' } },
 );
 }

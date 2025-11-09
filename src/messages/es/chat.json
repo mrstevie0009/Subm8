@@ -17,6 +17,11 @@
       "subtitle": "Inicia un chat nuevo desde un perfil.",
       "title": "Sin conversaciones"
     },
+    "list": {
+      "loadingMore": "Cargando chats antiguos…",
+      "loadMore": "Cargar más",
+      "endReached": "No hay más chats."
+    },
     "header": {
       "subtitle": "{total} conversaciones • {unread} sin leer",
       "title": "Mensajes"
@@ -194,6 +199,7 @@
     }
   },
   "chatThread": {
+    "loadingOlder": "Se están cargando mensajes anteriores…",
     "actions": {
       "accept": "Aceptar",
       "decline": "Rechazar",

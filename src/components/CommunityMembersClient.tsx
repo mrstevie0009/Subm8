@@ -1,4 +1,3 @@
-//src/components/CommunityMembersClient.tsx
 'use client';
 
 import * as React from 'react';
@@ -19,14 +18,17 @@ export type UserLite = {
   role: 'DOMME' | 'SUBMISSIVE' | string;
 };
 
+type Tab = 'members' | 'verified';
+type UserWithFollow = UserLite & { initialFollowing: boolean };
+
 export type CommunityMembersClientProps = {
   locale: string;
+  slug: string;
   meId: string | null;
   counts: { members: number; verified: number };
-  members: UserLite[];
-  verified: UserLite[];
-  viewerFollows: string[];
-  initialTab?: 'members' | 'verified';
+  initialTab?: Tab;
+  initialItems: UserWithFollow[];
+  initialNextCursor: string | null;
 };
 
 const toDbRole = (r: UserLite['role']): 'DOMME' | 'SUBMISSIVE' =>
@@ -40,15 +42,14 @@ const isPremiumActive = (u: UserLite) => {
 function TabsInline({
   active, setActive, counts,
 }: {
-  active: 'members' | 'verified';
-  setActive: (t: 'members' | 'verified') => void;
+  active: Tab;
+  setActive: (t: Tab) => void;
   counts: { members: number; verified: number };
 }) {
-  const tabs: Array<{ key: 'members' | 'verified'; label: string; count: number }> = [
+  const tabs: Array<{ key: Tab; label: string; count: number }> = [
     { key: 'members',  label: 'Members',          count: counts.members },
     { key: 'verified', label: 'Verified Members', count: counts.verified },
   ];
-
   return (
     <div className="px-3 sm:px-4 pb-2">
       <div className="w-full">
@@ -82,9 +83,9 @@ function TabsInline({
 }
 
 function ListItem({
-  locale, u, initialFollowing, meId,
+  locale, u, meId,
 }: {
-  locale: string; u: UserLite; initialFollowing: boolean; meId: string | null;
+  locale: string; u: UserWithFollow; meId: string | null;
 }) {
   const firstAdopter  = !!u.isFirstAdopter;
   const premiumActive = isPremiumActive(u);
@@ -118,7 +119,7 @@ function ListItem({
 
       <div className="shrink-0">
         {meId && meId !== u.id ? (
-          <FollowInlineButton targetUserId={u.id} initialFollowing={initialFollowing} />
+          <FollowInlineButton targetUserId={u.id} initialFollowing={u.initialFollowing} />
         ) : null}
       </div>
     </li>
@@ -126,31 +127,115 @@ function ListItem({
 }
 
 export default function CommunityMembersClient(props: CommunityMembersClientProps) {
-  const [tab, setTab] = React.useState<'members' | 'verified'>(props.initialTab ?? 'members');
-  const followSet = React.useMemo(() => new Set(props.viewerFollows), [props.viewerFollows]);
-  const list = tab === 'members' ? props.members : props.verified;
+  const [tab, setTab] = React.useState<Tab>(props.initialTab ?? 'members');
+
+  type Slice = { items: UserWithFollow[]; nextCursor: string | null; loading: boolean; inited: boolean };
+  const [state, setState] = React.useState<Record<Tab, Slice>>({
+    members:  { items: [], nextCursor: null, loading: false, inited: false },
+    verified: { items: [], nextCursor: null, loading: false, inited: false },
+  });
+
+  // seed initial tab from SSR
+  React.useEffect(() => {
+    setState(s => ({
+      ...s,
+      [props.initialTab ?? 'members']: {
+        items: props.initialItems,
+        nextCursor: props.initialNextCursor,
+        loading: false,
+        inited: true,
+      },
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const sentinelRef = React.useRef<HTMLDivElement | null>(null);
+
+  const fetchPage = React.useCallback(async (t: Tab) => {
+    setState(prev => {
+      const slice = prev[t];
+      if (slice.loading) return prev;
+      if (slice.inited && !slice.nextCursor) return prev; // nichts mehr zu laden
+      return { ...prev, [t]: { ...slice, loading: true } };
+    });
+
+    try {
+      const nextCursor = state[t].inited ? state[t].nextCursor : null;
+      const qs = new URLSearchParams({
+        tab: t,
+        take: '30',
+        ...(nextCursor ? { cursor: nextCursor } : {}),
+      });
+      const res = await fetch(`/api/communities/${props.slug}/members?${qs.toString()}`, { cache: 'no-store' });
+      const j: { ok: boolean; items?: UserWithFollow[]; nextCursor?: string | null } = await res.json();
+      if (!j?.ok) throw new Error('fetch failed');
+
+      setState(prev => {
+        const prevItems = prev[t].items;
+        const seen = new Set(prevItems.map(i => i.id));
+        const merged = prevItems.concat((j.items || []).filter(i => !seen.has(i.id)));
+        return {
+          ...prev,
+          [t]: { items: merged, nextCursor: j.nextCursor ?? null, loading: false, inited: true },
+        };
+      });
+    } catch {
+      setState(prev => ({ ...prev, [t]: { ...prev[t], loading: false, inited: true } }));
+    }
+  }, [props.slug, state]);
+
+  // Bei Tab-Wechsel: wenn noch nicht geladen (und nicht der initiale SSR-Tab), erste Seite holen
+  React.useEffect(() => {
+    if (!state[tab].inited && tab !== (props.initialTab ?? 'members')) {
+      fetchPage(tab);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab]);
+
+  // Infinite scroll via IntersectionObserver
+  React.useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver((entries) => {
+      const vis = entries.some(e => e.isIntersecting);
+      if (!vis) return;
+
+      const slice = state[tab];
+      if (slice.loading) return;
+
+      if (!slice.inited) {
+        fetchPage(tab);
+      } else if (slice.nextCursor) {
+        fetchPage(tab);
+      }
+    }, { rootMargin: '400px 0px 400px 0px', threshold: 0 });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [state, tab, fetchPage]);
+
+  const current = state[tab];
 
   return (
     <>
       <TabsInline active={tab} setActive={setTab} counts={props.counts} />
 
       <ul className="divide-y divide-white/10">
-        {list.map((u) => (
-          <ListItem
-            key={u.id}
-            locale={props.locale}
-            u={u}
-            meId={props.meId}
-            initialFollowing={followSet.has(u.id)}
-          />
+        {current.items.map((u) => (
+          <ListItem key={u.id} locale={props.locale} u={u} meId={props.meId} />
         ))}
 
-        {list.length === 0 && (
+        {current.items.length === 0 && !current.loading && current.inited && (
           <li className="px-4 py-10 text-center opacity-70">
             {tab === 'members' ? 'No members yet.' : 'No verified members yet.'}
           </li>
         )}
       </ul>
+
+      <div ref={sentinelRef} />
+      {current.loading && <div className="py-4 text-center text-white/70">Loading…</div>}
+      {!current.nextCursor && current.inited && current.items.length > 0 && (
+        <div className="py-4 text-center text-white/40 text-sm">End of list</div>
+      )}
     </>
   );
 }

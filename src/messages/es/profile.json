@@ -71,6 +71,14 @@
     }
   },
   "profile": {
+    "bio": {
+        "title": "Biografía",
+        "emptyOther": "Sin biografía.",
+        "emptySelf": "Aún no has añadido una biografía.",
+        "edit": "Editar",
+        "showMore": "Ver más",
+        "showLess": "Ver menos"
+      },
     "autodrain": "Autodrain",
     "blockUser": "Bloquear usuario",
     "blockedBy": "Este usuario te ha bloqueado",

@@ -164,23 +164,85 @@ function MiniPopup({ anchorEl, avatarUrl, unreadCount, hidden, variant = 'chat',
   const compute = React.useCallback(() => {
     if (!anchorEl) return setPos(null);
     const r = anchorEl.getBoundingClientRect();
-
-    // Mittig über dem Icon ausrichten
     const left = Math.round(r.left + r.width / 2);
     const top = Math.round(r.top - 17);
     setPos({ left, top });
   }, [anchorEl]);
 
+  // 1) Vor dem Paint: initial exakt positionieren (verhindert 1-Frame Versatz)
+  React.useLayoutEffect(() => {
+    compute();
+  }, [compute]);
+
+  // 2) Normale Listener + ResizeObserver
   React.useEffect(() => {
     compute();
     const on = () => compute();
     window.addEventListener('resize', on, { passive: true });
     window.addEventListener('scroll', on, { passive: true });
+
+    let ro: ResizeObserver | null = null;
+    if (anchorEl && 'ResizeObserver' in window) {
+      ro = new ResizeObserver(() => compute());
+      ro.observe(anchorEl);
+    }
+
     return () => {
       window.removeEventListener('resize', on);
       window.removeEventListener('scroll', on);
+      ro?.disconnect();
     };
-  }, [compute]);
+  }, [compute, anchorEl]);
+
+  // 3) Während der Nav-Transition pro Frame nachführen
+  React.useEffect(() => {
+    if (!anchorEl) return;
+
+    const nav = anchorEl.closest('nav') as HTMLElement | null;
+    let raf = 0;
+
+    const tick = () => {
+      compute();
+      raf = requestAnimationFrame(tick);
+    };
+    const start = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(tick);
+    };
+    const stop = () => {
+      cancelAnimationFrame(raf);
+      compute(); // final snap
+    };
+
+    if (nav) {
+      nav.addEventListener('transitionrun', start);
+      nav.addEventListener('transitionstart', start);
+      nav.addEventListener('transitionend', stop);
+      nav.addEventListener('transitioncancel', stop);
+    }
+
+    // Bei (Wieder-)Einblendung kurz “warm laufen”
+    let warmup = 0;
+    if (!hidden && unreadCount) {
+      const endAt = performance.now() + 300;
+      const warm = () => {
+        compute();
+        if (performance.now() < endAt) warmup = requestAnimationFrame(warm);
+      };
+      warmup = requestAnimationFrame(warm);
+    }
+
+    return () => {
+      if (nav) {
+        nav.removeEventListener('transitionrun', start);
+        nav.removeEventListener('transitionstart', start);
+        nav.removeEventListener('transitionend', stop);
+        nav.removeEventListener('transitioncancel', stop);
+      }
+      cancelAnimationFrame(raf);
+      cancelAnimationFrame(warmup);
+    };
+  }, [anchorEl, compute, hidden, unreadCount]);
 
   if (!anchorEl || !pos || hidden || !unreadCount) return null;
 
@@ -193,103 +255,105 @@ function MiniPopup({ anchorEl, avatarUrl, unreadCount, hidden, variant = 'chat',
         transform: 'translate(-50%, -120%)',
         zIndex: 2147483646,
         pointerEvents: 'auto',
+        willChange: 'transform', // hilft beim Compositing
       }}
       aria-live="polite"
     >
       {/* klickbar machen */}
       <Link href={href} aria-label={variant === 'chat' ? 'Open chat' : 'Open notifications'}>
         <div className="relative cursor-pointer" role="button" tabIndex={0}>
-        <div
-          className="rounded-full overflow-hidden border border-white/20 shadow-xl grid place-items-center"
-          style={{
-            width: 36,
-            height: 36,
-            background: 'rgba(0,0,0,.45)',
-            backdropFilter: 'blur(4px)',
-          }}
-        >
-          {variant === 'chat' ? (
-            <>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={avatarUrl || '/images/avatar-placeholder.png'}
-                alt=""
-                className="w-full h-full object-cover"
-                draggable={false}
-              />
-            </>
-          ) : (
-            // Bell Icon for notifications
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#fff" strokeWidth="2" aria-hidden>
-              <path d="M6 9a6 6 0 1 1 12 0c0 4 2 5 2 6H4c0-1 2-2 2-6Z" />
-              <path d="M9 19a3 3 0 0 0 6 0" />
-            </svg>
-          )}
-        </div>
+          <div
+            className="rounded-full overflow-hidden border border-white/20 shadow-xl grid place-items-center"
+            style={{
+              width: 36,
+              height: 36,
+              background: 'rgba(0,0,0,.45)',
+              backdropFilter: 'blur(4px)',
+            }}
+          >
+            {variant === 'chat' ? (
+              <>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={avatarUrl || '/images/avatar-placeholder.png'}
+                  alt=""
+                  className="w-full h-full object-cover"
+                  draggable={false}
+                />
+              </>
+            ) : (
+              // Bell Icon for notifications
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#fff" strokeWidth="2" aria-hidden>
+                <path d="M6 9a6 6 0 1 1 12 0c0 4 2 5 2 6H4c0-1 2-2 2-6Z" />
+                <path d="M9 19a3 3 0 0 0 6 0" />
+              </svg>
+            )}
+          </div>
 
-        {/* Unread Counter (rechts oben) */}
-        <div
-          className="absolute -top-1 -right-1 grid place-items-center rounded-full text-[11px] font-semibold"
-          style={{
-            minWidth: 18,
-            height: 18,
-            padding: '0 5px',
-            background: 'var(--purple)',
-            color: 'white',
-            boxShadow: '0 0 0 2px rgba(0,0,0,.6)',
-          }}
-        >
-          {unreadCount > 99 ? '99+' : unreadCount}
-        </div>
+          {/* Unread Counter (rechts oben) */}
+          <div
+            className="absolute -top-1 -right-1 grid place-items-center rounded-full text-[11px] font-semibold"
+            style={{
+              minWidth: 18,
+              height: 18,
+              padding: '0 5px',
+              background: 'var(--purple)',
+              color: 'white',
+              boxShadow: '0 0 0 2px rgba(0,0,0,.6)',
+            }}
+          >
+            {unreadCount > 99 ? '99+' : unreadCount}
+          </div>
 
-        {/* V-Pfeil */}
-        <div
-          aria-hidden
-          style={{
-            position: 'absolute',
-            left: '50%',
-            top: '100%',
-            transform: 'translate(-50%, 6px)',
-            width: 18,
-            height: 10,
-          }}
-        >
-          <span
+          {/* V-Pfeil */}
+          <div
+            aria-hidden
             style={{
               position: 'absolute',
-              left: 1,
-              top: 0,
-              width: 10,
-              height: 2,
-              background: 'var(--purple)',
-              borderRadius: 2,
-              transform: 'rotate(35deg)',
-              boxShadow: '0 0 0 1px rgba(0,0,0,.35)',
-              display: 'block',
+              left: '50%',
+              top: '100%',
+              transform: 'translate(-50%, 6px)',
+              width: 18,
+              height: 10,
             }}
-          />
-          <span
-            style={{
-              position: 'absolute',
-              right: 1,
-              top: 0,
-              width: 10,
-              height: 2,
-              background: 'var(--purple)',
-              borderRadius: 2,
-              transform: 'rotate(-35deg)',
-              boxShadow: '0 0 0 1px rgba(0,0,0,.35)',
-              display: 'block',
-            }}
-          />
+          >
+            <span
+              style={{
+                position: 'absolute',
+                left: 1,
+                top: 0,
+                width: 10,
+                height: 2,
+                background: 'var(--purple)',
+                borderRadius: 2,
+                transform: 'rotate(35deg)',
+                boxShadow: '0 0 0 1px rgba(0,0,0,.35)',
+                display: 'block',
+              }}
+            />
+            <span
+              style={{
+                position: 'absolute',
+                right: 1,
+                top: 0,
+                width: 10,
+                height: 2,
+                background: 'var(--purple)',
+                borderRadius: 2,
+                transform: 'rotate(-35deg)',
+                boxShadow: '0 0 0 1px rgba(0,0,0,.35)',
+                display: 'block',
+              }}
+            />
+          </div>
         </div>
-      </div>
       </Link>
     </div>
   );
 
   return createPortal(node, document.body);
 }
+
 
 /* --------------------------------------------------- */
 

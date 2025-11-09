@@ -1,4 +1,3 @@
-// src/components/FollowersUnifiedClient.tsx
 'use client';
 
 import * as React from 'react';
@@ -9,10 +8,7 @@ import FollowTabsInline from '@/components/FollowTabsInline';
 import { UserBadges } from '@/components/UserBadges';
 
 const AVATAR_PH = '/images/avatar-placeholder.png';
-
-// Rollen normalisieren
-const toDbRole = (r: UserLite['role']): 'DOMME' | 'SUBMISSIVE' =>
-  String(r).toUpperCase() === 'DOMME' ? 'DOMME' : 'SUBMISSIVE';
+type Tab = 'followers' | 'following' | 'vFollowing' | 'vFollowers';
 
 export type UserLite = {
   id: string;
@@ -23,34 +19,27 @@ export type UserLite = {
   isFirstAdopter?: boolean | null;
   role: 'DOMME' | 'SUBMISSIVE' | string;
 };
+type UserWithFollow = UserLite & { initialFollowing: boolean };
 
 export type FollowersUnifiedClientProps = {
   locale: string;
+  handle: string;
   meId: string | null;
-  counts: {
-    followers: number;
-    following: number;
-    vFollowing: number;   // Verified Following
-    vFollowers: number;   // Verified Followers
-  };
-  followers: UserLite[];
-  following: UserLite[];
-  verifiedFollowing: UserLite[];
-  verifiedFollowers: UserLite[];
-  viewerFollows: string[];
-  initialTab?: 'followers' | 'following' | 'vFollowing' | 'vFollowers';
+  counts: Record<Tab, number>;
+  initialTab?: Tab;
+  initialItems: UserWithFollow[];
+  initialNextCursor: string | null;
 };
+
+const toDbRole = (r: UserLite['role']): 'DOMME' | 'SUBMISSIVE' =>
+  String(r).toUpperCase() === 'DOMME' ? 'DOMME' : 'SUBMISSIVE';
 
 const isPremiumActive = (u: UserLite) => {
   const until = u.premiumUntil ? new Date(u.premiumUntil) : null;
   return !!until && until.getTime() > Date.now();
 };
 
-function ListItem({
-  locale, u, initialFollowing, meId,
-}: {
-  locale: string; u: UserLite; initialFollowing: boolean; meId: string | null;
-}) {
+function ListItem({ locale, u, meId }: { locale: string; u: UserWithFollow; meId: string | null }) {
   const firstAdopter  = !!u.isFirstAdopter;
   const premiumActive = isPremiumActive(u);
   const showFirstAdopter = firstAdopter && !premiumActive;
@@ -83,7 +72,7 @@ function ListItem({
 
       <div className="shrink-0">
         {meId && meId !== u.id ? (
-          <FollowInlineButton targetUserId={u.id} initialFollowing={initialFollowing} />
+          <FollowInlineButton targetUserId={u.id} initialFollowing={u.initialFollowing} />
         ) : null}
       </div>
     </li>
@@ -91,33 +80,124 @@ function ListItem({
 }
 
 export default function FollowersUnifiedClient(props: FollowersUnifiedClientProps) {
-  type Tab = 'followers' | 'following' | 'vFollowing' | 'vFollowers';
   const [tab, setTab] = React.useState<Tab>(props.initialTab ?? 'followers');
 
-  const followSet = React.useMemo(() => new Set(props.viewerFollows), [props.viewerFollows]);
+  type Slice = {
+    items: UserWithFollow[];
+    nextCursor: string | null;
+    loading: boolean;
+    inited: boolean;
+  };
+  const [state, setState] = React.useState<Record<Tab, Slice>>({
+    followers:   { items: [], nextCursor: null, loading: false, inited: false },
+    following:   { items: [], nextCursor: null, loading: false, inited: false },
+    vFollowing:  { items: [], nextCursor: null, loading: false, inited: false },
+    vFollowers:  { items: [], nextCursor: null, loading: false, inited: false },
+  });
 
-  const list =
-    tab === 'followers'  ? props.followers :
-    tab === 'following'  ? props.following :
-    tab === 'vFollowing' ? props.verifiedFollowing :
-                           props.verifiedFollowers;
+  // Seed initial tab from SSR
+  React.useEffect(() => {
+    setState(s => ({
+      ...s,
+      [props.initialTab ?? 'followers']: {
+        items: props.initialItems,
+        nextCursor: props.initialNextCursor,
+        loading: false,
+        inited: true,
+      },
+    }));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
+  const sentinelRef = React.useRef<HTMLDivElement | null>(null);
+
+  const fetchPage = React.useCallback(async (t: Tab) => {
+    setState(s => {
+      if (s[t].loading || (s[t].inited && !s[t].nextCursor)) return s;
+      return { ...s, [t]: { ...s[t], loading: true } };
+    });
+
+    try {
+      const nextCursor = (prev => prev[t].inited ? prev[t].nextCursor : null)(state);
+      const qs = new URLSearchParams({
+        tab: t,
+        take: '30',
+        ...(nextCursor ? { cursor: nextCursor } : {}),
+      });
+      const res = await fetch(`/api/profile/${props.handle}/follows?${qs.toString()}`, { cache: 'no-store' });
+      const j: { ok: boolean; items?: UserWithFollow[]; nextCursor?: string | null } = await res.json();
+      if (!j?.ok) throw new Error('fetch failed');
+
+      setState(prev => {
+        const prevItems = prev[t].items;
+        // Dedupe by id
+        const seen = new Set(prevItems.map(i => i.id));
+        const merged = prevItems.concat((j.items || []).filter(i => !seen.has(i.id)));
+        return {
+          ...prev,
+          [t]: {
+            items: merged,
+            nextCursor: j.nextCursor ?? null,
+            loading: false,
+            inited: true,
+          },
+        };
+      });
+    } catch {
+      setState(prev => ({ ...prev, [t]: { ...prev[t], loading: false, inited: true } }));
+    }
+  }, [props.handle, state]);
+
+  // Init fetch for a tab when selected the first time
+  React.useEffect(() => {
+    setTimeout(() => {
+      setState(s => {
+        if (s[tab].inited) return s;
+        // kick initial load (first page already delivered for initialTab)
+        return s;
+      });
+    }, 0);
+    if (!state[tab].inited && tab !== (props.initialTab ?? 'followers')) {
+      fetchPage(tab);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab]);
+
+  // IntersectionObserver: wenn Sentinel sichtbar → nachladen
+  React.useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver((entries) => {
+      const vis = entries.some(e => e.isIntersecting);
+      if (!vis) return;
+      const slice = state[tab];
+      if (slice.loading) return;
+      if (!slice.inited) {
+        // initial load for this tab
+        fetchPage(tab);
+      } else if (slice.nextCursor) {
+        fetchPage(tab);
+      }
+    }, { rootMargin: '400px 0px 400px 0px', threshold: 0 });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [state, tab, fetchPage]);
+
+  const current = state[tab];
   return (
     <>
-      <FollowTabsInline active={tab} setActive={setTab} counts={props.counts} />
+      <FollowTabsInline
+        active={tab}
+        setActive={(t) => setTab(t)}
+        counts={props.counts}
+      />
 
       <ul className="divide-y divide-white/10">
-        {list.map((u) => (
-          <ListItem
-            key={u.id}
-            locale={props.locale}
-            u={u}
-            meId={props.meId}
-            initialFollowing={followSet.has(u.id)}
-          />
+        {current.items.map((u) => (
+          <ListItem key={u.id} locale={props.locale} u={u} meId={props.meId} />
         ))}
 
-        {list.length === 0 && (
+        {current.items.length === 0 && !current.loading && current.inited && (
           <li className="px-4 py-10 text-center opacity-70">
             {tab === 'followers'
               ? 'No followers yet.'
@@ -129,6 +209,15 @@ export default function FollowersUnifiedClient(props: FollowersUnifiedClientProp
           </li>
         )}
       </ul>
+
+      {/* Sentinel + Loader */}
+      <div ref={sentinelRef} />
+      {current.loading && (
+        <div className="py-4 text-center text-white/70">Loading…</div>
+      )}
+      {!current.nextCursor && current.inited && current.items.length > 0 && (
+        <div className="py-4 text-center text-white/40 text-sm">End of list</div>
+      )}
     </>
   );
 }
