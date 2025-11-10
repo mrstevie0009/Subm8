@@ -1,3 +1,4 @@
+//src/components/PostActionsBar.tsx
 'use client';
 
 import * as React from 'react';
@@ -6,7 +7,6 @@ import BookmarkButton from '@/components/BookmarkButton';
 import { likePostAction, unlikePostAction } from '@/app/actions/likes';
 import { toast } from '@/lib/toast';
 import { useParams } from 'next/navigation';
-import CommentComposer from '@/components/comments/CommentComposer';
 
 /* ── Icons (gleich wie in PostCard) ─────────────────────────────────── */
 function HeartIcon() {
@@ -62,10 +62,12 @@ export default function PostActionsBar({
   postId,
   stats,
   viewer,
+  onCommentClick,
 }: {
   postId: string;
   stats?: { likes?: number; comments?: number; reposts?: number };
   viewer?: { liked?: boolean; bookmarked?: boolean; reposted?: boolean };
+  onCommentClick?: () => void;
 }) {
   const tPost = useTranslations('post');
   const { locale } = useParams() as { locale: string };
@@ -77,7 +79,6 @@ export default function PostActionsBar({
   const [liked, setLiked] = React.useState<boolean>(!!viewer?.liked);
 
   const [comments, setComments] = React.useState<number>(stats?.comments ?? 0);
-  const [hasCommented, setHasCommented] = React.useState<boolean>(false);
 
   const [reposts, setReposts] = React.useState<number>(stats?.reposts ?? 0);
   const [hasReposted, setHasReposted] = React.useState<boolean>(!!viewer?.reposted);
@@ -88,11 +89,8 @@ export default function PostActionsBar({
 
   // Animations
   const [likePulse, fireLikePulse] = usePulseFlag();
-  const [commentPulse, fireCommentPulse] = usePulseFlag();
   const [repostPulse, fireRepostPulse] = usePulseFlag();
   const [bookmarkPulse, fireBookmarkPulse] = usePulseFlag();
-
-  const [composerOpen, setComposerOpen] = React.useState(false);
 
   // ---------------- Hydration-Priorität ----------------
   // 1) Props (stats/viewer)
@@ -191,19 +189,6 @@ export default function PostActionsBar({
     return () => window.clearTimeout(id);
   }, [saveSnapshot]);
 
-  // ---------------- Initial „kommentiert“-Flag ----------------
-  React.useEffect(() => {
-    try {
-      const key = `pc:commented:${postId}`;
-      if (sessionStorage.getItem(key) === '1') setHasCommented(true);
-      const onStorage = (e: StorageEvent) => {
-        if (e.key === key && e.newValue === '1') setHasCommented(true);
-      };
-      window.addEventListener('storage', onStorage);
-      return () => window.removeEventListener('storage', onStorage);
-    } catch {}
-  }, [postId]);
-
   // ---------------- Globale Event-Syncs ----------------
   React.useEffect(() => {
     const onLike = (ev: Event) => {
@@ -223,10 +208,6 @@ export default function PostActionsBar({
     const onComment = (ev: Event) => {
       const ce = ev as CustomEvent<{ contentId: string; delta: number; byViewer?: boolean }>;
       if (ce?.detail?.contentId !== postId) return;
-      if (ce.detail.byViewer) {
-        setHasCommented(true);
-        return;
-      }
       setComments((n) => Math.max(0, n + (ce.detail.delta ?? 0)));
     };
     window.addEventListener('post:commentDelta', onComment as EventListener);
@@ -234,17 +215,14 @@ export default function PostActionsBar({
   }, [postId]);
 
   React.useEffect(() => {
-    const onRepost = (ev: Event) => {
+    const onComment = (ev: Event) => {
       const ce = ev as CustomEvent<{ contentId: string; delta: number; byViewer?: boolean }>;
       if (ce?.detail?.contentId !== postId) return;
-      if (ce.detail.byViewer) {
-        setHasReposted(true);
-        return;
-      }
-      setReposts((n) => Math.max(0, n + (ce.detail.delta ?? 0)));
+      // Zähler IMMER anpassen (auch wenn byViewer), kein "aktiv"-State mehr
+      setComments((n) => Math.max(0, n + (ce.detail.delta ?? 0)));
     };
-    window.addEventListener('post:repostDelta', onRepost as EventListener);
-    return () => window.removeEventListener('post:repostDelta', onRepost as EventListener);
+    window.addEventListener('post:commentDelta', onComment as EventListener);
+    return () => window.removeEventListener('post:commentDelta', onComment as EventListener);
   }, [postId]);
 
   React.useEffect(() => {
@@ -304,33 +282,30 @@ export default function PostActionsBar({
   }
 
   function CommentButton() {
-    const isActive = hasCommented || composerOpen;
     return (
       <button
         type="button"
         data-no-nav
         onClick={(e) => {
           e.stopPropagation();
-          fireCommentPulse();
-          try { sessionStorage.setItem(`pc:commented:${postId}`, '1'); } catch {}
-          setHasCommented(true);
-          setComposerOpen(true);
-          requestAnimationFrame(() => {
-            try { window.dispatchEvent(new CustomEvent('composer:focus')); } catch {}
-          });
-          // Snapshot speichert der Effect
+          if (onCommentClick) {
+            onCommentClick();
+          } else {
+            const url = `/${locale}/p/${postId}`;
+            try { window.location.assign(url); } catch {}
+          }
         }}
-        className={`actify comment ${isActive ? 'is-active' : ''} ${commentPulse ? 'do-pop' : ''} group flex items-center gap-2 rounded px-2 py-1 hover:bg-white/5`}
-        aria-expanded={composerOpen || undefined}
+        className="flex items-center gap-2 px-2 py-1 text-sm hover:underline"
+        aria-label={tPost('comment')}
       >
-        <span className="inline-grid place-items-center"
-          style={{ width: 'clamp(18px,1.8vw,26px)', height: 'clamp(18px,1.8vw,26px)', color: isActive ? 'var(--purple)' : 'rgba(255,255,255,.95)' }}
+        <span
+          className="inline-grid place-items-center"
+          style={{ width: 'clamp(18px,1.8vw,26px)', height: 'clamp(18px,1.8vw,26px)' }}
           aria-hidden
         >
           <CommentIcon />
         </span>
-        <span className="text-sm" style={{ color: isActive ? 'var(--purple)' : 'var(--muted)' }}>{comments}</span>
-        <span className="sr-only">{tPost('comment')}</span>
+        <span className="text-sm">{comments}</span>
       </button>
     );
   }
@@ -373,37 +348,6 @@ export default function PostActionsBar({
   return (
     <div className="fixed inset-x-0 bottom-0 z-50 bg-black/80 backdrop-blur-md border-t border-white/10">
       <div className="max-w-2xl mx-auto px-3">
-
-        {composerOpen && (
-          <div
-            className="fixed inset-x-0 z-[2147483603]"
-            style={{ bottom: 'calc(env(safe-area-inset-bottom) + 56px)' }}
-            data-no-nav
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="max-w-2xl mx-auto px-3">
-              <CommentComposer
-                postId={postId}
-                autoFocus
-                className="mt-0 rounded-2xl border border-white/12 bg-[#0b0b0d] p-3 shadow-2xl"
-                onSuccess={() => {
-                  setComments((n) => (n ?? 0) + 1);
-                  setHasCommented(true);
-                  fireCommentPulse();
-                  try {
-                    window.dispatchEvent(new CustomEvent('post:commentDelta', {
-                      detail: { contentId: postId, delta: +1, byViewer: true }
-                    }));
-                  } catch {}
-                  setComposerOpen(false);
-                  // Snapshot via Effect
-                }}
-                onCancel={() => setComposerOpen(false)}
-                disableInternalFloating={false}
-              />
-            </div>
-          </div>
-        )}
 
         <div className="flex items-center justify-between gap-3 py-2" onClick={(e) => e.stopPropagation()}>
           {/* Comment */}

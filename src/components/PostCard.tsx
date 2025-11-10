@@ -1538,7 +1538,7 @@ export default function PostCard({
 
   function CommentButton() {
     const disabled = blockedByEither;
-    const isActive = composerOpen || hasCommented;
+    const isActive = hasCommented;
     return (
       <button
         type="button"
@@ -1550,7 +1550,6 @@ export default function PostCard({
           // ⬇️ statt toggle:
           setComposerOpen(true);                         // immer öffnen
           fireCommentPulse();
-          try { sessionStorage.setItem(`pc:commented:${c.id}`, '1'); } catch {}
           requestAnimationFrame(() => {
             try { window.dispatchEvent(new CustomEvent('composer:focus')); } catch {}
           });
@@ -2217,6 +2216,7 @@ export default function PostCard({
                     setComments((n) => (n ?? 0) + 1); // jetzt passend zur ID
                     setComposerOpen(false);
                     setHasCommented(true);
+                    try { sessionStorage.setItem(`pc:commented:${c.id}`, '1'); } catch {}
                     fireCommentPulse();
                     window.dispatchEvent(new CustomEvent('post:commentDelta', { detail: { contentId: c.id, delta: +1, byViewer: true } }));
                     try { window.dispatchEvent(new CustomEvent('comment:created',    { detail: { postId: post.id } })); } catch {}

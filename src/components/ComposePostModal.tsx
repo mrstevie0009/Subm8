@@ -243,39 +243,90 @@ export default function ComposePostModal({ open, onClose }: Props) {
   }, []);
 
   const onPickMedia = (files?: FileList | null, input?: HTMLInputElement | null) => {
-    if (!files || files.length === 0) return;
+  if (!files || files.length === 0) return;
 
-    // 1) Files *zuerst* klonen (FileList ist live!)
-    const pickedAll = Array.from(files);
+  const pickedAll = Array.from(files);
+  if (input) input.value = '';
 
-    // 2) Dann den Input resetten, damit das nächste gleiche File wieder ein change triggert
-    if (input) input.value = '';
+  // Wir arbeiten NICHT im setState-Updater, um Side-Effects zu vermeiden.
+  const current = media;
+  const toasts: Array<{ msg: string }> = [];
 
-    // 3) State-Update mit der *kopierten* Liste
-    setMedia((prev) => {
-      const remaining = MEDIA_MAX - prev.length;
+  const hasPrevVideo = current.some((m) => m.kind === 'video');
+  const hasPrevImages = current.some((m) => m.kind === 'image');
+
+  const next = [...current];
+
+  if (hasPrevVideo) {
+    toasts.push({ msg: tt('media.alreadyVideo') });
+    // next bleibt unverändert
+  } else if (hasPrevImages) {
+    const imageFiles = pickedAll.filter((f) => f.type?.startsWith('image'));
+    if (imageFiles.length === 0) {
+      toasts.push({ msg: tt('media.noVideoWhenImages') });
+    } else {
+      const remaining = MEDIA_MAX - next.length;
       if (remaining <= 0) {
-        toast.error(tt('media.maxReached', { max: MEDIA_MAX }));
-        return prev;
+        toasts.push({ msg: tt('media.maxReached', { max: MEDIA_MAX }) });
+      } else {
+        const picked = imageFiles.slice(0, remaining);
+        for (const f of picked) {
+          const preview = URL.createObjectURL(f);
+          next.push({ id: crypto.randomUUID(), file: f, preview, kind: 'image' });
+        }
+        if (imageFiles.length > remaining) {
+          toasts.push({ msg: tt('media.onlyRemaining', { remaining, max: MEDIA_MAX }) });
+        }
+        if (pickedAll.some((f) => f.type?.startsWith('video'))) {
+          toasts.push({ msg: tt('media.videosIgnored') });
+        }
       }
+    }
+  } else {
+    // Noch keine Medien: entweder nur 1 Video ODER nur Bilder (nicht mischen)
+    const hasVideo = pickedAll.some((f) => f.type?.startsWith('video'));
+    const hasImage = pickedAll.some((f) => f.type?.startsWith('image'));
 
-      const picked = pickedAll.slice(0, remaining);
-      const next = [...prev];
-      for (const f of picked) {
-        const kind: MediaKind = f.type?.startsWith('video') ? 'video' : 'image';
-        const preview = URL.createObjectURL(f);
-        next.push({ id: crypto.randomUUID(), file: f, preview, kind });
+    if (hasVideo && hasImage) {
+      toasts.push({ msg: tt('media.mixedNotAllowed') });
+    } else if (hasVideo) {
+      const firstVideo = pickedAll.find((f) => f.type?.startsWith('video'));
+      if (firstVideo) {
+        const preview = URL.createObjectURL(firstVideo);
+        next.push({ id: crypto.randomUUID(), file: firstVideo, preview, kind: 'video' });
       }
-
-      if (pickedAll.length > remaining) {
-        toast.error(
-          tt('media.onlyRemaining', { remaining, max: MEDIA_MAX })
-        );
+      if (pickedAll.filter((f) => f.type?.startsWith('video')).length > 1) {
+        toasts.push({ msg: tt('media.onlyOneVideo') });
       }
+    } else {
+      const imageFiles = pickedAll.filter((f) => f.type?.startsWith('image'));
+      if (imageFiles.length === 0) {
+        // nichts ausgewählt
+      } else {
+        const remaining = MEDIA_MAX - next.length;
+        if (remaining <= 0) {
+          toasts.push({ msg: tt('media.maxReached', { max: MEDIA_MAX }) });
+        } else {
+          const picked = imageFiles.slice(0, remaining);
+          for (const f of picked) {
+            const preview = URL.createObjectURL(f);
+            next.push({ id: crypto.randomUUID(), file: f, preview, kind: 'image' });
+          }
+          if (imageFiles.length > remaining) {
+            toasts.push({ msg: tt('media.onlyRemaining', { remaining, max: MEDIA_MAX }) });
+          }
+        }
+      }
+    }
+  }
 
-      return next;
-    });
-  };
+  // Erst jetzt den State setzen…
+  if (next !== current) setMedia(next);
+  // …und danach die Side-Effects (Toasts) ausführen.
+  for (const tmsg of toasts) toast.error(tmsg.msg);
+};
+
+
 
 
   const removeMedia = (id: string) => {
@@ -294,6 +345,12 @@ export default function ComposePostModal({ open, onClose }: Props) {
   const [isPending, startTransition] = React.useTransition();
 
   async function pickGifByUrl(url: string) {
+    // GIFs gelten als Bilder -> nur zulassen, wenn KEIN Video vorhanden ist
+    if (media.some((m) => m.kind === 'video')) {
+      toast.error(tt('gif.noGifWhenVideo'));
+      setGifOpen(false);
+      return;
+    }
     if (atLimit(media.length)) {
       toast.error(tt('media.maxReached', { max: MEDIA_MAX }));
       setGifOpen(false);
@@ -511,7 +568,8 @@ export default function ComposePostModal({ open, onClose }: Props) {
   };
 
   const showGridMosaic = media.length > 0 && media.length <= 4 && media.every((m) => m.kind === 'image');
-  const limitReached = media.length >= MEDIA_MAX;
+  const hasVideo = media.some((m) => m.kind === 'video');
+  const limitReached = hasVideo ? true : media.length >= MEDIA_MAX;
   const modal = (
     <div
       style={overlayStyle}
@@ -558,7 +616,7 @@ export default function ComposePostModal({ open, onClose }: Props) {
                 body: JSON.stringify({ files: toDirect.map(m => ({ name: m.file.name, type: m.file.type })) }),
               });
               if (!r.ok) {
-                toast.error('Konnte Upload-URLs nicht holen.');
+                toast.error(tt('upload.presignFailed'));
                 return;
               }
               const { items } = (await r.json()) as { items: { uploadUrl: string; publicUrl: string }[] };
@@ -578,7 +636,7 @@ export default function ComposePostModal({ open, onClose }: Props) {
               uploadedUrls = okIdx.map(i => items[i]!.publicUrl);
 
               if (okIdx.length !== items.length) {
-                toast.error('Some Media Files could not be uploaded');
+                toast.error(tt('upload.someFailed'));
               }
             }
 
@@ -648,7 +706,7 @@ export default function ComposePostModal({ open, onClose }: Props) {
                     key={media.length}                // <— remount nach jedem Add/Remove
                     type="file"
                     accept="image/*,video/*"
-                    multiple
+                    multiple={!hasVideo}
                     className="sr-only"
                     onChange={(e) => onPickMedia(e.currentTarget.files, e.currentTarget)}
                     disabled={limitReached}

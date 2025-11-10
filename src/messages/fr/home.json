@@ -31,8 +31,20 @@
       "tryAgain": "Réessayez plus tard"
     },
     "media": {
-      "maxReached": "Maximum {max} médias par publication atteint",
-      "onlyRemaining": "Seulement {remaining} {remaining, plural, one {élément} other {éléments}} supplémentaires possibles (max {max})."
+      "maxReached": "Nombre max de {max} médias par publication atteint",
+      "onlyRemaining": "Seulement {remaining} {remaining, plural, one {média} other {médias}} supplémentaires autorisé(s) (max {max}).",
+      "alreadyVideo": "Une vidéo est déjà sélectionnée. Supprime-la d’abord pour choisir de nouveaux médias.",
+      "noVideoWhenImages": "Vous ne pouvez pas ajouter une vidéo si des images sont déjà sélectionnées.",
+      "videosIgnored": "Les vidéos ont été ignorées. Soit 1 vidéo, soit jusqu’à 4 images.",
+      "mixedNotAllowed": "Choisissez soit une vidéo, soit des images — le mélange n’est pas autorisé.",
+      "onlyOneVideo": "Une seule vidéo par publication est autorisée."
+    },
+    "gif": {
+      "noGifWhenVideo": "Vous ne pouvez pas ajouter un GIF lorsqu’une vidéo est sélectionnée."
+    },
+    "upload": {
+      "presignFailed": "Impossible de récupérer les URL de téléversement.",
+      "someFailed": "Certains fichiers médias n’ont pas pu être téléversés."
     },
     "post": {
       "failedTitle": "Échec de la publication",

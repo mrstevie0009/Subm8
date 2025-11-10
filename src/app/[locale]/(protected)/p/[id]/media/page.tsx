@@ -273,7 +273,12 @@ export default function PostMediaPage() {
           <div className={`fixed inset-x-0 bottom-0 z-30 px-3 pb-[env(safe-area-inset-bottom,12px)] transition-transform ${uiVisible ? 'translate-y-0' : 'translate-y-28'}`}>
             <div className="mx-auto w-full max-w-screen-sm">
               <div className="rounded-2xl border border-white/12 bg-black/70 backdrop-blur px-3 py-2">
-                <PostActionsBar postId={id} stats={snapStats} viewer={snapViewer} />
+                <PostActionsBar
+                  postId={id}
+                  stats={snapStats}
+                  viewer={snapViewer}
+                  onCommentClick={() => router.push(`/${locale}/p/${id}`)}
+                />
               </div>
             </div>
           </div>
@@ -337,7 +342,12 @@ export default function PostMediaPage() {
           <div className={`fixed inset-x-0 bottom-0 z-30 px-3 pb-[env(safe-area-inset-bottom,12px)] transition-transform ${uiVisible ? 'translate-y-0' : 'translate-y-28'}`}>
             <div className="mx-auto w-full max-w-screen-sm">
               <div className="rounded-2xl border border-white/12 bg-black/70 backdrop-blur px-3 py-2">
-                <PostActionsBar postId={id} stats={snapStats} viewer={snapViewer} />
+                <PostActionsBar
+                  postId={id}
+                  stats={snapStats}
+                  viewer={snapViewer}
+                  onCommentClick={() => router.push(`/${locale}/p/${id}`)}
+                />
               </div>
             </div>
           </div>

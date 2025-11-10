@@ -32,7 +32,19 @@
     },
     "media": {
       "maxReached": "Max {max} media per post reached",
-      "onlyRemaining": "Only {remaining} more {remaining, plural, one {item} other {items}} possible (max {max})."
+      "onlyRemaining": "Only {remaining} more {remaining, plural, one {item} other {items}} allowed (max {max}).",
+      "alreadyVideo": "A video is already selected. Remove it first to pick new media.",
+      "noVideoWhenImages": "You can’t add a video when images are already selected.",
+      "videosIgnored": "Videos were ignored. Either 1 video or up to 4 images.",
+      "mixedNotAllowed": "Please choose either one video OR images — mixing isn’t allowed.",
+      "onlyOneVideo": "Only 1 video per post is allowed."
+    },
+    "gif": {
+      "noGifWhenVideo": "You can’t add a GIF when a video is selected."
+    },
+    "upload": {
+      "presignFailed": "Couldn’t fetch upload URLs.",
+      "someFailed": "Some media files couldn’t be uploaded."
     },
     "post": {
       "failedTitle": "Posting failed",
