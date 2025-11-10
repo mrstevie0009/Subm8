@@ -11,6 +11,8 @@ import { getServerSession } from 'next-auth';
 import type { Role } from '@prisma/client';
 import type { Adapter, AdapterUser } from 'next-auth/adapters';
 import { cookies } from 'next/headers';
+import { getClientIp } from '@/lib/ip';
+import { isBlocked, recordFailure, recordSuccess } from '@/lib/bruteforce';
 
 // ---- Base URL (lokal, bis Domain live ist)
 const SITE_URL = process.env.NEXTAUTH_URL ?? 'http://localhost:3000';
@@ -152,51 +154,82 @@ export const authOptions: NextAuthOptions = {
         const rawInput =
           (credentials.identifier as string | undefined)?.trim() ||
           (credentials.email as string | undefined)?.trim() ||
-          (credentials.handle as string | undefined)?.trim() ||
-          '';
-
+          (credentials.handle as string | undefined)?.trim() || '';
         const password = String(credentials.password ?? '');
+
         if (!rawInput || !password) return null;
 
+        const ip = await getClientIp();
+
+          // 1) Vorab: Block prüfen (ohne Throw, einfach early-return)
+        const block = await isBlocked(ip, rawInput);
+        console.log('auth.authorize: isBlocked', { ip, rawInput, block });
+        if (!block.ok) {
+          // KEIN throw – gib null zurück.
+          // Die UI ruft danach /api/auth/brute-status auf und zeigt die richtige Meldung.
+          return null;
+        }
+
+        // 2) User lookup wie gehabt
         const emailLike = rawInput.toLowerCase();
         const handleLike = rawInput.replace(/^@/, '').toLowerCase();
 
         const user = await prisma.user.findFirst({
           where: {
-            OR: [
-              { email: emailLike },
-              { handle: { equals: handleLike, mode: 'insensitive' } },
-            ],
+            OR: [{ email: emailLike }, { handle: { equals: handleLike, mode: 'insensitive' } }],
           },
           select: {
-            id: true,
-            email: true,
-            displayName: true,
-            avatarUrl: true,
-            passwordHash: true,
-            handle: true,
-            role: true,
-            isDeactivated: true,
-            /** ⇨ holen wir hier noch nicht, da beim Login nicht nötig */
+            id: true, email: true, displayName: true, avatarUrl: true,
+            passwordHash: true, handle: true, role: true, isDeactivated: true, ageVerified: true,
           },
         });
 
-        if (!user || !user.passwordHash) return null;
-        if (user.isDeactivated) throw new Error('Account deactivated');
+        if (!user || !user.passwordHash) {
+          try {
+            void recordFailure(ip, rawInput);
+            console.log('auth.authorize: queued recordFailure (no user)', { ip, rawInput });
+          } catch (err) {
+            console.error('auth.authorize: recordFailure error (no user)', { err, ip, rawInput });
+          }
+          return null;
+        }
+        if (user.isDeactivated) {
+          // gesperrte Accounts nicht in Throttle zählen (optional)
+          throw new Error('ACCOUNT_DEACTIVATED');
+        }
 
         const ok = await verifyPassword(password, user.passwordHash);
-        if (!ok) return null;
+        if (!ok) {
+          try {
+            // Fire-and-forget: don't delay authorize response on DB write
+            void recordFailure(ip, rawInput);
+            console.log('auth.authorize: queued recordFailure (bad password)', { ip, rawInput });
+          } catch (err) {
+            console.error('auth.authorize: recordFailure error (bad password)', { err, ip, rawInput });
+          }
+          return null;
+        }
 
+        // 3) Erfolg → Reset Throttle (fire-and-forget)
+        try {
+          void recordSuccess(ip, rawInput);
+          console.log('auth.authorize: queued recordSuccess', { ip, rawInput, userId: user.id });
+        } catch (err) {
+          console.error('auth.authorize: recordSuccess error', { err, ip, rawInput });
+        }
+
+        // include ageVerified so callers / jwt callback can avoid another DB hit
         const authUser: NextAuthUser = {
-          id: user.id,
-          email: user.email ?? null,
-          name: user.displayName ?? null,
-          image: user.avatarUrl ?? null,
-          handle: user.handle,
-          role: user.role,
-        };
+        id: user.id,
+        email: user.email ?? null,
+        name: user.displayName ?? null,
+        image: user.avatarUrl ?? null,
+        handle: user.handle,
+        role: user.role,
+        ageVerified: user.ageVerified ?? false, // ← sauber typisiert dank Module Augmentation
+      };
         return authUser;
-      },
+      }
     }),
   ],
 
@@ -217,25 +250,38 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user }: { token: JWT; user?: NextAuthUser | undefined }) {
       if (user) {
         token.uid = user.id;
-        const dbUser = await prisma.user.findUnique({
-          where: { id: user.id },
-          select: {
-            handle: true,
-            role: true,
-            displayName: true,
-            avatarUrl: true,
-            email: true,
-            /** ⇨ neu: Altersstatus aus DB */
-            ageVerified: true,
-          },
-        });
-        if (dbUser) {
-          token.handle = dbUser.handle;
-          token.role = dbUser.role;
-          token.name = dbUser.displayName ?? null;
-          token.picture = dbUser.avatarUrl ?? null;
-          token.email = dbUser.email ?? null;
-          token.ageVerified = dbUser.ageVerified ?? false;
+
+        // Dank Module Augmentation hat NextAuthUser diese Felder typisiert:
+        const u = user as NextAuthUser;
+
+        if (u.handle || u.role || typeof u.ageVerified !== 'undefined') {
+          token.handle = u.handle ?? token.handle;
+          token.role = u.role ?? token.role;
+          token.name = typeof u.name !== 'undefined' ? u.name : token.name ?? null;
+          token.picture = typeof u.image !== 'undefined' ? u.image : token.picture ?? null;
+          token.email = typeof u.email !== 'undefined' ? u.email : token.email ?? null;
+          token.ageVerified = typeof u.ageVerified !== 'undefined' ? u.ageVerified : token.ageVerified;
+        } else {
+          // Fallback: nur wenn Felder fehlen, DB lesen
+          const dbUser = await prisma.user.findUnique({
+            where: { id: user.id },
+            select: {
+              handle: true,
+              role: true,
+              displayName: true,
+              avatarUrl: true,
+              email: true,
+              ageVerified: true,
+            },
+          });
+          if (dbUser) {
+            token.handle = dbUser.handle;
+            token.role = dbUser.role;
+            token.name = dbUser.displayName ?? token.name ?? null;
+            token.picture = dbUser.avatarUrl ?? token.picture ?? null;
+            token.email = dbUser.email ?? token.email ?? null;
+            token.ageVerified = dbUser.ageVerified ?? token.ageVerified ?? false;
+          }
         }
       }
 

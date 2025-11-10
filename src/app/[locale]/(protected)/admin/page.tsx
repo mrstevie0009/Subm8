@@ -4,10 +4,24 @@ import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/prisma';
 import { assertAdmin, getAdminIdentity } from '@/lib/admin';
+import { listBlocked, unblockById, MAX_FAILS, WINDOW_MIN, BLOCK_MIN } from '@/lib/bruteforce';
 
 type Params = { locale: string };
 
 export const dynamic = 'force-dynamic';
+
+export async function unblockThrottleAction(form: FormData) {
+  'use server';
+  await assertAdmin();
+  const id = String(form.get('id') ?? '');
+  if (!id) throw new Error('missing id');
+  await unblockById(id);
+  revalidatePath('/[locale]/admin', 'page');
+}
+
+async function loadBlocked() {
+  return listBlocked(300);
+}
 
 /* ------------------------------- DB Helpers ------------------------------- */
 
@@ -282,20 +296,21 @@ export default async function AdminPage({
     redirect(`/${locale}/signin`);
   }
 
-  const [revenue, reports, groupReports, posts, users, previewPost] = await Promise.all([
+  const [revenue, reports, groupReports, posts, users, previewPost, blocked] = await Promise.all([
     loadRevenue(200),
     loadAggregatedReports(),
     loadAggregatedGroupReports(), // 👈 dieses Ergebnis landet jetzt in groupReports
     loadLatestPosts(30),
     loadLatestUsers(30),
     previewPostId ? loadPostPreview(previewPostId) : Promise.resolve(null),
+    loadBlocked(),
   ]);
 
   const kpis = (() => {
-    const gross = revenue.reduce((s, r) => s + (r.amountGrossCents ?? 0), 0);
-    const platformGross = revenue.reduce((s, r) => s + (r.platformFeeCents ?? 0), 0);
-    const processor = revenue.reduce((s, r) => s + (r.processorFeeCents ?? 0), 0);
-    const platformNet = revenue.reduce((s, r) => s + (r.platformNetCents ?? 0), 0);
+    const gross = revenue.reduce<number>((s: number, r: RevenueRow) => s + (r.amountGrossCents ?? 0), 0);
+    const platformGross = revenue.reduce<number>((s: number, r: RevenueRow) => s + (r.platformFeeCents ?? 0), 0);
+    const processor = revenue.reduce<number>((s: number, r: RevenueRow) => s + (r.processorFeeCents ?? 0), 0);
+    const platformNet = revenue.reduce<number>((s: number, r: RevenueRow) => s + (r.platformNetCents ?? 0), 0);
     return { gross, platformGross, processor, platformNet };
   })();
 
@@ -363,6 +378,56 @@ export default async function AdminPage({
                         <span className="rounded px-2 py-0.5 text-xs bg-white/10 border border-white/10">
                           {r.status}
                         </span>
+                      </Td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section className="rounded-lg border border-white/10 p-4">
+            <h2 className="text-base font-semibold mb-3">Login-Sperren / Blacklist</h2>
+            <p className="text-xs text-white/60 mb-2">
+              Temporäre Sperren nach {MAX_FAILS} Fehlschlägen / {WINDOW_MIN} Min. · Dauer {BLOCK_MIN} Min.
+              Bei massivem Missbrauch → permanent.
+            </p>
+
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead className="text-white/60">
+                  <tr className="border-b border-white/10">
+                    <Th>IP</Th>
+                    <Th>Identifier</Th>
+                    <Th>Fails</Th>
+                    <Th>Blocked Until</Th>
+                    <Th>Status</Th>
+                    <Th>Aktion</Th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {blocked.map((b) => (
+                    <tr key={b.id} className="border-b border-white/5">
+                      <Td className="font-mono">{b.ip}</Td>
+                      <Td className="truncate">{b.identifier}</Td>
+                      <Td>{b.fails}</Td>
+                      <Td>{b.blockedUntil ? new Date(b.blockedUntil).toLocaleString() : '—'}</Td>
+                      <Td>
+                        {b.permanent ? (
+                          <span className="rounded px-2 py-0.5 text-xs bg-red-500/15 border border-red-400/30 text-red-200">Permanent</span>
+                        ) : b.blockedUntil ? (
+                          <span className="rounded px-2 py-0.5 text-xs bg-yellow-500/15 border border-yellow-400/30 text-yellow-200">Temporär</span>
+                        ) : (
+                          <span className="rounded px-2 py-0.5 text-xs bg-white/10 border border-white/10">Offen</span>
+                        )}
+                      </Td>
+                      <Td>
+                        <form action={unblockThrottleAction}>
+                          <input type="hidden" name="id" value={b.id} />
+                          <button className="text-xs rounded-full border border-white/15 px-3 py-1 hover:bg-white/10">
+                            Entsperren
+                          </button>
+                        </form>
                       </Td>
                     </tr>
                   ))}

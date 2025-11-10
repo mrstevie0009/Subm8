@@ -113,6 +113,27 @@ model User {
   @@index([premiumUntil])
 }
 
+/// --- Brute-force / Login Throttle -----------------------------------------
+/// Speichert Fehlversuche pro (ip, identifier) und erlaubt temp/permanent Blocks.
+model LoginThrottle {
+  id           String   @id @default(cuid())
+  createdAt    DateTime @default(now())
+  lastAttempt  DateTime @updatedAt
+
+  ip          String
+  identifier  String   // normalisierte E-Mail oder @handle (lowercase)
+  fails       Int      @default(0)
+
+  blockedUntil DateTime?
+  permanent    Boolean  @default(false)
+  note         String?
+
+  @@unique([ip, identifier], name: "LoginThrottle_ip_identifier_unique")
+  @@index([blockedUntil])
+  @@index([permanent])
+  @@index([ip, identifier])
+}
+
 model SmsChallenge {
   id        String              @id @default(cuid())
   userId    String

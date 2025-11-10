@@ -37,6 +37,7 @@ export default function SignInPage() {
   const registered = sp.get('registered') === '1';
   const resetSuccess = sp.get('reset') === 'success';
   const topErrorMsg = sp.get('error');
+  const topPretty = mapAuthError(topErrorMsg);
 
   const [identifier, setIdentifier] = React.useState(preset);
   const [password, setPassword] = React.useState('');
@@ -59,10 +60,30 @@ export default function SignInPage() {
   const [smsCode, setSmsCode] = React.useState('');
   const [twoFAError, setTwoFAError] = React.useState<string | null>(null);
   const [smsSent, setSmsSent] = React.useState(false);
+  const [showBruteModal, setShowBruteModal] = React.useState(false);
+  const [bruteInfo, setBruteInfo] = React.useState<{ ok?: boolean; reason?: 'temp' | 'perm'; until?: string | null } | null>(null);
 
   // ---- Splash-Portal-Ziel finden (SSR-Splash im Layout) ----
   const [splashHost, setSplashHost] = React.useState<HTMLElement | null>(null);
   const [mounted, setMounted] = React.useState(false);
+
+  function mapAuthError(code?: string | null) {
+   if (!code) return null;
+   if (code === 'BRUTE_BLOCK') {
+     // i18n Key vorschlag: auth.auth.signin.alerts.bruteBlocked
+     return t('alerts.bruteBlocked', {
+       // z.B. support@deine-domain
+       contact: 'support@subm8.com'
+     });
+   }
+   if (code === 'CredentialsSignin') {
+     return t('errors.invalidCredentials');
+   }
+   if (code === 'ACCOUNT_DEACTIVATED') {
+     return t('alerts.deactivated');
+   }
+   return code; // fallback: rohen Code zeigen
+ }
 
   React.useEffect(() => {
     setMounted(true);
@@ -198,6 +219,7 @@ export default function SignInPage() {
     setInlineError(null);
 
     try {
+      const twoFAReq = fetchTwoFAStatus();
       const res = await signIn('credentials', {
         redirect: false,
         callbackUrl: `/${locale}`,
@@ -206,28 +228,48 @@ export default function SignInPage() {
       });
 
       if (res?.error) {
-        setInvalid(true);
-        setInlineError(t('errors.invalidCredentials'));
-        return;
+        await twoFAReq;
+        try {
+          const r = await fetch(`/api/auth/brute-status?identifier=${encodeURIComponent(identifier)}`, {
+            method: 'GET',
+            headers: { Accept: 'application/json' },
+            credentials: 'include',
+          });
+          const j: { ok: boolean; reason?: 'temp'|'perm'; until?: string|null } = await r.json();
+
+          // wenn Block aktiv → show modal (große Warnung)
+          if (!j.ok) {
+            setBruteInfo(j);
+            setShowBruteModal(true);
+            // optional: markiere Felder als invalid damit rote Rahmen bleiben
+            setInvalid(true);
+            return;
+          }
+
+          // Nicht geblockt → normaler Invalid-Creds-Fall
+          setInvalid(true);
+          setInlineError(t('errors.invalidCredentials'));
+          return;
+        } catch {
+          // Fallback: wenn Status-Call schiefgeht
+          setInvalid(true);
+          setInlineError(t('errors.invalidCredentials'));
+          return;
+        }
       }
 
+      // Erfolgsweg wie gehabt:
       const status = await fetchTwoFAStatus();
       if (!status.needed || status.methods.length === 0) {
         const url = res?.url ?? `/${locale}`;
         router.replace(url);
         return;
       }
-
       setTwoFAMethods(status.methods);
       setChosen(status.methods.length === 1 ? status.methods[0] : null);
       setShow2FA(true);
-
-      if (status.methods.length === 1 && status.methods[0] === 'passkey') {
-        await runPasskey();
-      }
-      if (status.methods.length === 1 && status.methods[0] === 'sms') {
-        await sendSms();
-      }
+      if (status.methods.length === 1 && status.methods[0] === 'passkey') await runPasskey();
+      if (status.methods.length === 1 && status.methods[0] === 'sms') await sendSms();
     } finally {
       setLoading(false);
     }
@@ -315,7 +357,7 @@ export default function SignInPage() {
               <p className="text-white/70 text-[13px] sm:text-sm">{t('title')}</p>
             </div>
 
-            {(registered || topErrorMsg || resetSuccess) && (
+            {(registered || topPretty || resetSuccess) && (
               <div
                 className={`mb-4 sm:mb-5 rounded-xl border p-2.5 sm:p-3 text-[13px] sm:text-sm
                 ${registered
@@ -324,11 +366,7 @@ export default function SignInPage() {
                       ? 'border-green-400/40 bg-green-400/15 text-green-100'
                       : 'border-red-400/40 bg-red-400/15 text-red-100'}`}
               >
-                {registered
-                  ? t('alerts.registered')
-                  : resetSuccess
-                    ? t('alerts.resetSuccess')
-                    : topErrorMsg}
+                {registered ? t('alerts.registered') : resetSuccess ? t('alerts.resetSuccess') : topPretty}
               </div>
             )}
 
@@ -463,6 +501,70 @@ export default function SignInPage() {
           </CardContent>
         </Card>
       </div>
+      
+      {/* --- BRUTE / BLOCK Modal --- */}
+      {showBruteModal && bruteInfo && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+            onClick={() => { /* Klick auf Overlay schließt modal nicht automatisch */ }}
+          />
+          <div className="relative z-10 w-full max-w-3xl mx-auto rounded-3xl border border-red-400/30 bg-[#1a0b0f] p-6 sm:p-8 shadow-[0_30px_80px_rgba(0,0,0,0.7)]">
+            <div className="flex items-start gap-4">
+              <div className="flex-shrink-0">
+                <div className="h-14 w-14 rounded-full bg-red-600/20 flex items-center justify-center ring-1 ring-red-400/30">
+                  <svg className="h-8 w-8 text-red-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M12 9v4" strokeLinecap="round" strokeLinejoin="round"/><path d="M12 17h.01" strokeLinecap="round" strokeLinejoin="round"/><path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                </div>
+              </div>
+
+              <div className="min-w-0">
+                <h2 className="text-2xl font-semibold text-red-100 mb-2">
+                  {bruteInfo.reason === 'perm' ? t('alerts.bruteBlockedPermanent') : t('alerts.bruteBlocked')}
+                </h2>
+
+                {bruteInfo.reason === 'temp' && bruteInfo.until ? (
+                  (() => {
+                    const untilDate = new Date(bruteInfo.until);
+                    const mins = Math.max(1, Math.ceil((+untilDate - Date.now()) / 60000));
+                    return (
+                      <p className="text-sm text-red-200 mb-4">
+                        {t('alerts.bruteBlockedUntilMins', { minutes: mins })}
+                      </p>
+                    );
+                  })()
+                ) : (
+                  <p className="text-sm text-red-200 mb-4">
+                    {t('alerts.bruteBlocked', { contact: 'support@subm8.com' })}
+                  </p>
+                )}
+
+                <div className="flex gap-3 flex-col sm:flex-row">
+                  <a
+                    href={`mailto:support@subm8.com?subject=${encodeURIComponent('Account lock / support')}`}
+                    className="inline-flex items-center justify-center rounded-full px-5 py-2.5 text-sm font-medium bg-red-600/80 hover:bg-red-600 text-white shadow-sm"
+                  >
+                    {t('actions.contactSupport') ?? 'Kontakt Support'}
+                  </a>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowBruteModal(false);
+                      setBruteInfo(null);
+                      // optional: clear password field so user must re-type
+                      setPassword('');
+                    }}
+                    className="inline-flex items-center justify-center rounded-full px-5 py-2.5 text-sm font-medium border border-white/10 bg-white/5 hover:bg-white/10 text-white"
+                  >
+                    {t('actions.close') ?? 'Schließen'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
 
       {/* 2FA Modal */}
       {show2FA && (
