@@ -37,8 +37,8 @@ async function sendWithTwilio(to: string, body: string): Promise<ProviderResult>
 }
 
 async function sendWithTelnyx(to: string, body: string): Promise<ProviderResult> {
-  const { TELNYX_API_KEY, SMS_FROM } = process.env;
-  if (!TELNYX_API_KEY || !SMS_FROM) throw new Error('Telnyx env missing');
+  const { TELNYX_API_KEY, TELNYX_MESSAGING_PROFILE_ID, SMS_FROM } = process.env;
+  if (!TELNYX_API_KEY || !TELNYX_MESSAGING_PROFILE_ID) throw new Error('Telnyx env missing');
 
   const res = await fetch('https://api.telnyx.com/v2/messages', {
     method: 'POST',
@@ -46,9 +46,24 @@ async function sendWithTelnyx(to: string, body: string): Promise<ProviderResult>
       Authorization: `Bearer ${TELNYX_API_KEY}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ from: SMS_FROM, to, text: body }),
+    body: JSON.stringify({
+      messaging_profile_id: TELNYX_MESSAGING_PROFILE_ID,
+      // from optional – wenn gesetzt, muss gültige Nummer oder registrierter Alpha-Sender sein
+      ...(SMS_FROM ? { from: SMS_FROM } : {}),
+      to,
+      text: body,
+    }),
   });
-  if (!res.ok) throw new Error(`telnyx_${res.status}`);
+
+  const json = await res.json().catch(() => null);
+  console.log('[Telnyx raw]', res.status, JSON.stringify(json));
+  if (!res.ok) {
+    const detail =
+      (json)?.errors?.[0]?.detail ||
+      (json)?.errors?.[0]?.title ||
+      '';
+    throw new Error(`telnyx_${res.status}:${detail}`);
+  }
   return { ok: true, provider: 'telnyx' };
 }
 

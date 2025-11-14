@@ -14,7 +14,8 @@ export default function SignInBridge(props: { searchParams: SearchParams }) {
 
   try {
     // callbackUrl ist i. d. R. absolut (http://localhost:3000/en oder deine Domain)
-    const u = new URL(callbackUrl || 'http://localhost:3000/en');
+    const FALLBACK = process.env.NEXTAUTH_URL ?? 'https://subm8.com/en';
+    const u = new URL(callbackUrl || FALLBACK);
     const seg = u.pathname.split('/').filter(Boolean)[0];
     if (seg && /^[a-z]{2}$/.test(seg)) {
       locale = seg;

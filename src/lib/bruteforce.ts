@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma';
 type LoginThrottleUpdateData = Parameters<typeof prisma.loginThrottle.update>[0]['data'];
 
 export const WINDOW_MIN = 15;
-export const MAX_FAILS  = 5;
+export const MAX_FAILS  = 10;
 export const BLOCK_MIN  = 30;
 export const HARD_FAILS_DAILY = 50;
 

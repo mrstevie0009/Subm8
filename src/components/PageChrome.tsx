@@ -7,7 +7,6 @@ import Header from '@/components/Header';
 import BottomNav from '@/components/BottomNav';
 import SettingsDrawerMount from '@/components/SettingsDrawerMount';
 import ComposePostOverlayMount from '@/components/ComposePostOverlayMount';
-
 import ToastHost from '@/components/ToastHost';
 
 export default function PageChrome({
@@ -33,14 +32,26 @@ export default function PageChrome({
   const chatBase = `/${locale}/chat`;
   const inChatThread = pathname.startsWith(`${chatBase}/`);
   const isAuthPage =
-   pathname === `/${locale}/signin` ||
-   pathname.startsWith(`/${locale}/signin`) ||
-   pathname === `/${locale}/signup` ||
-   pathname.startsWith(`/${locale}/signup`);
+    pathname === `/${locale}/signin` ||
+    pathname.startsWith(`/${locale}/signin`) ||
+    pathname === `/${locale}/signup` ||
+    pathname.startsWith(`/${locale}/signup`);
+
+  //Medienseite bekommt eigenes Vollbild-Layout
+  if (inPostMedia) {
+    return (
+      <>
+        {children}
+        <SettingsDrawerMount />
+        <ComposePostOverlayMount />
+        <ToastHost />
+      </>
+    );
+  }
 
   // Header in Threads aus, in Chat-Übersicht an
-  const hideHeader = inBookmarks || inChatThread || isAuthPage || inSettings || inProfile || inEditProfile || inPostMedia;
-  const hideBottomNav = inChatThread || inPostMedia;
+  const hideHeader = inBookmarks || inChatThread || isAuthPage || inSettings || inProfile || inEditProfile;
+  const hideBottomNav = inChatThread;
 
   const contentTopPad = hideHeader ? '12px' : 'calc(clamp(24px, 2.8vw, 50px) + 20px)';
   const contentBottomPad = hideBottomNav ? '12px' : 'calc(var(--bottomnav-h, 72px) + 12px)';
@@ -75,7 +86,6 @@ export default function PageChrome({
 
       <SettingsDrawerMount />
       <ComposePostOverlayMount />
-      {/* Neu: Toasts global rendern */}
       <ToastHost />
     </>
   );

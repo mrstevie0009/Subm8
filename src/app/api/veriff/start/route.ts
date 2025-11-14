@@ -7,8 +7,9 @@ import { prisma } from '@/lib/prisma';
 
 const RAW_BASE = process.env.VERIFF_API ?? 'https://stationapi.veriff.com';
 const VERIFF_API_KEY = process.env.VERIFF_API_KEY!;
-const BASE_URL = process.env.BASE_URL!;
 const NEXTAUTH_SECRET = process.env.NEXTAUTH_SECRET!;
+
+const FAKE_MODE = process.env.VERIFF_FAKE_MODE === 'true';
 
 // Sorgt dafür, dass wir genau einmal /v1 haben und keine doppelten Slashes.
 function buildEndpoint(path: string) {
@@ -26,25 +27,50 @@ export async function POST(req: NextRequest) {
     const token = await getToken({ req, secret: NEXTAUTH_SECRET });
     userId = (token?.uid as string | undefined) ?? null;
   }
-  if (!userId) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  if (!userId) {
+    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  }
 
   // 2) Params
   const { searchParams } = new URL(req.url);
   const back = searchParams.get('back') ?? `/${searchParams.get('locale') ?? 'en'}`;
   const locale = (searchParams.get('locale') ?? 'en').toLowerCase();
 
-  // 3) Payload – NUR gültige Felder
+  // 3) Basis-URL robust bestimmen
+  const baseEnv =
+    process.env.BASE_URL ??
+    process.env.NEXTAUTH_URL ??
+    new URL(req.url).origin;
+  const origin = baseEnv.replace(/\/+$/, '');
+
+  // ---------- FAKE MODE: kein Veriff-Call, nur Local-Callback ----------
+  if (FAKE_MODE) {
+    const fakeUrl = `${origin}/api/veriff/callback?back=${encodeURIComponent(
+      back
+    )}&locale=${encodeURIComponent(locale)}`;
+
+    console.log('🔧 VERIFF_FAKE_MODE active – returning fake URL:', fakeUrl);
+
+    return NextResponse.json({
+      id: 'fake-session',
+      url: fakeUrl,
+      fake: true,
+    });
+  }
+
+  // ---------- REAL MODE: echte Veriff-Session anlegen ----------
+  // 4) Payload – NUR gültige Felder
   const payload = {
     verification: {
       vendorData: String(userId),
       lang: locale,
-      callback: `${BASE_URL}/${locale}/verify/complete?back=${encodeURIComponent(back)}`
+      callback: `${origin}/${locale}/verify/complete?back=${encodeURIComponent(back)}`,
       // KEIN "redirect" Feld!
       // Webhook-URL NICHT hier angeben – die wird im Veriff-Dashboard konfiguriert.
     },
   };
 
-  // 4) Call
+  // 5) Call
   const url = buildEndpoint('/sessions'); // => <BASE>/v1/sessions
   try {
     const resp = await fetch(url, {
@@ -68,17 +94,17 @@ export async function POST(req: NextRequest) {
     const data = JSON.parse(text);
     const { id, url: startUrl } = data.verification ?? {};
 
-   // Veriff-ID beim User vormerken (hilft beim Support/Debugging)
-   if (id) {
-     try {
-       await prisma.user.update({
-         where: { id: userId },
-         data: { veriffId: String(id) },
-       });
-     } catch (e) {
-       console.warn('⚠️ konnte veriffId nicht speichern:', e);
-     }
-   }
+    // Veriff-ID beim User vormerken (hilft beim Support/Debugging)
+    if (id) {
+      try {
+        await prisma.user.update({
+          where: { id: userId },
+          data: { veriffId: String(id) },
+        });
+      } catch (e) {
+        console.warn('⚠️ konnte veriffId nicht speichern:', e);
+      }
+    }
 
     return NextResponse.json({ id, url: startUrl });
   } catch (err) {

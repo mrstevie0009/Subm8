@@ -285,7 +285,15 @@ export const authOptions: NextAuthOptions = {
         }
       }
 
-      if (token.uid && (!token.handle || !token.role || typeof token.ageVerified === 'undefined')) {
+      if (
+        token.uid &&
+        (
+          !token.handle ||
+          !token.role ||
+          typeof token.ageVerified === 'undefined' ||
+          token.ageVerified === false
+        )
+      ) {
         const dbUser = await prisma.user.findUnique({
           where: { id: token.uid },
           select: {
@@ -294,10 +302,10 @@ export const authOptions: NextAuthOptions = {
             displayName: true,
             avatarUrl: true,
             email: true,
-            /** ⇨ neu: Altersstatus aus DB */
             ageVerified: true,
           },
         });
+
         if (dbUser) {
           token.handle = dbUser.handle ?? token.handle;
           token.role = dbUser.role ?? token.role;

@@ -4,15 +4,14 @@ import crypto from 'crypto';
 import { prisma } from '@/lib/prisma';
 
 const SECRET = process.env.VERIFF_WEBHOOK_SECRET!;
+const FAKE_MODE = process.env.VERIFF_FAKE_MODE === 'true';
 
 function verifySignature(req: NextRequest, raw: string) {
-  // Veriff: X-HMAC-SIGNATURE mit HMAC-SHA256 (hex)
   const sig = req.headers.get('x-hmac-signature');
- // In Dev nicht an der Signatur scheitern (ngrok/Configwechsel)
- if (process.env.NODE_ENV !== 'production') {
-   if (!sig || !SECRET) return true;
- }
- if (!sig || !SECRET) return false;
+  if (process.env.NODE_ENV !== 'production') {
+    if (!sig || !SECRET) return true;
+  }
+  if (!sig || !SECRET) return false;
 
   const expected = crypto.createHmac('sha256', SECRET).update(raw).digest('hex');
   try {
@@ -34,6 +33,12 @@ function calcAge(dobIso?: string): number | null {
 }
 
 export async function POST(req: NextRequest) {
+  // Im Fake-Mode ignorieren wir Webhooks einfach
+  if (FAKE_MODE) {
+    console.log('🔧 VERIFF_FAKE_MODE: ignoring webhook payload');
+    return NextResponse.json({ ok: true, fake: true });
+  }
+
   const raw = await req.text();
   if (!verifySignature(req, raw)) {
     return NextResponse.json({ error: 'bad signature' }, { status: 401 });
@@ -55,51 +60,47 @@ export async function POST(req: NextRequest) {
   if (decision === 'approved') {
     const age = calcAge(dob ?? undefined);
     ageOk = age == null ? true : age >= 18;
-   try {
-     await prisma.user.update({
-       where: { id: userId },
-       data: {
-         ageVerified: ageOk,
-         dob: dob ? new Date(dob) : null,
-         verifiedAt: new Date(),
-       },
-     });
-     // --- INHERIT VERIFY: Alle Kinder des jetzt verifizierten Users ebenfalls verifizieren
-    if (ageOk) {
-      // gleiche verifiedAt-Zeit für alle setzen
-      const verifiedAtNow = new Date();
-
-      await prisma.user.updateMany({
-        where: { verifiedByUserId: userId },
+    try {
+      await prisma.user.update({
+        where: { id: userId },
         data: {
-          ageVerified: true,
-          verifiedAt: verifiedAtNow,
+          ageVerified: ageOk,
           dob: dob ? new Date(dob) : null,
+          verifiedAt: new Date(),
         },
       });
-    }
 
-   } catch (e) {
-     console.error('❌ DB-Update ageVerified fehlgeschlagen:', e);
-   }
+      if (ageOk) {
+        const verifiedAtNow = new Date();
+        await prisma.user.updateMany({
+          where: { verifiedByUserId: userId },
+          data: {
+            ageVerified: true,
+            verifiedAt: verifiedAtNow,
+            dob: dob ? new Date(dob) : null,
+          },
+        });
+      }
+    } catch (e) {
+      console.error('❌ DB-Update ageVerified fehlgeschlagen:', e);
+    }
   } else {
-   try {
-     await prisma.user.update({
-       where: { id: userId },
-       data: { ageVerified: false },
-     });
-   } catch (e) {
-     console.error('❌ DB-Update ageVerified=false fehlgeschlagen:', e);
-   }
+    try {
+      await prisma.user.update({
+        where: { id: userId },
+        data: { ageVerified: false },
+      });
+    } catch (e) {
+      console.error('❌ DB-Update ageVerified=false fehlgeschlagen:', e);
+    }
   }
 
- // fürs Debugging im ngrok-Inspector sichtbar machen
- console.log('✅ Veriff Webhook', {
-   userId,
-   decision,
-   dob,
-   ageOk,
- });
+  console.log('✅ Veriff Webhook', {
+    userId,
+    decision,
+    dob,
+    ageOk,
+  });
 
   return NextResponse.json({ ok: true, userId, decision, ageOk });
 }

@@ -1,4 +1,3 @@
-// src/app/[locale]/(protected)/p/[id]/media/page.tsx
 'use client';
 
 import * as React from 'react';
@@ -59,7 +58,7 @@ function normalizeMediaFields(src: MediaContainer): ContentMedia[] {
   return out.filter(m => (seen.has(m.url) ? false : (seen.add(m.url), true)));
 }
 
-// ——— kleine Type-Guards, um ohne `any` zu parsen ———
+// ——— kleine Type-Guards ———
 function isObj(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null;
 }
@@ -97,7 +96,7 @@ function pickPreviewPayload(input: unknown): MediaContainer {
 function BlurredGate({ onStartVeriff }: { onStartVeriff: () => void | Promise<void> }) {
   const tVerify = useTranslations('verify');
   return (
-    <div className="min-h-[70vh] grid place-items-center p-6">
+    <div className="min-h-[100svh] grid place-items-center p-6 bg-black text-white">
       <div className="text-center max-w-[520px] rounded-2xl border border-white/15 bg-black/70 backdrop-blur p-6">
         <div className="text-base font-semibold">{tVerify('overlay.heading')}</div>
         <div className="mt-2 text-sm text-white/80">{tVerify('overlay.body')}</div>
@@ -130,21 +129,22 @@ export default function PostMediaPage() {
   const [items, setItems] = React.useState<ContentMedia[] | null>(null);
   const containerRef = React.useRef<HTMLDivElement>(null);
 
+  // Snapshot für Actions übernehmen
   React.useEffect(() => {
     try {
-        const raw = sessionStorage.getItem(`ps:snap:${id}`);
-        if (raw) {
+      const raw = sessionStorage.getItem(`ps:snap:${id}`);
+      if (raw) {
         const s = JSON.parse(raw) as {
-            likes?: number; comments?: number; reposts?: number;
-            liked?: boolean; bookmarked?: boolean; hasReposted?: boolean;
+          likes?: number; comments?: number; reposts?: number;
+          liked?: boolean; bookmarked?: boolean; hasReposted?: boolean;
         };
         setSnapStats({ likes: s.likes, comments: s.comments, reposts: s.reposts });
         setSnapViewer({ liked: s.liked, bookmarked: s.bookmarked, reposted: s.hasReposted });
-        }
+      }
     } catch {}
-    }, [id]);
+  }, [id]);
 
-  // Prefill aus sessionStorage (vom Feed/Detail vorher gesetzt)
+  // Prefill aus sessionStorage (Liste der Medien)
   React.useEffect(() => {
     try {
       const raw = sessionStorage.getItem(`pm:${id}`);
@@ -156,7 +156,7 @@ export default function PostMediaPage() {
     } catch {}
   }, [id]);
 
-  // Medien laden – aber nur, wenn noch nichts im State vorhanden ist
+  // Medien ggf. nachladen
   React.useEffect(() => {
     if (Array.isArray(items) && items.length > 0) return;
 
@@ -185,9 +185,9 @@ export default function PostMediaPage() {
     })();
     return () => { cancelled = true; };
     // bewusst KEIN `items` in deps
-  }, [id, items]); 
+  }, [id, items]);
 
-  // Beim ersten Render nach Load ggf. zum i-th Element scrollen
+  // Zum i-ten Element scrollen
   React.useEffect(() => {
     if (!items || items.length <= 1 || !containerRef.current) return;
     const idx = Math.min(Math.max(0, startIdx), Math.max(0, items.length - 1));
@@ -212,38 +212,90 @@ export default function PostMediaPage() {
     }
   }, [id, locale, router, session, startIdx]);
 
-  // UI
-  return (
-    <div className="min-h-[100svh] bg-black text-white flex flex-col">
-      {/* Fixed Topbar – minimal */}
-      <div className={`fixed inset-x-0 top-0 z-30 transition-opacity ${uiVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-        <PostDetailHeader fixed />
+  // —— Content-Block vorbereiten —— //
+  let content: React.ReactNode;
+
+  if (!ageOk) {
+    content = <BlurredGate onStartVeriff={startAgeVerification} />;
+  } else if (!items) {
+    content = (
+      <div className="flex-1 grid place-items-center text-white/70 bg-black">
+        Lade Medien…
       </div>
+    );
+  } else if (items.length === 0) {
+    content = (
+      <div className="flex-1 grid place-items-center text-white/70 bg-black">
+        Keine Medien gefunden.
+      </div>
+    );
+  } else if (items.length === 1) {
+    // Single Viewer – ein Medium, so groß wie möglich
+    const m = items[0];
+    const isGif = m.kind === 'gif';
+    const isVideoLike = m.kind === 'video' || isGif;
 
-      {/* Inhalt */}
-      {!ageOk ? (
-        <BlurredGate onStartVeriff={startAgeVerification} />
-      ) : !items ? (
-        <div className="flex-1 grid place-items-center text-white/70">Lade Medien…</div>
-      ) : items.length === 0 ? (
-        <div className="flex-1 grid place-items-center text-white/70">Keine Medien gefunden.</div>
-      ) : items.length === 1 ? (
-        /* ------- SINGLE VIEWER: kein Scroll, Medium füllt Viewport ------- */
-        <div className="flex-1 overflow-hidden">
-          <figure
-            className="relative grid place-items-center"
-            style={{ minHeight: 'calc(100svh - 48px)' }}
-            onClick={() => setUiVisible(v => !v)}
-          >
-            {(() => {
-              const k = items[0].kind;
-              const isGif = k === 'gif';
-              const isVideoLike = k === 'video' || isGif;
+    content = (
+      <div className="flex-1 overflow-hidden bg-black">
+        <figure
+          className="relative grid place-items-center"
+          style={{ minHeight: 'calc(100svh - 48px - 64px)' }} // 48 Header, ~64 Actionsbar
+          onClick={() => setUiVisible(v => !v)}
+        >
+          {isVideoLike ? (
+            <VideoPlayer
+              src={m.url}
+              className="max-h-[calc(100svh-48px-64px)] max-w-[100vw] w-auto h-auto"
+              autoPlay
+              muted
+              loop
+              showScrubber={uiVisible}
+              rightTag={isGif ? 'GIF' : undefined}
+              clickToToggle
+            />
+          ) : (
+            <Image
+              src={m.url}
+              alt={m.alt ?? ''}
+              width={1920}
+              height={1080}
+              className="max-h-[calc(100svh-48px-64px)] max-w-[100vw] w-auto h-auto object-contain select-none"
+              unoptimized
+              priority
+            />
+          )}
 
-              return isVideoLike ? (
+          {/* Lesbarkeits-Overlays für Header/Bar */}
+          <div className={`pointer-events-none absolute top-0 inset-x-0 h-24 bg-gradient-to-b from-black/70 to-transparent transition-opacity ${uiVisible ? 'opacity-100' : 'opacity-0'}`} />
+          <div className={`pointer-events-none absolute bottom-0 inset-x-0 h-28 bg-gradient-to-t from-black/70 to-transparent transition-opacity ${uiVisible ? 'opacity-100' : 'opacity-0'}`} />
+        </figure>
+      </div>
+    );
+  } else {
+    // Multi Viewer – Snap-Scroll
+    content = (
+      <div
+        ref={containerRef}
+        className="flex-1 overflow-y-auto snap-y snap-mandatory bg-black"
+        style={{ WebkitOverflowScrolling: 'touch', overscrollBehaviorY: 'contain' }}
+      >
+        <div className="h-12" aria-hidden /> {/* Abstand unter Header */}
+
+        {items.map((m, i) => {
+          const isGif = m.kind === 'gif';
+          const isVideoLike = m.kind === 'video' || isGif;
+
+          return (
+            <figure
+              key={m.url}
+              className="relative snap-start md:snap-center grid place-items-center"
+              style={{ minHeight: 'calc(100svh - 48px - 64px)', scrollSnapStop: 'always' }}
+              onClick={() => setUiVisible(v => !v)}
+            >
+              {isVideoLike ? (
                 <VideoPlayer
-                  src={items[0].url}
-                  className="max-h-[calc(100svh-48px)] max-w-[100vw] w-auto h-auto"
+                  src={m.url}
+                  className="max-h-[calc(100svh-48px-64px)] max-w-[100vw] w-auto h-auto"
                   autoPlay
                   muted
                   loop
@@ -253,77 +305,14 @@ export default function PostMediaPage() {
                 />
               ) : (
                 <Image
-                  src={items[0].url}
-                  alt={items[0].alt ?? ''}
+                  src={m.url}
+                  alt={m.alt ?? ''}
                   width={1920}
                   height={1080}
-                  className="max-h-[calc(100svh-48px)] max-w-[100vw] w-auto h-auto object-contain select-none"
+                  className="max-h-[calc(100svh-48px-64px)] max-w-[100vw] w-auto h-auto object-contain select-none"
                   unoptimized
-                  priority
                 />
-              );
-            })()}
-
-            {/* sanfte Lesbarkeits-Overlays */}
-            <div className={`pointer-events-none absolute top-0 inset-x-0 h-24 bg-gradient-to-b from-black/70 to-transparent transition-opacity ${uiVisible ? 'opacity-100' : 'opacity-0'}`} />
-            <div className={`pointer-events-none absolute bottom-0 inset-x-0 h-28 bg-gradient-to-t from-black/70 to-transparent transition-opacity ${uiVisible ? 'opacity-100' : 'opacity-0'}`} />
-          </figure>
-
-          {/* Floating Actions unten */}
-          <div className={`fixed inset-x-0 bottom-0 z-30 px-3 pb-[env(safe-area-inset-bottom,12px)] transition-transform ${uiVisible ? 'translate-y-0' : 'translate-y-28'}`}>
-            <div className="mx-auto w-full max-w-screen-sm">
-              <div className="rounded-2xl border border-white/12 bg-black/70 backdrop-blur px-3 py-2">
-                <PostActionsBar
-                  postId={id}
-                  stats={snapStats}
-                  viewer={snapViewer}
-                  onCommentClick={() => router.push(`/${locale}/p/${id}`)}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      ) : (
-        /* ------- MULTI VIEWER: wie gehabt mit Snap-Scroll ------- */
-        <div
-          ref={containerRef}
-          className="flex-1 overflow-y-auto snap-y snap-mandatory"
-          style={{ WebkitOverflowScrolling: 'touch', overscrollBehaviorY: 'contain' }}
-        >
-          <div className="h-12" aria-hidden /> {/* Abstand unter Header */}
-
-          {items.map((m, i) => {
-            const isGif = m.kind === 'gif';
-            const isVideoLike = m.kind === 'video' || isGif;
-
-            return (
-              <figure
-                key={m.url}
-                className="relative snap-start md:snap-center grid place-items-center"
-                style={{ minHeight: 'calc(100svh - 48px)', scrollSnapStop: 'always' }}
-                onClick={() => setUiVisible(v => !v)}
-              >
-                {isVideoLike ? (
-                  <VideoPlayer
-                    src={m.url}
-                    className="max-h-[calc(100svh-48px)] max-w-[100vw] w-auto h-auto"
-                    autoPlay
-                    muted
-                    loop
-                    showScrubber
-                    rightTag={isGif ? 'GIF' : undefined}
-                    clickToToggle
-                  />
-                ) : (
-                  <Image
-                    src={m.url}
-                    alt={m.alt ?? ''}
-                    width={1920}
-                    height={1080}
-                    className="max-h-[calc(100svh-48px)] max-w-[100vw] w-auto h-auto object-contain select-none"
-                    unoptimized
-                  />
-                )}
+              )}
 
               {/* Index-Pill */}
               <div className={`absolute right-3 top-3 z-20 transition-opacity ${uiVisible ? 'opacity-95' : 'opacity-0 pointer-events-none'}`}>
@@ -337,22 +326,24 @@ export default function PostMediaPage() {
             </figure>
           );
         })}
+      </div>
+    );
+  }
 
-          {/* Floating Actions unten */}
-          <div className={`fixed inset-x-0 bottom-0 z-30 px-3 pb-[env(safe-area-inset-bottom,12px)] transition-transform ${uiVisible ? 'translate-y-0' : 'translate-y-28'}`}>
-            <div className="mx-auto w-full max-w-screen-sm">
-              <div className="rounded-2xl border border-white/12 bg-black/70 backdrop-blur px-3 py-2">
-                <PostActionsBar
-                  postId={id}
-                  stats={snapStats}
-                  viewer={snapViewer}
-                  onCommentClick={() => router.push(`/${locale}/p/${id}`)}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+  return (
+    <div className="min-h-[100svh] bg-black text-white flex flex-col">
+      {/* Header wie auf der normalen Post-Detail-Seite, gleiche Breite */}
+      <PostDetailHeader fixed />
+
+      {content}
+
+      {/* Eine globale Actions-Bar, zentriert, gleiche Breite wie sonst */}
+      <PostActionsBar
+        postId={id}
+        stats={snapStats}
+        viewer={snapViewer}
+        onCommentClick={() => router.push(`/${locale}/p/${id}`)}
+      />
     </div>
   );
 }

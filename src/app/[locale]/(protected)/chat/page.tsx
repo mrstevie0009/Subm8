@@ -100,7 +100,10 @@ function classifyAppLink(raw: string): LinkKind | null {
 
   let u: URL;
   try {
-    const base = typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
+    const base =
+      typeof window !== 'undefined'
+        ? window.location.origin
+        : process.env.NEXTAUTH_URL ?? 'https://subm8.com';
     u = new URL(s, base);
   } catch {
     return null;
