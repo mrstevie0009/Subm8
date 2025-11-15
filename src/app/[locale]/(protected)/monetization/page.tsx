@@ -10,7 +10,7 @@ type Params = { locale: string };
 
 export const dynamic = "force-static";
 
-export default async function MonetizationPage({ params }: { params: Params }) {
+export default async function MonetizationPage({ params }: { params: Promise<Params> }) {
   const { locale } = await params;
 
   // i18n laden

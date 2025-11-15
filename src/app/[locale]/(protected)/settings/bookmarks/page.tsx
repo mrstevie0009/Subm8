@@ -29,7 +29,7 @@ type BookmarkRow = {
   };
 };
 
-export default async function BookmarksPage({ params }: { params: Params }) {
+export default async function BookmarksPage({ params }: { params: Promise<Params> }) {
   const { locale } = await params;
 
   // Messages aus home.json laden (Namespace = "home")

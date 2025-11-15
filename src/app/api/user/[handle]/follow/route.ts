@@ -8,15 +8,18 @@ type Action = 'follow' | 'unfollow';
 
 export const dynamic = 'force-dynamic';
 
-export async function POST(req: Request, { params }: { params: Params }) {
+export async function POST(
+  req: Request,
+  { params }: { params: Params }   
+) {
   try {
     const me = await getCurrentUser().catch(() => null);
     if (!me) {
       return NextResponse.json({ ok: false, error: 'UNAUTHENTICATED' }, { status: 401 });
     }
 
-    const handle = params.handle.toLowerCase();
-    const target = await prisma.user.findFirst({
+    const handle = params.handle.toLowerCase(); 
+      const target = await prisma.user.findFirst({
       where: { handle: { equals: handle, mode: 'insensitive' } },
       select: { id: true },
     });

@@ -7,7 +7,7 @@ export const dynamic = 'force-static';
 
 type Params = { locale: string };
 
-export default async function LegalPage({ params }: { params: Params }) {
+export default async function LegalPage({ params }: { params: Promise<Params> }) {
   const { locale } = await params;
 
   // i18n-Datei manuell laden und Translator erstellen
