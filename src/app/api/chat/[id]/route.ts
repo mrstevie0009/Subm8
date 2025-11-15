@@ -5,44 +5,10 @@ import { getStorage, buildKey } from '@/lib/storage';
 import { $Enums } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
-type Ctx = { params: Promise<{ id: string }> };
 
-export async function DELETE(_req: Request, { params }: Ctx) {
-  const { id } = await params;
+type Params = { id: string };
+type Ctx = { params: Promise<Params> };
 
-  const me = await getCurrentUser();
-  if (!me) return Response.json({ ok: false, error: 'unauth' }, { status: 401 });
-
-  const convo = await prisma.conversation.findUnique({
-    where: { id },
-    select: { id: true, type: true, dommeId: true, subId: true },
-  });
-  if (!convo) return Response.json({ ok: false, error: 'not_found' }, { status: 404 });
-
-  if (convo.type === $Enums.ConversationType.GROUP) {
-    // Gruppe verlassen → Membership löschen
-    await prisma.conversationMember.deleteMany({
-      where: { conversationId: convo.id, userId: me.id },
-    });
-    return Response.json({ ok: true });
-  }
-
-  // DM: nur Teilnehmer dürfen „löschen“ (verstecken)
-  const iAmDomme = convo.dommeId === me.id;
-  const iAmSub   = convo.subId === me.id;
-  if (!iAmDomme && !iAmSub) {
-    return Response.json({ ok: false, error: 'forbidden' }, { status: 403 });
-  }
-
-  await prisma.conversation.update({
-    where: { id: convo.id },
-    data: iAmDomme
-      ? { hiddenForDomme: new Date(), unreadForDomme: 0 }
-      : { hiddenForSub:   new Date(), unreadForSub:   0 },
-  });
-
-  return Response.json({ ok: true });
-}
 type DbRole = 'DOMME' | 'SUBMISSIVE';
 
 /* ---------------------------- helpers ----------------------------------- */
@@ -112,6 +78,45 @@ function decodeCursor(s: string | null) {
   return { at: new Date(t), id };
 }
 
+/* -------------------------------- DELETE -------------------------------- */
+
+export async function DELETE(_req: Request, { params }: Ctx) {
+  const { id } = await params;
+
+  const me = await getCurrentUser();
+  if (!me) return Response.json({ ok: false, error: 'unauth' }, { status: 401 });
+
+  const convo = await prisma.conversation.findUnique({
+    where: { id },
+    select: { id: true, type: true, dommeId: true, subId: true },
+  });
+  if (!convo) return Response.json({ ok: false, error: 'not_found' }, { status: 404 });
+
+  if (convo.type === $Enums.ConversationType.GROUP) {
+    // Gruppe verlassen → Membership löschen
+    await prisma.conversationMember.deleteMany({
+      where: { conversationId: convo.id, userId: me.id },
+    });
+    return Response.json({ ok: true });
+  }
+
+  // DM: nur Teilnehmer dürfen „löschen“ (verstecken)
+  const iAmDomme = convo.dommeId === me.id;
+  const iAmSub   = convo.subId === me.id;
+  if (!iAmDomme && !iAmSub) {
+    return Response.json({ ok: false, error: 'forbidden' }, { status: 403 });
+  }
+
+  await prisma.conversation.update({
+    where: { id: convo.id },
+    data: iAmDomme
+      ? { hiddenForDomme: new Date(), unreadForDomme: 0 }
+      : { hiddenForSub:   new Date(), unreadForSub:   0 },
+  });
+
+  return Response.json({ ok: true });
+}
+
 /* -------------------------------- GET ----------------------------------- */
 
 export async function GET(_req: Request, { params }: Ctx) {
@@ -127,7 +132,10 @@ export async function GET(_req: Request, { params }: Ctx) {
     const beforeParam = decodeCursor(url.searchParams.get('before'));
     const sinceParam  = decodeCursor(url.searchParams.get('since'));
     // take begrenzen: 1..100 (default: latest?30:200 wie bisher)
-    const take = Math.min(Math.max(Number(url.searchParams.get('take') || (latestParam ? 30 : 200)), 1), 100);
+    const take = Math.min(
+      Math.max(Number(url.searchParams.get('take') || (latestParam ? 30 : 200)), 1),
+      100,
+    );
 
     const convo = await prisma.conversation.findUnique({
       where: { id },
@@ -167,7 +175,7 @@ export async function GET(_req: Request, { params }: Ctx) {
     if (!otherRaw) {
       return Response.json(
         { ok: false, error: 'CONVERSATION_INCONSISTENT' },
-        { status: 409 }
+        { status: 409 },
       );
     }
 
@@ -350,7 +358,9 @@ export async function GET(_req: Request, { params }: Ctx) {
     }
 
     const mapped = messagesDb.map((m) => {
-      const read = fast ? m.authorId === me.id : (hasReads(m) ? m.reads.length > 0 : m.authorId === me.id);
+      const read = fast
+        ? m.authorId === me.id
+        : (hasReads(m) ? m.reads.length > 0 : m.authorId === me.id);
       return {
         id: m.id,
         at: m.createdAt.toISOString(),
@@ -414,7 +424,7 @@ export async function POST(req: Request, { params }: Ctx) {
     if (!otherUserId) {
       return Response.json(
         { ok: false, error: 'CONVERSATION_INCONSISTENT' },
-        { status: 409 }
+        { status: 409 },
       );
     }
     const { viewerHasBlocked, isBlockedByOther } = await getBlockFlags(me.id, otherUserId);
@@ -453,7 +463,7 @@ export async function POST(req: Request, { params }: Ctx) {
         if (file.size > maxBytes) {
           return Response.json(
             { ok: false, error: `File too large (max ${MAX_UPLOAD_MB} MB)` },
-            { status: 413 }
+            { status: 413 },
           );
         }
 
@@ -554,7 +564,9 @@ export async function POST(req: Request, { params }: Ctx) {
       if (text.length > (isEnvelope ? MAX_ENVELOPE_TEXT : MAX_TEXT)) {
         return Response.json({ ok: false, error: 'Too long' }, { status: 400 });
       }
-      if (text.length > 4000) return Response.json({ ok: false, error: 'Too long' }, { status: 400 });
+      if (text.length > 4000) {
+        return Response.json({ ok: false, error: 'Too long' }, { status: 400 });
+      }
     }
 
     // Optional: Mime guarden, falls mediaType mitkommt
@@ -570,7 +582,14 @@ export async function POST(req: Request, { params }: Ctx) {
         mediaUrl: bodyMediaUrl,
         mediaType: bodyMediaType || null,
       },
-      select: { id: true, createdAt: true, authorId: true, text: true, mediaUrl: true, mediaType: true },
+      select: {
+        id: true,
+        createdAt: true,
+        authorId: true,
+        text: true,
+        mediaUrl: true,
+        mediaType: true,
+      },
     });
 
     await prisma.conversation.update({
@@ -595,8 +614,8 @@ export async function POST(req: Request, { params }: Ctx) {
         at: msg.createdAt.toISOString(),
         authorId: msg.authorId,
         text: msg.text,
-        mediaUrl: (msg).mediaUrl ?? null,
-        mediaType: (msg).mediaType ?? null,
+        mediaUrl: msg.mediaUrl ?? null,
+        mediaType: msg.mediaType ?? null,
       },
     });
   } catch (e) {

@@ -7,7 +7,8 @@ import { getCurrentUser } from "@/lib/currentUser";
 
 export const dynamic = "force-dynamic";
 
-type Ctx = { params: { handle: string } };
+type Params = { handle: string };
+type Ctx = { params: Promise<Params> };
 
 function sanitizeFileName(name: string) {
   const base = name.replace(/\s+/g, "_").replace(/[^a-zA-Z0-9._-]/g, "");
@@ -20,8 +21,8 @@ function isImg(type: string) {
 /** ---------- GET: public read ---------- */
 export async function GET(_req: Request, { params }: Ctx) {
   try {
-    const raw = String(params?.handle ?? "");
-    const handle = decodeURIComponent(raw).trim();
+    const { handle: rawHandle } = await params;
+    const handle = decodeURIComponent(String(rawHandle ?? "")).trim();
 
     const u = await prisma.user.findFirst({
       where: { handle: { equals: handle, mode: "insensitive" } },
@@ -64,8 +65,8 @@ export async function POST(req: Request, { params }: Ctx) {
     const me = await getCurrentUser();
     if (!me) return Response.json({ ok: false, error: "Not authenticated" }, { status: 401 });
 
-    const raw = String(params?.handle ?? "");
-    const handle = decodeURIComponent(raw).trim();
+    const { handle: rawHandle } = await params;
+    const handle = decodeURIComponent(String(rawHandle ?? "")).trim();
 
     const owner = await prisma.user.findFirst({
       where: { handle: { equals: handle, mode: "insensitive" } },

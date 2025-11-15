@@ -4,7 +4,9 @@ import { getCurrentUser } from '@/lib/currentUser';
 import { $Enums } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
-type Ctx = { params: Promise<{ id: string }> };
+
+type Params = { id: string };
+type Ctx = { params: Promise<Params> };
 
 export async function GET(_req: Request, { params }: Ctx) {
   const { id } = await params;
@@ -18,13 +20,13 @@ export async function GET(_req: Request, { params }: Ctx) {
   const convo = await prisma.conversation.findUnique({
     where: { id },
     select: {
-        id: true,
-        type: true,
-        dommeId: true,
-        subId: true,
-        title: true,
-        avatarUrl: true, // ← NEW
-        _count: { select: { members: true } },
+      id: true,
+      type: true,
+      dommeId: true,
+      subId: true,
+      title: true,
+      avatarUrl: true,
+      _count: { select: { members: true } },
     },
   });
 
@@ -48,7 +50,7 @@ export async function GET(_req: Request, { params }: Ctx) {
   }
 
   const payload = {
-    ok: true,
+    ok: true as const,
     id: convo.id,
     type: convo.type,
     member,
@@ -56,13 +58,18 @@ export async function GET(_req: Request, { params }: Ctx) {
     title: convo.title ?? null,
     avatarUrl: convo.avatarUrl && convo.avatarUrl.trim() ? convo.avatarUrl : null,
     memberCount: convo._count?.members ?? null,
-    };
+  };
 
   if (!member) {
     // Liefere type im Body mit, aber kennzeichne Forbidden via Status
-    return Response.json({ ...payload, ok: false, error: 'Forbidden' }, { status: 403 });
+    return Response.json(
+      { ...payload, ok: false as const, error: 'Forbidden' },
+      { status: 403 },
+    );
   }
 
   // Kurze private Cache-Hints erlaubt
-  return Response.json(payload, { headers: { 'cache-control': 'private, no-store' } });
+  return Response.json(payload, {
+    headers: { 'cache-control': 'private, no-store' },
+  });
 }
