@@ -2,7 +2,7 @@
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/currentUser';
 import { getStorage, buildKey } from '@/lib/storage';
-import { $Enums } from '@prisma/client';
+import { ConversationType } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
 
@@ -65,7 +65,7 @@ export async function GET(
       },
     });
     if (!convo) return Response.json({ ok: false, error: 'Not found' }, { status: 404 });
-    if (convo.type !== $Enums.ConversationType.GROUP) {
+    if (convo.type !== ConversationType.GROUP) {
       return Response.json({ ok: false, error: 'NOT_A_GROUP' }, { status: 400 });
     }
 
@@ -149,7 +149,7 @@ export async function POST(
       select: { id: true, type: true, members: { select: { userId: true } } },
     });
     if (!convo) return Response.json({ ok: false, error: 'Not found' }, { status: 404 });
-    if (convo.type !== $Enums.ConversationType.GROUP) {
+    if (convo.type !== ConversationType.GROUP) {
       return Response.json({ ok: false, error: 'NOT_A_GROUP' }, { status: 400 });
     }
     const isMember = convo.members.some((m) => m.userId === me.id);

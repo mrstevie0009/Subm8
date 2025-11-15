@@ -7,7 +7,7 @@ const withAnalyzer = bundleAnalyzer({
   enabled: process.env.ANALYZE === 'true',
   openAnalyzer: true,
   analyzerMode: 'server',
-  analyzerPort: Number(process.env.ANALYZE_PORT || 8889), // ⬅ Port wechseln
+  analyzerPort: Number(process.env.ANALYZE_PORT || 8889),
   generateStatsFile: true,
 })
 
@@ -15,16 +15,9 @@ const withAnalyzer = bundleAnalyzer({
 const nextConfig = {
   images: {
     remotePatterns: [
-      // your CDN
       { protocol: 'https', hostname: 'cdn.subm8.com' },
-
-      // (optional) fallback hosts you *might* produce from older rows/configs
-      // R2 custom/public endpoints (only if you ever use them)
       { protocol: 'https', hostname: '*.r2.cloudflarestorage.com' },
-      // S3-style URLs (only if your publicBaseUrl ever points there)
       { protocol: 'https', hostname: '*.s3.amazonaws.com' },
-
-      // existing providers
       { protocol: 'https', hostname: 'media.tenor.com' },
       { protocol: 'https', hostname: 'tenor.com' },
       { protocol: 'https', hostname: 'i.giphy.com' },
@@ -35,6 +28,12 @@ const nextConfig = {
   turbopack: {},
   experimental: {
     serverActions: { bodySizeLimit: '200mb' },
+  },
+
+  // ⬇⬇ WICHTIG: .next/cache NIE in irgendeine Serverless Function mit reinpacken
+  outputFileTracingExcludes: {
+    // Glob matcht alle Routen ('/[locale]/compose', '/api/…', usw.)
+    '/**': ['.next/cache/**'],
   },
 }
 

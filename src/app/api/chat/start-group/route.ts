@@ -1,7 +1,7 @@
 // src/app/api/chat/start-group/route.ts
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/currentUser';
-import { $Enums } from '@prisma/client'; 
+import { $Enums, ConversationType } from '@prisma/client'; 
 
 export const dynamic = 'force-dynamic';
 
@@ -18,7 +18,7 @@ export async function POST(req: Request) {
 
   const convo = await prisma.conversation.create({
     data: {
-      type: $Enums.ConversationType.GROUP,
+      type: ConversationType.GROUP,
       title: body?.title ?? null,
       createdById: me.id,
       members: {

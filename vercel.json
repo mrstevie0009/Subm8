@@ -1,7 +1,3 @@
 {
-  "functions": {
-    "app/api/**": {
-      "excludeFiles": "{.git/**,.next/cache/**}"
-    }
-  }
+  "$schema": "https://openapi.vercel.sh/vercel.json"
 }

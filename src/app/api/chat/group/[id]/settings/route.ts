@@ -1,7 +1,7 @@
 // src/app/api/chat/group/[id]/settings/route.ts
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/currentUser';
-import { $Enums } from '@prisma/client';
+import { ConversationType } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
 
@@ -41,7 +41,7 @@ export async function GET(
     );
   }
 
-  if (convo.type !== $Enums.ConversationType.GROUP) {
+  if (convo.type !== ConversationType.GROUP) {
     return Response.json(
       { ok: false, error: 'NOT_A_GROUP' },
       { status: 400 },

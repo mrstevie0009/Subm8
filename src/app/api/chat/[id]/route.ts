@@ -2,7 +2,7 @@
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/currentUser';
 import { getStorage, buildKey } from '@/lib/storage';
-import { $Enums } from '@prisma/client';
+import { ConversationType } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
 
@@ -92,7 +92,7 @@ export async function DELETE(
   });
   if (!convo) return Response.json({ ok: false, error: 'not_found' }, { status: 404 });
 
-  if (convo.type === $Enums.ConversationType.GROUP) {
+  if (convo.type === ConversationType.GROUP) {
     // Gruppe verlassen → Membership löschen
     await prisma.conversationMember.deleteMany({
       where: { conversationId: convo.id, userId: me.id },
@@ -164,7 +164,7 @@ export async function GET(
       },
     });
     if (!convo) return Response.json({ ok: false, error: 'Not found' }, { status: 404 });
-    if (convo.type !== $Enums.ConversationType.DM) {
+    if (convo.type !== ConversationType.DM) {
       return Response.json({ ok: false, error: 'NOT_A_DM' }, { status: 400 });
     }
     // Membership prüfen
@@ -421,7 +421,7 @@ export async function POST(
       return Response.json({ ok: false, error: 'Forbidden' }, { status: 403 });
     }
 
-    if (convo.type !== $Enums.ConversationType.DM) {
+    if (convo.type !== ConversationType.DM) {
       return Response.json({ ok: false, error: 'NOT_A_DM' }, { status: 400 });
     }
 

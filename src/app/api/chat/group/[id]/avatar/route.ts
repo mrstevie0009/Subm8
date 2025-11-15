@@ -2,7 +2,7 @@
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/currentUser';
 import { getStorage, buildKey } from '@/lib/storage';
-import { $Enums } from '@prisma/client';
+import { ConversationType } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,7 +26,7 @@ export async function PUT(
   });
   if (
     !membership ||
-    membership.conversation?.type !== $Enums.ConversationType.GROUP
+    membership.conversation?.type !== ConversationType.GROUP
   ) {
     return Response.json({ ok: false, error: 'Forbidden' }, { status: 403 });
   }
