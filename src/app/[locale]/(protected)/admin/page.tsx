@@ -11,7 +11,7 @@ import {
   deactivateOrDeleteUserAction,
   resolveReportsAction,
   resolveGroupReportsAction,
-} from './actions';
+} from '@/app/_actions/admin';
 
 type Params = { locale: string };
 
