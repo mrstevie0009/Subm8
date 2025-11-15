@@ -77,7 +77,7 @@ async function requireUser() {
    Server Actions (TOTP)
 ========================= */
 
-export async function startTotpSetupAction() {
+async function startTotpSetupAction() {
   'use server';
   const { user } = await requireUser();
 
@@ -93,7 +93,7 @@ export async function startTotpSetupAction() {
   revalidatePath('/[locale]/security', 'page');
 }
 
-export async function verifyTotpAction(formData: FormData) {
+async function verifyTotpAction(formData: FormData) {
   'use server';
   const { user } = await requireUser();
   const token = (formData.get('token') ?? '').toString().trim();
@@ -117,7 +117,7 @@ export async function verifyTotpAction(formData: FormData) {
   revalidatePath('/[locale]/security', 'page');
 }
 
-export async function disable2FAAction() {
+async function disable2FAAction() {
   'use server';
   const { user } = await requireUser();
 
@@ -138,7 +138,7 @@ export async function disable2FAAction() {
    Server Actions (Passkeys)
 ========================= */
 
-export async function disablePasskeysAction() {
+async function disablePasskeysAction() {
   'use server';
   const { user } = await requireUser();
 
@@ -158,7 +158,7 @@ export async function disablePasskeysAction() {
    Server Actions (SMS)
 ========================= */
 
-export async function startSmsSetupAction() {
+async function startSmsSetupAction() {
   'use server';
   const { user } = await requireUser();
 
@@ -178,7 +178,7 @@ export async function startSmsSetupAction() {
   revalidatePath('/[locale]/security', 'page');
 }
 
-export async function verifySmsSetupAction(formData: FormData) {
+async function verifySmsSetupAction(formData: FormData) {
   'use server';
   const { user } = await requireUser();
   const code = (formData.get('code') ?? '').toString().trim();
@@ -208,7 +208,7 @@ export async function verifySmsSetupAction(formData: FormData) {
   revalidatePath('/[locale]/security', 'page');
 }
 
-export async function disableSms2FAAction() {
+async function disableSms2FAAction() {
   'use server';
   const { user } = await requireUser();
 
@@ -225,7 +225,7 @@ export async function disableSms2FAAction() {
   revalidatePath('/[locale]/security', 'page');
 }
 
-export async function disableSmsNumberAction() {
+async function disableSmsNumberAction() {
   'use server';
   const { user } = await requireUser();
 
@@ -253,7 +253,7 @@ export async function disableSmsNumberAction() {
    Server Actions (Settings)
 ========================= */
 
-export async function togglePasswordResetProtectionAction() {
+async function togglePasswordResetProtectionAction() {
   'use server';
   const { user } = await requireUser();
   await prisma.user.update({
@@ -263,7 +263,7 @@ export async function togglePasswordResetProtectionAction() {
   revalidatePath('/[locale]/security', 'page');
 }
 
-export async function logoutAllSessionsAction() {
+async function logoutAllSessionsAction() {
   'use server';
   const { user } = await requireUser();
 
