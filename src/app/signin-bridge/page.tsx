@@ -7,8 +7,10 @@ type SearchParams = {
   [key: string]: string | string[] | undefined;
 };
 
-export default function SignInBridge(props: { searchParams: SearchParams }) {
-  const sp = props.searchParams || {};
+export default async function SignInBridge(
+  { searchParams }: { searchParams: Promise<SearchParams> },
+) {
+  const sp = (await searchParams) || {};
   const callbackUrl = typeof sp.callbackUrl === 'string' ? sp.callbackUrl : '';
   let locale = 'en';
 
