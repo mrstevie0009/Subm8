@@ -96,5 +96,9 @@ function mapBypass(input: Buffer, mime: AllowedMime): ImageProcessResult {
       return { data: input, mime, ext: '.webp' };
     case 'image/gif':
       return { data: input, mime, ext: '.gif' };
+    default: {
+      // Sollte bei korrektem AllowedMime nie passieren – defensiver Fallback
+      return { data: input, mime, ext: '.jpg' };
+    }
   }
 }
