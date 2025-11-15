@@ -4,22 +4,24 @@ import { notFound } from 'next/navigation';
 import CommunityMembersClient from '@/components/CommunityMembersClient';
 import BackButton from '@/components/BackButton';
 
-type Params = { locale: string; slug: string };
-type Tab = 'members' | 'verified';
-
 function encodeCursor(d: Date, userId: string) {
   return `${d.getTime()}_${userId}`;
 }
+
+type Params = { locale: string; slug: string };
+type Tab = 'members' | 'verified';
 
 export default async function CommunityMembersPage({
   params,
   searchParams,
 }: {
   params: Promise<Params>;
-  searchParams?: { tab?: string };
+  searchParams: Promise<{ tab?: string }>;
 }) {
   const { locale, slug } = await params;
-  const initialTab = (searchParams?.tab as Tab) || 'members';
+  const sp = await searchParams;
+
+  const initialTab = ((sp?.tab as Tab) || 'members');
 
   const me = await getCurrentUser().catch(() => null);
 

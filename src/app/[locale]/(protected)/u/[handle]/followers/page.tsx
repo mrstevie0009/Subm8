@@ -27,10 +27,14 @@ export default async function FollowersUnifiedPage({
   searchParams,
 }: {
   params: Promise<Params>;
-  searchParams?: { tab?: string };
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { locale, handle } = await params;
-  const initialTab = (searchParams?.tab as Tab) || 'followers';
+  const sp = await searchParams;
+
+  const rawTab = sp?.tab;
+  const tabStr = Array.isArray(rawTab) ? rawTab[0] : rawTab;
+  const initialTab = (tabStr as Tab) || 'followers';
 
   const me = await getCurrentUser().catch(() => null);
   const user = await prisma.user.findUnique({
