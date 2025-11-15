@@ -216,7 +216,7 @@ export async function resetNotificationsAction() {
 export default async function NotificationsPage({
   params,
 }: {
-  params: Params;
+  params: Promise<Params>;
 }) {
   const { locale } = await params;
   const me = await getCurrentUser().catch(() => null);

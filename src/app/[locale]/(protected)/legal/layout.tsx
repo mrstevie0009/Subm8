@@ -15,7 +15,7 @@ export default async function LegalLayout({
   params,
 }: {
   children: React.ReactNode;
-  params: Params;
+  params: Promise<Params>;
 }) {
   const { locale } = await params;
 
