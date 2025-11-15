@@ -1,11 +1,10 @@
-//src/app/api/chat/group/[id]/route.ts
+// src/app/api/chat/group/[id]/route.ts
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/currentUser';
 import { getStorage, buildKey } from '@/lib/storage';
 import { $Enums } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
-type Ctx = { params: Promise<{ id: string }> };
 
 /* ------------ Upload Guards & Limits (gleich wie DM) ------------ */
 const MAX_UPLOAD_MB = Number(process.env.CHAT_UPLOAD_MAX_MB || '100');
@@ -18,19 +17,24 @@ function isAllowedMime(type: string) {
 }
 
 /* ------------------------------- GET -------------------------------- */
-export async function GET(req: Request, { params }: Ctx) {
+export async function GET(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
   try {
     const { id } = await params;
     const me = await getCurrentUser();
     if (!me) return Response.json({ ok: false, error: 'Not authenticated' }, { status: 401 });
 
-    // ⬇️ NEW: fetch my profile so we can include my avatar (and role)
+    // ⬇️ Profil für Avatar & Rolle
     const meProfile = await prisma.user.findUnique({
-    where: { id: me.id },
-    select: { avatarUrl: true, role: true },
+      where: { id: me.id },
+      select: { avatarUrl: true, role: true },
     });
     const meAvatarUrl =
-    meProfile?.avatarUrl && meProfile.avatarUrl.trim() ? meProfile.avatarUrl : null;
+      meProfile?.avatarUrl && meProfile.avatarUrl.trim()
+        ? meProfile.avatarUrl
+        : null;
 
     const url = new URL(req.url);
     const fast = url.searchParams.get('fast') === '1';
@@ -42,15 +46,23 @@ export async function GET(req: Request, { params }: Ctx) {
         id: true,
         type: true,
         title: true,
-        avatarUrl: true, 
+        avatarUrl: true,
         members: {
-            select: {
+          select: {
             userId: true,
             role: true,
-            user: { select: { id: true, handle: true, displayName: true, avatarUrl: true, role: true } },
+            user: {
+              select: {
+                id: true,
+                handle: true,
+                displayName: true,
+                avatarUrl: true,
+                role: true,
+              },
             },
+          },
         },
-        },
+      },
     });
     if (!convo) return Response.json({ ok: false, error: 'Not found' }, { status: 404 });
     if (convo.type !== $Enums.ConversationType.GROUP) {
@@ -76,7 +88,7 @@ export async function GET(req: Request, { params }: Ctx) {
       select: baseSelect,
     });
 
-    // Typing innerhalb der letzten 8s (gleiche Tabelle wie DM)
+    // Typing innerhalb der letzten 8s
     const typingRows = await prisma.conversationTypingState.findMany({
       where: { conversationId: id, updatedAt: { gt: new Date(Date.now() - 8000) } },
       select: { userId: true },
@@ -85,22 +97,25 @@ export async function GET(req: Request, { params }: Ctx) {
     return Response.json({
       ok: true,
       me: {
-            id: me.id,
-            role: meProfile?.role ?? null,          
-            avatarUrl: meAvatarUrl,                 
-        },
+        id: me.id,
+        role: meProfile?.role ?? null,
+        avatarUrl: meAvatarUrl,
+      },
       group: {
         id: convo.id,
         name: convo.title ?? 'Group',
         avatarUrl: convo.avatarUrl ?? null,
         members: convo.members.map((m) => ({
-            id: m.user.id,
-            handle: m.user.handle,
-            displayName: m.user.displayName,
-            avatarUrl: m.user.avatarUrl && m.user.avatarUrl.trim() ? m.user.avatarUrl : null,
-            role: m.role,
+          id: m.user.id,
+          handle: m.user.handle,
+          displayName: m.user.displayName,
+          avatarUrl:
+            m.user.avatarUrl && m.user.avatarUrl.trim()
+              ? m.user.avatarUrl
+              : null,
+          role: m.role,
         })),
-        },
+      },
       typingUserIds: typingRows.map((r) => r.userId),
       messages: msgs.map((m) => ({
         id: m.id,
@@ -109,7 +124,7 @@ export async function GET(req: Request, { params }: Ctx) {
         text: m.text,
         mediaUrl: m.mediaUrl,
         mediaType: m.mediaType,
-        read: m.authorId === me.id, 
+        read: m.authorId === me.id,
       })),
       pageSize: take,
     });
@@ -120,7 +135,10 @@ export async function GET(req: Request, { params }: Ctx) {
 }
 
 /* ------------------------------- POST -------------------------------- */
-export async function POST(req: Request, { params }: Ctx) {
+export async function POST(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
   try {
     const { id } = await params;
     const me = await getCurrentUser();
@@ -163,7 +181,10 @@ export async function POST(req: Request, { params }: Ctx) {
         }
         const maxBytes = MAX_UPLOAD_MB * 1024 * 1024;
         if (file.size > maxBytes) {
-          return Response.json({ ok: false, error: `File too large (max ${MAX_UPLOAD_MB} MB)` }, { status: 413 });
+          return Response.json(
+            { ok: false, error: `File too large (max ${MAX_UPLOAD_MB} MB)` },
+            { status: 413 },
+          );
         }
 
         const storage = getStorage();
@@ -201,7 +222,14 @@ export async function POST(req: Request, { params }: Ctx) {
           mediaUrl,
           mediaType,
         },
-        select: { id: true, createdAt: true, authorId: true, text: true, mediaUrl: true, mediaType: true },
+        select: {
+          id: true,
+          createdAt: true,
+          authorId: true,
+          text: true,
+          mediaUrl: true,
+          mediaType: true,
+        },
       });
 
       await prisma.conversation.update({
@@ -222,7 +250,7 @@ export async function POST(req: Request, { params }: Ctx) {
       });
     }
 
-    /* ---------- B) JSON: presigned Upload (empfohlen, wie im DM-Composer) ---------- */
+    /* ---------- B) JSON: presigned Upload ---------- */
     const body = (await req.json().catch(() => null)) as
       | { text?: string; typing?: boolean; mediaUrl?: string; mediaType?: string }
       | null;
@@ -236,14 +264,18 @@ export async function POST(req: Request, { params }: Ctx) {
           create: { conversationId: id, userId: me.id, updatedAt: new Date() },
         });
       } else {
-        await prisma.conversationTypingState.deleteMany({ where: { conversationId: id, userId: me.id } });
+        await prisma.conversationTypingState.deleteMany({
+          where: { conversationId: id, userId: me.id },
+        });
       }
       return Response.json({ ok: true });
     }
 
     const text = (body?.text ?? '').toString().trim();
-    const bodyMediaUrl = typeof body?.mediaUrl === 'string' && body.mediaUrl ? body.mediaUrl : null;
-    const bodyMediaType = typeof body?.mediaType === 'string' && body.mediaType ? body.mediaType : null;
+    const bodyMediaUrl =
+      typeof body?.mediaUrl === 'string' && body.mediaUrl ? body.mediaUrl : null;
+    const bodyMediaType =
+      typeof body?.mediaType === 'string' && body.mediaType ? body.mediaType : null;
 
     if (!text && !bodyMediaUrl) {
       return Response.json({ ok: false, error: 'Empty message' }, { status: 400 });
@@ -268,7 +300,14 @@ export async function POST(req: Request, { params }: Ctx) {
         mediaUrl: bodyMediaUrl,
         mediaType: bodyMediaType || null,
       },
-      select: { id: true, createdAt: true, authorId: true, text: true, mediaUrl: true, mediaType: true },
+      select: {
+        id: true,
+        createdAt: true,
+        authorId: true,
+        text: true,
+        mediaUrl: true,
+        mediaType: true,
+      },
     });
 
     await prisma.conversation.update({

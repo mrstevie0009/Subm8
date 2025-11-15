@@ -4,43 +4,58 @@ import { getCurrentUser } from '@/lib/currentUser';
 import { $Enums } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
-type Ctx = { params: Promise<{ id: string }> };
 
-export async function POST(req: Request, { params }: Ctx) {
+export async function POST(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
   const { id } = await params;
   const me = await getCurrentUser();
-  if (!me) return Response.json({ ok:false, error:'Not authenticated' }, { status:401 });
+  if (!me) {
+    return Response.json(
+      { ok: false, error: 'Not authenticated' },
+      { status: 401 },
+    );
+  }
 
-  const body = await req.json().catch(() => null) as { memberIds?: string[] } | null;
-  const ids = Array.isArray(body?.memberIds) ? Array.from(new Set(body!.memberIds.filter(Boolean))) : [];
-  if (!ids.length) return Response.json({ ok:false, error:'Empty list' }, { status:400 });
+  const body = (await req.json().catch(() => null)) as { memberIds?: string[] } | null;
+  const ids = Array.isArray(body?.memberIds)
+    ? Array.from(new Set(body!.memberIds.filter(Boolean)))
+    : [];
+  if (!ids.length) {
+    return Response.json({ ok: false, error: 'Empty list' }, { status: 400 });
+  }
 
   const convo = await prisma.conversation.findUnique({
     where: { id },
-    select: { id:true, type:true, members:{ select:{ userId:true, role:true } } },
+    select: { id: true, type: true, members: { select: { userId: true, role: true } } },
   });
-  if (!convo) return Response.json({ ok:false, error:'Not found' }, { status:404 });
-  if (convo.type !== $Enums.ConversationType.GROUP) return Response.json({ ok:false, error:'NOT_A_GROUP' }, { status:400 });
+  if (!convo) {
+    return Response.json({ ok: false, error: 'Not found' }, { status: 404 });
+  }
+  if (convo.type !== $Enums.ConversationType.GROUP) {
+    return Response.json({ ok: false, error: 'NOT_A_GROUP' }, { status: 400 });
+  }
 
-  const meRow = convo.members.find(m => m.userId === me.id);
-  if (!meRow) return Response.json({ ok:false, error:'Forbidden' }, { status:403 });
+  const meRow = convo.members.find((m) => m.userId === me.id);
+  if (!meRow) {
+    return Response.json({ ok: false, error: 'Forbidden' }, { status: 403 });
+  }
 
-  // Optional: nur Admins dürfen einladen (falls gewünscht)
-  // if (meRow.role !== $Enums.ConversationMemberRole.ADMIN) return Response.json({ ok:false, error:'FORBIDDEN' }, { status:403 });
-
-  const existing = new Set(convo.members.map(m => m.userId));
-  const toAdd = ids.filter(uid => uid !== me.id && !existing.has(uid));
-  if (!toAdd.length) return Response.json({ ok:true, added: 0 });
+  const existing = new Set(convo.members.map((m) => m.userId));
+  const toAdd = ids.filter((uid) => uid !== me.id && !existing.has(uid));
+  if (!toAdd.length) {
+    return Response.json({ ok: true, added: 0 });
+  }
 
   await prisma.conversationMember.createMany({
-    data: toAdd.map(uid => ({
+    data: toAdd.map((uid) => ({
       conversationId: id,
       userId: uid,
       role: $Enums.ConversationMemberRole.MEMBER,
-      // NOTE: if your schema has fields like unreadCount/muted, defaults will apply
     })),
     skipDuplicates: true,
   });
 
-  return Response.json({ ok:true, added: toAdd.length });
+  return Response.json({ ok: true, added: toAdd.length });
 }

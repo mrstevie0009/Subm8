@@ -6,9 +6,6 @@ import { $Enums } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
 
-type Params = { id: string };
-type Ctx = { params: Promise<Params> };
-
 type DbRole = 'DOMME' | 'SUBMISSIVE';
 
 /* ---------------------------- helpers ----------------------------------- */
@@ -80,7 +77,10 @@ function decodeCursor(s: string | null) {
 
 /* -------------------------------- DELETE -------------------------------- */
 
-export async function DELETE(_req: Request, { params }: Ctx) {
+export async function DELETE(
+  _req: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
   const { id } = await params;
 
   const me = await getCurrentUser();
@@ -119,7 +119,10 @@ export async function DELETE(_req: Request, { params }: Ctx) {
 
 /* -------------------------------- GET ----------------------------------- */
 
-export async function GET(_req: Request, { params }: Ctx) {
+export async function GET(
+  _req: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
   try {
     const { id } = await params;
 
@@ -399,7 +402,10 @@ export async function GET(_req: Request, { params }: Ctx) {
 
 /* -------------------------------- POST ---------------------------------- */
 
-export async function POST(req: Request, { params }: Ctx) {
+export async function POST(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
   try {
     const { id } = await params;
     const me = await getCurrentUser();
