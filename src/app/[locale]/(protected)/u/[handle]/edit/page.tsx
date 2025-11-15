@@ -6,11 +6,11 @@ import { getCurrentUser } from '@/lib/currentUser';
 import { updateProfileAction } from '@/lib/profile';
 import EditProfileTabs from '@/components/EditProfileTabs';
 
-export default async function Page({
-  params: { locale, handle },
-}: {
-  params: { locale: string; handle: string };
-}) {
+type Params = { locale: string; handle: string };
+
+export default async function Page({ params }: { params: Promise<Params> }) {
+  const { locale, handle } = await params;
+
   const me = await getCurrentUser();
   if (!me) {
     redirect(`/${locale}/signin?callbackUrl=/${locale}/u/${handle}/edit`);
@@ -38,14 +38,11 @@ export default async function Page({
       avatarUrl: true,
       bannerUrl: true,
       role: true,
-      // 👉 neues Feld für Website-Link
       websiteUrl: true,
     },
   });
   if (!u) notFound();
 
-  // Falls dein EditInitial den Website-Link bereits kennt:
-  // (wenn nicht, bitte EditProfileForm/EditInitial + updateProfileAction & Prisma-Schema entsprechend erweitern)
   const initial: EditInitial & { websiteUrl?: string } = {
     displayName: u.displayName ?? '',
     username: u.handle,
