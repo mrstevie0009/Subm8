@@ -2,8 +2,6 @@ import { LegalArticle, Callout } from '@/components/legal/LegalArticle';
 import { createTranslator } from 'next-intl';
 import { notFound } from 'next/navigation';
 
-export const dynamic = 'force-static';
-
 type Params = { locale: string };
 
 export default async function LegalPage({ params }: { params: Promise<Params> }) {
