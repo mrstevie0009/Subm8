@@ -97,7 +97,7 @@ function validISO2Country(v: string) {
    Server Actions
 ========================= */
 
-export async function updateProfileAction(formData: FormData) {
+async function updateProfileAction(formData: FormData) {
   'use server';
   const { user } = await requireUser();
   const { hasPhone, hasCountry } = await getUserColumnFlags();
@@ -154,7 +154,7 @@ export async function updateProfileAction(formData: FormData) {
   revalidatePath('/[locale]/profile', 'page');
 }
 
-export async function changePasswordAction(formData: FormData) {
+async function changePasswordAction(formData: FormData) {
   'use server';
   const { user } = await requireUser();
 
@@ -188,7 +188,7 @@ export async function changePasswordAction(formData: FormData) {
  *   - Sonst komplette Abmeldung → /signin
  * - Deaktivierter Account wird entkoppelt
  */
-export async function deactivateAccountAction() {
+async function deactivateAccountAction() {
   'use server';
 
   // Owner der Session ermitteln
@@ -285,7 +285,7 @@ export async function deactivateAccountAction() {
 /**
  * Vollständiges Löschen des aktuell aktiven Accounts.
  */
-export async function deleteAccountAction() {
+async function deleteAccountAction() {
   'use server';
 
   const session = await getServerSession(authOptions).catch(() => null);
@@ -345,7 +345,7 @@ export async function deleteAccountAction() {
   redirect('/signin');
 }
 
-export async function logoutAction() {
+async function logoutAction() {
   'use server';
   const jar = await cookies();
   const token =
@@ -370,7 +370,7 @@ export async function logoutAction() {
    Language change (Server Action)
 ========================= */
 
-export async function changeLanguageAction(formData: FormData) {
+async function changeLanguageAction(formData: FormData) {
   'use server';
   const requested = (formData.get('language') ?? '').toString();
   const allowed = new Set(['en', 'de', 'es', 'fr']);

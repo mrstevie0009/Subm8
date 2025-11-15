@@ -190,7 +190,7 @@ async function upsertSettings(userId: string, form: FormData) {
 
 /* --------------------------------- Actions -------------------------------- */
 
-export async function saveNotificationsAction(formData: FormData) {
+async function saveNotificationsAction(formData: FormData) {
   'use server';
   const me = await getCurrentUser().catch(() => null);
   if (!me) throw new Error('Nicht angemeldet');
@@ -199,7 +199,7 @@ export async function saveNotificationsAction(formData: FormData) {
   revalidatePath('/[locale]/settings/notifications', 'page');
 }
 
-export async function resetNotificationsAction() {
+async function resetNotificationsAction() {
   'use server';
   const me = await getCurrentUser().catch(() => null);
   if (!me) throw new Error('Nicht angemeldet');
