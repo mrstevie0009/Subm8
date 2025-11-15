@@ -1,18 +1,11 @@
+// src/app/api/ownership/apply/route.ts
 import { NextResponse } from 'next/server';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-
-const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
-export const prisma =
-  globalForPrisma.prisma ??
-  new PrismaClient({
-    log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
-  });
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
 
 function extFromMime(mime: string): string {
   const m = (mime || '').toLowerCase();
@@ -23,7 +16,11 @@ function extFromMime(mime: string): string {
   return 'bin';
 }
 
-async function saveIncomingFile(file: File, userId: string, kind: 'avatar' | 'banner'): Promise<string> {
+async function saveIncomingFile(
+  file: File,
+  userId: string,
+  kind: 'avatar' | 'banner',
+): Promise<string> {
   const arrayBuf = await file.arrayBuffer();
   const buf = Buffer.from(arrayBuf);
   const dir = path.join(process.cwd(), 'public', 'uploads', 'profile');

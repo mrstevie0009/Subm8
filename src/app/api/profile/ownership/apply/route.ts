@@ -2,19 +2,10 @@
 import { NextResponse } from 'next/server';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-
-// Prisma (Singleton in Dev)
-const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
-export const prisma =
-  globalForPrisma.prisma ??
-  new PrismaClient({
-    log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
-  });
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
 
 // ──────────────────────────────────────────────────────────────────────────────
 
@@ -27,7 +18,11 @@ function extFromMime(mime: string): string {
   return 'bin';
 }
 
-async function saveIncomingFile(file: File, userId: string, kind: 'avatar' | 'banner'): Promise<string> {
+async function saveIncomingFile(
+  file: File,
+  userId: string,
+  kind: 'avatar' | 'banner',
+): Promise<string> {
   const arrayBuf = await file.arrayBuffer();
   const buf = Buffer.from(arrayBuf);
 
@@ -44,7 +39,7 @@ async function saveIncomingFile(file: File, userId: string, kind: 'avatar' | 'ba
   return `/uploads/profile/${filename}`;
 }
 
-/** User-ID aus Request-Headern ermitteln (für dein Auth-System anpassen) */
+/** User-ID aus Request-Headern ermitteln (für dein Auth-System ggf. anpassen) */
 function getCurrentUserId(req: Request): string | null {
   const devId = req.headers.get('x-user-id');
   return devId || null;
@@ -62,7 +57,10 @@ export async function POST(req: Request) {
     const form = await req.formData();
 
     const bioRaw = form.get('bio');
-    const bio = typeof bioRaw === 'string' ? bioRaw.trim().slice(0, 300) : undefined; // Prisma: VarChar(300)
+    const bio =
+      typeof bioRaw === 'string'
+        ? bioRaw.trim().slice(0, 300) // Prisma: VarChar(300)
+        : undefined;
 
     const avatarFile = form.get('avatar');
     const bannerFile = form.get('banner');
