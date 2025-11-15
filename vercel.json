@@ -1,5 +1,8 @@
 {
   "functions": {
+    "api/**": {
+      "excludeFiles": "{.git/**,.next/cache/**}"
+    },
     "app/**": {
       "excludeFiles": "{.git/**,.next/cache/**}"
     }
