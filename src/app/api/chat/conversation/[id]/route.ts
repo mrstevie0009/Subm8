@@ -1,13 +1,18 @@
+//src/app/api/chat/conversation/[id]/route.ts
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/currentUser';
 
-export async function GET(_: Request, { params }: { params: { id: string } }) {
+type Params = { id: string };
+type Ctx = { params: Promise<Params> };
+
+export async function GET(_req: Request, { params }: Ctx) {
+  const { id } = await params;
   const me = await getCurrentUser();
   if (!me) return NextResponse.json({ ok: false, error: 'UNAUTHORIZED' }, { status: 401 });
 
   const convo = await prisma.conversation.findUnique({
-    where: { id: params.id },
+    where: { id },
     select: {
       id: true,
       domme: { select: { id: true, handle: true, displayName: true, avatarUrl: true, role: true } },
