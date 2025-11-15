@@ -27,12 +27,12 @@ type UserPick = {
   isFirstAdopter: boolean | null;
 };
 
-export async function GET(
-  req: Request,
-  { params }: { params: { handle: string } }
-) {
+type Params = { handle: string };
+type Ctx = { params: Promise<Params> };
+
+export async function GET(req: Request, { params }: Ctx) {
   try {
-    const { handle } = params;
+    const { handle } = await params;
     const url = new URL(req.url);
     const tab = (url.searchParams.get('tab') || 'followers') as Tab;
     const takeRaw = Number(url.searchParams.get('take') || '30');

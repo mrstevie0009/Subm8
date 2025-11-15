@@ -18,11 +18,11 @@ type ApiResponse =
   | { ok: true; community: CommunityPreview }
   | { ok: false; error: string };
 
-export async function GET(
-  _req: Request,
-  { params }: { params: { slug: string } }
-) {
-  const { slug } = params;
+type Params = { slug: string };
+type Ctx = { params: Promise<Params> };
+
+export async function GET(_req: Request, { params }: Ctx) {
+  const { slug } = await params;
 
   try {
     const community = await prisma.community.findUnique({

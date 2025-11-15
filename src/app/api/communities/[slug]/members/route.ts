@@ -1,3 +1,4 @@
+//src/app/api/communities/[slug]/members/route.ts
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/currentUser';
@@ -36,11 +37,12 @@ function decodeCursor(token: string | null | undefined): { createdAt: Date; user
   return { createdAt: new Date(ms), userId: uid };
 }
 
-export async function GET(
-  req: Request,
-  { params }: { params: { slug: string } }
-) {
+type Params = { slug: string };
+type Ctx = { params: Promise<Params> };
+
+export async function GET(req: Request, { params }: Ctx) {
   try {
+    const { slug } = await params;
     const url = new URL(req.url);
     const tab = (url.searchParams.get('tab') || 'members') as Tab;
     const takeRaw = Number(url.searchParams.get('take') || '30');
@@ -50,7 +52,7 @@ export async function GET(
     const me = await getCurrentUser().catch(() => null);
 
     const community = await prisma.community.findUnique({
-      where: { slug: params.slug.toLowerCase() },
+      where: { slug: slug.toLowerCase() },
       select: { id: true },
     });
     if (!community) {

@@ -1,11 +1,9 @@
-// src/app/invite/[code]/route.ts    <-- wichtig: nicht unter /api/ !
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuth } from '@/lib/auth';
 import type { Role } from '@prisma/client';
 
-// 1) async + await cookies()
 async function pickLocale() {
   const c = await cookies();
   return c.get('NEXT_LOCALE')?.value || 'en';
@@ -13,12 +11,12 @@ async function pickLocale() {
 
 export const runtime = 'nodejs';
 
-export async function GET(req: Request, { params }: { params: { code: string } }) {
-  // 2) Origin aus req.url statt headers()
+type Params = { code: string };
+type Ctx = { params: Promise<Params> };
+
+export async function GET(req: Request, { params }: Ctx) {
   const url = new URL(req.url);
   const base = url.origin;
-
-  // 3) locale awaiten
   const locale = await pickLocale();
 
   const session = await getAuth();
@@ -29,7 +27,8 @@ export async function GET(req: Request, { params }: { params: { code: string } }
     return NextResponse.redirect(`${base}/${locale}/login?next=${encodeURIComponent(url.pathname)}`);
   }
 
-  const { code } = params;
+  const { code } = await params; 
+
   const inv = await prisma.communityInvite.findUnique({
     where: { token: code },
     include: { community: true },

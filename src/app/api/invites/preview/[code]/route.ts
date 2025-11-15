@@ -1,11 +1,12 @@
+//src/app/api/invites/preview/[code]/route.ts
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma'; // ggf. anpassen
+import { prisma } from '@/lib/prisma';
 
-export async function GET(
-  _req: Request,
-  { params }: { params: { code: string } }
-) {
-  const code = params.code;
+type Params = { code: string };
+type Ctx = { params: Promise<Params> };
+
+export async function GET(_req: Request, { params }: Ctx) {
+  const { code } = await params;
   if (!code) {
     return NextResponse.json({ ok: false, error: 'Missing code' }, { status: 400 });
   }
