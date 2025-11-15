@@ -17,7 +17,6 @@ import { sendSms } from '@/lib/sms';
 import React from 'react';
 
 type Params = { locale: string };
-type Awaitable<T> = T | Promise<T>;
 
 export const dynamic = 'force-dynamic';
 
@@ -276,7 +275,7 @@ export async function logoutAllSessionsAction() {
    Page
 ========================= */
 
-export default async function SecurityPage({ params }: { params: Awaitable<Params> }) {
+export default async function SecurityPage({ params }: { params: Promise<Params> }) {
   const { locale } = await params;
 
   // i18n

@@ -24,7 +24,6 @@ import { authOptions } from '@/lib/auth';
 import { ACTIVE_COOKIE_NAME, buildActiveUserCookieValue } from '@/lib/activeUserCookie';
 
 type Params = { locale: string };
-type Awaitable<T> = T | Promise<T>;
 
 export const dynamic = 'force-dynamic';
 
@@ -382,7 +381,7 @@ async function changeLanguageAction(formData: FormData) {
    Page Component (Server)
 ========================= */
 
-export default async function SettingsPage({ params }: { params: Awaitable<Params> }) {
+export default async function SettingsPage({ params }: { params: Promise<Params> }) {
   // Akzeptiert sowohl {locale} als Plain-Objekt als auch Promise<Params>
   const { locale } = await params;
 
