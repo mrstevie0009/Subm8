@@ -38,7 +38,8 @@
     "phoneMissing": "Spalte fehlt in DB",
     "phonePlaceholder": "+49 170 1234567",
     "profileSectionTitle": "Profil",
-    "saveProfile": "Profil speichern"
+    "saveProfile": "Profil speichern",
+    "profileSavedToast": "Einstellungen wurden gespeichert."
   },
   "securityPage": {
     "ariaBack": "Zurück",

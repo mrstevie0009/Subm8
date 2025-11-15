@@ -38,7 +38,8 @@
     "phoneMissing": "Falta la columna en la BD",
     "phonePlaceholder": "+49 170 1234567",
     "profileSectionTitle": "Perfil",
-    "saveProfile": "Guardar perfil"
+    "saveProfile": "Guardar perfil",
+    "profileSavedToast": "La configuración se ha guardado."
   },
   "securityPage": {
     "ariaBack": "Atrás",

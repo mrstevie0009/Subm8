@@ -25,6 +25,10 @@ export default function PageChrome({
   const inPostMedia = pathname.startsWith(`/${locale}/p/`) && pathname.endsWith('/media');
   const inBookmarks = pathname.startsWith(`/${locale}/settings/bookmarks`);
   const inSettings = pathname.startsWith(`/${locale}/settings`);
+  const inProfileSettings = pathname.startsWith(`/${locale}/profile`);
+  const inSecurity = pathname.startsWith(`/${locale}/security`);
+  const inMonetization = pathname.startsWith(`/${locale}/monetization`);
+  const inComments = pathname.startsWith(`/${locale}/p`);
 
   const inProfile = pathname.startsWith(`/${locale}/u/`);
   const inEditProfile = pathname.startsWith(`/${locale}/u/`) && pathname.endsWith('/edit');
@@ -50,7 +54,7 @@ export default function PageChrome({
   }
 
   // Header in Threads aus, in Chat-Übersicht an
-  const hideHeader = inBookmarks || inChatThread || isAuthPage || inSettings || inProfile || inEditProfile;
+  const hideHeader = inBookmarks || inChatThread || isAuthPage || inSettings || inProfile || inEditProfile || inProfileSettings || inSecurity || inMonetization || inComments;
   const hideBottomNav = inChatThread;
 
   const contentTopPad = hideHeader ? '12px' : 'calc(clamp(24px, 2.8vw, 50px) + 20px)';

@@ -30,7 +30,7 @@ type BookmarkRow = {
 };
 
 export default async function BookmarksPage({ params }: { params: Params }) {
-  const { locale } = params;
+  const { locale } = await params;
 
   // Messages aus home.json laden (Namespace = "home")
   let t: ReturnType<typeof createTranslator>;

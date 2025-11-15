@@ -189,6 +189,11 @@ function dedupeById<T extends { id: string }>(arr: T[]): T[] {
   return out;
 }
 
+function isVideoUrl(url: string | null | undefined) {
+  if (!url) return false;
+  return /\.(mp4|webm|ogg|mov|m4v)(\?|#|$)/i.test(url);
+}
+
 
 function Counter({ value = 0, active }: { value?: number; active?: boolean }) {
   return (
@@ -206,8 +211,12 @@ export default function CommentsThread({ postId }: { postId: string }) {
   const [nextCursor, setNextCursor] = React.useState<string | null>(null);
   const [err, setErr] = React.useState<string | null>(null);
 
+  const sentinelRef = React.useRef<HTMLDivElement | null>(null);
+
   const load = React.useCallback(
     async (reset = false) => {
+      if (!reset && !nextCursor) return;
+
       try {
         setLoading(true);
         const url = new URL(`/api/post/${postId}/comments`, window.location.origin);
@@ -216,10 +225,10 @@ export default function CommentsThread({ postId }: { postId: string }) {
         const json = await res.json();
         if (!json.ok) throw new Error(json.error || t('errorLoading'));
 
-        setTree(prev => {
+        setTree((prev) => {
           const merged = reset ? json.items : [...prev, ...json.items];
           const deduped = dedupeById<TreeComment>(merged);
-          return sortTreeByLikes(deduped);      // ⬅️ HIER wird rekursiv sortiert
+          return sortTreeByLikes(deduped);
         });
         setNextCursor(json.nextCursor ?? null);
       } catch (e) {
@@ -231,12 +240,42 @@ export default function CommentsThread({ postId }: { postId: string }) {
     [postId, nextCursor, t]
   );
 
-  React.useEffect(() => {
+   React.useEffect(() => {
     setTree([]);
     setNextCursor(null);
     setErr(null);
     load(true);
   }, [postId, load]);
+
+  
+  React.useEffect(() => {
+    if (!nextCursor) return;             
+    const el = sentinelRef.current;
+    if (!el) return;
+
+    let loadingMore = false;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (!entry?.isIntersecting) return;
+        if (loadingMore) return;         
+
+        loadingMore = true;
+        void load(false).finally(() => {
+          loadingMore = false;
+        });
+      },
+      {
+        root: null,
+        rootMargin: '200px 0px 200px 0px',  
+        threshold: 0.1,
+      }
+    );
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [nextCursor, load]);
 
   if (err) return <div className="text-sm text-red-400">{err}</div>;
 
@@ -248,18 +287,20 @@ export default function CommentsThread({ postId }: { postId: string }) {
 
       <ul className="mt-3 space-y-3">
         {tree.map((n) => (
-          <CommentNode key={n.id} node={n} postId={postId} depth={0} onChanged={() => load(true)} />
+          <CommentNode
+            key={n.id}
+            node={n}
+            postId={postId}
+            depth={0}
+            onChanged={() => load(true)}
+          />
         ))}
       </ul>
 
-      {nextCursor && (
-        <button
-          className="mt-3 px-3 h-9 rounded-lg border border-white/15 hover:bg-white/5"
-          disabled={loading}
-          onClick={() => load(false)}
-        >
-          {loading ? t('loading') : t('loadMore')}
-        </button>
+      <div ref={sentinelRef} className="h-1" aria-hidden />
+   
+      {loading && nextCursor && (
+        <div className="mt-3 text-sm text-muted">{t('loading')}</div>
       )}
     </div>
   );
@@ -332,18 +373,30 @@ function CommentNode({
 
             {node.mediaUrl && (
               <figure className="mt-2 overflow-hidden rounded-xl border border-white/10 bg-black/20 flex justify-center">
-                <Image
-                  src={node.mediaUrl}
-                  alt={node.mediaAlt ?? ''}
-                  width={800}
-                  height={600}
-                  sizes="(max-width: 768px) 100vw, 720px"
-                  className="
-                    block h-auto w-auto object-contain
-                    max-w-[min(100%,560px)] sm:max-w-[min(100%,680px)]
-                    max-h-[36vh] sm:max-h-[42vh]
-                  "
-                />
+                {isVideoUrl(node.mediaUrl) ? (
+                  <video
+                    src={node.mediaUrl}
+                    controls
+                    className="
+                      block h-auto w-auto object-contain
+                      max-w-[min(100%,560px)] sm:max-w-[min(100%,680px)]
+                      max-h-[36vh] sm:max-h-[42vh]
+                    "
+                  />
+                ) : (
+                  <Image
+                    src={node.mediaUrl}
+                    alt={node.mediaAlt ?? ''}
+                    width={800}
+                    height={600}
+                    sizes="(max-width: 768px) 100vw, 720px"
+                    className="
+                      block h-auto w-auto object-contain
+                      max-w-[min(100%,560px)] sm:max-w-[min(100%,680px)]
+                      max-h-[36vh] sm-max-h-[42vh]
+                    "
+                  />
+                )}
               </figure>
             )}
 
@@ -546,7 +599,7 @@ function Composer({
           >
             <input
               type="file"
-              accept="image/*"
+              accept="image/*,video/*"
               className="sr-only"
               onChange={(e) => onPick(e.currentTarget.files?.[0] ?? null)}
             />

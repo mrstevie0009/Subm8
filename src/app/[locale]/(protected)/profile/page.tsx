@@ -15,6 +15,8 @@ import { createTranslator } from 'next-intl';
 import { notFound } from 'next/navigation';
 
 import BackButton from '@/components/BackButtonStandard';
+import SaveProfileButton from '@/components/SaveProfileButton';
+
 
 // ⬇️ Neu hinzugefügt (für Deaktivieren/ Löschen / Cookies):
 import { getServerSession } from 'next-auth';
@@ -581,12 +583,10 @@ export default async function SettingsPage({ params }: { params: Awaitable<Param
             </div>
 
             <div className="pt-2">
-              <button
-                type="submit"
-                className="px-4 py-2 rounded-full bg-white/10 hover:bg-white/15 border border-white/15"
-              >
-                {t('saveProfile')}
-              </button>
+              <SaveProfileButton
+                label={t('saveProfile')}
+                toastMessage={t('profileSavedToast')}
+              />
             </div>
           </form>
         </section>

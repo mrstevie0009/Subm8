@@ -7,7 +7,12 @@ import { randomUUID } from 'crypto';
 import { revalidatePath } from 'next/cache';
 import { headers } from 'next/headers';
 import { assertCanInteractForPostId } from '@/app/actions/blocks';
-import { guardAndSave, envMaxUploadBytes } from '@/lib/uploadGuard';
+
+// 🔹 neu: unser Storage (Cloudflare R2 / lokal)
+import { getStorage, buildKey } from '@/lib/storage';
+
+// 🔹 behalten wir nur für das Size-Limit
+import { envMaxUploadBytes } from '@/lib/uploadGuard';
 
 export type AddCommentResult =
   | { ok: true; id: string }
@@ -45,17 +50,35 @@ export async function addCommentAction(formData: FormData): Promise<AddCommentRe
       if (!parent || parent.postId !== postId) return { ok: false, error: 'INVALID_INPUT' };
     }
 
-    // Datei speichern (nur Bilder/GIFs – uploadGuard erzwingt das per Magic Bytes)
+        // Datei speichern (Bild / GIF / Video) → Cloudflare R2 / S3
     let mediaUrl: string | null = null;
+
     if (file && file.size > 0) {
-      const res = await guardAndSave(file, {
-        maxSize: envMaxUploadBytes(8), // Default 8 MB (via ENV überschreibbar)
-        publicSubdir: 'comment-media',
-      });
-      if (!res.ok) {
+      // 🔹 simples Size-Limit (z.B. 16 MB, kannst du anpassen)
+      const maxBytes = envMaxUploadBytes(16);
+      if (file.size > maxBytes) {
         return { ok: false, error: 'INVALID_INPUT' };
       }
-      mediaUrl = res.publicPath;
+
+      const contentType = file.type || 'application/octet-stream';
+
+      // Key unter "post-media/..." – damit landet es in deiner R2-Bucket/CDN
+      // (wenn du lieber "comment-media" willst, müsstest du buildKey um diesen Typ erweitern)
+      const key = buildKey('post-media', file.name || `comment-${Date.now()}`);
+
+      const storage = getStorage();
+      const arrayBuffer = await file.arrayBuffer();
+
+      const { publicUrl } = await storage.put({
+        key,
+        data: arrayBuffer,
+        contentType,
+        cacheControl: contentType.startsWith('video/')
+          ? 'public, max-age=604800'              // 7 Tage für Videos
+          : 'public, max-age=31536000, immutable' // 1 Jahr für Bilder/GIFs
+      });
+
+      mediaUrl = publicUrl; // ← Cloudflare-/CDN-URL
     }
 
     const created = await prisma.comment.create({
@@ -63,11 +86,10 @@ export async function addCommentAction(formData: FormData): Promise<AddCommentRe
         id: randomUUID(),
         postId,
         userId: me.id,
-        // Prisma erwartet string, also bei Bild-only: ''
         text: text || '',
         parentId,
-        mediaUrl,   // ⬅️ jetzt bekannt im Schema
-        mediaAlt,   // ⬅️ jetzt bekannt im Schema
+        mediaUrl,   
+        mediaAlt,  
       },
       select: { id: true },
     });

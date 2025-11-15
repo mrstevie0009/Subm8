@@ -38,7 +38,8 @@
     "phoneMissing": "Column missing in DB",
     "phonePlaceholder": "+49 170 1234567",
     "profileSectionTitle": "Profile",
-    "saveProfile": "Save profile"
+    "saveProfile": "Save profile",
+    "profileSavedToast": "Settings have been saved."
   },
   "securityPage": {
     "ariaBack": "Back",

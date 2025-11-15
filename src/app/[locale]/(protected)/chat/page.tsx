@@ -556,11 +556,15 @@ function ChatRow({
   const pressTimer = React.useRef<number | null>(null);
   const suppressClick = React.useRef(false);
 
-  const openMenu = React.useCallback(() => {
+  const [isPressTarget, setIsPressTarget] = React.useState(false);
+  const isHighlighted = isPressTarget || menuOpen;
+
+   const openMenu = React.useCallback(() => {
     const rect = rowRef.current?.getBoundingClientRect();
     if (!rect) return;
     setAnchor(rect);
     setMenuOpen(true);
+    setIsPressTarget(false); 
     suppressClick.current = true;
   }, []);
 
@@ -574,12 +578,21 @@ function ChatRow({
   const handlePointerDown: React.PointerEventHandler<HTMLDivElement> = (e) => {
     if (e.button === 2) return;
     clearTimer();
+    setIsPressTarget(true); 
     pressTimer.current = window.setTimeout(() => {
       openMenu();
     }, 420);
   };
-  const handlePointerUp = () => clearTimer();
-  const handlePointerLeave = () => clearTimer();
+
+  const handlePointerUp = () => {
+    clearTimer();
+    setIsPressTarget(false); 
+  };
+
+  const handlePointerLeave = () => {
+    clearTimer();
+    setIsPressTarget(false); 
+  };
 
   const handleContextMenu: React.MouseEventHandler<HTMLDivElement> = (e) => {
     e.preventDefault();
@@ -633,40 +646,52 @@ function ChatRow({
   );
 
   return (
-    
-    <div
-      ref={rowRef}
-      className="grid grid-cols-[3.2em_1fr_auto] items-center gap-3 rounded-app border border-sub bg-card p-3 hover:bg-white/5 cursor-pointer"
-      role="link"
-      tabIndex={0}
-      onClick={openChat}
-      onKeyDown={onKeyRow}
-      onPointerDownCapture={(e) => {
-        // only intercept if the original target is inside THIS row
-        const t = e.target as Node | null;
-        if (!rowRef.current?.contains(t)) return;     // ← allow portal clicks
-        if (menuOpen) e.stopPropagation();
-      }}
-      onPointerUpCapture={(e) => {
-        const t = e.target as Node | null;
-        if (!rowRef.current?.contains(t)) return;     // ← allow portal clicks
-        if (menuOpen) { e.preventDefault(); e.stopPropagation(); }
-      }}
-      onClickCapture={(e) => {
-        const t = e.target as Node | null;
-        if (!rowRef.current?.contains(t)) return;     // ← allow portal clicks
-        if (menuOpen) { e.preventDefault(); e.stopPropagation(); }
-        if (suppressClick.current) {
-          e.preventDefault();
-          e.stopPropagation();
-          suppressClick.current = false;
-        }
-      }}
-      onPointerDown={handlePointerDown}
-      onPointerUp={handlePointerUp}
-      onPointerLeave={handlePointerLeave}
-      onContextMenu={handleContextMenu}
-    >
+  <div
+    ref={rowRef}
+    className="relative rounded-app border border-sub bg-card hover:bg-white/5 cursor-pointer overflow-hidden"
+    role="link"
+    tabIndex={0}
+    onClick={openChat}
+    onKeyDown={onKeyRow}
+    onPointerDownCapture={(e) => {
+      const t = e.target as Node | null;
+      if (!rowRef.current?.contains(t)) return; // Portal-Klicks erlauben
+      if (menuOpen) e.stopPropagation();
+    }}
+    onPointerUpCapture={(e) => {
+      const t = e.target as Node | null;
+      if (!rowRef.current?.contains(t)) return;
+      if (menuOpen) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    }}
+    onClickCapture={(e) => {
+      const t = e.target as Node | null;
+      if (!rowRef.current?.contains(t)) return;
+      if (menuOpen) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+      if (suppressClick.current) {
+        e.preventDefault();
+        e.stopPropagation();
+        suppressClick.current = false;
+      }
+    }}
+    onPointerDown={handlePointerDown}
+    onPointerUp={handlePointerUp}
+    onPointerLeave={handlePointerLeave}
+    onContextMenu={handleContextMenu}
+  >
+    {/* 🔹 Grauer transparenter Balken NUR über der Card */}
+    {isHighlighted && (
+      <div className="pointer-events-none absolute inset-0 bg-white/15" />
+    )}
+
+    {/* Inhalt der Row */}
+    <div className="relative grid grid-cols-[3.2em_1fr_auto] items-center gap-3 p-3">
+      {/* Avatar-Spalte */}
       <div className="shrink-0 w-[3.2em] flex flex-col items-center">
         {isDM(c) ? (
           <Link
@@ -675,12 +700,17 @@ function ChatRow({
             className="size-[3.2em] rounded-full overflow-hidden grid place-items-center bg-white/10 relative"
             onClick={(e) => e.stopPropagation()}
           >
-            <Image src={c.other.avatarUrl || AVATAR_PH} alt="" fill className="object-cover" sizes="3.2em" />
+            <Image
+              src={c.other.avatarUrl || AVATAR_PH}
+              alt=""
+              fill
+              className="object-cover"
+              sizes="3.2em"
+            />
           </Link>
         ) : (
           <span
             className="size-[3.2em] rounded-xl overflow-hidden grid place-items-center bg-white/10 relative"
-            // Gruppen-Avatar (oder Placeholder-Icon)
             title="Group"
           >
             <Image
@@ -694,13 +724,12 @@ function ChatRow({
         )}
       </div>
 
+      {/* Mittel-Spalte: Name, Badges, Snippet */}
       <div className="min-w-0">
-        {/* Obere Zeile: links Name+Badges, rechts die Vorschau füllt den ganzen Rest */}
         <div className="flex items-center gap-2 min-w-0">
-          {/* links: Name + Badges, bekommt nur so viel Breite wie nötig */}
           <div className="-mt-2 shrink-0 flex items-center gap-1">
             <span className="font-medium truncate max-w-[40vw]">
-              {isDM(c) ? c.other.displayName : (c.title || 'Group')}
+              {isDM(c) ? c.other.displayName : c.title || 'Group'}
             </span>
 
             {isDM(c) ? (
@@ -714,30 +743,32 @@ function ChatRow({
                 firstAdopterLabel={b('badges.firstAdopter')}
               />
             ) : (
-              // kleine Gruppen-Pill (optional)
               <span className="px-1.5 py-[1px] rounded-full bg-white/10 text-white/70 text-[11px]">
-                Group{typeof c.memberCount === 'number' ? ` · ${c.memberCount}` : ''}
+                Group
+                {typeof c.memberCount === 'number' ? ` · ${c.memberCount}` : ''}
               </span>
             )}
           </div>
 
-          {/* rechts: Vorschau (nimmt komplette Restbreite ein) */}
           <div className="self-center mt-2 flex items-center gap-1 min-w-0 ml-2 md:ml-3 text-[15px] md:text-[16px] text-white/85 truncate">
             {isDM(c) ? (
-              <span className="opacity-70 shrink-0">
-                {actorNameDM}:
-              </span>
+              <span className="opacity-70 shrink-0">{actorNameDM}:</span>
             ) : (
-              // Group: kein harter Prefix-Name, nur dezentes Pfeilchen
-              <span className="shrink-0 opacity-80" aria-hidden>↳</span>
+              <span className="shrink-0 opacity-80" aria-hidden>
+                ↳
+              </span>
             )}
 
             {snippet.type === 'reaction' && (
-              <span aria-hidden className="shrink-0">{snippet.emoji}</span>
+              <span aria-hidden className="shrink-0">
+                {snippet.emoji}
+              </span>
             )}
 
             {parseReplyEnvelope(c.lastSnippet) && (
-              <span className="shrink-0 opacity-80" aria-hidden>↩︎</span>
+              <span className="shrink-0 opacity-80" aria-hidden>
+                ↩︎
+              </span>
             )}
 
             <span className="truncate">
@@ -746,10 +777,9 @@ function ChatRow({
           </div>
         </div>
 
-        {/* Untere Zeile: Handle + kleine Status-Badges */}
         <div className="-mt-2 flex items-center gap-2 text-[11px] text-muted min-w-0">
           <span className="truncate">
-            {isDM(c) ? `@${c.other.username}` : (c.title || 'Group')}
+            {isDM(c) ? `@${c.other.username}` : c.title || 'Group'}
           </span>
 
           {c.muted && (
@@ -765,55 +795,86 @@ function ChatRow({
         </div>
       </div>
 
+      {/* Rechte Spalte: Zeit + Unread-Badge */}
       <div className="flex flex-col items-end gap-1">
-        <span className="text-[11px] text-muted whitespace-nowrap">{timeAgoShort(c.lastMessageAt)}</span>
+        <span className="text-[11px] text-muted whitespace-nowrap">
+          {timeAgoShort(c.lastMessageAt)}
+        </span>
         {c.unread ? (
-          <span className="px-2 py-[2px] rounded-full text-[11px] bg-[var(--purple)]/20 text-[var(--purple)]">{c.unread}</span>
+          <span className="px-2 py-[2px] rounded-full text-[11px] bg-[var(--purple)]/20 text-[var(--purple)]">
+            {c.unread}
+          </span>
         ) : null}
       </div>
-
-      {menuOpen && anchor && (
-        <ActionMenu anchorRect={anchor} onClose={() => setMenuOpen(false)}>
-          <button type="button" className="w-full text-left px-3 py-2 rounded-lg hover:bg-white/10" onClick={(e)=>togglePin(e)}>
-            {isPinned ? t('row.menu.unpin') : t('row.menu.pin')}
-          </button>
-
-          <div className="h-px my-1 bg-white/10" />
-
-          <button type="button" className="w-full text-left px-3 py-2 rounded-lg hover:bg-white/10" onClick={(e)=>toggleMute(e)}>
-            {c.muted ? t('row.menu.unmute') : t('row.menu.mute')}
-          </button>
-
-          {isDM(c) && (
-            <>
-              <form action={reportUserAction} onSubmit={() => setMenuOpen(false)} className="contents">
-                <input type="hidden" name="handle" value={c.other.username} />
-                <input type="hidden" name="reason" value="OTHER" />
-                <button className="w-full text-left px-3 py-2 rounded-lg hover:bg-white/10 text-red-300">
-                  {t('row.menu.report')}
-                </button>
-              </form>
-
-              <form action={blockUserAction} onSubmit={() => setMenuOpen(false)} className="contents">
-                <input type="hidden" name="blockedHandle" value={c.other.username} />
-                <button className="w-full text-left px-3 py-2 rounded-lg hover:bg-white/10 text-red-300">
-                  {t('row.menu.block')}
-                </button>
-              </form>
-
-              <div className="h-px my-1 bg-white/10" />
-            </>
-          )}
-
-          <div className="h-px my-1 bg-white/10" />
-
-          <button type="button" className="w-full text-left px-3 py-2 rounded-lg hover:bg-white/10 text-red-400" onClick={(e)=>deleteChat(e)}>
-            {t('row.menu.delete')}
-          </button>
-        </ActionMenu>
-      )}
     </div>
-  );
+
+    {menuOpen && anchor && (
+      <ActionMenu anchorRect={anchor} onClose={() => setMenuOpen(false)}>
+        <button
+          type="button"
+          className="w-full text-left px-3 py-2 rounded-lg hover:bg-white/10"
+          onClick={(e) => togglePin(e)}
+        >
+          {isPinned ? t('row.menu.unpin') : t('row.menu.pin')}
+        </button>
+
+        <div className="h-px my-1 bg-white/10" />
+
+        <button
+          type="button"
+          className="w-full text-left px-3 py-2 rounded-lg hover:bg-white/10"
+          onClick={(e) => toggleMute(e)}
+        >
+          {c.muted ? t('row.menu.unmute') : t('row.menu.mute')}
+        </button>
+
+        {isDM(c) && (
+          <>
+            <form
+              action={reportUserAction}
+              onSubmit={() => setMenuOpen(false)}
+              className="contents"
+            >
+              <input type="hidden" name="handle" value={c.other.username} />
+              <input type="hidden" name="reason" value="OTHER" />
+              <button className="w-full text-left px-3 py-2 rounded-lg hover:bg-white/10 text-red-300">
+                {t('row.menu.report')}
+              </button>
+            </form>
+
+            <form
+              action={blockUserAction}
+              onSubmit={() => setMenuOpen(false)}
+              className="contents"
+            >
+              <input
+                type="hidden"
+                name="blockedHandle"
+                value={c.other.username}
+              />
+              <button className="w-full text-left px-3 py-2 rounded-lg hover:bg-white/10 text-red-300">
+                {t('row.menu.block')}
+              </button>
+            </form>
+
+            <div className="h-px my-1 bg-white/10" />
+          </>
+        )}
+
+        <div className="h-px my-1 bg-white/10" />
+
+        <button
+          type="button"
+          className="w-full text-left px-3 py-2 rounded-lg hover:bg-white/10 text-red-400"
+          onClick={(e) => deleteChat(e)}
+        >
+          {t('row.menu.delete')}
+        </button>
+      </ActionMenu>
+    )}
+  </div>
+);
+
 }
 
 

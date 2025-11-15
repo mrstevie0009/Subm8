@@ -38,7 +38,8 @@
     "phoneMissing": "Colonne manquante dans la base",
     "phonePlaceholder": "+33 6 12 34 56 78",
     "profileSectionTitle": "Profil",
-    "saveProfile": "Enregistrer le profil"
+    "saveProfile": "Enregistrer le profil",
+    "profileSavedToast": "Les paramètres ont été enregistrés."
   },
   "securityPage": {
     "ariaBack": "Retour",
