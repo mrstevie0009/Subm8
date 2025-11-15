@@ -1,3 +1,4 @@
+//src/app/[locale]/(protected)/communities/page.tsx
 'use client';
 
 import * as React from 'react';
@@ -372,9 +373,16 @@ export default function CommunitiesPage() {
                 data-disabled={blocked ? true : undefined}
               >
                 {/* Banner */}
-                <div className="relative h-28 bg-white/5">
+                <div
+                  className="relative w-full overflow-hidden bg-white/5"
+                  style={{ aspectRatio: '3 / 1' }} // oder '16 / 5', Geschmackssache
+                >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={c.bannerUrl || BANNER_PH} alt="" className="object-cover w-full h-full" />
+                  <img
+                    src={c.bannerUrl || BANNER_PH}
+                    alt=""
+                    className="absolute inset-0 w-full h-full object-cover"
+                  />
                   <div className="absolute inset-0 bg-gradient-to-b from-black/0 to-black/30" />
                 </div>
 

@@ -1,3 +1,4 @@
+//src/components/CommunityJoinButton.tsx
 'use client';
 
 import * as React from 'react';
