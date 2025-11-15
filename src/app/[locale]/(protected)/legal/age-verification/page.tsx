@@ -1,6 +1,9 @@
+// src/app/[locale]/(protected)/legal/age-verification/page.tsx
 import { LegalArticle, Callout } from '@/components/legal/LegalArticle';
 import { createTranslator } from 'next-intl';
 import { notFound } from 'next/navigation';
+
+export const dynamic = 'force-static'; 
 
 type Params = { locale: string };
 
@@ -12,7 +15,6 @@ export default async function LegalPage({ params }: { params: Promise<Params> })
   try {
     const legalFile = (await import(`@/messages/${locale}/legal.json`)).default;
 
-    // WICHTIG: legalFile hat bereits die richtige Struktur (z.B. { legal: { legal: { overview: {...} } } })
     t = createTranslator({
       locale,
       messages: legalFile,
