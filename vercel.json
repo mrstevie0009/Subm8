@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "app/**": {
+      "excludeFiles": "{.git/**,.next/cache/**}"
+    }
+  }
+}
