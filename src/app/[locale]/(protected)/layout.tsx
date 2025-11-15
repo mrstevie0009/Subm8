@@ -1,20 +1,20 @@
 // src/app/[locale]/(protected)/layout.tsx
-import { auth } from '@/lib/auth'
-import { redirect } from 'next/navigation'
-import PageChrome from '@/components/PageChrome'
+import { auth } from '@/lib/auth';
+import { redirect } from 'next/navigation';
+import PageChrome from '@/components/PageChrome';
 
 type Props = {
-  children: React.ReactNode
-  params: Promise<{ locale: 'en' | 'de' | 'es' | 'fr' }>
-}
+  children: React.ReactNode;
+  params: Promise<{ locale: string }>;
+};
 
 export default async function ProtectedLayout({ children, params }: Props) {
-  const { locale } = await params            // ⬅️ params awaiten
-  const session = await auth()
+  const { locale } = await params;
+  const session = await auth();
 
   if (!session?.user?.id) {
-    redirect(`/${locale}/signin`)
+    redirect(`/${locale}/signin`);
   }
 
-  return <PageChrome locale={locale}>{children}</PageChrome>
+  return <PageChrome locale={locale}>{children}</PageChrome>;
 }

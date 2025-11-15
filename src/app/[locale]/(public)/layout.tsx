@@ -3,7 +3,16 @@ import Image from 'next/image';
 import Script from 'next/script';
 import AuthScopeFlag from '@/components/AuthScopeFlag'; // ⬅ Import des Clients
 
-export default function PublicLayout({ children }: { children: React.ReactNode }) {
+type PublicLayoutProps = {
+  children: React.ReactNode;
+  params: Promise<{ locale: string }>;
+};
+
+export default async function PublicLayout({ children, params }: PublicLayoutProps) {
+  // Wir brauchen locale hier nicht, aber Next 15 liefert es mit.
+  // Damit der Typ passt, einmal awaiten:
+  await params;
+
   return (
     <>
       <AuthScopeFlag />
