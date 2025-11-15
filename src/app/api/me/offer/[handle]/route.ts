@@ -1,11 +1,15 @@
 // src/app/api/me/offer/[handle]/route.ts
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
-type Ctx = { params: { handle: string } };
+type Params = { handle: string };
+type Ctx = { params: Promise<Params> };
 
 export async function GET(req: Request, { params }: Ctx) {
-  return Response.redirect(new URL(`/api/offers/${params.handle}`, req.url), 307);
+  const { handle } = await params;
+  return Response.redirect(new URL(`/api/offers/${handle}`, req.url), 307);
 }
+
 export async function POST(req: Request, { params }: Ctx) {
-  return Response.redirect(new URL(`/api/offers/${params.handle}`, req.url), 307);
+  const { handle } = await params;
+  return Response.redirect(new URL(`/api/offers/${handle}`, req.url), 307);
 }
