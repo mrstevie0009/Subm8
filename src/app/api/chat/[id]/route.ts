@@ -5,13 +5,16 @@ import { getStorage, buildKey } from '@/lib/storage';
 import { $Enums } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
+type Ctx = { params: Promise<{ id: string }> };
 
-export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(_req: Request, { params }: Ctx) {
+  const { id } = await params;
+
   const me = await getCurrentUser();
   if (!me) return Response.json({ ok: false, error: 'unauth' }, { status: 401 });
 
   const convo = await prisma.conversation.findUnique({
-    where: { id: params.id },
+    where: { id },
     select: { id: true, type: true, dommeId: true, subId: true },
   });
   if (!convo) return Response.json({ ok: false, error: 'not_found' }, { status: 404 });
@@ -40,8 +43,6 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
 
   return Response.json({ ok: true });
 }
-
-type Ctx = { params: Promise<{ id: string }> };
 type DbRole = 'DOMME' | 'SUBMISSIVE';
 
 /* ---------------------------- helpers ----------------------------------- */
