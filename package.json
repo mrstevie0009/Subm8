@@ -20,7 +20,6 @@
     "@simplewebauthn/types": "^10.0.0",
     "bcryptjs": "^3.0.2",
     "clsx": "^2.1.1",
-    "git": "^0.1.5",
     "libphonenumber-js": "^1.12.23",
     "lottie-react": "^2.4.1",
     "next": "^15.5.4",
