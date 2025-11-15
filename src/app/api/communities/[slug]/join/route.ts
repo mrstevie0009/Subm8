@@ -7,8 +7,9 @@ import type { Role } from '@prisma/client';
 export const runtime = 'nodejs';
 
 type Params = { slug: string };
+type Ctx = { params: Params };
 
-export async function POST(req: Request, ctx: { params: Promise<Params> }) {
+export async function POST(req: Request, { params }: Ctx) {
   try {
     const session = await getAuth();
     const userId = session?.user?.id;
@@ -18,7 +19,7 @@ export async function POST(req: Request, ctx: { params: Promise<Params> }) {
       return NextResponse.json({ ok: false, error: 'UNAUTHORIZED' }, { status: 401 });
     }
 
-    const { slug } = await ctx.params;
+    const { slug } = params;
     const community = await prisma.community.findUnique({
       where: { slug: slug.toLowerCase() },
       select: { id: true, createdById: true, joinPolicy: true },
@@ -38,7 +39,6 @@ export async function POST(req: Request, ctx: { params: Promise<Params> }) {
           return NextResponse.json({ ok: false, error: 'INVITE_ONLY' }, { status: 403 });
         }
 
-        // Invite validieren
         const invite = await prisma.communityInvite.findFirst({
           where: {
             token: inviteCode,
@@ -68,13 +68,11 @@ export async function POST(req: Request, ctx: { params: Promise<Params> }) {
           return NextResponse.json({ ok: false, error: 'INVITE_NOT_TARGET' }, { status: 403 });
         }
 
-        // Schon Mitglied?
         const already = await prisma.communityMember.findUnique({
           where: { communityId_userId: { communityId: community.id, userId } },
           select: { communityId: true },
         });
 
-        // Nur wenn neu: Mitglied + usedCount++
         if (!already) {
           await prisma.$transaction([
             prisma.communityMember.create({
@@ -87,7 +85,9 @@ export async function POST(req: Request, ctx: { params: Promise<Params> }) {
           ]);
         }
 
-        const members = await prisma.communityMember.count({ where: { communityId: community.id } });
+        const members = await prisma.communityMember.count({
+          where: { communityId: community.id },
+        });
         return NextResponse.json({ ok: true, joined: true, members });
       }
 
@@ -108,21 +108,22 @@ export async function POST(req: Request, ctx: { params: Promise<Params> }) {
         break;
     }
 
-    // OPEN / rollen-konform: idempotent joinen
     await prisma.communityMember.upsert({
       where: { communityId_userId: { communityId: community.id, userId } },
       update: {},
       create: { communityId: community.id, userId, role: 'MEMBER' },
     });
 
-    const members = await prisma.communityMember.count({ where: { communityId: community.id } });
+    const members = await prisma.communityMember.count({
+      where: { communityId: community.id },
+    });
     return NextResponse.json({ ok: true, joined: true, members });
   } catch {
     return NextResponse.json({ ok: false, error: 'FAILED' }, { status: 500 });
   }
 }
 
-export async function DELETE(_req: Request, ctx: { params: Promise<Params> }) {
+export async function DELETE(_req: Request, { params }: Ctx) {
   try {
     const session = await getAuth();
     const userId = session?.user?.id;
@@ -130,7 +131,7 @@ export async function DELETE(_req: Request, ctx: { params: Promise<Params> }) {
       return NextResponse.json({ ok: false, error: 'UNAUTHORIZED' }, { status: 401 });
     }
 
-    const { slug } = await ctx.params;
+    const { slug } = params;
     const community = await prisma.community.findUnique({
       where: { slug: slug.toLowerCase() },
       select: { id: true, createdById: true },
@@ -140,14 +141,19 @@ export async function DELETE(_req: Request, ctx: { params: Promise<Params> }) {
     }
 
     if (community.createdById === userId) {
-      return NextResponse.json({ ok: false, error: 'CREATOR_CANNOT_LEAVE' }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, error: 'CREATOR_CANNOT_LEAVE' },
+        { status: 400 },
+      );
     }
 
     await prisma.communityMember.delete({
       where: { communityId_userId: { communityId: community.id, userId } },
     });
 
-    const members = await prisma.communityMember.count({ where: { communityId: community.id } });
+    const members = await prisma.communityMember.count({
+      where: { communityId: community.id },
+    });
     return NextResponse.json({ ok: true, joined: false, members });
   } catch {
     return NextResponse.json({ ok: false, error: 'FAILED' }, { status: 500 });
