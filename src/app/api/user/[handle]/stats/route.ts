@@ -5,17 +5,28 @@ import { prisma } from '@/lib/prisma';
 type Params = { handle: string };
 export const dynamic = 'force-dynamic';
 
-export async function GET(_req: Request, ctx: { params: Promise<Params> }) {
+export async function GET(
+  _req: Request,
+  { params }: { params: Promise<Params> },
+) {
   try {
-    const { handle: raw } = await ctx.params;              
+    const { handle: raw } = await params;
     const handle = raw.startsWith('@') ? raw.slice(1) : raw;
 
     const user = await prisma.user.findFirst({
-      where: { handle: { equals: handle.toLowerCase(), mode: 'insensitive' } },
+      where: {
+        handle: {
+          equals: handle.toLowerCase(),
+          mode: 'insensitive',
+        },
+      },
       select: { id: true },
     });
     if (!user) {
-      return NextResponse.json({ ok: false, error: 'USER_NOT_FOUND' }, { status: 404 });
+      return NextResponse.json(
+        { ok: false, error: 'USER_NOT_FOUND' },
+        { status: 404 },
+      );
     }
 
     const [followers, following] = await Promise.all([
@@ -25,6 +36,9 @@ export async function GET(_req: Request, ctx: { params: Promise<Params> }) {
 
     return NextResponse.json({ ok: true, followers, following });
   } catch {
-    return NextResponse.json({ ok: false, error: 'INTERNAL' }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, error: 'INTERNAL' },
+      { status: 500 },
+    );
   }
 }

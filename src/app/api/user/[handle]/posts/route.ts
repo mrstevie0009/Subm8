@@ -13,25 +13,38 @@ function mapUploaded(
   return (rows ?? []).map((u) => {
     const mime = u.type ?? null;
     const kind: 'image' | 'video' | 'gif' =
-      mime === 'image/gif' ? 'gif' : mime && mime.startsWith('video/') ? 'video' : 'image';
+      mime === 'image/gif' ? 'gif' : mime && mime.startsWith('video/')
+        ? 'video'
+        : 'image';
     return { url: u.url, alt: u.alt ?? null, kind, mime };
   });
 }
 
-export async function GET(req: Request, ctx: { params: { handle: string } }) {
+export async function GET(
+  req: Request,
+  { params }: { params: Promise<{ handle: string }> },
+) {
   try {
-    const { handle } = await ctx.params;
+    const { handle } = await params;
 
     const url = new URL(req.url);
     const beforeISO = url.searchParams.get('before');
-    const sinceISO  = url.searchParams.get('since');
+    const sinceISO = url.searchParams.get('since');
     const onlyCount = url.searchParams.get('onlyCount') === '1';
-    const limitRaw  = Number(url.searchParams.get('limit'));
-    const limit = Number.isFinite(limitRaw) && limitRaw > 0 && limitRaw <= 50 ? limitRaw : 20;
+    const limitRaw = Number(url.searchParams.get('limit'));
+    const limit =
+      Number.isFinite(limitRaw) && limitRaw > 0 && limitRaw <= 50
+        ? limitRaw
+        : 20;
 
     const beforeDate = beforeISO ? new Date(beforeISO) : null;
     if (beforeISO && Number.isNaN(beforeDate!.getTime())) {
-      return NextResponse.json({ ok: true, posts: [], hasMore: false, nextCursor: null });
+      return NextResponse.json({
+        ok: true,
+        posts: [],
+        hasMore: false,
+        nextCursor: null,
+      });
     }
     const sinceDate = sinceISO ? new Date(sinceISO) : null;
     if (sinceISO && Number.isNaN(sinceDate!.getTime())) {
@@ -55,8 +68,14 @@ export async function GET(req: Request, ctx: { params: { handle: string } }) {
     }
     if (!user) {
       return NextResponse.json(
-        { ok: false, error: 'User not found', posts: [], hasMore: false, nextCursor: null },
-        { status: 404 }
+        {
+          ok: false,
+          error: 'User not found',
+          posts: [],
+          hasMore: false,
+          nextCursor: null,
+        },
+        { status: 404 },
       );
     }
 
@@ -81,8 +100,12 @@ export async function GET(req: Request, ctx: { params: { handle: string } }) {
     const commonInclude = {
       author: {
         select: {
-          id: true, handle: true, displayName: true, role: true, avatarUrl: true,
-          // 🟣 neu:
+          id: true,
+          handle: true,
+          displayName: true,
+          role: true,
+          avatarUrl: true,
+          // neu:
           isFirstAdopter: true,
           premiumUntil: true,
         },
@@ -92,13 +115,17 @@ export async function GET(req: Request, ctx: { params: { handle: string } }) {
         select: {
           id: true,
           text: true,
-          mediaUrl: true, mediaAlt: true,
+          mediaUrl: true,
+          mediaAlt: true,
           uploaded: true,
           createdAt: true,
           author: {
             select: {
-              id: true, handle: true, displayName: true, role: true, avatarUrl: true,
-              // 🟣 neu:
+              id: true,
+              handle: true,
+              displayName: true,
+              role: true,
+              avatarUrl: true,
               isFirstAdopter: true,
               premiumUntil: true,
             },
@@ -110,13 +137,17 @@ export async function GET(req: Request, ctx: { params: { handle: string } }) {
         select: {
           id: true,
           text: true,
-          mediaUrl: true, mediaAlt: true,
+          mediaUrl: true,
+          mediaAlt: true,
           uploaded: true,
           createdAt: true,
           author: {
             select: {
-              id: true, handle: true, displayName: true, role: true, avatarUrl: true,
-              // 🟣 neu:
+              id: true,
+              handle: true,
+              displayName: true,
+              role: true,
+              avatarUrl: true,
               isFirstAdopter: true,
               premiumUntil: true,
             },
@@ -131,12 +162,12 @@ export async function GET(req: Request, ctx: { params: { handle: string } }) {
 
     // Gepinnten Post im selben Shape laden (damit der Typ identisch ist)
     const pinnedArr = pinnedId
-      ? (await prisma.post.findMany({
+      ? ((await prisma.post.findMany({
           where: { id: pinnedId, authorId: user.id },
           orderBy: { createdAt: 'desc' },
           include: commonInclude,
           take: 1,
-        })) as PostWithRels[]
+        })) as PostWithRels[])
       : [];
 
     const pinned: PostWithRels | null = pinnedArr[0] ?? null;
@@ -155,7 +186,9 @@ export async function GET(req: Request, ctx: { params: { handle: string } }) {
 
     const hasMore = rows.length > limit;
     const pageRows: PostWithRels[] = hasMore ? rows.slice(0, limit) : rows;
-    const nextCursor = hasMore ? pageRows[pageRows.length - 1]!.createdAt.toISOString() : null;
+    const nextCursor = hasMore
+      ? pageRows[pageRows.length - 1]!.createdAt.toISOString()
+      : null;
 
     const mapPost = (p: PostWithRels) => {
       const isRepost = !!p.repostOf;
@@ -178,10 +211,9 @@ export async function GET(req: Request, ctx: { params: { handle: string } }) {
           displayName: p.author.displayName,
           role: (p.author.role as Role) ?? null,
           avatarUrl: p.author.avatarUrl,
-          // 🟣 neu:
-          isFirstAdopter: (p.author).isFirstAdopter ?? false,
-          premiumUntil: (p.author).premiumUntil
-            ? new Date((p.author).premiumUntil).toISOString()
+          isFirstAdopter: p.author.isFirstAdopter ?? false,
+          premiumUntil: p.author.premiumUntil
+            ? new Date(p.author.premiumUntil).toISOString()
             : null,
         },
         repostOf: isRepost
@@ -198,10 +230,9 @@ export async function GET(req: Request, ctx: { params: { handle: string } }) {
                 displayName: p.repostOf!.author.displayName,
                 role: (p.repostOf!.author.role as Role) ?? null,
                 avatarUrl: p.repostOf!.author.avatarUrl,
-                // 🟣 neu:
-                isFirstAdopter: (p.repostOf!.author).isFirstAdopter ?? false,
-                premiumUntil: (p.repostOf!.author).premiumUntil
-                  ? new Date((p.repostOf!.author).premiumUntil).toISOString()
+                isFirstAdopter: p.repostOf!.author.isFirstAdopter ?? false,
+                premiumUntil: p.repostOf!.author.premiumUntil
+                  ? new Date(p.repostOf!.author.premiumUntil).toISOString()
                   : null,
               },
             }
@@ -220,10 +251,9 @@ export async function GET(req: Request, ctx: { params: { handle: string } }) {
                 displayName: p.quoteOf!.author.displayName,
                 role: (p.quoteOf!.author.role as Role) ?? null,
                 avatarUrl: p.quoteOf!.author.avatarUrl,
-                // 🟣 neu:
-                isFirstAdopter: (p.quoteOf!.author).isFirstAdopter ?? false,
-                premiumUntil: (p.quoteOf!.author).premiumUntil
-                  ? new Date((p.quoteOf!.author).premiumUntil).toISOString()
+                isFirstAdopter: p.quoteOf!.author.isFirstAdopter ?? false,
+                premiumUntil: p.quoteOf!.author.premiumUntil
+                  ? new Date(p.quoteOf!.author.premiumUntil).toISOString()
                   : null,
               },
             }
@@ -247,6 +277,9 @@ export async function GET(req: Request, ctx: { params: { handle: string } }) {
     return NextResponse.json({ ok: true, posts, hasMore, nextCursor });
   } catch (err) {
     console.error('GET /api/user/[handle]/posts failed:', err);
-    return NextResponse.json({ ok: false, error: 'Failed to load posts' }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, error: 'Failed to load posts' },
+      { status: 500 },
+    );
   }
 }

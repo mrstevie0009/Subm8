@@ -5,8 +5,11 @@ import { prisma } from '@/lib/prisma';
 type Params = { handle: string };
 
 // Hinweis: In Next 15 ist params asynchron → Promise abwarten.
-export async function GET(_req: Request, ctx: { params: Promise<Params> }) {
-  const { handle } = await ctx.params;
+export async function GET(
+  _req: Request,
+  { params }: { params: Promise<Params> },
+) {
+  const { handle } = await params;
 
   const safeHandle = (() => {
     try {
@@ -28,7 +31,10 @@ export async function GET(_req: Request, ctx: { params: Promise<Params> }) {
   });
 
   if (!user) {
-    return NextResponse.json({ ok: false, error: 'NOT_FOUND' }, { status: 404 });
+    return NextResponse.json(
+      { ok: false, error: 'NOT_FOUND' },
+      { status: 404 },
+    );
   }
 
   return NextResponse.json({

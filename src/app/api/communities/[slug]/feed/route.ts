@@ -1,4 +1,4 @@
-//src/app/api/communities/[slug]/feed/route.ts
+// src/app/api/communities/[slug]/feed/route.ts
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/currentUser';
@@ -67,7 +67,9 @@ type FeedResponse =
 function encodeCursor(d: Date, id: string) {
   return `${d.getTime()}_${id}`;
 }
-function decodeCursor(token: string | null | undefined): { createdAt: Date; id: string } | null {
+function decodeCursor(
+  token: string | null | undefined,
+): { createdAt: Date; id: string } | null {
   if (!token) return null;
   const [msStr, id] = token.split('_');
   const ms = Number(msStr);
@@ -75,22 +77,30 @@ function decodeCursor(token: string | null | undefined): { createdAt: Date; id: 
   return { createdAt: new Date(ms), id };
 }
 
-export async function GET(req: Request, ctx: { params: Promise<Params> }) {
-  const { slug } = await ctx.params;
+export async function GET(
+  req: Request,
+  { params }: { params: Promise<Params> },
+) {
+  const { slug } = await params;
   const { searchParams } = new URL(req.url);
 
-  const sinceISO = searchParams.get('since');        // neuere Posts (Top-Refresh)
-  const beforeTok = searchParams.get('before');      // ältere Posts (Bottom-Scroll)
+  const sinceISO = searchParams.get('since'); // neuere Posts (Top-Refresh)
+  const beforeTok = searchParams.get('before'); // ältere Posts (Bottom-Scroll)
   const onlyCount = searchParams.get('onlyCount') === '1';
   const takeRaw = parseInt(searchParams.get('take') || '20', 10);
-  const take = Math.min(Math.max(Number.isFinite(takeRaw) ? takeRaw : 20, 1), 100);
+  const take = Math.min(
+    Math.max(Number.isFinite(takeRaw) ? takeRaw : 20, 1),
+    100,
+  );
 
   const community = await prisma.community.findUnique({
     where: { slug: slug.toLowerCase() },
     select: { id: true },
   });
   if (!community) {
-    const empty: FeedResponse = onlyCount ? { count: 0 } : { posts: [], nextCursor: null };
+    const empty: FeedResponse = onlyCount
+      ? { count: 0 }
+      : { posts: [], nextCursor: null };
     return NextResponse.json(empty);
   }
 
@@ -116,7 +126,10 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
   }
 
   // --- Query-Bedingungen (Keyset-Pagination via createdAt DESC, id DESC) ---
-  const orderBy = [{ createdAt: 'desc' as const }, { id: 'desc' as const }];
+  const orderBy = [
+    { createdAt: 'desc' as const },
+    { id: 'desc' as const },
+  ];
 
   const whereBase: Record<string, unknown> = { communityId: community.id };
   if (sinceDate) {
@@ -132,7 +145,12 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
         {
           OR: [
             { createdAt: { lt: decoded.createdAt } },
-            { AND: [{ createdAt: decoded.createdAt }, { id: { lt: decoded.id } }] },
+            {
+              AND: [
+                { createdAt: decoded.createdAt },
+                { id: { lt: decoded.id } },
+              ],
+            },
           ],
         },
       ],
@@ -191,7 +209,10 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
       },
       _count: { select: { Like: true, Comment: true, reposts: true } },
     },
-    take: sinceDate && !decoded ? Math.min(Math.max(50, 1), 100) : take, // für Top-Refresh großzügig
+    take:
+      sinceDate && !decoded
+        ? Math.min(Math.max(50, 1), 100)
+        : take, // für Top-Refresh großzügig
   });
 
   // Begleitdaten für Viewer

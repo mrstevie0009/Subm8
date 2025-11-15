@@ -4,13 +4,19 @@ import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/currentUser';
 
 // POST /api/posts/:id/repost
-export async function POST(_req: Request, ctx: { params: Promise<{ id: string }> }) {
+export async function POST(
+  _req: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
   const me = await getCurrentUser().catch(() => null);
   if (!me) {
-    return NextResponse.json({ ok: false, error: 'UNAUTHORIZED' }, { status: 401 });
+    return NextResponse.json(
+      { ok: false, error: 'UNAUTHORIZED' },
+      { status: 401 },
+    );
   }
 
-  const { id } = await ctx.params;
+  const { id } = await params;
 
   // Existiert der Ziel-Post?
   const target = await prisma.post.findUnique({
@@ -18,7 +24,10 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
     select: { id: true },
   });
   if (!target) {
-    return NextResponse.json({ ok: false, error: 'NOT_FOUND' }, { status: 404 });
+    return NextResponse.json(
+      { ok: false, error: 'NOT_FOUND' },
+      { status: 404 },
+    );
   }
 
   // Repost anlegen (Text leer – Inhalt kommt vom Original)

@@ -13,8 +13,8 @@ type UserSlim = {
   displayName: string;
   avatarUrl: string | null;
   role: 'DOMME' | 'SUBMISSIVE';
-  premiumUntil?: string | null; 
-  isFirstAdopter?: boolean;  
+  premiumUntil?: string | null;
+  isFirstAdopter?: boolean;
 };
 
 type CommentRow = {
@@ -68,8 +68,11 @@ function clientKey(req: Request, postId: string) {
 
 // ----------------- Handler -----------------
 
-export async function GET(req: Request, ctx: { params: Promise<Params> }) {
-  const { id } = await ctx.params;
+export async function GET(
+  req: Request,
+  { params }: { params: Promise<Params> },
+) {
+  const { id } = await params;
 
   // ignore prefetches
   const prefetch =
@@ -85,8 +88,19 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
   const last = lastHit.get(key) ?? 0;
   if (now - last < MIN_GAP_MS) {
     return NextResponse.json(
-      { ok: true, throttled: true, items: [] as TreeComment[], nextCursor: null as string | null },
-      { status: 200, headers: { 'Cache-Control': 'no-store', 'X-Comments-Throttled': '1' } },
+      {
+        ok: true,
+        throttled: true,
+        items: [] as TreeComment[],
+        nextCursor: null as string | null,
+      },
+      {
+        status: 200,
+        headers: {
+          'Cache-Control': 'no-store',
+          'X-Comments-Throttled': '1',
+        },
+      },
     );
   }
   lastHit.set(key, now);
@@ -112,16 +126,16 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
         mediaUrl: true,
         mediaAlt: true,
         User: {
-      select: {
-        id: true,
-        handle: true,
-        displayName: true,
-        avatarUrl: true,
-        role: true,
-        premiumUntil: true,     // ⬅️ neu
-        isFirstAdopter: true,   // ⬅️ neu
-      },
-    },
+          select: {
+            id: true,
+            handle: true,
+            displayName: true,
+            avatarUrl: true,
+            role: true,
+            premiumUntil: true, // neu
+            isFirstAdopter: true, // neu
+          },
+        },
         _count: { select: { likes: true, replies: true } },
       },
     });
@@ -144,16 +158,16 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
           mediaUrl: true,
           mediaAlt: true,
           User: {
-      select: {
-        id: true,
-        handle: true,
-        displayName: true,
-        avatarUrl: true,
-        role: true,
-        premiumUntil: true,
-        isFirstAdopter: true,   
-      },
-    },
+            select: {
+              id: true,
+              handle: true,
+              displayName: true,
+              avatarUrl: true,
+              role: true,
+              premiumUntil: true,
+              isFirstAdopter: true,
+            },
+          },
           _count: { select: { likes: true, replies: true } },
         },
       });
@@ -198,8 +212,10 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
           displayName: n.User.displayName,
           avatarUrl: n.User.avatarUrl,
           role: n.User.role,
-          premiumUntil: n.User.premiumUntil ? n.User.premiumUntil.toISOString() : null, 
-          isFirstAdopter: !!n.User.isFirstAdopter,                                      
+          premiumUntil: n.User.premiumUntil
+            ? n.User.premiumUntil.toISOString()
+            : null,
+          isFirstAdopter: !!n.User.isFirstAdopter,
         },
         counts: { likes: n._count.likes, replies: n._count.replies },
         viewer: { liked: likedSet.has(n.id) },
@@ -207,14 +223,22 @@ export async function GET(req: Request, ctx: { params: Promise<Params> }) {
       }));
 
     const items: TreeComment[] = toTree(null);
-    const nextCursor: string | null = top.length === take ? top[top.length - 1]!.id : null;
+    const nextCursor: string | null =
+      top.length === take ? top[top.length - 1]!.id : null;
 
     return NextResponse.json(
       { ok: true, items, nextCursor },
-      { headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' } },
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate',
+        },
+      },
     );
   } catch (e) {
     console.error('GET /api/post/[id]/comments failed:', e);
-    return NextResponse.json({ ok: false, error: 'Failed to load comments' }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, error: 'Failed to load comments' },
+      { status: 500 },
+    );
   }
 }

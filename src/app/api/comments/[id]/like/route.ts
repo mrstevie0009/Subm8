@@ -3,13 +3,19 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/currentUser';
 
-type Params = { id: string };
-
-export async function POST(_req: Request, ctx: { params: Promise<Params> }) {
+export async function POST(
+  _req: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
   const me = await getCurrentUser();
-  if (!me) return NextResponse.json({ ok: false, error: 'UNAUTHORIZED' }, { status: 401 });
+  if (!me) {
+    return NextResponse.json(
+      { ok: false, error: 'UNAUTHORIZED' },
+      { status: 401 },
+    );
+  }
 
-  const { id } = await ctx.params;
+  const { id } = await params;
 
   try {
     const existing = await prisma.commentLike.findUnique({
@@ -29,6 +35,9 @@ export async function POST(_req: Request, ctx: { params: Promise<Params> }) {
     }
   } catch (e) {
     console.error(e);
-    return NextResponse.json({ ok: false, error: 'SERVER_ERROR' }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, error: 'SERVER_ERROR' },
+      { status: 500 },
+    );
   }
 }
