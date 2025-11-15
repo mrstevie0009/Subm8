@@ -2,6 +2,8 @@
 import { NextResponse } from 'next/server';
 import { presignPut } from '@/lib/r2sign';
 
+export const runtime = 'nodejs';
+
 // Erlaubte "kind" Buckets (gleicher Union wie in r2sign/buildKey)
 const ALLOWED_KINDS = new Set([
   'post-media',
