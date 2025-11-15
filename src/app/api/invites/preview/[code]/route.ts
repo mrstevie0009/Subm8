@@ -1,14 +1,17 @@
-//src/app/api/invites/preview/[code]/route.ts
+// src/app/api/invites/preview/[code]/route.ts
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
-type Params = { code: string };
-type Ctx = { params: Promise<Params> };
-
-export async function GET(_req: Request, { params }: Ctx) {
+export async function GET(
+  _req: Request,
+  { params }: { params: Promise<{ code: string }> },
+) {
   const { code } = await params;
   if (!code) {
-    return NextResponse.json({ ok: false, error: 'Missing code' }, { status: 400 });
+    return NextResponse.json(
+      { ok: false, error: 'Missing code' },
+      { status: 400 },
+    );
   }
 
   // CommunityInvite nach token holen + Community mitsamt Member-Count
@@ -29,7 +32,10 @@ export async function GET(_req: Request, { params }: Ctx) {
   });
 
   if (!invite || !invite.community) {
-    return NextResponse.json({ ok: false, error: 'Invite not found' }, { status: 404 });
+    return NextResponse.json(
+      { ok: false, error: 'Invite not found' },
+      { status: 404 },
+    );
   }
 
   const remainingUses =

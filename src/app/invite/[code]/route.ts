@@ -1,3 +1,4 @@
+// src/app/invite/[code]/route.ts
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
@@ -11,10 +12,10 @@ async function pickLocale() {
 
 export const runtime = 'nodejs';
 
-type Params = { code: string };
-type Ctx = { params: Promise<Params> };
-
-export async function GET(req: Request, { params }: Ctx) {
+export async function GET(
+  req: Request,
+  { params }: { params: Promise<{ code: string }> },
+) {
   const url = new URL(req.url);
   const base = url.origin;
   const locale = await pickLocale();
@@ -24,10 +25,14 @@ export async function GET(req: Request, { params }: Ctx) {
   const userRole = session?.user?.role as Role | undefined;
 
   if (!userId) {
-    return NextResponse.redirect(`${base}/${locale}/login?next=${encodeURIComponent(url.pathname)}`);
+    return NextResponse.redirect(
+      `${base}/${locale}/login?next=${encodeURIComponent(
+        url.pathname,
+      )}`,
+    );
   }
 
-  const { code } = await params; 
+  const { code } = await params;
 
   const inv = await prisma.communityInvite.findUnique({
     where: { token: code },
@@ -42,22 +47,41 @@ export async function GET(req: Request, { params }: Ctx) {
     (inv.maxUses != null && inv.usedCount >= inv.maxUses);
 
   if (invalid) {
-    return NextResponse.redirect(`${base}/${locale}/communities?error=invite_invalid`);
+    return NextResponse.redirect(
+      `${base}/${locale}/communities?error=invite_invalid`,
+    );
   }
 
   if (inv.type === 'DIRECT' && inv.targetUserId && inv.targetUserId !== userId) {
-    return NextResponse.redirect(`${base}/${locale}/communities?error=invite_not_for_you`);
+    return NextResponse.redirect(
+      `${base}/${locale}/communities?error=invite_not_for_you`,
+    );
   }
 
-  if (inv.community.joinPolicy === 'DOMME_ONLY' && userRole !== 'DOMME') {
-    return NextResponse.redirect(`${base}/${locale}/communities/${inv.community.slug}?error=role_denied`);
+  if (
+    inv.community.joinPolicy === 'DOMME_ONLY' &&
+    userRole !== 'DOMME'
+  ) {
+    return NextResponse.redirect(
+      `${base}/${locale}/communities/${inv.community.slug}?error=role_denied`,
+    );
   }
-  if (inv.community.joinPolicy === 'SUB_ONLY' && userRole !== 'SUBMISSIVE') {
-    return NextResponse.redirect(`${base}/${locale}/communities/${inv.community.slug}?error=role_denied`);
+  if (
+    inv.community.joinPolicy === 'SUB_ONLY' &&
+    userRole !== 'SUBMISSIVE'
+  ) {
+    return NextResponse.redirect(
+      `${base}/${locale}/communities/${inv.community.slug}?error=role_denied`,
+    );
   }
 
   await prisma.communityMember.upsert({
-    where: { communityId_userId: { communityId: inv.communityId, userId } },
+    where: {
+      communityId_userId: {
+        communityId: inv.communityId,
+        userId,
+      },
+    },
     update: {},
     create: { communityId: inv.communityId, userId, role: 'MEMBER' },
   });
@@ -69,5 +93,7 @@ export async function GET(req: Request, { params }: Ctx) {
     });
   }
 
-  return NextResponse.redirect(`${base}/${locale}/communities/${inv.community.slug}`);
+  return NextResponse.redirect(
+    `${base}/${locale}/communities/${inv.community.slug}`,
+  );
 }

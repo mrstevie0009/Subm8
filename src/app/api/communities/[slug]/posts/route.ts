@@ -6,33 +6,48 @@ import { guardAndSave, envMaxUploadBytes } from '@/lib/uploadGuard';
 
 export const runtime = 'nodejs';
 
-type Params = { slug: string };
-type Ctx = { params: Params };
-
-export async function POST(req: Request, { params }: Ctx) {
+export async function POST(
+  req: Request,
+  { params }: { params: Promise<{ slug: string }> },
+) {
   try {
+    const { slug } = await params;
+
     const session = await getAuth();
     const userId = session?.user?.id;
     if (!userId) {
-      return NextResponse.json({ ok: false, error: 'UNAUTHORIZED' }, { status: 401 });
+      return NextResponse.json(
+        { ok: false, error: 'UNAUTHORIZED' },
+        { status: 401 },
+      );
     }
 
-    const { slug } = params;
     const community = await prisma.community.findUnique({
       where: { slug: slug.toLowerCase() },
       select: { id: true },
     });
     if (!community) {
-      return NextResponse.json({ ok: false, error: 'NOT_FOUND' }, { status: 404 });
+      return NextResponse.json(
+        { ok: false, error: 'NOT_FOUND' },
+        { status: 404 },
+      );
     }
 
     // posten nur für Mitglieder
     const member = await prisma.communityMember.findUnique({
-      where: { communityId_userId: { communityId: community.id, userId } },
+      where: {
+        communityId_userId: {
+          communityId: community.id,
+          userId,
+        },
+      },
       select: { communityId: true },
     });
     if (!member) {
-      return NextResponse.json({ ok: false, error: 'NOT_MEMBER' }, { status: 403 });
+      return NextResponse.json(
+        { ok: false, error: 'NOT_MEMBER' },
+        { status: 403 },
+      );
     }
 
     const ct = req.headers.get('content-type') || '';
@@ -54,12 +69,18 @@ export async function POST(req: Request, { params }: Ctx) {
           maxSize: envMaxUploadBytes(100), // 100 MB
         });
         if (!saved.ok) {
-          return NextResponse.json({ ok: false, error: saved.message }, { status: 400 });
+          return NextResponse.json(
+            { ok: false, error: saved.message },
+            { status: 400 },
+          );
         }
         mediaUrl = saved.publicPath;
       } else if (gifUrl) {
         if (!/^https?:\/\//i.test(gifUrl)) {
-          return NextResponse.json({ ok: false, error: 'INVALID_GIF_URL' }, { status: 400 });
+          return NextResponse.json(
+            { ok: false, error: 'INVALID_GIF_URL' },
+            { status: 400 },
+          );
         }
         mediaUrl = gifUrl;
       }
@@ -76,10 +97,16 @@ export async function POST(req: Request, { params }: Ctx) {
     }
 
     if (text.length < 1 && !mediaUrl) {
-      return NextResponse.json({ ok: false, error: 'EMPTY_POST' }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, error: 'EMPTY_POST' },
+        { status: 400 },
+      );
     }
     if (text.length > 4000) {
-      return NextResponse.json({ ok: false, error: 'INVALID_TEXT' }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, error: 'INVALID_TEXT' },
+        { status: 400 },
+      );
     }
 
     const created = await prisma.post.create({
@@ -96,6 +123,9 @@ export async function POST(req: Request, { params }: Ctx) {
 
     return NextResponse.json({ ok: true, id: created.id });
   } catch {
-    return NextResponse.json({ ok: false, error: 'FAILED' }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, error: 'FAILED' },
+      { status: 500 },
+    );
   }
 }

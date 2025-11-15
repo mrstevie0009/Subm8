@@ -27,10 +27,10 @@ type UserPick = {
   isFirstAdopter: boolean | null;
 };
 
-type Params = { handle: string };
-type Ctx = { params: Promise<Params> };
-
-export async function GET(req: Request, { params }: Ctx) {
+export async function GET(
+  req: Request,
+  { params }: { params: Promise<{ handle: string }> },
+) {
   try {
     const { handle } = await params;
     const url = new URL(req.url);
@@ -48,7 +48,7 @@ export async function GET(req: Request, { params }: Ctx) {
     if (!user) {
       return NextResponse.json(
         { ok: false, error: 'USER_NOT_FOUND' },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -63,8 +63,14 @@ export async function GET(req: Request, { params }: Ctx) {
     ];
 
     // kleiner Helper, um optional cursor/skip typsicher zu spready-en
-    const withCursor = <T extends Prisma.FollowFindManyArgs>(args: T): T & Partial<Pick<Prisma.FollowFindManyArgs, 'cursor'|'skip'>> =>
-      cursor ? ({ ...args, cursor: { id: cursor }, skip: 1 }) : args;
+    const withCursor = <
+      T extends Prisma.FollowFindManyArgs,
+    >(
+      args: T,
+    ): T &
+      Partial<
+        Pick<Prisma.FollowFindManyArgs, 'cursor' | 'skip'>
+      > => (cursor ? { ...args, cursor: { id: cursor }, skip: 1 } : args);
 
     let items: Array<{
       id: string;
@@ -94,7 +100,7 @@ export async function GET(req: Request, { params }: Ctx) {
           },
           orderBy,
           take,
-        })
+        }),
       );
 
       const users: UserPick[] = rows.map((r) => r.follower);
@@ -136,7 +142,7 @@ export async function GET(req: Request, { params }: Ctx) {
           },
           orderBy,
           take,
-        })
+        }),
       );
 
       const users: UserPick[] = rows.map((r) => r.followee);
@@ -169,7 +175,7 @@ export async function GET(req: Request, { params }: Ctx) {
   } catch {
     return NextResponse.json(
       { ok: false, error: 'INTERNAL_ERROR' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

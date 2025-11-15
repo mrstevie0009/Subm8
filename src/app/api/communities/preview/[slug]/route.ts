@@ -18,10 +18,10 @@ type ApiResponse =
   | { ok: true; community: CommunityPreview }
   | { ok: false; error: string };
 
-type Params = { slug: string };
-type Ctx = { params: Promise<Params> };
-
-export async function GET(_req: Request, { params }: Ctx) {
+export async function GET(
+  _req: Request,
+  { params }: { params: Promise<{ slug: string }> },
+) {
   const { slug } = await params;
 
   try {
@@ -39,7 +39,7 @@ export async function GET(_req: Request, { params }: Ctx) {
     if (!community) {
       return NextResponse.json<ApiResponse>(
         { ok: false, error: 'Not found' },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -53,12 +53,15 @@ export async function GET(_req: Request, { params }: Ctx) {
       avatarUrl: null,
     };
 
-    return NextResponse.json<ApiResponse>({ ok: true, community: payload }, { status: 200 });
+    return NextResponse.json<ApiResponse>(
+      { ok: true, community: payload },
+      { status: 200 },
+    );
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Internal error';
     return NextResponse.json<ApiResponse>(
       { ok: false, error: message },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

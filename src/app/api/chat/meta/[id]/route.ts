@@ -5,15 +5,18 @@ import { $Enums } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
 
-type Params = { id: string };
-type Ctx = { params: Promise<Params> };
-
-export async function GET(_req: Request, { params }: Ctx) {
+export async function GET(
+  _req: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
   const { id } = await params;
 
   const me = await getCurrentUser();
   if (!me) {
-    return Response.json({ ok: false, error: 'Not authenticated' }, { status: 401 });
+    return Response.json(
+      { ok: false, error: 'Not authenticated' },
+      { status: 401 },
+    );
   }
 
   // Minimaler Fetch (keine großen Includes)
@@ -31,7 +34,10 @@ export async function GET(_req: Request, { params }: Ctx) {
   });
 
   if (!convo) {
-    return Response.json({ ok: false, error: 'Not found' }, { status: 404 });
+    return Response.json(
+      { ok: false, error: 'Not found' },
+      { status: 404 },
+    );
   }
 
   let member = false;
@@ -40,9 +46,11 @@ export async function GET(_req: Request, { params }: Ctx) {
   if (convo.type === $Enums.ConversationType.DM) {
     member = convo.dommeId === me.id || convo.subId === me.id;
   } else {
-    // GROUP → Mitgliedschaft schlank prüfen (ohne alle Member zu ziehen)
+    // GROUP → Mitgliedschaft schlank prüfen
     const m = await prisma.conversationMember.findUnique({
-      where: { conversationId_userId: { conversationId: id, userId: me.id } },
+      where: {
+        conversationId_userId: { conversationId: id, userId: me.id },
+      },
       select: { role: true },
     });
     member = !!m;
@@ -56,19 +64,18 @@ export async function GET(_req: Request, { params }: Ctx) {
     member,
     role,
     title: convo.title ?? null,
-    avatarUrl: convo.avatarUrl && convo.avatarUrl.trim() ? convo.avatarUrl : null,
+    avatarUrl:
+      convo.avatarUrl && convo.avatarUrl.trim() ? convo.avatarUrl : null,
     memberCount: convo._count?.members ?? null,
   };
 
   if (!member) {
-    // Liefere type im Body mit, aber kennzeichne Forbidden via Status
     return Response.json(
       { ...payload, ok: false as const, error: 'Forbidden' },
       { status: 403 },
     );
   }
 
-  // Kurze private Cache-Hints erlaubt
   return Response.json(payload, {
     headers: { 'cache-control': 'private, no-store' },
   });

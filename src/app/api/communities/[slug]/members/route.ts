@@ -1,4 +1,4 @@
-//src/app/api/communities/[slug]/members/route.ts
+// src/app/api/communities/[slug]/members/route.ts
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/currentUser';
@@ -29,7 +29,9 @@ type UserPick = {
 function encodeCursor(d: Date, userId: string) {
   return `${d.getTime()}_${userId}`;
 }
-function decodeCursor(token: string | null | undefined): { createdAt: Date; userId: string } | null {
+function decodeCursor(
+  token: string | null | undefined,
+): { createdAt: Date; userId: string } | null {
   if (!token) return null;
   const [msStr, uid] = token.split('_');
   const ms = Number(msStr);
@@ -37,10 +39,10 @@ function decodeCursor(token: string | null | undefined): { createdAt: Date; user
   return { createdAt: new Date(ms), userId: uid };
 }
 
-type Params = { slug: string };
-type Ctx = { params: Promise<Params> };
-
-export async function GET(req: Request, { params }: Ctx) {
+export async function GET(
+  req: Request,
+  { params }: { params: Promise<{ slug: string }> },
+) {
   try {
     const { slug } = await params;
     const url = new URL(req.url);
@@ -56,7 +58,10 @@ export async function GET(req: Request, { params }: Ctx) {
       select: { id: true },
     });
     if (!community) {
-      return NextResponse.json({ ok: false, error: 'COMMUNITY_NOT_FOUND' }, { status: 404 });
+      return NextResponse.json(
+        { ok: false, error: 'COMMUNITY_NOT_FOUND' },
+        { status: 404 },
+      );
     }
 
     const now = new Date();
@@ -130,6 +135,9 @@ export async function GET(req: Request, { params }: Ctx) {
 
     return NextResponse.json({ ok: true, items, nextCursor });
   } catch {
-    return NextResponse.json({ ok: false, error: 'INTERNAL_ERROR' }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, error: 'INTERNAL_ERROR' },
+      { status: 500 },
+    );
   }
 }
