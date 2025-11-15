@@ -1,3 +1,4 @@
+//src/app/[locale]/(protected)/legal/impressum/page.tsx
 import { LegalArticle } from '@/components/legal/LegalArticle';
 import { createTranslator } from 'next-intl';
 import { notFound } from 'next/navigation';

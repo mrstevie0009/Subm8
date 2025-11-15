@@ -6,11 +6,16 @@ import BackButton from "@/components/BackButtonStandard";
 import { createTranslator } from "next-intl";
 import { notFound } from "next/navigation";
 
-type Params = { locale: string };
+type Params = { locale: 'en' | 'de' | 'es' | 'fr' };
 
-export const dynamic = "force-static";
+// Mach die Seite dynamisch, damit eine Lambda gebaut wird
+export const dynamic = 'force-dynamic';
 
-export default async function MonetizationPage({ params }: { params: Promise<Params> }) {
+export default async function MonetizationPage({
+  params,
+}: {
+  params: Promise<Params>;
+}) {
   const { locale } = await params;
 
   // i18n laden
