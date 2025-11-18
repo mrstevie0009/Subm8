@@ -67,6 +67,25 @@ type Props = {
   mode?: 'dm' | 'group';
 };
 
+/** Robustere Erkennung für Safari / iOS etc. */
+function isVideoFile(f: File): boolean {
+  const type = (f.type || '').toLowerCase();
+  const name = (f.name || '').toLowerCase();
+
+  if (type.startsWith('video/')) return true;
+  // Fallback: Dateiendung
+  return /\.(mp4|mov|m4v|webm|ogg|ogv|mkv)$/i.test(name);
+}
+
+function isImageFile(f: File): boolean {
+  const type = (f.type || '').toLowerCase();
+  const name = (f.name || '').toLowerCase();
+
+  if (type.startsWith('image/')) return true;
+  return /\.(jpe?g|png|webp|gif|heic|heif)$/i.test(name);
+}
+
+
 function SendIcon({ size = 22 }: { size?: number }) {
   return (
     <svg
@@ -810,7 +829,7 @@ const isSub = String(viewerRole).toUpperCase() === 'SUBMISSIVE';
           <div className="mb-2 pl-2">
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
               {[...mediaPreviews, ...gifPreviews].map(({ url, file }, idx) => {
-                const isVideo = file.type.startsWith('video/');
+                const isVideo = isVideoFile(file);
                 return (
                   <div key={url} className="relative">
                     {isVideo ? (
@@ -925,7 +944,8 @@ const isSub = String(viewerRole).toUpperCase() === 'SUBMISSIVE';
                   multiple
                   disabled={uiDisabled}
                   onChange={(e) => {
-                    const files = Array.from(e.target.files || []);
+                    const all = Array.from(e.target.files || []);
+                    const files = all.filter((f) => isImageFile(f) || isVideoFile(f));
                     if (files.length) {
                       setMediaPreviews((arr) => [
                         ...arr,

@@ -19,6 +19,27 @@ const TENOR_BASE = 'https://g.tenor.com/v1';
 const MEDIA_MAX = 4;
 const atLimit = (n: number) => n >= MEDIA_MAX;
 
+// robustere Erkennung (für iPhone / Safari etc.)
+function isVideoFile(f: File): boolean {
+  const type = (f.type || '').toLowerCase();
+  const name = (f.name || '').toLowerCase();
+
+  if (type.startsWith('video/')) return true;
+
+  // Fallback über Endung – wichtig für iOS
+  return /\.(mp4|mov|m4v|webm|ogg|ogv|mkv)$/i.test(name);
+}
+
+function isImageFile(f: File): boolean {
+  const type = (f.type || '').toLowerCase();
+  const name = (f.name || '').toLowerCase();
+
+  if (type.startsWith('image/')) return true;
+
+  // HEIC/HEIF & Co.
+  return /\.(jpe?g|png|webp|gif|heic|heif)$/i.test(name);
+}
+
 
 type TenorMedia = {
   gif?: { url?: string };
@@ -243,65 +264,25 @@ export default function ComposePostModal({ open, onClose }: Props) {
   }, []);
 
   const onPickMedia = (files?: FileList | null, input?: HTMLInputElement | null) => {
-  if (!files || files.length === 0) return;
+    if (!files || files.length === 0) return;
 
-  const pickedAll = Array.from(files);
-  if (input) input.value = '';
+    const pickedAll = Array.from(files);
+    if (input) input.value = '';
 
-  // Wir arbeiten NICHT im setState-Updater, um Side-Effects zu vermeiden.
-  const current = media;
-  const toasts: Array<{ msg: string }> = [];
+    const current = media;
+    const toasts: Array<{ msg: string }> = [];
 
-  const hasPrevVideo = current.some((m) => m.kind === 'video');
-  const hasPrevImages = current.some((m) => m.kind === 'image');
+    const hasPrevVideo = current.some((m) => m.kind === 'video');
+    const hasPrevImages = current.some((m) => m.kind === 'image');
 
-  const next = [...current];
+    const next = [...current];
 
-  if (hasPrevVideo) {
-    toasts.push({ msg: tt('media.alreadyVideo') });
-    // next bleibt unverändert
-  } else if (hasPrevImages) {
-    const imageFiles = pickedAll.filter((f) => f.type?.startsWith('image'));
-    if (imageFiles.length === 0) {
-      toasts.push({ msg: tt('media.noVideoWhenImages') });
-    } else {
-      const remaining = MEDIA_MAX - next.length;
-      if (remaining <= 0) {
-        toasts.push({ msg: tt('media.maxReached', { max: MEDIA_MAX }) });
-      } else {
-        const picked = imageFiles.slice(0, remaining);
-        for (const f of picked) {
-          const preview = URL.createObjectURL(f);
-          next.push({ id: crypto.randomUUID(), file: f, preview, kind: 'image' });
-        }
-        if (imageFiles.length > remaining) {
-          toasts.push({ msg: tt('media.onlyRemaining', { remaining, max: MEDIA_MAX }) });
-        }
-        if (pickedAll.some((f) => f.type?.startsWith('video'))) {
-          toasts.push({ msg: tt('media.videosIgnored') });
-        }
-      }
-    }
-  } else {
-    // Noch keine Medien: entweder nur 1 Video ODER nur Bilder (nicht mischen)
-    const hasVideo = pickedAll.some((f) => f.type?.startsWith('video'));
-    const hasImage = pickedAll.some((f) => f.type?.startsWith('image'));
-
-    if (hasVideo && hasImage) {
-      toasts.push({ msg: tt('media.mixedNotAllowed') });
-    } else if (hasVideo) {
-      const firstVideo = pickedAll.find((f) => f.type?.startsWith('video'));
-      if (firstVideo) {
-        const preview = URL.createObjectURL(firstVideo);
-        next.push({ id: crypto.randomUUID(), file: firstVideo, preview, kind: 'video' });
-      }
-      if (pickedAll.filter((f) => f.type?.startsWith('video')).length > 1) {
-        toasts.push({ msg: tt('media.onlyOneVideo') });
-      }
-    } else {
-      const imageFiles = pickedAll.filter((f) => f.type?.startsWith('image'));
+    if (hasPrevVideo) {
+      toasts.push({ msg: tt('media.alreadyVideo') });
+    } else if (hasPrevImages) {
+      const imageFiles = pickedAll.filter(isImageFile);
       if (imageFiles.length === 0) {
-        // nichts ausgewählt
+        toasts.push({ msg: tt('media.noVideoWhenImages') });
       } else {
         const remaining = MEDIA_MAX - next.length;
         if (remaining <= 0) {
@@ -315,16 +296,54 @@ export default function ComposePostModal({ open, onClose }: Props) {
           if (imageFiles.length > remaining) {
             toasts.push({ msg: tt('media.onlyRemaining', { remaining, max: MEDIA_MAX }) });
           }
+          if (pickedAll.some(isVideoFile)) {
+            toasts.push({ msg: tt('media.videosIgnored') });
+          }
+        }
+      }
+    } else {
+      // Noch keine Medien: entweder nur 1 Video ODER nur Bilder (nicht mischen)
+      const hasVideo = pickedAll.some(isVideoFile);
+      const hasImage = pickedAll.some(isImageFile);
+
+      if (hasVideo && hasImage) {
+        toasts.push({ msg: tt('media.mixedNotAllowed') });
+      } else if (hasVideo) {
+        const firstVideo = pickedAll.find(isVideoFile);
+        if (firstVideo) {
+          const preview = URL.createObjectURL(firstVideo);
+          next.push({ id: crypto.randomUUID(), file: firstVideo, preview, kind: 'video' });
+        }
+        if (pickedAll.filter(isVideoFile).length > 1) {
+          toasts.push({ msg: tt('media.onlyOneVideo') });
+        }
+      } else {
+        const imageFiles = pickedAll.filter(isImageFile);
+        if (imageFiles.length === 0) {
+          // nichts erkannt (z.B. exotischer Typ) → ruhig ein Toast?
+          // toasts.push({ msg: 'Dieser Dateityp wird nicht unterstützt.' });
+        } else {
+          const remaining = MEDIA_MAX - next.length;
+          if (remaining <= 0) {
+            toasts.push({ msg: tt('media.maxReached', { max: MEDIA_MAX }) });
+          } else {
+            const picked = imageFiles.slice(0, remaining);
+            for (const f of picked) {
+              const preview = URL.createObjectURL(f);
+              next.push({ id: crypto.randomUUID(), file: f, preview, kind: 'image' });
+            }
+            if (imageFiles.length > remaining) {
+              toasts.push({ msg: tt('media.onlyRemaining', { remaining, max: MEDIA_MAX }) });
+            }
+          }
         }
       }
     }
-  }
 
-  // Erst jetzt den State setzen…
-  if (next !== current) setMedia(next);
-  // …und danach die Side-Effects (Toasts) ausführen.
-  for (const tmsg of toasts) toast.error(tmsg.msg);
-};
+    if (next !== current) setMedia(next);
+    for (const tmsg of toasts) toast.error(tmsg.msg);
+  };
+
 
 
 

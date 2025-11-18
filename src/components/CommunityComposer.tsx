@@ -9,6 +9,24 @@ import { toast } from '@/lib/toast';
 
 type Props = { slug: string };
 
+/** Robustere Erkennung für Safari / iOS etc. */
+function isVideoFile(f: File): boolean {
+  const type = (f.type || '').toLowerCase();
+  const name = (f.name || '').toLowerCase();
+
+  if (type.startsWith('video/')) return true;
+  // Fallback: Dateiendung
+  return /\.(mp4|mov|m4v|webm|ogg|ogv|mkv)$/i.test(name);
+}
+
+function isImageFile(f: File): boolean {
+  const type = (f.type || '').toLowerCase();
+  const name = (f.name || '').toLowerCase();
+
+  if (type.startsWith('image/')) return true;
+  return /\.(jpe?g|png|webp|gif|heic|heif)$/i.test(name);
+}
+
 /** Übersetzung ODER Fallback (ohne any) */
 function tOr(t: (key: string) => string, key: string, fallback: string) {
   try {
@@ -206,7 +224,7 @@ export default function CommunityComposer({ slug }: Props) {
     const f = e.target.files?.[0];
     if (!f) return;
 
-    if (!f.type.startsWith('image/') && !f.type.startsWith('video/')) {
+    if (!isImageFile(f) && !isVideoFile(f)) {
       setErr(tOr(t, 'errors.onlyImageOrVideo', 'Nur Bild- oder Videodateien sind erlaubt.'));
       e.target.value = '';
       return;
@@ -274,7 +292,7 @@ export default function CommunityComposer({ slug }: Props) {
     }
   }
 
-  const isVideo = !!file && file.type.startsWith('video/');
+  const isVideo = !!file && isVideoFile(file);
 
   return (
     <form onSubmit={submit} className="space-y-3" data-no-nav>

@@ -724,11 +724,12 @@ function ChatRow({
         )}
       </div>
 
-      {/* Mittel-Spalte: Name, Badges, Snippet */}
+      {/* Mittel-Spalte: Name, Snippet, Handle */}
       <div className="min-w-0">
+        {/* 1. Zeile: Name + Badges */}
         <div className="flex items-center gap-2 min-w-0">
-          <div className="-mt-2 shrink-0 flex items-center gap-1">
-            <span className="font-medium truncate max-w-[40vw]">
+          <div className="shrink-0 flex items-center gap-1">
+            <span className="font-medium truncate max-w-[52vw] md:max-w-none">
               {isDM(c) ? c.other.displayName : c.title || 'Group'}
             </span>
 
@@ -749,35 +750,38 @@ function ChatRow({
               </span>
             )}
           </div>
-
-          <div className="self-center mt-2 flex items-center gap-1 min-w-0 ml-2 md:ml-3 text-[15px] md:text-[16px] text-white/85 truncate">
-            {isDM(c) ? (
-              <span className="opacity-70 shrink-0">{actorNameDM}:</span>
-            ) : (
-              <span className="shrink-0 opacity-80" aria-hidden>
-                ↳
-              </span>
-            )}
-
-            {snippet.type === 'reaction' && (
-              <span aria-hidden className="shrink-0">
-                {snippet.emoji}
-              </span>
-            )}
-
-            {parseReplyEnvelope(c.lastSnippet) && (
-              <span className="shrink-0 opacity-80" aria-hidden>
-                ↩︎
-              </span>
-            )}
-
-            <span className="truncate">
-              {snippet.text && snippet.text.trim().length > 0 ? snippet.text : '…'}
-            </span>
-          </div>
         </div>
 
-        <div className="-mt-2 flex items-center gap-2 text-[11px] text-muted min-w-0">
+        {/* 2. Zeile: Nachrichtenvorschau – volle Breite, auf Mobile darf sie umbrechen */}
+        <div className="mt-0.5 flex items-center gap-1 text-[12px] sm:text-[13px] md:text-[14px] text-white/85 min-w-0">
+          {isDM(c) ? (
+            <span className="opacity-70 shrink-0">{actorNameDM}:</span>
+          ) : (
+            <span className="shrink-0 opacity-80" aria-hidden>
+              ↳
+            </span>
+          )}
+
+          {snippet.type === 'reaction' && (
+            <span aria-hidden className="shrink-0">
+              {snippet.emoji}
+            </span>
+          )}
+
+          {parseReplyEnvelope(c.lastSnippet) && (
+            <span className="shrink-0 opacity-80" aria-hidden>
+              ↩︎
+            </span>
+          )}
+
+          {/* Auf Mobile darf der Text umbrechen, auf Desktop wird er per Ellipsis abgeschnitten */}
+          <span className="break-words md:truncate">
+            {snippet.text && snippet.text.trim().length > 0 ? snippet.text : '…'}
+          </span>
+        </div>
+
+        {/* 3. Zeile: @handle + Mute/Pin Badges (kleiner, weniger wichtig) */}
+        <div className="mt-0.5 flex items-center gap-2 text-[11px] text-muted min-w-0">
           <span className="truncate">
             {isDM(c) ? `@${c.other.username}` : c.title || 'Group'}
           </span>

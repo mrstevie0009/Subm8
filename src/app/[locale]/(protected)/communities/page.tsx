@@ -148,6 +148,15 @@ export default function CommunitiesPage() {
 
   const [viewerRole, setViewerRole] = React.useState<Role>(null);
 
+  // 🔍 Suchzustand für Client-Filter
+  const [qLive, setQLive] = React.useState('');
+  const [q, setQ] = React.useState('');
+
+  React.useEffect(() => {
+    const t = setTimeout(() => setQ(qLive), 150); // leichtes Debounce
+    return () => clearTimeout(t);
+  }, [qLive]);
+
   const refreshFirstPage = React.useCallback(async (which: 'discover' | 'yours') => {
     const take = which === 'discover' ? PAGE_SIZE_DISCOVER : PAGE_SIZE_YOURS;
     const res = await fetch(`/api/communities?tab=${which}&take=${take}`, { cache: 'no-store' });
@@ -328,15 +337,36 @@ export default function CommunitiesPage() {
                                      : mineLoading && !mineInitialLoaded;
   const hasMore = tab === 'discover' ? discoverCursor !== null : mineCursor !== null;
 
+  const filteredList = React.useMemo(() => {
+    const qq = q.trim().toLowerCase();
+    if (!qq) return list;
+
+    return list.filter((c) => {
+      const name = c.name.toLowerCase();
+      const slug = c.slug.toLowerCase();
+      const desc = (c.description || '').toLowerCase();
+      return (
+        name.includes(qq) ||
+        slug.includes(qq) ||
+        desc.includes(qq)
+      );
+    });
+  }, [list, q]);
+
+  const isFilterActive = q.trim().length > 0;
+
   return (
     <div className="max-w-5xl mx-auto">
-      {/* Header + Tabs */}
-      <div className="sticky top=[calc(var(--header-h))] top-[calc(var(--header-h))] z-10 bg-black/80 backdrop-blur border-b border-white/10">
-        <div className="px-4 py-3 flex items-center justify-between">
+      {/* Header + Tabs + Search */}
+      <div className="sticky top-[calc(var(--header-h))] z-10 bg-black/80 backdrop-blur border-b border-white/10">
+        {/* Titel + Create-Button */}
+        <div className="px-4 pt-3 pb-2 flex items-center justify-between">
           <div className="text-lg font-semibold">{t('title')}</div>
           <CreateCommunityButton />
         </div>
-        <div className="grid grid-cols-2">
+
+        {/* Tabs */}
+        <div className="grid grid-cols-2 px-4">
           {(['discover', 'yours'] as const).map((k) => {
             const active = tab === k;
             return (
@@ -346,30 +376,67 @@ export default function CommunitiesPage() {
                 className={`py-3 font-medium ${active ? 'text-white' : 'text-white/70'} relative`}
               >
                 {k === 'discover' ? t('tabs.discover') : t('tabs.yours')}
-                {active && <span className="absolute left-0 right-0 -bottom-px h-[2px] bg-[var(--purple)]" />}
+                {active && (
+                  <span className="absolute left-0 right-0 -bottom-px h-[2px] bg-[var(--purple)]" />
+                )}
               </button>
             );
           })}
+        </div>
+
+        {/* 🔍 Searchbar (wie Search-Page, leicht angepasst) */}
+        <div className="px-4 pb-3 pt-2 border-t border-white/10">
+          <label className="relative block">
+            <span
+              className="absolute left-3 top-1/2 -translate-y-1/2 opacity-70"
+              aria-hidden
+            >
+              <SearchIcon />
+            </span>
+            <input
+              value={qLive}
+              onChange={(e) => setQLive(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  // Enter soll nur die Tastatur schließen, Suche läuft eh "live"
+                  e.preventDefault();
+                  (e.currentTarget as HTMLInputElement).blur();
+                }
+              }}
+              placeholder="Search communities…" // ggf. später mit i18n-Key ersetzen
+              className="w-full pl-9 pr-3 h-10 rounded-full bg-white/5 border border-white/10
+                         outline-none focus:ring-2 focus:ring-[var(--purple)]/40 text-sm"
+            />
+          </label>
         </div>
       </div>
 
       {/* Grid */}
       <div className="p-4 grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {loading && Array.from({ length: 9 }).map((_, i) => <CommunityCardSkeleton key={`sk-${i}`} />)}
+        {loading &&
+          Array.from({ length: 9 }).map((_, i) => (
+            <CommunityCardSkeleton key={`sk-${i}`} />
+          ))}
 
-        {!loading && list.length === 0 && (
+        {!loading && filteredList.length === 0 && (
           <div className="col-span-full text-center opacity-70 py-10">
-            {tab === 'discover' ? t('empty.discover') : t('empty.yours')}
+            {isFilterActive
+              ? 'No communities match your search.' // optional: eigener i18n-Key
+              : tab === 'discover'
+              ? t('empty.discover')
+              : t('empty.yours')}
           </div>
         )}
 
         {!loading &&
-          list.map((c) => {
+          filteredList.map((c) => {
             const blocked = !c.joined && !canJoinByRole(c.policy, viewerRole);
             return (
               <article
                 key={`${c.id}:${c.slug}`}
-                className={`relative rounded-app border border-sub shadow-app overflow-hidden flex flex-col ${blocked ? 'opacity-60 saturate-50' : ''}`}
+                className={`relative rounded-app border border-sub shadow-app overflow-hidden flex flex-col ${
+                  blocked ? 'opacity-60 saturate-50' : ''
+                }`}
                 data-disabled={blocked ? true : undefined}
               >
                 {/* Banner */}
@@ -560,6 +627,22 @@ export default function CommunitiesPage() {
         <circle cx="9" cy="7" r="4" />
         <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
         <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+      </svg>
+    );
+  }
+  function SearchIcon() {
+    return (
+      <svg
+        viewBox="0 0 24 24"
+        width="18"
+        height="18"
+        aria-hidden
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+      >
+        <circle cx="11" cy="11" r="7" />
+        <path d="M20 20l-3.2-3.2" />
       </svg>
     );
   }
