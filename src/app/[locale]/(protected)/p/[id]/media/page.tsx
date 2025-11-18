@@ -1,3 +1,4 @@
+//src/app/[locale]/(protected)/p/[id]/media/page.tsx
 'use client';
 
 import * as React from 'react';
@@ -335,15 +336,18 @@ export default function PostMediaPage() {
       {/* Header wie auf der normalen Post-Detail-Seite, gleiche Breite */}
       <PostDetailHeader fixed />
 
-      {content}
+      {/* Inhalt unter den festen Header schieben (≈48px) */}
+      <div className="flex-1 flex flex-col pt-12">
+        {content}
 
-      {/* Eine globale Actions-Bar, zentriert, gleiche Breite wie sonst */}
-      <PostActionsBar
-        postId={id}
-        stats={snapStats}
-        viewer={snapViewer}
-        onCommentClick={() => router.push(`/${locale}/p/${id}`)}
-      />
+        {/* Eine globale Actions-Bar, zentriert, gleiche Breite wie sonst */}
+        <PostActionsBar
+          postId={id}
+          stats={snapStats}
+          viewer={snapViewer}
+          onCommentClick={() => router.push(`/${locale}/p/${id}`)}
+        />
+      </div>
     </div>
   );
 }
