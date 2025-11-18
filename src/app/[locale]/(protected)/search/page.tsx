@@ -103,7 +103,11 @@ export default function SearchPage() {
     setQ(r);
     const next = [r, ...recent.filter((x) => x !== r)].slice(0, 10);
     saveRecent(next);
+
+    const tab = tabParam || 'top';
+    router.push(`/${locale}/search?q=${encodeURIComponent(r)}&tab=${tab}`);
   }
+  
   function removeRecent(r: string) {
     saveRecent(recent.filter((x) => x !== r));
   }
@@ -114,18 +118,6 @@ export default function SearchPage() {
   const [latestPosts, setLatestPosts] = React.useState<PostItem[]>([]);
   const [people, setPeople] = React.useState<SearchUser[]>([]);
   const [loading, setLoading] = React.useState(false);
-
-  function goToQuery(nextTab?: 'top' | 'latest' | 'people') {
-    const tab = nextTab || tabParam || 'top';
-    const url = `/${locale}/search?q=${encodeURIComponent(q)}&tab=${tab}`;
-    router.push(url);
-  }
-  function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      goToQuery();
-    }
-  }
 
   // Daten laden für Tabs
   React.useEffect(() => {
@@ -201,8 +193,21 @@ export default function SearchPage() {
             <input
               autoFocus
               value={q}
-              onChange={(e) => setQ(e.target.value)}
-              onKeyDown={onKeyDown}
+              onChange={(e) => {
+                const value = e.target.value;
+                setQ(value);
+
+                const tab = tabParam || 'top';
+
+                // Wenn leer -> zurück zur Startansicht (ohne q)
+                if (!value.trim()) {
+                  router.push(`/${locale}/search`);
+                } else {
+                  router.push(
+                    `/${locale}/search?q=${encodeURIComponent(value)}&tab=${tab}`
+                  );
+                }
+              }}
               placeholder={t('placeholder')}
               className="w-full pl-10 pr-3 h-11 rounded-full bg-white/5 border border-white/10 outline-none focus:ring-2 focus:ring-[var(--purple)]/40"
             />
@@ -325,7 +330,11 @@ export default function SearchPage() {
                         const avatar = u.avatarUrl ?? u.avatar ?? AVATAR_PH;
                         const name = u.displayName ?? u.name ?? u.handle;
                         return (
-                          <li key={u.handle} className="flex items-center justify-between px-4 py-3">
+                          <li
+                            key={u.handle}
+                            className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-white/5"
+                            onClick={() => router.push(`/${locale}/u/${u.handle}`)}
+                          >
                             <div className="flex items-center gap-3 min-w-0">
                               <Image
                                 src={avatar || AVATAR_PH}
@@ -389,7 +398,11 @@ export default function SearchPage() {
                     const avatar = u.avatarUrl ?? u.avatar ?? AVATAR_PH;
                     const name = u.displayName ?? u.name ?? u.handle;
                     return (
-                      <li key={u.handle} className="flex items-center justify-between px-4 py-3">
+                      <li
+                        key={u.handle}
+                        className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-white/5"
+                        onClick={() => router.push(`/${locale}/u/${u.handle}`)}
+                      >
                         <div className="flex items-center gap-3 min-w-0">
                           <Image
                             src={avatar}
@@ -428,6 +441,9 @@ function SuggestionItem({
   user: SearchUser;
   onRemove: () => void;
 }) {
+  const router = useRouter();
+  const { locale } = useParams() as { locale: string };
+
   const [following, setFollowing] = React.useState<boolean>(!!user.viewerFollows);
   const [fading, setFading] = React.useState(false);
   const removeTimerRef = React.useRef<number | null>(null);
@@ -466,9 +482,10 @@ function SuggestionItem({
 
   return (
     <li
-      className={`flex items-center justify-between px-1 py-2 transition-all duration-300 ${
+      className={`flex items-center justify-between px-1 py-2 transition-all duration-300 cursor-pointer hover:bg-white/5 ${
         fading ? 'opacity-0 translate-y-1 pointer-events-none' : ''
       }`}
+      onClick={() => router.push(`/${locale}/u/${user.handle}`)}
     >
       <div className="flex items-center gap-3 min-w-0">
         <Avatar size={40} name={name} src={avatar} />
@@ -492,6 +509,7 @@ function SuggestionItem({
             setFading(false);
           }
         }}
+        onClick={(e) => e.stopPropagation()}
       >
         {user.id ? <input type="hidden" name="userId" value={user.id} /> : null}
         <input type="hidden" name="handle" value={user.handle} />
@@ -523,6 +541,7 @@ function FollowForm({
     <form
       action={following ? unfollowAction : followAction}
       onSubmit={() => setFollowing((v) => !v)}
+      onClick={(e) => e.stopPropagation()}   // ⬅️ verhindert Profil-Navigation
     >
       {userId ? <input type="hidden" name="userId" value={userId} /> : null}
       <input type="hidden" name="handle" value={handle} />
@@ -560,21 +579,47 @@ function Avatar({ src, name, size = 40 }: { src?: string; name: string; size?: n
 }
 
 function PostRow({ post }: { post: PostItem }) {
+  const router = useRouter();
+  const { locale } = useParams() as { locale: string };
+
+  const goProfile = () => router.push(`/${locale}/u/${post.author.handle}`);
+
   return (
     <li className="px-4 py-4">
       <div className="flex items-start gap-3">
-        <Image
-          src={post.author.avatar || AVATAR_PH}
-          alt=""
-          width={40}
-          height={40}
-          className="rounded-full object-cover border border-white/15"
-        />
+        <button
+          type="button"
+          onClick={goProfile}
+          className="shrink-0 rounded-full border border-white/15 overflow-hidden"
+          aria-label={`@${post.author.handle}`}
+        >
+          <Image
+            src={post.author.avatar || AVATAR_PH}
+            alt=""
+            width={40}
+            height={40}
+            className="object-cover"
+          />
+        </button>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 text-sm">
-            <span className="font-medium truncate">{post.author.name}</span>
-            <span className="opacity-70 truncate">@{post.author.handle}</span>
-            <span className="opacity-50">· {new Date(post.createdAt).toLocaleDateString()}</span>
+            <button
+              type="button"
+              onClick={goProfile}
+              className="font-medium truncate hover:underline"
+            >
+              {post.author.name}
+            </button>
+            <button
+              type="button"
+              onClick={goProfile}
+              className="opacity-70 truncate hover:underline"
+            >
+              @{post.author.handle}
+            </button>
+            <span className="opacity-50">
+              · {new Date(post.createdAt).toLocaleDateString()}
+            </span>
           </div>
           <div className="mt-1 whitespace-pre-wrap break-words">{post.text}</div>
           {post.mediaUrl && (
