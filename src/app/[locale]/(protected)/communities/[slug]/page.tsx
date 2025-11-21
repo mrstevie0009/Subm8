@@ -273,92 +273,102 @@ export default async function CommunityPage({ params }: { params: Promise<Params
         </figure>
       </div>
 
-      {/* --- INFO-KARTE, ÜBERLAPPT DAS BILD --- */}
-      <div className="relative z-10 -mt-6 sm:-mt-8 px-1 sm:px-0">
-        <div
-          className={`
-            relative bg-black
-            border-x border-b border-white/12 
-            rounded-b-app rounded-t-none    
-            shadow-app
-            p-4
-            before:content-[''] before:absolute before:inset-x-0
-            before:-top-3 sm:before:-top-4
-            before:h-4 sm:before:h-5
-            before:pointer-events-none
-          `}
-        >
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0 relative pl-10">
-              <div className="absolute left-0 top-0.5">
-                <BackButton
-                  fallbackHref={`/${locale}/communities`}
-                  forceFallback
-                  replaceOnFallback
-                />
-              </div>
+            {/* --- INFO-KARTE, ÜBERLAPPT DAS BILD --- */}
+            <div className="relative z-10 -mt-6 sm:-mt-8 px-1 sm:px-0">
+              <div
+                className={`
+                  relative bg-black
+                  border-x border-b border-white/12 
+                  rounded-b-app rounded-t-none    
+                  shadow-app
+                  p-4
+                  before:content-[''] before:absolute before:inset-x-0
+                  before:-top-3 sm:before:-top-4
+                  before:h-4 sm:before:h-5
+                  before:pointer-events-none
+                `}
+              >
+                {/* Kopfzeile: Name/Slug links, Buttons rechts */}
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0 relative pl-10">
+                    <div className="absolute left-0 top-0.5">
+                      <BackButton
+                        fallbackHref={`/${locale}/communities`}
+                        forceFallback
+                        replaceOnFallback
+                      />
+                    </div>
 
-              <div className="text-xl font-bold truncate">{community.name}</div>
-              <div className="text-sm opacity-70 truncate">@{community.slug}</div>
-              {community.description && (
-                <p className="mt-1 text-sm opacity-90">{community.description}</p>
-              )}
+                    <div className="text-xl font-bold truncate">{community.name}</div>
+                    <div className="text-sm opacity-70 truncate">@{community.slug}</div>
+                  </div>
 
-              {/* --- hübsche, klickbare Pills --- */}
-              <div className="mt-2 flex items-center gap-2 flex-wrap">
-                <a
-                  href={`/${locale}/communities/${community.slug}/members`}
-                  className="
-                    inline-flex items-center gap-2
-                    rounded-full border border-white/12
-                    bg-white/[.06] hover:bg-white/[.1]
-                    px-3 py-1.5
-                    text-sm text-white
-                    transition focus:outline-none focus:ring-2 focus:ring-[var(--purple)]/60
-                    shadow-sm hover:shadow
-                  "
-                  aria-label={`${community._count.CommunityMember.toLocaleString(locale)} members – open members list`}
-                >
-                  <UsersIcon className="opacity-90" />
-                  <span className="font-medium">Members</span>
-                  <span className="text-xs px-1.5 py-0.5 rounded-full bg-white/10 tabular-nums">
-                    {community._count.CommunityMember.toLocaleString(locale)}
+                  <div className="flex items-center gap-2 shrink-0">
+                    <CommunityJoinButton
+                      slug={community.slug}
+                      initialJoined={joined}
+                      initialMembers={community._count.CommunityMember}
+                    />
+                    <CommunityInviteButton
+                      locale={locale}
+                      slug={community.slug}
+                      name={community.name}
+                      joined={joined}
+                      joinPolicy={community.joinPolicy}
+                    />
+                    <CommunityShareButton
+                      locale={locale}
+                      name={community.name}
+                      slug={community.slug}
+                    />
+                  </div>
+                </div>
+
+                {/* Bio: volle Breite unter der Kopfzeile */}
+                {community.description && (
+                  <p className="mt-2 text-sm opacity-90">
+                    {community.description}
+                  </p>
+                )}
+
+                {/* Pills: auch volle Breite darunter */}
+                <div className="mt-2 flex items-center gap-2 flex-wrap">
+                  <a
+                    href={`/${locale}/communities/${community.slug}/members`}
+                    className="
+                      inline-flex items-center gap-2
+                      rounded-full border border-white/12
+                      bg-white/[.06] hover:bg-white/[.1]
+                      px-3 py-1.5
+                      text-sm text-white
+                      transition focus:outline-none focus:ring-2 focus:ring-[var(--purple)]/60
+                      shadow-sm hover:shadow
+                    "
+                    aria-label={`${community._count.CommunityMember.toLocaleString(locale)} members – open members list`}
+                  >
+                    <UsersIcon className="opacity-90" />
+                    <span className="font-medium">Members</span>
+                    <span className="text-xs px-1.5 py-0.5 rounded-full bg-white/10 tabular-nums">
+                      {community._count.CommunityMember.toLocaleString(locale)}
+                    </span>
+                  </a>
+
+                  <span
+                    className="
+                      inline-flex items-center gap-1 uppercase
+                      rounded-full border border-white/12
+                      bg-white/[.04] px-2.5 py-1 text-xs tracking-wide
+                      text-white/85
+                    "
+                    title={`${policyPrefix} ${policyLabel}`}
+                  >
+                    Policy
+                    <span className="font-semibold">{policyKey}</span>
                   </span>
-                </a>
-
-                <span
-                  className="
-                    inline-flex items-center gap-1 uppercase
-                    rounded-full border border-white/12
-                    bg-white/[.04] px-2.5 py-1 text-xs tracking-wide
-                    text-white/85
-                  "
-                  title={`${policyPrefix} ${policyLabel}`}
-                >
-                  Policy
-                  <span className="font-semibold">{policyKey}</span>
-                </span>
+                </div>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 shrink-0">
-              <CommunityJoinButton
-                slug={community.slug}
-                initialJoined={joined}
-                initialMembers={community._count.CommunityMember}
-              />
-              <CommunityInviteButton
-                locale={locale}
-                slug={community.slug}
-                name={community.name}
-                joined={joined}
-                joinPolicy={community.joinPolicy}
-              />
-              <CommunityShareButton locale={locale} name={community.name} slug={community.slug} />
-            </div>
-          </div>
-        </div>
-      </div>
 
       <CommunityCompactHeader
         locale={locale}

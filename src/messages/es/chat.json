@@ -11,14 +11,14 @@
       "muteMentions": "Silenciar menciones",
       "reportConversation": "Denunciar conversación",
       "leaveConversation": "Salir de la conversación",
-      "noMembers": "Aún no hay miembros."
+      "noMembers": "Todavía no hay miembros."
     },
     "empty": {
-      "subtitle": "Inicia un chat nuevo desde un perfil.",
+      "subtitle": "Inicia un nuevo chat desde un perfil.",
       "title": "Sin conversaciones"
     },
     "list": {
-      "loadingMore": "Cargando chats antiguos…",
+      "loadingMore": "Cargando chats anteriores…",
       "loadMore": "Cargar más",
       "endReached": "No hay más chats."
     },
@@ -38,21 +38,21 @@
         "delete": "Eliminar chat",
         "mute": "Silenciar chat",
         "pin": "Fijar chat",
-        "report": "Reportar usuario",
+        "report": "Denunciar usuario",
         "unmute": "Quitar silencio",
-        "unpin": "Desfijar"
+        "unpin": "Desfijar chat"
       },
       "preview": {
         "audio": "Audio",
         "file": "Archivo",
         "image": "Foto",
-        "video": "Video"
+        "video": "Vídeo"
       }
     },
     "system": {
-      "ownershipAccepted": "Propiedad confirmada",
-      "ownershipRequest": "Solicitud de propiedad",
-      "ownershipRequestWithParts": "Solicitud de propiedad: {parts}",
+      "ownershipAccepted": "Ownership confirmada",
+      "ownershipRequest": "Solicitud de ownership",
+      "ownershipRequestWithParts": "Solicitud de ownership: {parts}",
       "part": {
         "avatar": "Avatar",
         "banner": "Banner",
@@ -60,7 +60,7 @@
       },
       "reaction": {
         "added": "{user} reaccionó con {emoji}",
-        "removed": "{user} quitó la reacción {emoji}"
+        "removed": "{user} eliminó la reacción {emoji}"
       },
       "shared": {
         "link": "Enlace compartido",
@@ -71,38 +71,38 @@
       "tipRequest": "Solicitud de propina: {amount}"
     },
     "toolbar": {
-      "newChatAria": "Iniciar un chat nuevo",
+      "newChatAria": "Iniciar nuevo chat",
       "filters": {
-        "all": "Todas",
-        "pinned": "Fijadas",
+        "all": "Todos",
+        "pinned": "Fijados",
         "unread": "Sin leer"
       },
-      "searchPlaceholder": "Buscar mensajes…",
+      "searchPlaceholder": "Buscar en mensajes…",
       "settingsAria": "Ajustes"
     },
     "you": "Tú"
   },
   "newChat": {
-      "title": "Iniciar un chat nuevo",
-      "selectedCount": "{count} seleccionado(s)",
-      "startOne": "Iniciar",
-      "startGroup": "Iniciar chat grupal",
-      "closeAria": "Cerrar",
-      "search": {
-        "placeholder": "Buscar por nombre o @handle…"
-      },
-      "loading": "Cargando…",
-      "errorGeneric": "Algo salió mal.",
-      "errorStartChat": "No se pudo iniciar el chat.",
-      "errorStartGroup": "No se pudo iniciar el chat grupal.",
-      "noResults": "Sin resultados.",
-      "hint": "Consejo: Pulsa Enter para alternar la selección. Con varias personas seleccionadas se inicia un chat grupal.",
-      "checkboxAria": "Seleccionar a {name}",
-      "role": {
-        "domme": "domme",
-        "sub": "sub"
-      }
+    "title": "Iniciar nuevo chat",
+    "selectedCount": "{count} seleccionados",
+    "startOne": "Iniciar",
+    "startGroup": "Iniciar chat grupal",
+    "closeAria": "Cerrar",
+    "search": {
+      "placeholder": "Buscar nombre o handle…"
     },
+    "loading": "Cargando…",
+    "errorGeneric": "Algo salió mal.",
+    "errorStartChat": "No se pudo iniciar el chat.",
+    "errorStartGroup": "No se pudo iniciar el chat grupal.",
+    "noResults": "Sin resultados.",
+    "hint": "Consejo: Enter alterna la selección. Con varias personas seleccionadas se iniciará un chat grupal.",
+    "checkboxAria": "Seleccionar a {name}",
+    "role": {
+      "domme": "domme",
+      "sub": "sub"
+    }
+  },
   "chatComposer": {
     "status": {
       "sending": "Enviando archivos adjuntos…",
@@ -116,10 +116,10 @@
       "send": "Enviar",
       "sendMessageAria": "Enviar mensaje",
       "tip": "Enviar propina",
-      "upload": "Subir medios",
+      "upload": "Subir archivos multimedia",
       "voice": {
-        "holdAria": "Mensaje de voz (mantén para grabar)",
-        "holdTitle": "Mensaje de voz (mantener)"
+        "holdAria": "Mensaje de voz (mantén pulsado para grabar)",
+        "holdTitle": "Mensaje de voz (mantener pulsado)"
       }
     },
     "disabled": {
@@ -146,7 +146,7 @@
     },
     "menu": {
       "autodrainRequest": "Solicitud de autodrain",
-      "ownershipRequest": "Solicitud de propiedad",
+      "ownershipRequest": "Solicitud de ownership",
       "tipRequest": "Solicitud de propina"
     },
     "placeholders": {
@@ -157,20 +157,24 @@
       "tipRequestLabel": "Solicitud de propina"
     },
     "recording": {
-      "inProgress": "Grabación en curso"
+      "inProgress": "Grabando"
     },
     "voice": {
       "preview": {
         "discard": "Descartar",
         "send": "Enviar"
       }
+    },
+    "reply": {
+      "to": "Respondiendo a {name}",
+      "cancel": "Cancelar"
     }
   },
   "chatHeader": {
     "group": {
-    "members": "{count, plural, one {# miembro} other {# miembros}}",
-    "membersLoading": "Cargando miembros…",
-    "untitled": "Grupo"
+      "members": "{count, plural, one {# miembro} other {# miembros}}",
+      "membersLoading": "Cargando miembros…",
+      "untitled": "Grupo"
     },
     "aria": {
       "back": "Atrás",
@@ -188,8 +192,8 @@
       "reportGroup": "Denunciar grupo",
       "block": "Bloquear usuario",
       "mute": "Silenciar conversación",
-      "muteSoon": "Silenciar conversación — próximamente",
-      "reportConversation": "Reportar conversación",
+      "muteSoon": "Silenciar conversación — disponible pronto",
+      "reportConversation": "Denunciar conversación",
       "unblock": "Desbloquear",
       "viewProfile": "Ver perfil"
     },
@@ -199,7 +203,7 @@
     }
   },
   "chatThread": {
-    "loadingOlder": "Se están cargando mensajes anteriores…",
+    "loadingOlder": "Cargando mensajes anteriores…",
     "actions": {
       "accept": "Aceptar",
       "decline": "Rechazar",
@@ -215,7 +219,7 @@
     },
     "disabled": {
       "byOther": "Ya no puedes enviar mensajes directos a esta persona.",
-      "youBlocked": "Has bloqueado a esta persona. Envío deshabilitado."
+      "youBlocked": "Has bloqueado a esta persona. El envío está desactivado."
     },
     "emoji": {
       "close": "Cerrar",
@@ -234,15 +238,15 @@
           "weekly": "Semanal"
         },
         "declinedMsg": "❌ Solicitud de autodrain rechazada",
-        "recurrenceLabel": "Recurrencia: {cadence}",
+        "recurrenceLabel": "Repetición: {cadence}",
         "title": "SOLICITUD DE AUTODRAIN"
       },
       "ownershipAccepted": {
-        "applied": "Los cambios se aplicaron al perfil Sub.",
-        "title": "PROPIEDAD CONFIRMADA"
+        "applied": "Los cambios se han aplicado al perfil del sub.",
+        "title": "OWNERSHIP CONFIRMADA"
       },
       "ownershipRequest": {
-        "declinedMsg": "❌ Solicitud de propiedad rechazada",
+        "declinedMsg": "❌ Solicitud de ownership rechazada",
         "items": {
           "avatar": "Avatar",
           "banner": "Banner",
@@ -252,7 +256,7 @@
           "avatarPreview": "🖼 Vista previa de avatar incluida.",
           "bannerPreview": "🏞 Vista previa de banner incluida."
         },
-        "title": "SOLICITUD DE PROPIEDAD"
+        "title": "SOLICITUD DE OWNERSHIP"
       },
       "tipPaid": {
         "title": "PROPINA PAGADA"
@@ -263,15 +267,15 @@
       }
     },
     "invite": {
-      "expires": "Expira: {date}",
+      "expires": "Caduca: {date}",
       "usesLeft": "Usos restantes: {count}"
     },
     "loading": "Cargando…",
     "media": {
-      "attachment": "📎 Adjunto",
+      "attachment": "📎 Archivo adjunto",
       "audio": "🎙 Audio",
       "image": "📷 Imagen",
-      "video": "🎞 Video"
+      "video": "🎞 Vídeo"
     },
     "quoted": {
       "notFound": "Mensaje no encontrado"

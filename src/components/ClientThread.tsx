@@ -1062,7 +1062,6 @@ function useLongPress(
   { delay = 420 }: { delay?: number } = {},
 ) {
   const timerRef = React.useRef<number | null>(null);
-  const targetRef = React.useRef<EventTarget | null>(null);
 
   const clear = React.useCallback(() => {
     if (timerRef.current) {
@@ -1071,21 +1070,30 @@ function useLongPress(
     }
   }, []);
 
+  const didLongPressRef = React.useRef<boolean>(false);
+
   const onPointerDown = React.useCallback((e: React.PointerEvent) => {
-    if (e.button !== 0) return; // nur Hauptbutton
-    targetRef.current = e.target;
+    if (e.button !== 0) return;
+    didLongPressRef.current = false;   // reset
     clear();
     timerRef.current = window.setTimeout(() => {
+      didLongPressRef.current = true;
       onLongPress(e);
       timerRef.current = null;
     }, delay);
   }, [delay, onLongPress, clear]);
 
-  const cancelers = React.useMemo(() => ({
-    onPointerUp: clear,
+  const onPointerUp = React.useCallback(() => {
+    // ⬇️ WICHTIG:
+    // Wenn der LongPress bereits ausgelöst wurde -> NICHT closen!
+    if (!didLongPressRef.current) clear();
+  }, [clear]);
+
+  const cancelers = {
+    onPointerUp,
     onPointerLeave: clear,
     onPointerCancel: clear,
-  }), [clear]);
+  };
 
   const onContextMenu = React.useCallback((e: React.MouseEvent) => {
     e.preventDefault();

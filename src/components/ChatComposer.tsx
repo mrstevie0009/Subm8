@@ -25,6 +25,13 @@ const nextFrame = () => new Promise<void>((resolve) => {
   requestAnimationFrame(() => resolve());
 });
 
+function formatTime(secs: number) {
+  const s = Math.max(0, Math.floor(secs));
+  const m = Math.floor(s / 60);
+  const r = s % 60;
+  return `${m.toString().padStart(2, '0')}:${r.toString().padStart(2, '0')}`;
+}
+
 type RoleLike = 'domme' | 'submissive' | 'DOMME' | 'SUBMISSIVE';
 type TipRequestPayload = { amountCents: number; note?: string; currency?: string };
 type AutoDrainRequestPayload = ADReqPayload;
@@ -199,18 +206,18 @@ function VerifyPrompt({
   open,
   onClose,
   onStart,
-  title = 'Altersnachweis erforderlich',
-  message = 'Verifiziere einmalig dein Alter, um diese Funktion zu nutzen.',
-  confirmLabel = 'Jetzt verifizieren',
-  cancelLabel = 'Abbrechen',
+  title,
+  message,
+  confirmLabel,
+  cancelLabel,
 }: {
   open: boolean;
   onClose: () => void;
   onStart: () => void | Promise<void>;
-  title?: string;
-  message?: string;
-  confirmLabel?: string;
-  cancelLabel?: string;
+  title: string;
+  message: string;
+  confirmLabel: string;
+  cancelLabel: string;
 }) {
   React.useEffect(() => {
     if (!open) return;
@@ -426,9 +433,9 @@ export default function ChatComposer({
 
       router.push(j.url as string);
     } catch {
-      toast.error('Die Verifikation konnte nicht gestartet werden.', 'Fehler');
+      toast.error(tVerify('errors.start'), tVerify('errors.title'));
     }
-  }, [locale, router, session]);
+  }, [locale, router, session, tVerify]);
 
 
   const [text, setText] = React.useState('');
@@ -477,7 +484,7 @@ export default function ChatComposer({
   const [adReqOpen, setAdReqOpen] = React.useState(false);
 
   /* -------- Voice recording (press & hold) -------- */
-  const [recording, setRecording] = React.useState(false);
+   const [recording, setRecording] = React.useState(false);
   const [recordSecs, setRecordSecs] = React.useState(0);
   const [recError, setRecError] = React.useState<string | null>(null);
 
@@ -488,6 +495,12 @@ export default function ChatComposer({
 
   const [audioPreviewUrl, setAudioPreviewUrl] = React.useState<string | null>(null);
   const audioBlobRef = React.useRef<Blob | null>(null);
+
+  // 🆕 Schöner Voice-Preview-Player
+  const audioRef = React.useRef<HTMLAudioElement | null>(null);
+  const [previewPlaying, setPreviewPlaying] = React.useState(false);
+  const [previewPos, setPreviewPos] = React.useState(0);
+  const [previewDuration, setPreviewDuration] = React.useState(0);
 
   // 🔔 Typing loop
   const typingActiveRef = React.useRef(false);
@@ -524,6 +537,15 @@ export default function ChatComposer({
     }
   }
   function resetPreview() {
+    if (audioRef.current) {
+      try {
+        audioRef.current.pause();
+      } catch {}
+    }
+    setPreviewPlaying(false);
+    setPreviewPos(0);
+    setPreviewDuration(0);
+
     if (audioPreviewUrl?.startsWith('blob:')) URL.revokeObjectURL(audioPreviewUrl);
     setAudioPreviewUrl(null);
     audioBlobRef.current = null;
@@ -754,14 +776,16 @@ export default function ChatComposer({
       {replyTo && (
         <div className="mx-auto mb-2 max-w-[760px] rounded-2xl border border-white/15 bg-white/[.06] px-3 py-2">
           <div className="flex items-start gap-2">
-            <div className="text-[12px] font-semibold">Antwort an {replyTo.authorName}</div>
+            <div className="text-[12px] font-semibold">
+              {t('reply.to', { name: replyTo.authorName })}
+            </div>
             <button
               type="button"
               onClick={onCancelReply}
               className="ml-auto text-[12px] px-2 py-0.5 rounded-lg border border-white/15 hover:bg-white/10"
-              title="Abbrechen"
+              title={t('reply.cancel')}
             >
-              Abbrechen
+              {t('reply.cancel')}
             </button>
           </div>
           {replyTo.text && (
@@ -779,13 +803,25 @@ export default function ChatComposer({
       )}
       {gifErr && <div className="mx-auto mb-2 max-w-[760px] text-[12px] text-red-300">{gifErr}</div>}
 
-      {/* Recording mini pill */}
+      {/* Recording bar */}
       {recording && (
         <div className="mx-auto mb-2 max-w-[760px]">
-          <div className="inline-flex items-center gap-2 rounded-full bg-[var(--purple)]/25 border border-[var(--purple)]/40 px-3 py-1 text-[13px]">
-            <MicWavesIcon />
-            <span>{t('recording.inProgress')}</span>
-            <span className="opacity-80">{recordSecs}s</span>
+          <div className="flex items-center gap-3 rounded-2xl border border-[var(--purple)]/50 bg-[var(--purple)]/15 px-3 py-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--purple)] text-white shadow-sm">
+              <MicWavesIcon />
+            </div>
+            <div className="flex flex-col flex-1 min-w-0">
+              <div className="flex items-center justify-between text-[12px] text-white/80">
+                <span className="font-medium">{t('recording.inProgress')}</span>
+                <span className="font-mono text-[13px]">{formatTime(recordSecs)}</span>
+              </div>
+              <div className="mt-1 h-1.5 w-full rounded-full bg-white/10 overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-[var(--purple)] animate-pulse"
+                  style={{ width: '60%' }}
+                />
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -865,7 +901,7 @@ export default function ChatComposer({
                       <div className="absolute inset-0 grid place-items-center rounded-lg bg-black/60">
                         <div className="flex flex-col items-center gap-2 text-[13px]">
                           <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                          <span className="text-white/90">Senden …</span>
+                          <span className="text-white/90">{t('status.sending')}</span>
                         </div>
                       </div>
                     )}
@@ -1065,9 +1101,9 @@ export default function ChatComposer({
             aria-busy={sending}
             title={
               sending
-                ? t('status.sending')                // z.B. "Senden ..."
+                ? t('status.sending')
                 : uiDisabled
-                ? 'disabled'               // optionaler i18n key
+                ? t('status.disabled')
                 : t('actions.send')
             }
             className={`${circle} bg-[var(--purple)] text-white
@@ -1088,22 +1124,88 @@ export default function ChatComposer({
 
       {/* Voice preview bar */}
       {!loading && audioPreviewUrl && (
-        <div className="mx-auto mt-2 max-w-[760px] rounded-2xl border border-white/12 bg-white/[.06] p-2 flex items-center gap-3">
-          <audio src={audioPreviewUrl} controls className="flex-1" />
-          <button
-            type="button"
-            onClick={sendVoice}
-            className="h-9 px-4 rounded-lg bg-[var(--purple)] text-white hover:opacity-95"
-          >
-            {t('voice.preview.send')}
-          </button>
-          <button
-            type="button"
-            onClick={() => { resetPreview(); stopTyping(); }}
-            className="h-9 px-3 rounded-lg border border-white/15 hover:bg-white/10"
-          >
-            {t('voice.preview.discard')}
-          </button>
+        <div className="mx-auto mt-2 max-w-[760px] rounded-2xl border border-white/12 bg-white/[.06] px-3 py-2">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+            {/* Play/Pause Button */}
+            <button
+              type="button"
+              onClick={async () => {
+                const el = audioRef.current;
+                if (!el) return;
+                if (previewPlaying) {
+                  el.pause();
+                  setPreviewPlaying(false);
+                } else {
+                  try {
+                    await el.play();
+                    setPreviewPlaying(true);
+                  } catch {
+                    // ignore
+                  }
+                }
+              }}
+              className="mb-1 inline-flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-[var(--purple)] text-white shadow-sm hover:opacity-95"
+            >
+              {previewPlaying ? <PauseIcon /> : <PlayIcon />}
+            </button>
+
+            {/* Timeline + Zeiten */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 text-[11px] text-white/70 mb-1">
+                <span className="font-mono">{formatTime(previewPos)}</span>
+                <div className="relative flex-1 h-1.5 rounded-full bg-white/10 overflow-hidden">
+                  <div
+                    className="absolute inset-y-0 left-0 rounded-full bg-[var(--purple)]"
+                    style={{
+                      width: previewDuration
+                        ? `${Math.min(100, (previewPos / previewDuration) * 100)}%`
+                        : '0%',
+                    }}
+                  />
+                </div>
+                <span className="font-mono">
+                  {formatTime(previewDuration || recordSecs || 0)}
+                </span>
+              </div>
+
+              {/* Hidden audio element, steuert Play/Time */}
+              <audio
+                ref={audioRef}
+                src={audioPreviewUrl}
+                className="hidden"
+                onLoadedMetadata={(e) => {
+                  const d = e.currentTarget.duration;
+                  if (Number.isFinite(d)) setPreviewDuration(d);
+                }}
+                onTimeUpdate={(e) => setPreviewPos(e.currentTarget.currentTime)}
+                onEnded={() => {
+                  setPreviewPlaying(false);
+                  setPreviewPos(0);
+                }}
+              />
+            </div>
+
+            {/* Actions */}
+            <div className="mt-2 flex flex-shrink-0 gap-2 sm:mt-0">
+              <button
+                type="button"
+                onClick={sendVoice}
+                className="h-9 px-4 rounded-lg bg-[var(--purple)] text-[13px] font-medium text-white hover:opacity-95"
+              >
+                {t('voice.preview.send')}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  resetPreview();
+                  stopTyping();
+                }}
+                className="h-9 px-3 rounded-lg border border-white/15 text-[13px] hover:bg-white/10"
+              >
+                {t('voice.preview.discard')}
+              </button>
+            </div>
+          </div>
         </div>
       )}
       {!loading && ( // NEW
@@ -1256,6 +1358,32 @@ function GifIcon({ size = 22 }: { size?: number }) {
       >
         GIF
       </text>
+    </svg>
+  );
+}
+function PlayIcon({ size = 18 }: { size?: number }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width={size}
+      height={size}
+      aria-hidden
+      fill="currentColor"
+    >
+      <path d="M7 4.5v15l11-7.5-11-7.5z" />
+    </svg>
+  );
+}
+function PauseIcon({ size = 18 }: { size?: number }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width={size}
+      height={size}
+      aria-hidden
+      fill="currentColor"
+    >
+      <path d="M7 5h3v14H7zM14 5h3v14h-3z" />
     </svg>
   );
 }

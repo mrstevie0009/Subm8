@@ -40,7 +40,7 @@
         "pin": "Pin chat",
         "report": "Report user",
         "unmute": "Unmute",
-        "unpin": "Unpin"
+        "unpin": "Unpin chat"
       },
       "preview": {
         "audio": "Audio",
@@ -71,7 +71,7 @@
       "tipRequest": "Tip request: {amount}"
     },
     "toolbar": {
-      "newChatAria": "Start a new chat",
+      "newChatAria": "Start new chat",
       "filters": {
         "all": "All",
         "pinned": "Pinned",
@@ -83,29 +83,29 @@
     "you": "You"
   },
   "newChat": {
-      "title": "Start a new chat",
-      "selectedCount": "{count} selected",
-      "startOne": "Start",
-      "startGroup": "Start group chat",
-      "closeAria": "Close",
-      "search": {
-        "placeholder": "Search by name or handle…"
-      },
-      "loading": "Loading…",
-      "errorGeneric": "Something went wrong.",
-      "errorStartChat": "Couldn't start the chat.",
-      "errorStartGroup": "Couldn't start the group chat.",
-      "noResults": "No results.",
-      "hint": "Tip: Press Enter to toggle selection. Selecting multiple people starts a group chat.",
-      "checkboxAria": "Select {name}",
-      "role": {
-        "domme": "domme",
-        "sub": "sub"
-      }
+    "title": "Start new chat",
+    "selectedCount": "{count} selected",
+    "startOne": "Start",
+    "startGroup": "Start group chat",
+    "closeAria": "Close",
+    "search": {
+      "placeholder": "Search name or handle…"
     },
+    "loading": "Loading…",
+    "errorGeneric": "Something went wrong.",
+    "errorStartChat": "Could not start chat.",
+    "errorStartGroup": "Could not start group chat.",
+    "noResults": "No results.",
+    "hint": "Tip: Enter toggles selection. With multiple people selected, a group chat will be started.",
+    "checkboxAria": "Select {name}",
+    "role": {
+      "domme": "domme",
+      "sub": "sub"
+    }
+  },
   "chatComposer": {
     "status": {
-      "sending": "Sending attachments…",
+      "sending": "Sending attachments …",
       "disabled": "Sending is disabled"
     },
     "actions": {
@@ -128,7 +128,7 @@
     "errors": {
       "gif": {
         "loadList": "Could not load GIFs.",
-        "loadOne": "Could not load GIF."
+        "loadOne": "GIF could not be loaded."
       },
       "voice": {
         "denied": "No microphone access (denied or blocked).",
@@ -164,14 +164,18 @@
         "discard": "Discard",
         "send": "Send"
       }
+    },
+    "reply": {
+      "to": "Replying to {name}",
+      "cancel": "Cancel"
     }
   },
   "chatHeader": {
     "group": {
-    "members": "{count, plural, one {# member} other {# members}}",
-    "membersLoading": "Loading members…",
-    "untitled": "Group"
-  },
+      "members": "{count, plural, one {# member} other {# members}}",
+      "membersLoading": "Loading members…",
+      "untitled": "Group"
+    },
     "aria": {
       "back": "Back",
       "more": "More",
@@ -199,7 +203,7 @@
     }
   },
   "chatThread": {
-    "loadingOlder": "Older messages are being loaded…",
+    "loadingOlder": "Loading older messages…",
     "actions": {
       "accept": "Accept",
       "decline": "Decline",
@@ -238,7 +242,7 @@
         "title": "AUTODRAIN REQUEST"
       },
       "ownershipAccepted": {
-        "applied": "Changes have been applied to the Sub profile.",
+        "applied": "Changes have been applied to the sub profile.",
         "title": "OWNERSHIP CONFIRMED"
       },
       "ownershipRequest": {
@@ -277,7 +281,7 @@
       "notFound": "Message not found"
     },
     "verify": {
-      "redirectNote": "You will be redirected automatically after completion."
+      "redirectNote": "You will be redirected back automatically after completion."
     },
     "you": "You"
   }

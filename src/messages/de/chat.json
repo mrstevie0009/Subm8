@@ -83,26 +83,26 @@
     "you": "Du"
   },
   "newChat": {
-      "title": "Neuen Chat starten",
-      "selectedCount": "{count} ausgewählt",
-      "startOne": "Starten",
-      "startGroup": "Gruppenchat starten",
-      "closeAria": "Schließen",
-      "search": {
-        "placeholder": "Name oder Handle suchen…"
-      },
-      "loading": "Lade…",
-      "errorGeneric": "Etwas ist schiefgelaufen.",
-      "errorStartChat": "Konnte Chat nicht starten.",
-      "errorStartGroup": "Konnte Gruppenchat nicht starten.",
-      "noResults": "Keine Treffer.",
-      "hint": "Tipp: Enter toggelt die Auswahl. Mit mehreren ausgewählten Personen wird ein Gruppenchat gestartet.",
-      "checkboxAria": "{name} auswählen",
-      "role": {
-        "domme": "domme",
-        "sub": "sub"
-      }
+    "title": "Neuen Chat starten",
+    "selectedCount": "{count} ausgewählt",
+    "startOne": "Starten",
+    "startGroup": "Gruppenchat starten",
+    "closeAria": "Schließen",
+    "search": {
+      "placeholder": "Name oder Handle suchen…"
     },
+    "loading": "Lade…",
+    "errorGeneric": "Etwas ist schiefgelaufen.",
+    "errorStartChat": "Konnte Chat nicht starten.",
+    "errorStartGroup": "Konnte Gruppenchat nicht starten.",
+    "noResults": "Keine Treffer.",
+    "hint": "Tipp: Enter toggelt die Auswahl. Mit mehreren ausgewählten Personen wird ein Gruppenchat gestartet.",
+    "checkboxAria": "{name} auswählen",
+    "role": {
+      "domme": "domme",
+      "sub": "sub"
+    }
+  },
   "chatComposer": {
     "status": {
       "sending": "Anhänge werden gesendet …",
@@ -164,14 +164,18 @@
         "discard": "Verwerfen",
         "send": "Senden"
       }
+    },
+    "reply": {
+      "to": "Antwort an {name}",
+      "cancel": "Abbrechen"
     }
   },
   "chatHeader": {
     "group": {
-    "members": "{count, plural, one {# Mitglied} other {# Mitglieder}}",
-    "membersLoading": "Mitglieder werden geladen…",
-    "untitled": "Gruppe"
-   },
+      "members": "{count, plural, one {# Mitglied} other {# Mitglieder}}",
+      "membersLoading": "Mitglieder werden geladen…",
+      "untitled": "Gruppe"
+    },
     "aria": {
       "back": "Zurück",
       "more": "Mehr",
@@ -184,8 +188,8 @@
     },
     "menu": {
       "viewGroup": "Gruppe ansehen",
-     "leaveGroup": "Gruppe verlassen",
-     "reportGroup": "Gruppe melden",
+      "leaveGroup": "Gruppe verlassen",
+      "reportGroup": "Gruppe melden",
       "block": "Nutzer blockieren",
       "mute": "Unterhaltung stummschalten",
       "muteSoon": "Unterhaltung stummschalten — bald verfügbar",

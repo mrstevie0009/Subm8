@@ -1,4 +1,4 @@
-// src/components/FollowTabsInline.tsx
+//src/components/FollowTabsInline.tsx
 'use client';
 
 type Tab = 'followers' | 'following' | 'vFollowing' | 'vFollowers';
@@ -21,9 +21,10 @@ export default function FollowTabsInline({
 
   return (
     <div className="px-3 sm:px-4 pb-2">
-      <div className="w-full">
-        <div className="flex w-full rounded-full border border-white/12 bg-white/[.04] p-1 backdrop-blur">
-          {tabs.map(t => {
+      {/* ⬇️ horizontal scroll auf kleinen Screens */}
+      <div className="w-full overflow-x-auto no-scrollbar">
+        <div className="inline-flex min-w-max rounded-full border border-white/12 bg-white/[.04] p-1 backdrop-blur">
+          {tabs.map((t) => {
             const isActive = active === t.key;
             const c = counts?.[t.key];
             return (
@@ -31,17 +32,23 @@ export default function FollowTabsInline({
                 key={t.key}
                 type="button"
                 onClick={() => setActive(t.key)}
-                className={`flex-1 px-3 sm:px-4 py-1.5 text-sm rounded-full transition
-                  ${isActive
-                    ? 'bg-[var(--purple)] text-white shadow-[0_6px_20px_-10px_rgba(139,92,246,.9)]'
-                    : 'text-white/80 hover:bg-white/[.08]'}
+                className={`flex-none sm:flex-1 px-3 sm:px-4 py-1.5 text-sm rounded-full transition
+                  ${
+                    isActive
+                      ? 'bg-[var(--purple)] text-white shadow-[0_6px_20px_-10px_rgba(139,92,246,.9)]'
+                      : 'text-white/80 hover:bg-white/[.08]'
+                  }
                 `}
                 aria-current={isActive ? 'page' : undefined}
               >
-                <span className="inline-flex items-center gap-1">
+                <span className="inline-flex items-center gap-1 whitespace-nowrap">
                   {t.label}
                   {typeof c === 'number' && (
-                    <span className={`text-[11px] tabular-nums ${isActive ? 'text-white/95' : 'text-white/60'}`}>
+                    <span
+                      className={`text-[11px] tabular-nums ${
+                        isActive ? 'text-white/95' : 'text-white/60'
+                      }`}
+                    >
                       {c.toLocaleString()}
                     </span>
                   )}

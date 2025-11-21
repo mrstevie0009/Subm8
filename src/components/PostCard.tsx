@@ -1668,13 +1668,14 @@ export default function PostCard({
     } catch {}
   }
 
-  function ShareButton() {
+    function ShareButton() {
     const url =
       typeof window !== 'undefined'
         ? `${window.location.origin}/${locale}/p/${post.id}`
         : `/${locale}/p/${post.id}`;
 
     const brand = t('brand.name');
+    const btnRef = React.useRef<HTMLButtonElement | null>(null);
 
     const systemShare = async () => {
       try {
@@ -1699,8 +1700,14 @@ export default function PostCard({
     };
 
     return (
-      <div ref={shareRef} className="relative" data-no-nav onClick={(e) => e.stopPropagation()}>
+      <div
+        ref={shareRef}
+        className="relative"
+        data-no-nav
+        onClick={(e) => e.stopPropagation()}
+      >
         <button
+          ref={btnRef}
           type="button"
           className="group flex items-center gap-2 rounded px-2 py-1 hover:bg-white/5"
           onClick={() => {
@@ -1713,7 +1720,11 @@ export default function PostCard({
         >
           <span
             className="inline-grid place-items-center"
-            style={{ width: 'clamp(18px,1.8vw,26px)', height: 'clamp(18px,1.8vw,26px)', color: 'rgba(255,255,255,.95)' }}
+            style={{
+              width: 'clamp(18px,1.8vw,26px)',
+              height: 'clamp(18px,1.8vw,26px)',
+              color: 'rgba(255,255,255,.95)',
+            }}
             aria-hidden
           >
             <ShareIcon />
@@ -1721,46 +1732,47 @@ export default function PostCard({
           <span className="sr-only">{tPost('share.label')}</span>
         </button>
 
-        {shareMenuOpen && (
-          <div
-            className="absolute right-0 z-30 mt-2 w-60 max-w-[min(90vw,16rem)] rounded-xl border border-white/10 bg-black/85 backdrop-blur shadow-lg p-1"
-            role="menu"
+        {/* Menü jetzt wie Repost über Popover → fixed + Portal, nicht mehr in der Card scrollbar */}
+        <Popover
+          anchorRef={btnRef}
+          open={shareMenuOpen}
+          onClose={() => setShareMenuOpen(false)}
+        >
+          <button
+            type="button"
+            className="w-full text-left px-3 py-2 rounded hover:bg-white/10 flex items-center justify-between"
+            onClick={() => {
+              setShareMenuOpen(false);
+              setDmShareOpen(true);
+            }}
+            title={tPost('share.shareInDm')}
           >
-            <button
-              type="button"
-              className="w-full text-left px-3 py-2 rounded hover:bg-white/10 flex items-center justify-between"
-              onClick={() => {
-                setShareMenuOpen(false);
-                setDmShareOpen(true);
-              }}
-              title={tPost('share.shareInDm')}
-            >
-              {tPost('share.dm')}
-              <span className="opacity-70 text-xs">→</span>
-            </button>
+            {tPost('share.dm')}
+            <span className="opacity-70 text-xs">→</span>
+          </button>
 
-            <button
-              type="button"
-              className="w-full text-left px-3 py-2 rounded hover:bg-white/10"
-              onClick={copyLink}
-              title={tPost('share.copy')}
-            >
-              {copied ? tPost('share.copied') : tPost('share.copy')}
-            </button>
+          <button
+            type="button"
+            className="w-full text-left px-3 py-2 rounded hover:bg-white/10"
+            onClick={copyLink}
+            title={tPost('share.copy')}
+          >
+            {copied ? tPost('share.copied') : tPost('share.copy')}
+          </button>
 
-            <button
-              type="button"
-              className="w-full text-left px-3 py-2 rounded hover:bg-white/10"
-              onClick={systemShare}
-              title={tPost('share.system')}
-            >
-              {tPost('share.system')}
-            </button>
-          </div>
-        )}
+          <button
+            type="button"
+            className="w-full text-left px-3 py-2 rounded hover:bg-white/10"
+            onClick={systemShare}
+            title={tPost('share.system')}
+          >
+            {tPost('share.system')}
+          </button>
+        </Popover>
       </div>
     );
   }
+
 
 
   function MoreMenu() {

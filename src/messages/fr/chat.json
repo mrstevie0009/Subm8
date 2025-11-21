@@ -14,20 +14,20 @@
       "noMembers": "Aucun membre pour le moment."
     },
     "empty": {
-      "subtitle": "Commencez une nouvelle conversation depuis un profil.",
+      "subtitle": "Démarre une nouvelle discussion depuis un profil.",
       "title": "Aucune conversation"
     },
     "list": {
-      "loadingMore": "Chargement des conversations plus anciennes…",
+      "loadingMore": "Chargement des discussions plus anciennes…",
       "loadMore": "Charger plus",
-      "endReached": "Plus de conversations."
+      "endReached": "Plus aucune discussion."
     },
     "header": {
       "subtitle": "{total} conversations • {unread} non lues",
       "title": "Messages"
     },
     "loading": "Chargement…",
-    "loadingError": "Impossible de charger les conversations",
+    "loadingError": "Impossible de charger les discussions",
     "row": {
       "badges": {
         "muted": "Muet",
@@ -35,12 +35,12 @@
       },
       "menu": {
         "block": "Bloquer l’utilisateur",
-        "delete": "Supprimer la conversation",
-        "mute": "Mettre la conversation en sourdine",
-        "pin": "Épingler la conversation",
+        "delete": "Supprimer la discussion",
+        "mute": "Mettre la discussion en sourdine",
+        "pin": "Épingler la discussion",
         "report": "Signaler l’utilisateur",
-        "unmute": "Rétablir le son",
-        "unpin": "Détacher"
+        "unmute": "Réactiver le son",
+        "unpin": "Désépingler la discussion"
       },
       "preview": {
         "audio": "Audio",
@@ -80,29 +80,29 @@
       "searchPlaceholder": "Rechercher dans les messages…",
       "settingsAria": "Paramètres"
     },
-    "you": "Vous"
+    "you": "Toi"
   },
   "newChat": {
-      "title": "Démarrer une nouvelle discussion",
-      "selectedCount": "{count} sélectionné(s)",
-      "startOne": "Démarrer",
-      "startGroup": "Démarrer une discussion de groupe",
-      "closeAria": "Fermer",
-      "search": {
-        "placeholder": "Rechercher par nom ou handle…"
-      },
-      "loading": "Chargement…",
-      "errorGeneric": "Une erreur s’est produite.",
-      "errorStartChat": "Impossible de démarrer la discussion.",
-      "errorStartGroup": "Impossible de démarrer la discussion de groupe.",
-      "noResults": "Aucun résultat.",
-      "hint": "Astuce : appuyez sur Entrée pour (dé)sélectionner. Avec plusieurs personnes sélectionnées, une discussion de groupe commence.",
-      "checkboxAria": "Sélectionner {name}",
-      "role": {
-        "domme": "domme",
-        "sub": "sub"
-      }
+    "title": "Démarrer une nouvelle discussion",
+    "selectedCount": "{count} sélectionné(s)",
+    "startOne": "Démarrer",
+    "startGroup": "Démarrer un groupe",
+    "closeAria": "Fermer",
+    "search": {
+      "placeholder": "Rechercher un nom ou un handle…"
     },
+    "loading": "Chargement…",
+    "errorGeneric": "Quelque chose s’est mal passé.",
+    "errorStartChat": "Impossible de démarrer la discussion.",
+    "errorStartGroup": "Impossible de démarrer la discussion de groupe.",
+    "noResults": "Aucun résultat.",
+    "hint": "Astuce : Entrée bascule la sélection. Avec plusieurs personnes sélectionnées, une discussion de groupe sera créée.",
+    "checkboxAria": "Sélectionner {name}",
+    "role": {
+      "domme": "domme",
+      "sub": "sub"
+    }
+  },
   "chatComposer": {
     "status": {
       "sending": "Envoi des pièces jointes…",
@@ -116,7 +116,7 @@
       "send": "Envoyer",
       "sendMessageAria": "Envoyer le message",
       "tip": "Envoyer un pourboire",
-      "upload": "Téléverser un média",
+      "upload": "Télécharger des médias",
       "voice": {
         "holdAria": "Message vocal (maintenir pour enregistrer)",
         "holdTitle": "Message vocal (maintenir)"
@@ -131,7 +131,7 @@
         "loadOne": "Impossible de charger le GIF."
       },
       "voice": {
-        "denied": "Aucun accès au microphone (refusé ou bloqué).",
+        "denied": "Aucun accès au micro (refusé ou bloqué).",
         "unsupported": "Les messages vocaux ne sont pas pris en charge par ce navigateur."
       }
     },
@@ -150,7 +150,7 @@
       "tipRequest": "Demande de pourboire"
     },
     "placeholders": {
-      "closed": "Les messages privés sont fermés",
+      "closed": "Les DM sont fermés",
       "message": "Message…"
     },
     "protocol": {
@@ -164,13 +164,17 @@
         "discard": "Annuler",
         "send": "Envoyer"
       }
+    },
+    "reply": {
+      "to": "Répondre à {name}",
+      "cancel": "Annuler"
     }
   },
   "chatHeader": {
     "group": {
-    "members": "{count, plural, one {# membre} other {# membres}}",
-    "membersLoading": "Chargement des membres…",
-    "untitled": "Groupe"
+      "members": "{count, plural, one {# membre} other {# membres}}",
+      "membersLoading": "Chargement des membres…",
+      "untitled": "Groupe"
     },
     "aria": {
       "back": "Retour",
@@ -179,16 +183,16 @@
       "viewGroup": "Voir le groupe"
     },
     "badges": {
-      "blockedYou": "Vous a bloqué",
-      "youBlocked": "Bloqué par vous"
+      "blockedYou": "T’a bloqué",
+      "youBlocked": "Bloqué par toi"
     },
     "menu": {
       "viewGroup": "Voir le groupe",
-     "leaveGroup": "Quitter le groupe",
+      "leaveGroup": "Quitter le groupe",
       "reportGroup": "Signaler le groupe",
       "block": "Bloquer l’utilisateur",
       "mute": "Mettre la conversation en sourdine",
-      "muteSoon": "Mettre la conversation en sourdine — bientôt disponible",
+      "muteSoon": "Mettre en sourdine — bientôt disponible",
       "reportConversation": "Signaler la conversation",
       "unblock": "Débloquer",
       "viewProfile": "Voir le profil"
@@ -199,7 +203,7 @@
     }
   },
   "chatThread": {
-    "loadingOlder": "Chargement des anciens messages…",
+    "loadingOlder": "Chargement des messages plus anciens…",
     "actions": {
       "accept": "Accepter",
       "decline": "Refuser",
@@ -214,8 +218,8 @@
       "members": "{count} membres"
     },
     "disabled": {
-      "byOther": "Vous ne pouvez plus envoyer de messages directs à cette personne.",
-      "youBlocked": "Vous avez bloqué cette personne. L’envoi est désactivé."
+      "byOther": "Tu ne peux plus envoyer de messages directs à cette personne.",
+      "youBlocked": "Tu as bloqué cette personne. L’envoi est désactivé."
     },
     "emoji": {
       "close": "Fermer",
@@ -234,11 +238,11 @@
           "weekly": "Hebdomadaire"
         },
         "declinedMsg": "❌ Demande d’autodrain refusée",
-        "recurrenceLabel": "Récurrence : {cadence}",
+        "recurrenceLabel": "Répétition : {cadence}",
         "title": "DEMANDE D’AUTODRAIN"
       },
       "ownershipAccepted": {
-        "applied": "Les modifications ont été appliquées au profil Sub.",
+        "applied": "Les changements ont été appliqués au profil du sub.",
         "title": "OWNERSHIP CONFIRMÉE"
       },
       "ownershipRequest": {
@@ -249,8 +253,8 @@
           "bio": "Bio"
         },
         "legacy": {
-          "avatarPreview": "🖼 Aperçu de l’avatar inclus.",
-          "bannerPreview": "🏞 Aperçu de la bannière inclus."
+          "avatarPreview": "🖼 Aperçu d’avatar inclus.",
+          "bannerPreview": "🏞 Aperçu de bannière inclus."
         },
         "title": "DEMANDE D’OWNERSHIP"
       },
@@ -277,8 +281,8 @@
       "notFound": "Message introuvable"
     },
     "verify": {
-      "redirectNote": "Vous serez automatiquement redirigé après la fin de la vérification."
+      "redirectNote": "Tu seras redirigé automatiquement une fois terminé."
     },
-    "you": "Vous"
+    "you": "Toi"
   }
 }

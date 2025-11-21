@@ -431,21 +431,21 @@ function CommentNode({
                 <span className="sr-only">{liked ? t('unlike') : t('like')}</span>
               </button>
             </div>
-
-            {showReply && (
-              <div className="mt-2">
-                <Composer
-                  postId={postId}
-                  parentId={node.id}
-                  onDone={() => {
-                    setShowReply(false);
-                    onChanged();
-                  }}
-                />
-              </div>
-            )}
           </div>
         </div>
+
+        {showReply && (
+          <div className="mt-3">
+            <Composer
+              postId={postId}
+              parentId={node.id}
+              onDone={() => {
+                setShowReply(false);
+                onChanged();
+              }}
+            />
+          </div>
+        )}
       </div>
 
       {node.children.length > 0 && (
