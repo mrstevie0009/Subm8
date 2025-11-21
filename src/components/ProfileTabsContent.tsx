@@ -21,44 +21,203 @@ type Props = {
   pinnedPostId?: string | null;
 };
 
-type ApiUserLite = {
-  id: string;
-  handle: string;
-  displayName: string;
-  avatarUrl: string | undefined;
-  role?: 'DOMME' | 'SUBMISSIVE' | null;
-  premiumUntil?: string | null;    
-  isFirstAdopter?: boolean;
+/* ---------- API-Typen wie in HomeFeed/ProfileFeed ---------- */
+
+type ApiMedia = {
+  url: string;
+  alt?: string | null;
+  kind: 'image' | 'video' | 'gif';
+  mime?: string | null;
 };
 
 type ApiPost = {
   id: string;
-  createdAt: string; // ISO
   text: string | null;
   mediaUrl: string | null;
   mediaAlt: string | null;
-  nsfw: boolean;
-  /** Autor des Feed-Items (bei Repost = Reposter). Kann im Fehlerfall null sein → defensiv mappen. */
-  author: (ApiUserLite & { avatarUrl: string | undefined }) | null;
-  /** Original bei Repost (optional) */
+  uploaded?: ApiMedia[];
+  createdAt: string;
+  _count: { Like: number; Comment: number; reposts: number };
+  author: {
+    id: string;
+    handle: string;
+    displayName: string;
+    role: 'DOMME' | 'SUBMISSIVE' | null;
+    avatarUrl: string | null;
+    premiumUntil?: string | null;
+    isFirstAdopter?: boolean;
+  };
   repostOf: null | {
     id: string;
-    createdAt: string;
     text: string | null;
     mediaUrl: string | null;
     mediaAlt: string | null;
-    author: ApiUserLite;
+    uploaded?: ApiMedia[];
+    createdAt: string;
+    author: {
+      id: string;
+      handle: string;
+      displayName: string;
+      role: 'DOMME' | 'SUBMISSIVE' | null;
+      avatarUrl: string | null;
+      premiumUntil?: string | null;
+      isFirstAdopter?: boolean;
+    };
   };
-  /** Original bei Quote (optional) */
   quoteOf: null | {
     id: string;
-    createdAt: string;
     text: string | null;
     mediaUrl: string | null;
     mediaAlt: string | null;
-    author: ApiUserLite;
+    uploaded?: ApiMedia[];
+    createdAt: string;
+    author: {
+      id: string;
+      handle: string;
+      displayName: string;
+      role: 'DOMME' | 'SUBMISSIVE' | null;
+      avatarUrl: string | null;
+      premiumUntil?: string | null;
+      isFirstAdopter?: boolean;
+    };
   };
+  viewer: {
+    liked: boolean;
+    bookmarked: boolean;
+    hasBlockedAuthor: boolean;
+    blockedByAuthor: boolean;
+  };
+  community?: { name: string; slug: string } | null;
+  // isPinned kommt vom API-Handler, wird hier aber nicht direkt benötigt
+  isPinned?: boolean;
 };
+
+/* ---------- Snapshot-Shape + Helper wie im HomeFeed ---------- */
+
+type PostSnapshot = {
+  likes?: number;
+  liked?: boolean;
+  comments?: number;
+  reposts?: number;
+  hasReposted?: boolean;
+  bookmarked?: boolean;
+};
+
+function applyLocalSnapshot(p: FeedPost): FeedPost {
+  if (typeof window === 'undefined') return p;
+  try {
+    const key = `ps:snap:${p.content.id}`;
+    const raw = sessionStorage.getItem(key);
+    if (!raw) return p;
+
+    const snap = JSON.parse(raw) as PostSnapshot;
+
+    const stats = {
+      likes: snap.likes ?? p.stats?.likes ?? 0,
+      comments: snap.comments ?? p.stats?.comments ?? 0,
+      reposts: snap.reposts ?? p.stats?.reposts ?? 0,
+    };
+
+    const viewer = {
+      ...p.viewer,
+      liked: snap.liked ?? p.viewer?.liked,
+      bookmarked: snap.bookmarked ?? p.viewer?.bookmarked,
+      hasReposted: snap.hasReposted ?? p.viewer?.hasReposted,
+      commented:
+        snap.comments != null
+          ? snap.comments > (p.stats?.comments ?? 0) || p.viewer?.commented
+          : p.viewer?.commented,
+    };
+
+    return { ...p, stats, viewer };
+  } catch {
+    return p;
+  }
+}
+
+/** API → FeedPost Mapper, möglichst identisch zum HomeFeedClient */
+function mapApiPost(p: ApiPost): FeedPost {
+  const isRepost = !!p.repostOf;
+
+  const content = isRepost
+    ? {
+        id: p.repostOf!.id,
+        text: p.repostOf!.text ?? '',
+        mediaUrl: p.repostOf!.mediaUrl,
+        mediaAlt: p.repostOf!.mediaAlt,
+        uploaded: p.repostOf!.uploaded ?? [],
+        createdAt: p.repostOf!.createdAt,
+        author: {
+          id: p.repostOf!.author.id,
+          handle: p.repostOf!.author.handle,
+          displayName: p.repostOf!.author.displayName,
+          role: p.repostOf!.author.role,
+          avatarUrl: p.repostOf!.author.avatarUrl,
+          premiumUntil: p.repostOf!.author.premiumUntil ?? null,
+          isFirstAdopter: !!p.repostOf!.author.isFirstAdopter,
+        },
+        quote: null,
+      }
+    : {
+        id: p.id,
+        text: p.text ?? '',
+        mediaUrl: p.mediaUrl,
+        mediaAlt: p.mediaAlt,
+        uploaded: p.uploaded ?? [],
+        createdAt: p.createdAt,
+        author: {
+          id: p.author.id,
+          handle: p.author.handle,
+          displayName: p.author.displayName,
+          role: p.author.role,
+          avatarUrl: p.author.avatarUrl,
+          premiumUntil: p.author.premiumUntil ?? null,
+          isFirstAdopter: !!p.author.isFirstAdopter,
+        },
+        quote: p.quoteOf
+          ? {
+              id: p.quoteOf.id,
+              text: p.quoteOf.text ?? '',
+              mediaUrl: p.quoteOf.mediaUrl,
+              mediaAlt: p.quoteOf.mediaAlt,
+              uploaded: p.quoteOf.uploaded ?? [],
+              createdAt: p.quoteOf.createdAt,
+              author: {
+                id: p.quoteOf.author.id,
+                handle: p.quoteOf.author.handle,
+                displayName: p.quoteOf.author.displayName,
+                role: p.quoteOf.author.role,
+                avatarUrl: p.quoteOf.author.avatarUrl,
+                premiumUntil: p.quoteOf.author.premiumUntil ?? null,
+                isFirstAdopter: !!p.quoteOf.author.isFirstAdopter,
+              },
+            }
+          : null,
+      };
+
+  return {
+    id: p.id,
+    createdAtISO: p.createdAt,
+    content,
+    reposter: isRepost
+      ? {
+          id: p.author.id,
+          handle: p.author.handle,
+          displayName: p.author.displayName,
+        }
+      : null,
+    stats: {
+      comments: p._count.Comment ?? 0,
+      reposts: p._count.reposts ?? 0,
+      likes: p._count.Like ?? 0,
+    },
+    viewer: p.viewer,
+    initiallyBookmarked: p.viewer.bookmarked,
+    community: p.community ?? null,
+  };
+}
+
+/* ---------- Leaderboard / Medal bleibt wie gehabt ---------- */
 
 type LeaderTop = {
   user: { id: string; handle: string; displayName: string; avatarUrl: string | null };
@@ -73,74 +232,6 @@ type LeaderRow = {
   user: { id: string; handle: string; displayName: string; avatarUrl: string | null };
 };
 
-/** Mappt ein ApiPost in das Feed-Shape, das PostCard erwartet */
-function mapToFeedPost(p: ApiPost): FeedPost {
-  // Fallback für defekten/fehlenden Author (sollte normal nicht vorkommen)
-  const safeAuthor: ApiUserLite = p.author ?? {
-    id: 'unknown',
-    handle: 'unknown',
-    displayName: 'Unknown',
-    avatarUrl: undefined,
-    role: null,
-    premiumUntil: null,    
-    isFirstAdopter: false,
-  };
-
-  const isRepost = !!p.repostOf;
-  const isQuote = !!p.quoteOf;
-
-  // Original-Inhalt (bei Repost/Quote) – sonst der Post selbst
-  const original = isRepost ? p.repostOf! : isQuote ? p.quoteOf! : null;
-
-  const contentAuthor: ApiUserLite = original ? original.author : safeAuthor;
-
-  return {
-    id: p.id, // Feed-Item-ID (bei Repost/Quote = ID der Aktion)
-    createdAtISO: p.createdAt,
-    content: {
-      id: original ? original.id : p.id,
-      text: (original ? original.text : p.text) ?? '',
-      mediaUrl: (original ? original.mediaUrl : p.mediaUrl) ?? undefined,
-      mediaAlt: (original ? original.mediaAlt : p.mediaAlt) ?? undefined,
-      createdAt: original ? original.createdAt : p.createdAt,
-      author: {
-        id: contentAuthor.id,
-        handle: contentAuthor.handle,
-        displayName: contentAuthor.displayName,
-        avatarUrl: contentAuthor.avatarUrl ?? undefined,
-        role: contentAuthor.role ?? null,
-        premiumUntil: contentAuthor.premiumUntil ?? null, 
-        isFirstAdopter: !!contentAuthor.isFirstAdopter, 
-      },
-      quote: isQuote
-        ? {
-            id: p.quoteOf!.id,
-            text: p.quoteOf!.text ?? '',
-            mediaUrl: p.quoteOf!.mediaUrl ?? undefined,
-            mediaAlt: p.quoteOf!.mediaAlt ?? undefined,
-            createdAt: p.quoteOf!.createdAt,
-            author: {
-              id: p.quoteOf!.author.id,
-              handle: p.quoteOf!.author.handle,
-              displayName: p.quoteOf!.author.displayName,
-              role: p.quoteOf!.author.role ?? null,
-              avatarUrl: p.quoteOf!.author.avatarUrl ?? undefined,
-              premiumUntil: p.quoteOf!.author.premiumUntil ?? null, // ⬅️
-            isFirstAdopter: !!p.quoteOf!.author.isFirstAdopter,
-            },
-          }
-        : undefined,
-    },
-    reposter: isRepost
-      ? { id: safeAuthor.id, handle: safeAuthor.handle, displayName: safeAuthor.displayName }
-      : null,
-    stats: undefined,
-    viewer: undefined,
-    initiallyBookmarked: false,
-  };
-}
-
-/* ---------- kleine Helfer für die Top-3 Karten ---------- */
 function formatMoney(cents?: number) {
   return `$${(((cents ?? 0) / 100) as number).toFixed(2)}`;
 }
@@ -157,8 +248,22 @@ function MedalIcon({ rank }: { rank: 1 | 2 | 3 }) {
       className="size-5 drop-shadow"
     >
       <circle cx="12" cy="13" r="7" fill={fill} stroke={stroke} strokeWidth="1.5" />
-      <path d="M7 3l5 5 5-5" stroke={stroke} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-      <text x="12" y="16" textAnchor="middle" fontSize="9" fontWeight="700" fill="#3a2c1a">
+      <path
+        d="M7 3l5 5 5-5"
+        stroke={stroke}
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      />
+      <text
+        x="12"
+        y="16"
+        textAnchor="middle"
+        fontSize="9"
+        fontWeight="700"
+        fill="#3a2c1a"
+      >
         {rank}
       </text>
     </svg>
@@ -236,6 +341,8 @@ function PodiumCard({
   );
 }
 
+/* ---------- Haupt-Component ---------- */
+
 export default function ProfileTabsContent({
   handle,
   initialTab = 'posts',
@@ -247,7 +354,7 @@ export default function ProfileTabsContent({
   const [internalTab, setInternalTab] = React.useState<Tab>(initialTab);
   const tab: Tab = activeTab ?? internalTab;
 
-  const [posts, setPosts] = React.useState<ApiPost[]>([]);
+  const [posts, setPosts] = React.useState<FeedPost[]>([]);
   const [loadingPosts, setLoadingPosts] = React.useState(true);
   const [errPosts, setErrPosts] = React.useState<string | null>(null);
 
@@ -263,13 +370,21 @@ export default function ProfileTabsContent({
       try {
         setLoadingPosts(true);
         setErrPosts(null);
-        const res = await fetch(`/api/user/${handle}/posts`, { cache: 'no-store' });
+        const res = await fetch(`/api/user/${handle}/posts`, {
+          cache: 'no-store',
+        });
         const json = await res.json();
         if (!json?.ok) throw new Error(json?.error || 'Failed to load posts');
-       const list = Array.isArray(json.posts) ? (json.posts as ApiPost[]) : [];
-       if (!cancelled) setPosts(list);
+        const list = Array.isArray(json.posts)
+          ? (json.posts as ApiPost[])
+          : [];
+        const mapped = list.map(mapApiPost).map(applyLocalSnapshot);
+        if (!cancelled) setPosts(mapped);
       } catch (e) {
-        if (!cancelled) setErrPosts(e instanceof Error ? e.message : 'Failed to load posts');
+        if (!cancelled)
+          setErrPosts(
+            e instanceof Error ? e.message : 'Failed to load posts',
+          );
       } finally {
         if (!cancelled) setLoadingPosts(false);
       }
@@ -287,15 +402,22 @@ export default function ProfileTabsContent({
       try {
         setLoadingLead(true);
         setErrLead(null);
-        const res = await fetch(`/api/user/${handle}/posts/leaderboard`, { cache: 'no-store' });
+        const res = await fetch(
+          `/api/user/${handle}/posts/leaderboard`,
+          { cache: 'no-store' },
+        );
         const json = await res.json();
-        if (!json?.ok) throw new Error(json?.error || 'Failed to load leaderboard');
+        if (!json?.ok)
+          throw new Error(json?.error || 'Failed to load leaderboard');
         if (!cancelled) {
           setTop(json.top3 as LeaderTop[]);
           setRows(json.rows as LeaderRow[]);
         }
       } catch (e) {
-        if (!cancelled) setErrLead(e instanceof Error ? e.message : 'Failed to load leaderboard');
+        if (!cancelled)
+          setErrLead(
+            e instanceof Error ? e.message : 'Failed to load leaderboard',
+          );
       } finally {
         if (!cancelled) setLoadingLead(false);
       }
@@ -305,11 +427,19 @@ export default function ProfileTabsContent({
     };
   }, [handle, tab]);
 
-  // Galerie zeigt nur Posts mit eigenem Media (Reposts mit fremdem Media bleiben draußen)
+  // Galerie zeigt nur Posts mit Media (legacy mediaUrl ODER uploaded[])
   const gallery = React.useMemo(
-   () => (Array.isArray(posts) ? posts.filter((p) => !!p.mediaUrl) : []),
-   [posts]
- );
+    () =>
+      Array.isArray(posts)
+        ? posts.filter((p) => {
+            const c = p.content;
+            const hasLegacy = !!c.mediaUrl;
+            const hasUploaded = (c.uploaded?.length ?? 0) > 0;
+            return hasLegacy || hasUploaded;
+          })
+        : [],
+    [posts],
+  );
 
   return (
     <div className="mt-4">
@@ -317,9 +447,21 @@ export default function ProfileTabsContent({
       {showTabs && (
         <nav className="border-t border-white/10">
           <ul className="grid grid-cols-3 text-center text-[14px] font-medium">
-            <Tab label="Posts"       active={tab === 'posts'}       onClick={() => setInternalTab('posts')} />
-            <Tab label="Galerie"     active={tab === 'gallery'}     onClick={() => setInternalTab('gallery')} />
-            <Tab label="Leaderboard" active={tab === 'leaderboard'} onClick={() => setInternalTab('leaderboard')} />
+            <Tab
+              label="Posts"
+              active={tab === 'posts'}
+              onClick={() => setInternalTab('posts')}
+            />
+            <Tab
+              label="Galerie"
+              active={tab === 'gallery'}
+              onClick={() => setInternalTab('gallery')}
+            />
+            <Tab
+              label="Leaderboard"
+              active={tab === 'leaderboard'}
+              onClick={() => setInternalTab('leaderboard')}
+            />
           </ul>
         </nav>
       )}
@@ -328,44 +470,68 @@ export default function ProfileTabsContent({
       <div className="mt-3 space-y-3">
         {tab === 'posts' && (
           <>
-            {loadingPosts && <div className="text-sm text-muted">Loading…</div>}
-            {errPosts && <div className="text-sm text-red-500">{errPosts}</div>}
+            {loadingPosts && (
+              <div className="text-sm text-muted">Loading…</div>
+            )}
+            {errPosts && (
+              <div className="text-sm text-red-500">{errPosts}</div>
+            )}
             {!loadingPosts && !errPosts && posts.length === 0 && (
               <div className="text-sm text-muted">No posts yet.</div>
             )}
             {!loadingPosts &&
               !errPosts &&
-              posts.map((p) => (
-                <PostCard key={p.id} post={mapToFeedPost(p)} pinnedPostId={pinnedPostId} />
+              posts.map((post) => (
+                <PostCard
+                  key={post.id}
+                  post={post}
+                  pinnedPostId={pinnedPostId}
+                />
               ))}
           </>
         )}
 
         {tab === 'gallery' && (
           <>
-            {loadingPosts && <div className="text-sm text-muted">Loading…</div>}
-            {errPosts && <div className="text-sm text-red-500">{errPosts}</div>}
+            {loadingPosts && (
+              <div className="text-sm text-muted">Loading…</div>
+            )}
+            {errPosts && (
+              <div className="text-sm text-red-500">{errPosts}</div>
+            )}
             {!loadingPosts && !errPosts && gallery.length === 0 && (
               <div className="text-sm text-muted">No media posts yet.</div>
             )}
             {!loadingPosts &&
               !errPosts &&
-              gallery.map((p) => (
-                <PostCard key={p.id} post={mapToFeedPost(p)} pinnedPostId={pinnedPostId} />
+              gallery.map((post) => (
+                <PostCard
+                  key={post.id}
+                  post={post}
+                  pinnedPostId={pinnedPostId}
+                />
               ))}
           </>
         )}
 
         {tab === 'leaderboard' && (
           <div className="space-y-4">
-            {loadingLead && <div className="text-sm text-muted">Loading…</div>}
-            {errLead && <div className="text-sm text-red-500">{errLead}</div>}
+            {loadingLead && (
+              <div className="text-sm text-muted">Loading…</div>
+            )}
+            {errLead && (
+              <div className="text-sm text-red-500">{errLead}</div>
+            )}
 
             {/* Top 3 – nur optisch verbessert */}
             {!loadingLead && !errLead && (
               <>
                 {(() => {
-                  const podium: (LeaderTop | null)[] = [top[0] ?? null, top[1] ?? null, top[2] ?? null];
+                  const podium: (LeaderTop | null)[] = [
+                    top[0] ?? null,
+                    top[1] ?? null,
+                    top[2] ?? null,
+                  ];
                   return (
                     <div className="grid grid-cols-3 gap-3">
                       <PodiumCard rank={1} entry={podium[0]} />
@@ -391,27 +557,44 @@ export default function ProfileTabsContent({
                   <tbody>
                     {rows.length > 0 ? (
                       rows.map((r) => (
-                        <tr key={r.id} className="border-t border-white/10">
+                        <tr
+                          key={r.id}
+                          className="border-t border-white/10"
+                        >
                           <td className="px-3 py-2 text-muted whitespace-nowrap">
                             {new Date(r.at).toLocaleString()}
                           </td>
                           <td className="px-3 py-2">
                             <div className="flex items-center gap-2 min-w-0">
                               <div className="relative size-7 rounded-full overflow-hidden bg-white/10">
-                                <Image src={r.user.avatarUrl || AVATAR_PH} alt="" fill className="object-cover" />
+                                <Image
+                                  src={r.user.avatarUrl || AVATAR_PH}
+                                  alt=""
+                                  fill
+                                  className="object-cover"
+                                />
                               </div>
                               <div className="truncate">
-                                <div className="truncate">{r.user.displayName}</div>
-                                <div className="text-[11px] text-muted truncate">@{r.user.handle}</div>
+                                <div className="truncate">
+                                  {r.user.displayName}
+                                </div>
+                                <div className="text-[11px] text-muted truncate">
+                                  @{r.user.handle}
+                                </div>
                               </div>
                             </div>
                           </td>
-                          <td className="px-3 py-2 text-right">${(r.amountCents / 100).toFixed(2)}</td>
+                          <td className="px-3 py-2 text-right">
+                            ${(r.amountCents / 100).toFixed(2)}
+                          </td>
                         </tr>
                       ))
                     ) : (
                       <tr className="border-t border-white/10">
-                        <td className="px-3 py-3 text-center text-muted" colSpan={3}>
+                        <td
+                          className="px-3 py-3 text-center text-muted"
+                          colSpan={3}
+                        >
                           No Tribute yet.
                         </td>
                       </tr>

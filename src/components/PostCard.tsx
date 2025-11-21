@@ -89,6 +89,7 @@ export type FeedPost = {
     blockedByAuthor?: boolean;
     isAuthor?: boolean;
     commented?: boolean; // ⬅️ optional vom Server hydrieren
+    hasReposted?: boolean;
   };
   initiallyBookmarked?: boolean;
   community?: { name: string; slug: string } | null;
@@ -1077,7 +1078,7 @@ export default function PostCard({
   const tPost = useTranslations('post');
   const tTime = useTranslations('post');   // time.* liegen im Root
 
-  const [hasReposted, setHasReposted] = React.useState(false);
+  const [hasReposted, setHasReposted] = React.useState<boolean>(!!post.viewer?.hasReposted);
   const [bookmarked, setBookmarked] = React.useState(!!post.initiallyBookmarked);
   // Animation-Trigger
   const [likePulse, fireLikePulse] = usePulseFlag();
@@ -1105,9 +1106,18 @@ export default function PostCard({
   c.author.role === 'SUBMISSIVE' ? 'submissive' :
   undefined as 'domme' | 'submissive' | undefined;
 
-  const saveInteractionSnapshot = React.useCallback(() => {
-  try {
-    const snap = {
+  const interactionSnapshotRef = React.useRef({
+    likes,
+    liked,
+    comments,
+    reposts,
+    hasReposted,
+    bookmarked,
+  });
+
+  // bei jeder Änderung von Likes/Comments/... Snapshot im ref aktualisieren
+  React.useEffect(() => {
+    interactionSnapshotRef.current = {
       likes,
       liked,
       comments,
@@ -1115,13 +1125,14 @@ export default function PostCard({
       hasReposted,
       bookmarked,
     };
-    sessionStorage.setItem(`ps:snap:${c.id}`, JSON.stringify(snap));
-  } catch {}
-}, [c.id, likes, liked, comments, reposts, hasReposted, bookmarked]);
+  }, [likes, liked, comments, reposts, hasReposted, bookmarked]);
 
-  
-
-  
+  const saveInteractionSnapshot = React.useCallback(() => {
+    try {
+      const snap = interactionSnapshotRef.current;
+      sessionStorage.setItem(`ps:snap:${post.id}`, JSON.stringify(snap));
+    } catch {}
+  }, [post.id]);
 
  // beim Mount lokales Flag lesen (persistiert über Navigations)
  React.useEffect(() => {
@@ -1419,12 +1430,13 @@ export default function PostCard({
       const ce = ev as CustomEvent<{ postId: string; value: boolean }>;
       if (ce?.detail?.postId === c.id) {   // 👈 statt post.id
         setBookmarked(ce.detail.value);
+        saveInteractionSnapshot()
         fireBookmarkPulse();
       }
     }
     window.addEventListener('bookmark:toggled', onBm as EventListener);
     return () => window.removeEventListener('bookmark:toggled', onBm as EventListener);
-  }, [c.id, fireBookmarkPulse]); // 👈 dependency auch auf c.id
+  }, [c.id, fireBookmarkPulse, saveInteractionSnapshot]); // 👈 dependency auch auf c.id
 
   React.useEffect(() => {
     function onPinnedChange(ev: Event) {
@@ -1470,7 +1482,8 @@ export default function PostCard({
             setLiked((v) => !v);
             setLikes((n) => (liked ? Math.max(0, n - 1) : n + 1));
           });
-          fireLikePulse(); // ⬅️ NEU
+          saveInteractionSnapshot()
+          fireLikePulse();
           // 🛰️ global sync
           try {
             window.dispatchEvent(new CustomEvent('post:likeToggle', {
@@ -1576,34 +1589,46 @@ export default function PostCard({
   }
 
   function RepostButton() {
-    const disabled = blockedByEither || reposting;
-    const btnRef = React.useRef<HTMLButtonElement>(null);
+  const disabled = blockedByEither || reposting;
+  const btnRef = React.useRef<HTMLButtonElement>(null);
 
-    const doRepost = React.useCallback(async (id: string) => {
-      if (disabled) return;
-      setRepostMenuOpen(false);
-      setReposting(true);
-      setReposts(n => n + 1);
-      setHasReposted(true);
-      fireRepostPulse();
+  const doRepost = React.useCallback(async (id: string) => {
+    if (disabled) return;
+    setRepostMenuOpen(false);
+    setReposting(true);
+    setReposts(n => n + 1);
+    setHasReposted(true);
+    fireRepostPulse();
+
+    try {
+      const resp = await fetch(`/api/posts/${id}/repost`, { method: 'POST' });
+      const j = await resp.json().catch(() => null);
+      if (!resp.ok || !j?.ok) throw new Error(j?.error || `HTTP ${resp.status}`);
+
+      // 🛰 Broadcasts
       try {
-        const resp = await fetch(`/api/posts/${id}/repost`, { method: 'POST' });
-        const j = await resp.json().catch(() => null);
-        if (!resp.ok || !j?.ok) throw new Error(j?.error || `HTTP ${resp.status}`);
-        // Broadcasts
-        try {
-          window.dispatchEvent(new CustomEvent('post:reposted', { detail: { originalId: id, newId: j.id } }));
-        } catch {}
-        try {
-          window.dispatchEvent(new CustomEvent('post:repostDelta', { detail: { contentId: id, delta: +1, byViewer: true } }));
-        } catch {}
-      } catch {
-        setReposts(n => Math.max(0, n - 1));
-        setHasReposted(false);
-      } finally {
-        setReposting(false);
-      }
-    }, [disabled]);
+        window.dispatchEvent(new CustomEvent('post:reposted', {
+          detail: { originalId: id, newId: j.id }
+        }));
+      } catch {}
+
+      try {
+        window.dispatchEvent(new CustomEvent('post:repostDelta', {
+          detail: { contentId: id, delta: +1, byViewer: true }
+        }));
+      } catch {}
+
+      // ⬇️⬇️ HIER: Snapshot nach erfolgreichem Repost sichern
+      try {
+        saveInteractionSnapshot();
+      } catch {}
+    } catch {
+      setReposts(n => Math.max(0, n - 1));
+      setHasReposted(false);
+    } finally {
+      setReposting(false);
+    }
+  }, [disabled]);
 
     return (
       <div ref={repostRef} data-no-nav onClick={(e) => e.stopPropagation()}>

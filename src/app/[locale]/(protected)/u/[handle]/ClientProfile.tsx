@@ -94,7 +94,7 @@ export default function ClientProfile({
       if (!res.ok || !j?.url) throw new Error(j?.details || j?.error || `HTTP ${res.status}`);
       router.push(j.url as string);
     } catch {
-      toast.error('Die Verifikation konnte nicht gestartet werden.', 'Fehler');
+      toast.error('The Verification could not start.', 'Fehler');
     }
   }, [locale, profile.username, router, session]);
 

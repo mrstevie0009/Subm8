@@ -2,6 +2,8 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import type { Prisma } from '@prisma/client';
+import { getCurrentUser } from '@/lib/currentUser';
+
 
 export const dynamic = 'force-dynamic';
 
@@ -60,6 +62,9 @@ export async function GET(
       where: { handle: { equals: normalized, mode: 'insensitive' } },
       select: { id: true, pinnedPostId: true },
     });
+
+    const me = await getCurrentUser().catch(() => null);
+
     if (!user && /^[a-f0-9-]{24,}$/.test(raw)) {
       user = await prisma.user.findUnique({
         where: { id: raw },
@@ -258,23 +263,72 @@ export async function GET(
               },
             }
           : null,
-        viewer: {
-          liked: false,
-          bookmarked: false,
-          hasBlockedAuthor: false,
-          blockedByAuthor: false,
-        },
+        // ⚠ viewer kommt jetzt später dazu
         community: null,
       };
     };
 
     // pinned (falls vorhanden) voranstellen, mit Flag
-    const posts = [
+    const base = [
       ...(pinned ? [{ ...mapPost(pinned), isPinned: true }] : []),
       ...pageRows.map((p) => ({ ...mapPost(p), isPinned: false })),
     ];
 
+    // Viewer-Status hydrieren (Likes, Bookmarks, Blocks)
+    const postIds = base.map((p) => p.id);
+    const authorIds = Array.from(new Set(base.map((p) => p.author.id)));
+
+    let likedSet = new Set<string>();
+    let bookmarkedSet = new Set<string>();
+    let hasBlockedSet = new Set<string>();   // viewer hat Autor geblockt
+    let blockedBySet = new Set<string>();    // Autor hat viewer geblockt
+
+    if (me && postIds.length > 0) {
+      const [likes, bookmarks, blocksByMe, blocksOfMe] = await Promise.all([
+        prisma.like.findMany({
+          where: { userId: me.id, postId: { in: postIds } },
+          select: { postId: true },
+        }),
+        prisma.bookmark.findMany({
+          where: { userId: me.id, postId: { in: postIds } },
+          select: { postId: true },
+        }),
+        prisma.block.findMany({
+          where: { blockerId: me.id, blockedId: { in: authorIds } },
+          select: { blockedId: true },
+        }),
+        prisma.block.findMany({
+          where: { blockedId: me.id, blockerId: { in: authorIds } },
+          select: { blockerId: true },
+        }),
+      ]);
+
+      likedSet = new Set(likes.map((l) => l.postId));
+      bookmarkedSet = new Set(bookmarks.map((b) => b.postId));
+      hasBlockedSet = new Set(blocksByMe.map((b) => b.blockedId));
+      blockedBySet = new Set(blocksOfMe.map((b) => b.blockerId));
+    }
+
+    const posts = base.map((p) => {
+      const viewer = me
+        ? {
+            liked: likedSet.has(p.id),
+            bookmarked: bookmarkedSet.has(p.id),
+            hasBlockedAuthor: hasBlockedSet.has(p.author.id),
+            blockedByAuthor: blockedBySet.has(p.author.id),
+          }
+        : {
+            liked: false,
+            bookmarked: false,
+            hasBlockedAuthor: false,
+            blockedByAuthor: false,
+          };
+
+      return { ...p, viewer };
+    });
+
     return NextResponse.json({ ok: true, posts, hasMore, nextCursor });
+
   } catch (err) {
     console.error('GET /api/user/[handle]/posts failed:', err);
     return NextResponse.json(

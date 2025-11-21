@@ -86,6 +86,47 @@ type ApiPost = {
   community?: { name: string; slug: string } | null;
 };
 
+type PostSnapshot = {
+  likes?: number;
+  liked?: boolean;
+  comments?: number;
+  reposts?: number;
+  hasReposted?: boolean;
+  bookmarked?: boolean;
+};
+
+function applyLocalSnapshot(p: FeedPost): FeedPost {
+  if (typeof window === 'undefined') return p;
+  try {
+    const key = `ps:snap:${p.id}`;
+    const raw = sessionStorage.getItem(key);
+    if (!raw) return p;
+
+    const snap = JSON.parse(raw) as PostSnapshot;
+
+    const stats = {
+      likes: snap.likes ?? p.stats?.likes ?? 0,
+      comments: snap.comments ?? p.stats?.comments ?? 0,
+      reposts: snap.reposts ?? p.stats?.reposts ?? 0,
+    };
+
+    const viewer = {
+    ...p.viewer,
+    liked: snap.liked ?? p.viewer?.liked,
+    bookmarked: snap.bookmarked ?? p.viewer?.bookmarked,
+    hasReposted: snap.hasReposted ?? p.viewer?.hasReposted,
+    commented: snap.comments != null
+      ? snap.comments > (p.stats?.comments ?? 0) || p.viewer?.commented
+      : p.viewer?.commented,
+  };
+
+    return { ...p, stats, viewer };
+  } catch {
+    return p;
+  }
+}
+
+
 const SCROLL_KEY_PREFIX = 'homefeed:scroll:';
 const DATA_KEY_PREFIX = 'homefeed:data:';
 
@@ -263,11 +304,10 @@ export default function HomeFeedClient({ initialItems }: Props) {
   }, [scrollKey]);
 
   // --- STATE
-  const [items, setItems] = React.useState<FeedPost[]>(() => dedupeById(initialItems));
-  const [firstLoading, setFirstLoading] = React.useState(items.length === 0);
   const [newCount, setNewCount] = React.useState(0);
   const [loadingNew, setLoadingNew] = React.useState(false);
   const [atTop, setAtTop] = React.useState(true);
+  
 
   // Bottom-Infinite-Scroll
   const [loadingMore, setLoadingMore] = React.useState(false);
@@ -277,7 +317,13 @@ export default function HomeFeedClient({ initialItems }: Props) {
   const topSentinelRef = React.useRef<HTMLDivElement | null>(null);
   const [headerHeight, setHeaderHeight] = React.useState(64);
   const [buttonTop, setButtonTop] = React.useState(12);
-  
+  const [items, setItems] = React.useState<FeedPost[]>(() => dedupeById(initialItems));
+  const [firstLoading, setFirstLoading] = React.useState(items.length === 0);
+  React.useEffect(() => {
+    // beim ersten Client-Mount alles mit lokalen Snapshots überschreiben
+    setItems(prev => prev.map(applyLocalSnapshot));
+  }, []);
+
   React.useEffect(() => {
     const header = document.getElementById('app-global-header');
     if (!header) return;
@@ -332,7 +378,7 @@ export default function HomeFeedClient({ initialItems }: Props) {
       try {
         const parsed = JSON.parse(raw) as { items: FeedPost[] };
         if (Array.isArray(parsed.items) && parsed.items.length) {
-          setItems(parsed.items);
+          setItems(parsed.items.map(applyLocalSnapshot));
           setFirstLoading(false);
         }
       } catch {}
@@ -362,7 +408,7 @@ export default function HomeFeedClient({ initialItems }: Props) {
       const data = (await res.json()) as { posts: ApiPost[] };
 
       if (!cancelled) {
-        const mapped = data.posts.map(mapApiPost);
+        const mapped = data.posts.map(mapApiPost).map(applyLocalSnapshot);
         setItems(dedupeById(mapped));
         setNewCount(0);
         setEndReached(false);
@@ -422,7 +468,7 @@ export default function HomeFeedClient({ initialItems }: Props) {
       if (!res.ok) return;
 
       const data = (await res.json()) as { posts: ApiPost[] };
-      const mapped = data.posts.map(mapApiPost);
+      const mapped = data.posts.map(mapApiPost).map(applyLocalSnapshot);
 
       setItems((prev) => dedupeById([...mapped, ...prev]));
       setNewCount(0);
@@ -451,7 +497,7 @@ export default function HomeFeedClient({ initialItems }: Props) {
             const res = await fetch(`/api/feed?${sp.toString()}`, { cache: 'no-store' });
             if (!res.ok) return;
             const data = (await res.json()) as { posts: ApiPost[] };
-            const mapped = data.posts.map(mapApiPost);
+            const mapped = data.posts.map(mapApiPost).map(applyLocalSnapshot);
 
             if (mapped.length === 0) {
               setEndReached(true);
