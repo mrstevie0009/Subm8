@@ -37,6 +37,7 @@ export type ReplyTargetLite = {
 };
 
 type Props = {
+   mode?: 'dm' | 'group';
   disabled?: boolean;
   disabledNotice?: string;
   viewerRole: RoleLike;

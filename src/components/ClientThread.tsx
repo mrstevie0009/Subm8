@@ -6,8 +6,8 @@ import { useParams, useSearchParams } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import Image from 'next/image';
 import ChatHeader from '@/components/ChatHeader';
-import ChatComposer from '@/components/ChatGroupComposer';
-import type { ReplyTargetLite } from '@/components/ChatGroupComposer';
+import ChatComposer from '@/components/ChatComposer';
+import type { ReplyTargetLite } from '@/components/ChatComposer';
 import TipModal from '@/components/TipModal';
 import TipRequestAcceptModal from '@/components/TipRequestAcceptModal';
 import OwnershipRequestAcceptModal from '@/components/OwnershipRequestAcceptModal';
@@ -2580,53 +2580,62 @@ export default function ChatThreadPage() {
 
       {/* Composer */}
       <ChatComposer
-        mode="group"
-        onTypingPing={async (active) => {
-          if (!baseUrl) return;
-          try {
-            await fetch(`${baseUrl}`, {
-              method: 'POST',
-              headers: { 'content-type': 'application/json' },
-              body: JSON.stringify({ typing: !!active }),
-            });
-          } catch {}
-        }}
-        loading={!composerReady}    
-        viewerRole={meRole ?? 'submissive'}
-        disabled={disabled || !composerReady}
-        disabledNotice={disabled ? disabledNotice : (!composerReady ? t('loading') : undefined)}
-        selfUserId={meId ?? ''}
-        targetHandle={kind === 'dm' ? (other?.username ?? undefined) : undefined}
-        onSend={async (text) => {
-          if (!composerReady) return;
-          await pinAndSend(text);          // Promise an den Composer zurückgeben
-        }}
-        onTip={() => composerReady ? setTipOpen(true) : undefined}
-        onUpload={(file, caption) => composerReady ? sendMessage({ text: caption || '', file }) : undefined}
-        replyTo={replyTarget}
-        onCancelReply={() => setReplyTarget(null)}
-        onCreateReply={async (p) => {
-          if (!composerReady) return;
-          setStickBottom(true);
-          await new Promise<void>(r => requestAnimationFrame(() => requestAnimationFrame(() => r())));
-          scrollToBottom('auto');
-          await sendMessage({ text: `${REPLY_PREFIX}${JSON.stringify({ to: p.to, text: p.text })}` });
-          setReplyTarget(null);
-        }}
-        onCreateTipRequest={async (p) => {
-          if (!composerReady) return;
-          const { amountCents, currency = 'EUR', note } = p;
-          const payload = { amountCents, currency, note: note?.trim() || undefined };
-          await sendMessage({ text: `${TIPREQ_PREFIX}${JSON.stringify(payload)}` });
-        }}
+      // mode kannst du gleich drin lassen, dazu gleich mehr
+      mode="dm"
+      onTypingPing={async (active) => {
+        if (!baseUrl) return;
+        try {
+          await fetch(`${baseUrl}`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ typing: !!active }),
+          });
+        } catch {}
+      }}
+      loading={!composerReady}
+      viewerRole={meRole ?? 'submissive'}
+      disabled={disabled || !composerReady}
+      disabledNotice={disabled ? disabledNotice : (!composerReady ? t('loading') : undefined)}
+      selfUserId={meId ?? ''}
 
-        onCreateAutoDrainRequest={async (p) => {
-          if (!composerReady) return;
-          const { amountCents, currency = 'EUR', cadence } = p;
-          const payload = { amountCents, currency, cadence };
-          await sendMessage({ text: `${ADREQ_PREFIX}${JSON.stringify(payload)}` });
-        }}
-      />
+      // ⬇️ HIER: immer ein string, nie undefined
+      targetHandle={kind === 'dm' ? (other?.username ?? '') : ''}
+
+      onSend={async (text) => {
+        if (!composerReady) return;
+        await pinAndSend(text);
+      }}
+      onTip={() => (composerReady ? setTipOpen(true) : undefined)}
+      onUpload={(file, caption) =>
+        composerReady ? sendMessage({ text: caption || '', file }) : undefined
+      }
+      replyTo={replyTarget}
+      onCancelReply={() => setReplyTarget(null)}
+      onCreateReply={async (p) => {
+        if (!composerReady) return;
+        setStickBottom(true);
+        await new Promise<void>((r) =>
+          requestAnimationFrame(() => requestAnimationFrame(() => r())),
+        );
+        scrollToBottom('auto');
+        await sendMessage({
+          text: `${REPLY_PREFIX}${JSON.stringify({ to: p.to, text: p.text })}`,
+        });
+        setReplyTarget(null);
+      }}
+      onCreateTipRequest={async (p) => {
+        if (!composerReady) return;
+        const { amountCents, currency = 'EUR', note } = p;
+        const payload = { amountCents, currency, note: note?.trim() || undefined };
+        await sendMessage({ text: `${TIPREQ_PREFIX}${JSON.stringify(payload)}` });
+      }}
+      onCreateAutoDrainRequest={async (p) => {
+        if (!composerReady) return;
+        const { amountCents, currency = 'EUR', cadence } = p;
+        const payload = { amountCents, currency, cadence };
+        await sendMessage({ text: `${ADREQ_PREFIX}${JSON.stringify(payload)}` });
+      }}
+    />
 
       {/* Modals */}
       {kind === 'dm' && other && (

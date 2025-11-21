@@ -405,8 +405,6 @@ export default function ChatGroupComposer({
   onCreateReply,
   loading = false,
 
-  // 🆕 DM/Group
-  mode = 'dm',
 }: Props) {
   const t = useTranslations('chat.chatComposer');
   const tVerify = useTranslations('verify');
@@ -471,7 +469,6 @@ const circle = 'grid place-items-center rounded-full select-none shrink-0';
 const sendSize = 40;
 const toolSize = 40;
 
-const isGroup = mode === 'group';
 const roleNorm = String(viewerRole ?? '').toLowerCase();
 const isSub =
   roleNorm === 'submissive' ||
@@ -978,7 +975,7 @@ const isSub =
               </button>
 
               {/* Sub: Tip Button / Domme: Plus-Menü (nur in DMs) */}
-                {!isGroup && isSub && onTip ? (
+                {isSub && onTip ? (
                 <button
                     type="button"
                     onClick={() => {
@@ -996,7 +993,7 @@ const isSub =
                 </button>
                 ) : null}
 
-                {!isGroup && !isSub && (
+                {!isSub && (
                 <>
                     <button
                     ref={plusBtnRef}
