@@ -448,11 +448,15 @@ export default function ChatComposer({
 
   React.useEffect(() => { autosize(); }, [text, autosize]);
 
-  const circle = 'grid place-items-center rounded-full select-none';
+  const circle = 'grid place-items-center rounded-full select-none shrink-0';
   const sendSize = 40;
   const toolSize = 40;
 
-  const isSub = String(viewerRole).toUpperCase() === 'SUBMISSIVE';
+  const roleNorm = String(viewerRole ?? '').toLowerCase();
+  const isSub =
+  roleNorm === 'submissive' ||
+  roleNorm === 'sub' ||
+  roleNorm === 's';
 
   // Plus-Menu (nur für Dommes)
   const plusBtnRef = React.useRef<HTMLButtonElement | null>(null);
@@ -902,7 +906,7 @@ export default function ChatComposer({
               style={{ minHeight: 40, maxHeight, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}
             />
 
-            <div className="mt-2 flex items-center gap-8 pl-2">
+            <div className="mt-2 flex items-center gap-4 pl-2">
               {/* Media picker (MULTI) */}
               <label
                 className={`${circle} border border-white/12 bg-transparent hover:bg-white/10 cursor-pointer`}
