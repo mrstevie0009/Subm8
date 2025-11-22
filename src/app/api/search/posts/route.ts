@@ -23,7 +23,17 @@ export async function GET(req: Request) {
       mediaUrl: true,
       mediaAlt: true,
       createdAt: true,
-      author: { select: { handle: true, displayName: true, avatarUrl: true } },
+      author: {
+        select: {
+          id: true,               
+          handle: true,
+          displayName: true,
+          avatarUrl: true,
+          role: true,              
+          premiumUntil: true,     
+          isFirstAdopter: true,    
+        },
+      },
       _count: { select: { Like: true, Comment: true, bookmarks: true } },
     },
     orderBy:
@@ -37,23 +47,29 @@ export async function GET(req: Request) {
   });
 
   return Response.json({
-    ok: true,
-    posts: posts.map((p) => ({
-      id: p.id,
-      text: p.text,
-      mediaUrl: p.mediaUrl ?? undefined,
-      mediaAlt: p.mediaAlt ?? undefined,
-      createdAt: p.createdAt,
-      author: {
-        handle: p.author.handle,
-        name: p.author.displayName || p.author.handle,
-        avatar: p.author.avatarUrl ?? undefined,
-      },
-      counts: {
-        likes: p._count.Like,
-        comments: p._count.Comment,
-        bookmarks: p._count.bookmarks,
-      },
-    })),
-  });
+  ok: true,
+  posts: posts.map((p) => ({
+    id: p.id,
+    text: p.text,
+    mediaUrl: p.mediaUrl ?? undefined,
+    mediaAlt: p.mediaAlt ?? undefined,
+    createdAt: p.createdAt,
+    author: {
+      id: p.author.id,        
+      handle: p.author.handle,
+      name: p.author.displayName || p.author.handle,
+      avatar: p.author.avatarUrl ?? undefined,
+      role: p.author.role,                                 
+      premiumUntil: p.author.premiumUntil                 
+        ? p.author.premiumUntil.toISOString()
+        : null,
+      isFirstAdopter: !!p.author.isFirstAdopter,         
+    },
+    counts: {
+      likes: p._count.Like,
+      comments: p._count.Comment,
+      bookmarks: p._count.bookmarks,
+    },
+  })),
+});
 }

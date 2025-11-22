@@ -6,9 +6,20 @@ import Image from 'next/image';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { followAction, unfollowAction } from '@/app/actions/follow';
+import PostCard, { type FeedPost } from '@/components/PostCard';
+import { UserBadges } from '@/components/UserBadges';
 
 type PostCounts = { likes: number; comments: number; bookmarks: number };
-type Author = { handle: string; name: string; avatar?: string | null };
+
+type Author = {
+  id: string;                                   
+  handle: string;
+  name: string;
+  avatar?: string | null;
+  role?: 'DOMME' | 'SUBMISSIVE' | null;          
+  premiumUntil?: string | null;                  
+  isFirstAdopter?: boolean | null;               
+};
 type PostItem = {
   id: string;
   text: string;
@@ -30,15 +41,73 @@ type SearchUser = {
   followers?: number;
   followersCount?: number;
   viewerFollows?: boolean;
+  bio?: string | null;
+  role?: 'DOMME' | 'SUBMISSIVE' | null; 
+  premiumUntil?: string | null;          
+  isFirstAdopter?: boolean | null;
 };
 
+function mapPostToFeedPost(p: PostItem): FeedPost {
+  const created =
+    typeof p.createdAt === 'string'
+      ? p.createdAt
+      : new Date(p.createdAt).toISOString();
+
+  return {
+    id: p.id,
+    createdAtISO: created,
+    content: {
+      id: p.id,
+      text: p.text,
+      mediaUrl: p.mediaUrl ?? null,
+      mediaAlt: p.mediaAlt ?? null,
+      media: null,
+      uploaded: null,
+      mediaUrls: null,
+      attachments: null,
+      createdAt: created,
+      author: {
+        id: p.author.id ?? p.author.handle,
+        handle: p.author.handle,
+        displayName: p.author.name,
+        role: p.author.role ?? null,                
+        avatarUrl: p.author.avatar ?? null,
+        premiumUntil: p.author.premiumUntil ?? null, 
+        isFirstAdopter: !!p.author.isFirstAdopter,    
+      },
+      quote: null,
+    },
+    reposter: null,
+    stats: {
+      likes: p.counts?.likes ?? 0,
+      comments: p.counts?.comments ?? 0,
+      reposts: 0,
+    },
+    viewer: {
+      liked: false,
+      bookmarked: false,
+      hasBlockedAuthor: false,
+      blockedByAuthor: false,
+      isAuthor: false,
+      commented: false,
+      hasReposted: false,
+    },
+    initiallyBookmarked: false,
+    community: null,
+  };
+}
+
 const AVATAR_PH = '/images/avatar-placeholder.png';
+
+const isPremiumActive = (iso?: string | null) =>
+  !!iso && new Date(iso).getTime() > Date.now();
 
 export default function SearchPage() {
   const router = useRouter();
   const sp = useSearchParams();
   const { locale } = useParams() as { locale: string };
   const t = useTranslations('search');
+  const tCommon = useTranslations('common');
 
   // Query & Tab aus URL
   const qParam = sp.get('q') || '';
@@ -323,37 +392,75 @@ export default function SearchPage() {
                 {/* Users */}
                 {topUsers.length > 0 && (
                   <section className="rounded-app border border-sub shadow-app">
-                    <header className="px-4 py-3 border-b border-white/10 font-semibold">{t('people.title')}</header>
+                    <header className="px-4 py-3 border-b border-white/10 font-semibold">
+                      {t('people.title')}
+                    </header>
                     <ul className="divide-y divide-white/10">
                       {topUsers.map((u) => {
                         const followers = u.followersCount ?? u.followers;
                         const avatar = u.avatarUrl ?? u.avatar ?? AVATAR_PH;
                         const name = u.displayName ?? u.name ?? u.handle;
+                        const bio = u.bio ?? null;
+                        const uiRole =
+                          u.role === 'DOMME'
+                            ? 'domme'
+                            : u.role === 'SUBMISSIVE'
+                            ? 'submissive'
+                            : undefined;
+
+                        const isPremium = isPremiumActive(u.premiumUntil ?? null);
+                        const isFirst = !!u.isFirstAdopter;
+
                         return (
                           <li
                             key={u.handle}
-                            className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-white/5"
+                            className="flex items-center justify-between gap-3 px-4 py-3 cursor-pointer hover:bg-white/5"
                             onClick={() => router.push(`/${locale}/u/${u.handle}`)}
                           >
-                            <div className="flex items-center gap-3 min-w-0">
+                            <div className="flex items-start gap-3 min-w-0">
                               <Image
                                 src={avatar || AVATAR_PH}
                                 alt=""
                                 width={40}
                                 height={40}
-                                className="rounded-full object-cover border border-white/15"
+                                className="rounded-full object-cover border border-white/15 shrink-0"
                               />
                               <div className="min-w-0">
-                                <div className="font-medium truncate">{name}</div>
-                                <div className="text-sm opacity-70 truncate">@{u.handle}</div>
+                                <div className="flex items-center gap-1">
+                                  <span className="font-medium truncate">{name}</span>
+                                  <UserBadges
+                                    role={uiRole ?? 'submissive'}
+                                    isPremium={isPremium}
+                                    isFirstAdopter={isFirst}
+                                    size={16} // gleich wie PostCard
+                                    className="shrink-0 -ml-0.5"
+                                    premiumLabel={tCommon('badges.verified')}
+                                    firstAdopterLabel={tCommon('badges.firstAdopter')}
+                                  />
+                                  <span className="text-sm opacity-70 truncate">@{u.handle}</span>
+                                </div>
+
                                 {typeof followers === 'number' && (
-                                  <div className="text-xs opacity-60">
+                                  <div className="text-xs opacity-60 mt-0.5">
                                     {Intl.NumberFormat().format(followers)} {t('people.followers')}
                                   </div>
                                 )}
+
+                                {bio && (
+                                  <p className="mt-1 text-sm opacity-80 break-words line-clamp-2">
+                                    {bio}
+                                  </p>
+                                )}
                               </div>
                             </div>
-                            <FollowForm userId={u.id} handle={u.handle} initialFollowing={!!u.viewerFollows} />
+
+                            <div className="shrink-0">
+                              <FollowForm
+                                userId={u.id}
+                                handle={u.handle}
+                                initialFollowing={!!u.viewerFollows}
+                              />
+                            </div>
                           </li>
                         );
                       })}
@@ -362,61 +469,117 @@ export default function SearchPage() {
                 )}
 
                 {/* Posts */}
-                <section className="rounded-app border border-sub shadow-app">
-                  <header className="px-4 py-3 border-b border-white/10 font-semibold">{t('posts.title')}</header>
-                  <ul className="divide-y divide-white/10">
-                    {topPosts.map((p) => (
-                      <PostRow key={p.id} post={p} />
-                    ))}
-                    {topPosts.length === 0 && (
-                      <li className="px-4 py-6 text-sm opacity-70">{t('posts.empty')}</li>
-                    )}
-                  </ul>
+                <section className="pt-2 border-t border-white/10">
+                  <header className="px-1 pb-2 text-sm font-semibold opacity-80">
+                    {t('posts.title')}
+                  </header>
+
+                  {topPosts.length === 0 ? (
+                    <div className="px-1 py-4 text-sm opacity-70">
+                      {t('posts.empty')}
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {topPosts.map((p) => (
+                        <PostCard
+                          key={p.id}
+                          post={mapPostToFeedPost(p)} // ← dein Mapping
+                        />
+                      ))}
+                    </div>
+                  )}
                 </section>
               </>
             )}
 
             {tabParam === 'latest' && !loading && (
-              <section className="rounded-app border border-sub shadow-app">
-                <header className="px-4 py-3 border-b border-white/10 font-semibold">{t('posts.latestTitle')}</header>
-                <ul className="divide-y divide-white/10">
+            <section className="pt-2 border-t border-white/10">
+              <header className="px-1 pb-2 text-sm font-semibold opacity-80">
+                {t('posts.latestTitle')}
+              </header>
+
+              {latestPosts.length === 0 ? (
+                <div className="px-1 py-4 text-sm opacity-70">
+                  {t('posts.empty')}
+                </div>
+              ) : (
+                <div className="space-y-3">
                   {latestPosts.map((p) => (
-                    <PostRow key={p.id} post={p} />
+                    <PostCard
+                      key={p.id}
+                      post={mapPostToFeedPost(p)} // selbes Mapping
+                    />
                   ))}
-                  {latestPosts.length === 0 && (
-                    <li className="px-4 py-6 text-sm opacity-70">{t('posts.empty')}</li>
-                  )}
-                </ul>
-              </section>
-            )}
+                </div>
+              )}
+            </section>
+          )}
 
             {tabParam === 'people' && !loading && (
               <section className="rounded-app border border-sub shadow-app">
-                <header className="px-4 py-3 border-b border-white/10 font-semibold">{t('people.title')}</header>
+                <header className="px-4 py-3 border-b border-white/10 font-semibold">
+                  {t('people.title')}
+                </header>
                 <ul className="divide-y divide-white/10">
                   {people.map((u) => {
                     const avatar = u.avatarUrl ?? u.avatar ?? AVATAR_PH;
                     const name = u.displayName ?? u.name ?? u.handle;
+                    const bio = u.bio ?? null; 
+
+                    const uiRole =
+                      u.role === 'DOMME'
+                        ? 'domme'
+                        : u.role === 'SUBMISSIVE'
+                        ? 'submissive'
+                        : undefined;
+
+                    const isPremium = isPremiumActive(u.premiumUntil ?? null);
+                    const isFirst = !!u.isFirstAdopter;
+
                     return (
                       <li
                         key={u.handle}
-                        className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-white/5"
+                        className="flex items-center justify-between gap-3 px-4 py-3 cursor-pointer hover:bg-white/5"
                         onClick={() => router.push(`/${locale}/u/${u.handle}`)}
                       >
-                        <div className="flex items-center gap-3 min-w-0">
+                        <div className="flex items-start gap-3 min-w-0">
                           <Image
                             src={avatar}
                             alt=""
                             width={40}
                             height={40}
-                            className="rounded-full object-cover border border-white/15"
+                            className="rounded-full object-cover border border-white/15 shrink-0"
                           />
                           <div className="min-w-0">
-                            <div className="font-medium truncate">{name}</div>
-                            <div className="text-sm opacity-70 truncate">@{u.handle}</div>
+                            <div className="flex items-center gap-1">
+                              <span className="font-medium truncate">{name}</span>
+                              <UserBadges
+                                role={uiRole ?? 'submissive'}
+                                isPremium={isPremium}
+                                isFirstAdopter={isFirst}
+                                size={16}
+                                className="shrink-0 -ml-0.5"
+                                premiumLabel={tCommon('badges.verified')}
+                                firstAdopterLabel={tCommon('badges.firstAdopter')}
+                              />
+                              <span className="text-sm opacity-70 truncate">@{u.handle}</span>
+                            </div>
+
+                            {bio && (
+                              <p className="mt-1 text-sm opacity-80 break-words line-clamp-2">
+                                {bio}
+                              </p>
+                            )}
                           </div>
                         </div>
-                        <FollowForm userId={u.id} handle={u.handle} initialFollowing={!!u.viewerFollows} />
+
+                        <div className="shrink-0">
+                          <FollowForm
+                            userId={u.id}
+                            handle={u.handle}
+                            initialFollowing={!!u.viewerFollows}
+                          />
+                        </div>
                       </li>
                     );
                   })}
@@ -443,6 +606,7 @@ function SuggestionItem({
 }) {
   const router = useRouter();
   const { locale } = useParams() as { locale: string };
+  const tCommon = useTranslations('common');
 
   const [following, setFollowing] = React.useState<boolean>(!!user.viewerFollows);
   const [fading, setFading] = React.useState(false);
@@ -479,6 +643,17 @@ function SuggestionItem({
 
   const name = user.displayName ?? user.name ?? user.handle;
   const avatar = user.avatarUrl ?? user.avatar ?? undefined;
+  const bio = user.bio ?? null;
+
+  const uiRole =
+    user.role === 'DOMME'
+      ? 'domme'
+      : user.role === 'SUBMISSIVE'
+      ? 'submissive'
+      : undefined;
+
+  const isPremium = isPremiumActive(user.premiumUntil ?? null);
+  const isFirst = !!user.isFirstAdopter;
 
   return (
     <li
@@ -490,8 +665,27 @@ function SuggestionItem({
       <div className="flex items-center gap-3 min-w-0">
         <Avatar size={40} name={name} src={avatar} />
         <div className="min-w-0">
-          <div className="font-medium truncate">{name}</div>
-          <div className="text-sm opacity-70 truncate">@{user.handle}</div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-1">
+              <div className="font-medium truncate">{name}</div>
+
+              <UserBadges
+                role={uiRole ?? 'submissive'}
+                isPremium={isPremium}
+                isFirstAdopter={isFirst}
+                size={16}
+                className="shrink-0 -ml-0.5"
+                premiumLabel={tCommon('badges.verified')}
+                firstAdopterLabel={tCommon('badges.firstAdopter')}
+              />
+            </div>
+            <div className="text-sm opacity-70 truncate">@{user.handle}</div>
+            {bio && (
+              <p className="mt-0.5 text-xs opacity-70 break-words line-clamp-2">
+                {bio}
+              </p>
+            )}
+          </div>
         </div>
       </div>
 
@@ -575,72 +769,6 @@ function Avatar({ src, name, size = 40 }: { src?: string; name: string; size?: n
     >
       <span className="font-semibold">{initial}</span>
     </div>
-  );
-}
-
-function PostRow({ post }: { post: PostItem }) {
-  const router = useRouter();
-  const { locale } = useParams() as { locale: string };
-
-  const goProfile = () => router.push(`/${locale}/u/${post.author.handle}`);
-
-  return (
-    <li className="px-4 py-4">
-      <div className="flex items-start gap-3">
-        <button
-          type="button"
-          onClick={goProfile}
-          className="shrink-0 rounded-full border border-white/15 overflow-hidden"
-          aria-label={`@${post.author.handle}`}
-        >
-          <Image
-            src={post.author.avatar || AVATAR_PH}
-            alt=""
-            width={40}
-            height={40}
-            className="object-cover"
-          />
-        </button>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 text-sm">
-            <button
-              type="button"
-              onClick={goProfile}
-              className="font-medium truncate hover:underline"
-            >
-              {post.author.name}
-            </button>
-            <button
-              type="button"
-              onClick={goProfile}
-              className="opacity-70 truncate hover:underline"
-            >
-              @{post.author.handle}
-            </button>
-            <span className="opacity-50">
-              · {new Date(post.createdAt).toLocaleDateString()}
-            </span>
-          </div>
-          <div className="mt-1 whitespace-pre-wrap break-words">{post.text}</div>
-          {post.mediaUrl && (
-            <div className="mt-2">
-              <Image
-                src={post.mediaUrl}
-                alt={post.mediaAlt || ''}
-                width={600}
-                height={400}
-                className="rounded-xl border border-white/10 object-cover w-full h-auto"
-              />
-            </div>
-          )}
-          <div className="mt-2 text-xs opacity-70 flex gap-4">
-            <span>❤ {Intl.NumberFormat().format(post.counts?.likes || 0)}</span>
-            <span>💬 {Intl.NumberFormat().format(post.counts?.comments || 0)}</span>
-            <span>🔖 {Intl.NumberFormat().format(post.counts?.bookmarks || 0)}</span>
-          </div>
-        </div>
-      </div>
-    </li>
   );
 }
 

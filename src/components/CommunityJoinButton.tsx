@@ -16,6 +16,7 @@ type Props = {
   /** optional: für clientseitiges Deaktivieren je nach Policy/Rolle */
   policy?: JoinPolicy;
   viewerRole?: Role;
+  forceDisabled?: boolean;
 };
 
 function canJoinByRole(policy?: JoinPolicy, role?: Role): boolean {
@@ -32,6 +33,7 @@ export default function CommunityJoinButton({
   initialMembers,
   policy,
   viewerRole,
+  forceDisabled = false,
 }: Props) {
   const [joined, setJoined] = React.useState(initialJoined);
   const [members, setMembers] = React.useState(initialMembers);
@@ -44,7 +46,7 @@ export default function CommunityJoinButton({
   const t = useTranslations('communities.communities.join');
 
   const allowedByRole = canJoinByRole(policy, viewerRole);
-  const disabled = loading || (!joined && !allowedByRole);
+  const disabled = forceDisabled || loading || (!joined && !allowedByRole);
 
   const hintInvite = t('hints.inviteOnly');
   const hintDomme = t('hints.dommeOnly');

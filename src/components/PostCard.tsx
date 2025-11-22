@@ -1373,21 +1373,23 @@ export default function PostCard({
 
   // 🔁 Likes (global)
   React.useEffect(() => {
-    const onLike = (ev: Event) => {
-      const ce = ev as CustomEvent<{ contentId: string; liked: boolean; delta: number; byViewer?: boolean }>;
-      if (ce?.detail?.contentId !== c.id) return;
+  const onLike = (ev: Event) => {
+    const ce = ev as CustomEvent<{ contentId: string; liked: boolean; delta: number; byViewer?: boolean }>;
+    if (ce?.detail?.contentId !== c.id) return;
 
-      if (ce.detail.byViewer) {
-        // Nur den lokalen Status setzen (Tint) – KEINE Zähleränderung
-        setLiked(!!ce.detail.liked);
-        return;
-      }
-      // Fremde Events dürfen den Zähler verändern
-      setLikes((n) => Math.max(0, n + (ce.detail.delta ?? 0)));
-    };
-    window.addEventListener('post:likeToggle', onLike as EventListener);
-    return () => window.removeEventListener('post:likeToggle', onLike as EventListener);
-  }, [c.id]);
+    if (ce.detail.byViewer) {
+      // Farbe / Herzstatus für alle Karten des Users
+      setLiked(!!ce.detail.liked);
+    }
+
+    // Count IMMER anpassen – auch bei byViewer
+    setLikes((n) => Math.max(0, n + (ce.detail.delta ?? 0)));
+  };
+
+  window.addEventListener('post:likeToggle', onLike as EventListener);
+  return () => window.removeEventListener('post:likeToggle', onLike as EventListener);
+}, [c.id]);
+
 
   // 💬 Comments (global)
   React.useEffect(() => {
@@ -1396,15 +1398,15 @@ export default function PostCard({
       if (ce?.detail?.contentId !== c.id) return;
 
       if (ce.detail.byViewer) {
-        // Nur „ich habe kommentiert“ merken – KEINE Zähleränderung
         setHasCommented(true);
-        return;
       }
       setComments((n) => Math.max(0, n + (ce.detail.delta ?? 0)));
     };
+
     window.addEventListener('post:commentDelta', onComment as EventListener);
     return () => window.removeEventListener('post:commentDelta', onComment as EventListener);
   }, [c.id]);
+
 
   // 🔁 Reposts (global)
   React.useEffect(() => {
@@ -1413,12 +1415,11 @@ export default function PostCard({
       if (ce?.detail?.contentId !== c.id) return;
 
       if (ce.detail.byViewer) {
-        // Nur Aktiv-Status setzen – KEINE Zähleränderung
         setHasReposted(true);
-        return;
       }
       setReposts((n) => Math.max(0, n + (ce.detail.delta ?? 0)));
     };
+
     window.addEventListener('post:repostDelta', onRepost as EventListener);
     return () => window.removeEventListener('post:repostDelta', onRepost as EventListener);
   }, [c.id]);
@@ -1475,22 +1476,30 @@ export default function PostCard({
         data-no-nav
         action={action}
         onClick={(e) => e.stopPropagation()}
-        onSubmit={() => {
+        onSubmit={(e) => {
           if (blockedByEither) return;
-          const willLike = !liked; // 👈 definieren
+          e.preventDefault();
+
+          const willLike = !liked;
+
           startLikeTransition(() => {
-            setLiked((v) => !v);
-            setLikes((n) => (liked ? Math.max(0, n - 1) : n + 1));
+            // lokale Optik, falls das Event mal „schluckt“
+            setLiked(willLike);
           });
-          saveInteractionSnapshot()
+
+          saveInteractionSnapshot();
           fireLikePulse();
-          // 🛰️ global sync
+
           try {
             window.dispatchEvent(new CustomEvent('post:likeToggle', {
-              detail: { contentId: c.id, liked: willLike, delta: willLike ? +1 : -1, byViewer: true }
+              detail: {
+                contentId: c.id,
+                liked: willLike,
+                delta: willLike ? +1 : -1,
+                byViewer: true,
+              },
             }));
           } catch {}
-
         }}
       >
         <input type="hidden" name="postId" value={c.id} />
@@ -1596,8 +1605,6 @@ export default function PostCard({
     if (disabled) return;
     setRepostMenuOpen(false);
     setReposting(true);
-    setReposts(n => n + 1);
-    setHasReposted(true);
     fireRepostPulse();
 
     try {
@@ -1605,26 +1612,21 @@ export default function PostCard({
       const j = await resp.json().catch(() => null);
       if (!resp.ok || !j?.ok) throw new Error(j?.error || `HTTP ${resp.status}`);
 
-      // 🛰 Broadcasts
       try {
         window.dispatchEvent(new CustomEvent('post:reposted', {
-          detail: { originalId: id, newId: j.id }
+          detail: { originalId: id, newId: j.id },
         }));
       } catch {}
 
       try {
         window.dispatchEvent(new CustomEvent('post:repostDelta', {
-          detail: { contentId: id, delta: +1, byViewer: true }
+          detail: { contentId: id, delta: +1, byViewer: true },
         }));
       } catch {}
 
-      // ⬇️⬇️ HIER: Snapshot nach erfolgreichem Repost sichern
-      try {
-        saveInteractionSnapshot();
-      } catch {}
+      saveInteractionSnapshot();
     } catch {
-      setReposts(n => Math.max(0, n - 1));
-      setHasReposted(false);
+      // kein local rollback mehr nötig – Zähler wurde nur über Event erhöht
     } finally {
       setReposting(false);
     }
@@ -2136,25 +2138,24 @@ export default function PostCard({
           <div className="flex items-center flex-wrap">
             <div data-no-nav onClick={(e) => e.stopPropagation()}>
               <div className="flex items-center gap-1">
-                <ProfileLink
-                  handle={c.author.handle}
-                  className="font-semibold leading-tight text-[0.95rem] md:text-[1rem] hover:underline"
-                >
-                  {c.author.displayName}
-                </ProfileLink>
+                  <ProfileLink
+                    handle={c.author.handle}
+                    className="font-semibold text-[0.95rem] md:text-[1rem] hover:underline"
+                  >
+                    {c.author.displayName}
+                  </ProfileLink>
 
-                {/* Badge direkt neben dem Namen; shrink-0 verhindert Wegtruncaten */}
-                <UserBadges
-                  role={uiRole ?? 'submissive'}
-                  isPremium={isPremiumActive(c.author.premiumUntil)}
-                  isFirstAdopter={!!c.author.isFirstAdopter}
-                  size={16}
-                  className="shrink-0 -ml-0.5 translate-y-[1px]"
-                  premiumLabel={t('badges.verified')}
-                  firstAdopterLabel={t('badges.firstAdopter')}
-                />
+                  <UserBadges
+                    role={uiRole ?? 'submissive'}
+                    isPremium={isPremiumActive(c.author.premiumUntil)}
+                    isFirstAdopter={!!c.author.isFirstAdopter}
+                    size={16}
+                    className="shrink-0 -ml-0.5"
+                    premiumLabel={t('badges.verified')}
+                    firstAdopterLabel={t('badges.firstAdopter')}
+                  />
+                </div>
               </div>
-            </div>
 
             <span aria-hidden style={{ display: 'inline-block', width: 8 }} />
             <div data-no-nav onClick={(e) => e.stopPropagation()}>
@@ -2250,13 +2251,19 @@ export default function PostCard({
                   postId={c.id}
                   autoFocus
                   onSuccess={() => {
-                    setComments((n) => (n ?? 0) + 1); // jetzt passend zur ID
                     setComposerOpen(false);
-                    setHasCommented(true);
                     try { sessionStorage.setItem(`pc:commented:${c.id}`, '1'); } catch {}
                     fireCommentPulse();
-                    window.dispatchEvent(new CustomEvent('post:commentDelta', { detail: { contentId: c.id, delta: +1, byViewer: true } }));
-                    try { window.dispatchEvent(new CustomEvent('comment:created',    { detail: { postId: post.id } })); } catch {}
+
+                    window.dispatchEvent(new CustomEvent('post:commentDelta', {
+                      detail: { contentId: c.id, delta: +1, byViewer: true },
+                    }));
+
+                    try {
+                      window.dispatchEvent(new CustomEvent('comment:created', {
+                        detail: { postId: post.id },
+                      }));
+                    } catch {}
                   }}
                   onCancel={() => setComposerOpen(false)}
                 />

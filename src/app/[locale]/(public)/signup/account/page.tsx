@@ -469,7 +469,8 @@ export default function SignupAccountPage() {
                       <button
                         type="button"
                         onClick={() => setDommeOpen(true)}
-                        className="text-[12px] sm:text-sm underline text-yellow-100 hover:text-white"
+                        className="text-[12px] sm:text-sm underline text-yellow-100 hover:text-white 
+                                  py-2 px-1 rounded-md active:bg-white/10"
                       >
                         {t('dommeDisclaimer.readMore')}
                       </button>
@@ -477,14 +478,17 @@ export default function SignupAccountPage() {
                   )}
 
                   {/* Checkbox bleibt immer sichtbar */}
-                  <label className="mt-3 flex items-start gap-2 text-[13px] sm:text-sm text-white/90">
+                  <label
+                    className="mt-3 flex items-start gap-3 p-3 rounded-lg cursor-pointer 
+                              hover:bg-white/5 active:bg-white/10 transition"
+                  >
                     <input
                       type="checkbox"
-                      className="accent-[var(--purple)] mt-[3px]"
+                      className="accent-[var(--purple)] w-5 h-5"
                       checked={dommeGiftAgree}
                       onChange={(e) => setDommeGiftAgree(e.target.checked)}
                     />
-                    <span>{t('dommeDisclaimer.checkbox')}</span>
+                    <span className="text-[13px] sm:text-sm text-white/90">{t('dommeDisclaimer.checkbox')}</span>
                   </label>
                 </div>
               </div>
@@ -562,7 +566,7 @@ export default function SignupAccountPage() {
                   {t('agree').split('Terms')[0]}
                   <button
                     type="button"
-                    className="underline text-purple-100 hover:text-white"
+                    className="underline text-purple-100 hover:text-white px-1 py-1 rounded-md active:bg-white/10"
                     onClick={() => {
                       setLegalTab('terms');
                       setLegalOpen(true);
@@ -573,7 +577,7 @@ export default function SignupAccountPage() {
                   {t('agree').split('Terms')[1]?.split('Privacy Policy')[0] ?? ' & '}
                   <button
                     type="button"
-                    className="underline text-purple-100 hover:text-white"
+                    className="underline text-purple-100 hover:text-white px-1 py-1 rounded-md active:bg-white/10"
                     onClick={() => {
                       setLegalTab('privacy');
                       setLegalOpen(true);
@@ -591,7 +595,7 @@ export default function SignupAccountPage() {
                 <button
                   type="submit"
                   disabled={!ready || loading}
-                  className="w-full rounded-full py-2.5 sm:py-3 text-[15px] sm:text-base font-semibold
+                  className="w-full rounded-full py-3 sm:py-3.5 text-[16px]  min-h-[48px] sm:text-base font-semibold
                              bg-[var(--purple)]/80 hover:bg-[var(--purple)]
                              disabled:opacity-50 disabled:cursor-not-allowed
                              transition-colors"
@@ -603,7 +607,7 @@ export default function SignupAccountPage() {
                   type="button"
                   onClick={signInWithGoogle}
                   disabled={loading} // nur noch bei Loading sperren
-                  className="w-full rounded-full py-2 text-[14px] sm:text-sm font-medium
+                  className="w-full rounded-full py-3 text-[15px] min-h-[48px] sm:text-sm font-medium
                             border border-white/20 bg-black/20 hover:bg-black/30
                             disabled:opacity-50 disabled:cursor-not-allowed
                             transition-colors"

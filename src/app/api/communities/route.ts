@@ -253,6 +253,25 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: 'NAME_TOO_SHORT' }, { status: 400 });
     }
 
+    const me = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    });
+
+    const myRole = (me?.role ?? null) as 'DOMME' | 'SUBMISSIVE' | null;
+
+    // ✋ Sicherheits-Guard: Rolle vs. Join-Policy
+    if (
+      (policyKey === 'DOMME_ONLY' && myRole === 'SUBMISSIVE') || // Sub darf keine Domme-Only Community erstellen
+      (policyKey === 'SUB_ONLY'   && myRole === 'DOMME')      || // Dom darf keine Sub-Only Community erstellen
+      ((policyKey === 'DOMME_ONLY' || policyKey === 'SUB_ONLY') && !myRole) // ohne Rolle keine role-only Community
+    ) {
+      return NextResponse.json(
+        { ok: false, error: 'FORBIDDEN_POLICY_FOR_ROLE' },
+        { status: 403 },
+      );
+    }
+
     function slugify(input: string) {
       const base = input
         .trim().toLowerCase()

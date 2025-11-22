@@ -9,6 +9,7 @@ import { toast } from '@/lib/toast';
 import BannerCropper from '@/components/BannerCropper';
 
 type JoinPolicy = 'OPEN' | 'INVITE_ONLY' | 'DOMME_ONLY' | 'SUB_ONLY';
+type Role = 'DOMME' | 'SUBMISSIVE' | null;
 
 function slugify(input: string) {
   return input
@@ -37,6 +38,7 @@ export default function CreateCommunityButton() {
   const [name, setName] = React.useState('');
   const [description, setDescription] = React.useState('');
   const [policy, setPolicy] = React.useState<JoinPolicy>('OPEN');
+  const [viewerRole, setViewerRole] = React.useState<Role>(null);
 
   // Datei/Preview (nach Crop)
   const [banner, setBanner] = React.useState<File | null>(null);
@@ -62,6 +64,50 @@ export default function CreateCommunityButton() {
   const locale = useLocale();
   const t = useTranslations('communities.communities');
   const tt = useTranslations('home.toast');
+
+  // Viewer-Rolle laden (wie in CommunitiesPage)
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await fetch('/api/me', { cache: 'no-store' });
+        if (!r.ok) return;
+        const j = await r.json().catch(() => null);
+
+        if (cancelled || !j) return;
+
+        // Versuche mehrere bekannte Shapes:
+        const rawRole =
+          (j.role as Role | undefined) ??
+          (j.user?.role as Role | undefined) ??
+          (j.me?.role as Role | undefined) ??
+          null;
+
+        // Optional mal kurz debuggen:
+        // console.log('/api/me result', j, 'rawRole=', rawRole);
+
+        if (rawRole === 'DOMME' || rawRole === 'SUBMISSIVE') {
+          setViewerRole(rawRole);
+        } else {
+          setViewerRole(null);
+        }
+      } catch {
+        // ignore
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Falls wir irgendwie auf DOMME_ONLY stehen und User ist Sub, wieder auf OPEN setzen
+  React.useEffect(() => {
+    if (
+      (!viewerRole && (policy === 'DOMME_ONLY' || policy === 'SUB_ONLY')) ||
+      (viewerRole === 'SUBMISSIVE' && policy === 'DOMME_ONLY') ||
+      (viewerRole === 'DOMME'       && policy === 'SUB_ONLY')
+    ) {
+      setPolicy('OPEN');
+    }
+  }, [viewerRole, policy]);
 
   // Portal-Root
   React.useEffect(() => {
@@ -333,12 +379,31 @@ export default function CreateCommunityButton() {
                 <select
                   className={inputCls}
                   value={policy}
-                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setPolicy(e.target.value as JoinPolicy)}
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                    setPolicy(e.target.value as JoinPolicy)
+                  }
                 >
-                  <option value="OPEN">{t('create.fields.policy.options.open')}</option>
-                  <option value="INVITE_ONLY">{t('create.fields.policy.options.invite')}</option>
-                  <option value="DOMME_ONLY">{t('create.fields.policy.options.dommeOnly')}</option>
-                  <option value="SUB_ONLY">{t('create.fields.policy.options.subOnly')}</option>
+                  {/* Neutral – alle dürfen */}
+                  <option value="OPEN">
+                    {t('create.fields.policy.options.open')}
+                  </option>
+                  <option value="INVITE_ONLY">
+                    {t('create.fields.policy.options.invite')}
+                  </option>
+
+                  {/* Nur Dommes */}
+                  {viewerRole === 'DOMME' && (
+                    <option value="DOMME_ONLY">
+                      {t('create.fields.policy.options.dommeOnly')}
+                    </option>
+                  )}
+
+                  {/* Nur Subs */}
+                  {viewerRole === 'SUBMISSIVE' && (
+                    <option value="SUB_ONLY">
+                      {t('create.fields.policy.options.subOnly')}
+                    </option>
+                  )}
                 </select>
               </label>
 

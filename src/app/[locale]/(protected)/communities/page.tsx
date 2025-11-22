@@ -183,9 +183,18 @@ export default function CommunitiesPage() {
         const r = await fetch('/api/me', { cache: 'no-store' });
         if (!r.ok) return;
         const j = await r.json().catch(() => null);
-        if (!cancelled && j && 'role' in j) {
-          const v = (j.role ?? null) as Role;
-          setViewerRole(v);
+        if (cancelled || !j) return;
+
+        const rawRole =
+          (j.role as Role | undefined) ??
+          (j.user?.role as Role | undefined) ??
+          (j.me?.role as Role | undefined) ??
+          null;
+
+        if (rawRole === 'DOMME' || rawRole === 'SUBMISSIVE') {
+          setViewerRole(rawRole);
+        } else {
+          setViewerRole(null);
         }
       } catch {}
     })();
@@ -431,6 +440,8 @@ export default function CommunitiesPage() {
         {!loading &&
           filteredList.map((c) => {
             const blocked = !c.joined && !canJoinByRole(c.policy, viewerRole);
+            const joinDisabled = blocked; // ggf. später erweitern (z.B. bei INVITE_ONLY)
+
             return (
               <article
                 key={`${c.id}:${c.slug}`}
@@ -513,6 +524,7 @@ export default function CommunitiesPage() {
                         initialMembers={c.members}
                         policy={c.policy}
                         viewerRole={viewerRole}
+                        forceDisabled={joinDisabled}  
                       />
                     </div>
                   </div>

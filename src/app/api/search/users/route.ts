@@ -25,6 +25,10 @@ export async function GET(req: Request) {
       handle: true,
       displayName: true,
       avatarUrl: true,
+      bio: true,
+      role: true,               
+      premiumUntil: true,       
+      isFirstAdopter: true,
       _count: { select: { followers: true } },
     },
     orderBy:
@@ -44,6 +48,10 @@ export async function GET(req: Request) {
       name: u.displayName || u.handle,
       avatar: u.avatarUrl ?? undefined,
       followers: u._count.followers,
+      bio: u.bio ?? null,
+      role: u.role,
+      premiumUntil: u.premiumUntil ? u.premiumUntil.toISOString() : null,
+      isFirstAdopter: !!u.isFirstAdopter,
     })),
   });
 }
