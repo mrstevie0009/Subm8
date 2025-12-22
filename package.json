@@ -22,7 +22,7 @@
     "clsx": "^2.1.1",
     "libphonenumber-js": "^1.12.23",
     "lottie-react": "^2.4.1",
-    "next": "^15.5.4",
+    "next": "^15.5.9",
     "next-auth": "^4.24.11",
     "next-intl": "^4.3.9",
     "nodemailer": "^7.0.10",
