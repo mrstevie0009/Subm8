@@ -51,6 +51,9 @@ export async function GET(
     const take = Math.max(1, Math.min(takeRaw, 50));
     const cursorToken = url.searchParams.get('cursor');
 
+    const qRaw = (url.searchParams.get('q') || '').trim();
+    const q = qRaw.slice(0, 64);
+
     const me = await getCurrentUser().catch(() => null);
 
     const community = await prisma.community.findUnique({
@@ -77,24 +80,48 @@ export async function GET(
 
     const decoded = decodeCursor(cursorToken);
 
+    const searchUserWhere: Prisma.UserWhereInput | null =
+      q.length > 0
+        ? {
+            OR: [
+              { handle: { contains: q, mode: 'insensitive' } },
+              { displayName: { contains: q, mode: 'insensitive' } },
+            ],
+          }
+        : null;
+
+    // ✅ build where safely so verified + search can combine
+    const where: Prisma.CommunityMemberWhereInput = {
+      communityId: community.id,
+
+      // keyset pagination
+      ...(decoded
+        ? {
+            OR: [
+              { createdAt: { lt: decoded.createdAt } },
+              {
+                AND: [
+                  { createdAt: decoded.createdAt },
+                  { userId: { lt: decoded.userId } },
+                ],
+              },
+            ],
+          }
+        : {}),
+
+      // User filters: verified and/or search
+      ...((tab === 'verified' || searchUserWhere)
+        ? {
+            User: {
+              ...(tab === 'verified' ? verifiedWhere : {}),
+              ...(searchUserWhere ? { AND: [searchUserWhere] } : {}),
+            } satisfies Prisma.UserWhereInput,
+          }
+        : {}),
+    };
+
     const rows = await prisma.communityMember.findMany({
-      where: {
-        communityId: community.id,
-        ...(tab === 'verified' ? { User: verifiedWhere } : {}),
-        ...(decoded
-          ? {
-              OR: [
-                { createdAt: { lt: decoded.createdAt } },
-                {
-                  AND: [
-                    { createdAt: decoded.createdAt },
-                    { userId: { lt: decoded.userId } },
-                  ],
-                },
-              ],
-            }
-          : {}),
-      },
+      where,
       select: {
         createdAt: true,
         userId: true,

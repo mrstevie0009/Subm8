@@ -111,6 +111,9 @@ model User {
 
   @@index([verifiedByUserId])
   @@index([premiumUntil])
+
+  notificationSeenAsRecipient NotificationSeenCursor[] @relation("NotificationSeenRecipient")
+  notificationSeenAsActor     NotificationSeenCursor[] @relation("NotificationSeenActor")
 }
 
 /// --- Brute-force / Login Throttle -----------------------------------------
@@ -556,6 +559,9 @@ model Like {
   @@id([userId, postId])
   @@index([postId])
   @@index([userId])
+
+  @@index([userId, createdAt])
+  @@index([createdAt])
 }
 
 /**
@@ -750,6 +756,34 @@ model UserNotificationSettings {
   requirePhoneVerified Boolean  @default(false)
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
+}
+
+model NotificationSeenCursor {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Der Empfänger, der Notifications anschaut (du)
+  recipientId String
+  recipient   User     @relation("NotificationSeenRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+
+  // Der Actor, dessen Events aggregiert werden (der Liker)
+  actorId     String
+  actor       User     @relation("NotificationSeenActor", fields: [actorId], references: [id], onDelete: Cascade)
+
+  // Welche Aggregation/Cursor-Art (z.B. "LIKE_POST", später evtl. "LIKE_COMMENT", "FOLLOW", etc.)
+  kind        NotificationCursorKind
+
+  // Alles <= seenUntil gilt als "gesehen"
+  seenUntil   DateTime @default(dbgenerated("'1970-01-01T00:00:00.000Z'::timestamptz"))
+
+  @@unique([recipientId, actorId, kind], name: "NotificationSeenCursor_unique")
+  @@index([recipientId, kind, seenUntil])
+  @@index([actorId])
+}
+
+enum NotificationCursorKind {
+  LIKE_POST
 }
 
 model Block {

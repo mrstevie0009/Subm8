@@ -68,6 +68,7 @@
       "title": "Todo al día"
     },
     "messages": {
+      "likedYourPostsBatch": "le gustaron {count} de tus publicaciones",
       "commentedOnYourPost": "comentó tu publicación:",
       "followedYou": "te siguió",
       "likedYourComment": "le gustó tu comentario:",

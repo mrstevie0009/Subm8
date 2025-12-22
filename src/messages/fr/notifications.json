@@ -68,6 +68,7 @@
       "title": "Tout est à jour"
     },
     "messages": {
+      "likedYourPostsBatch": "a aimé {count} de tes publications",
       "commentedOnYourPost": "a commenté ton post :",
       "followedYou": "t’a suivi",
       "likedYourComment": "a aimé ton commentaire :",

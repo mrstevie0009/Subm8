@@ -1,3 +1,4 @@
+//src/app/[locale]/(protected)/communities/[slug]/members/page.tsx
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/currentUser';
 import { notFound } from 'next/navigation';
@@ -27,9 +28,22 @@ export default async function CommunityMembersPage({
 
   const community = await prisma.community.findUnique({
     where: { slug: slug.toLowerCase() },
-    select: { id: true, name: true, slug: true, _count: { select: { CommunityMember: true } } },
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      _count: { select: { CommunityMember: true } },
+    },
   });
+
   if (!community) notFound();
+
+  const isAdmin = me
+  ? !!(await prisma.communityMember.findUnique({
+      where: { communityId_userId: { communityId: community.id, userId: me.id } },
+      select: { role: true },
+    }).then(r => r?.role === 'ADMIN'))
+  : false;
 
   const now = new Date();
   const verifiedWhere = {
@@ -115,6 +129,7 @@ export default async function CommunityMembersPage({
           locale={locale}
           slug={community.slug}
           meId={me?.id ?? null}
+          isAdmin={isAdmin}
           counts={{ members: community._count.CommunityMember, verified: verifiedCount }}
           initialTab={initialTab}
           initialItems={initialUsers.map((u) => ({

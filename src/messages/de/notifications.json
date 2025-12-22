@@ -68,6 +68,7 @@
       "title": "Alles erledigt"
     },
     "messages": {
+      "likedYourPostsBatch": "hat {count} deiner Beiträge geliked",
       "commentedOnYourPost": "hat deinen Beitrag kommentiert:",
       "followedYou": "folgt dir",
       "likedYourComment": "hat deinen Kommentar geliked:",

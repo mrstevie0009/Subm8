@@ -2,6 +2,8 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/currentUser';
+import { Prisma } from '@prisma/client';
+import { randomUUID } from 'crypto';
 
 export const dynamic = 'force-dynamic';
 
@@ -54,6 +56,7 @@ type NotiUser = {
 type NotiItem =
   | { id: string; kind: 'follow'; time: string; user: NotiUser }
   | { id: string; kind: 'like'; time: string; user: NotiUser; text: string; postId: string }
+  | { id: string; kind: 'like_batch'; time: string; user: NotiUser; count: number }
   | { id: string; kind: 'mention'; time: string; user: NotiUser; text: string; postId?: string }
   | { id: string; kind: 'comment'; time: string; user: NotiUser; text: string; postId: string }
   | { id: string; kind: 'reply'; time: string; user: NotiUser; text: string; postId: string }
@@ -112,7 +115,7 @@ export async function GET(req: Request) {
     function isEnabledKind(kind: NotiItem['kind']): boolean {
       if (kind === 'mention') return !!settings.mentions;
       if (kind === 'comment' || kind === 'reply' || kind === 'comment_like') return !!settings.comments;
-      if (kind === 'like') return !!settings.likes;
+      if (kind === 'like' || kind === 'like_batch') return !!settings.likes;
       if (kind === 'follow') return !!settings.newFollowers;
       return true;
     }
@@ -138,11 +141,13 @@ export async function GET(req: Request) {
       },
     });
 
-    // ---- Likes on your POSTS ----
-    const postLikes = await prisma.like.findMany({
+    // ---- Likes on your POSTS (aggregated since cursor, Option B) ----
+    const likeTake = Math.min(Math.max(limit * 5, limit), 500);
+
+    const recentPostLikes = await prisma.like.findMany({
       where: { Post: { authorId: me.id } },
       orderBy: { createdAt: 'desc' },
-      take: limit,
+      take: likeTake,
       select: {
         createdAt: true,
         userId: true,
@@ -160,6 +165,80 @@ export async function GET(req: Request) {
         Post: { select: { id: true, text: true } },
       },
     });
+
+    const actorIds = Array.from(new Set(recentPostLikes.map(l => l.userId)));
+
+    // Cursor rows lesen (robust über SQL, damit Prisma-Client-Modelname egal ist)
+    const cursorRows = actorIds.length
+      ? await prisma.$queryRaw<Array<{ actorId: string; seenUntil: Date }>>`
+          SELECT "actorId", "seenUntil"
+          FROM "NotificationSeenCursor"
+          WHERE "recipientId" = ${me.id}
+            AND "kind" = 'LIKE_POST'
+            AND "actorId" IN (${Prisma.join(actorIds)})
+        `
+      : [];
+
+    const seenUntilByActor = new Map<string, Date>(cursorRows.map(r => [r.actorId, r.seenUntil]));
+
+    type LikeRow = (typeof recentPostLikes)[number];
+    const unseenByActor = new Map<string, LikeRow[]>();
+    const maxDeliveredByActor = new Map<string, Date>();
+
+    for (const l of recentPostLikes) {
+      const seenUntil = seenUntilByActor.get(l.userId) ?? new Date(0);
+      if (l.createdAt <= seenUntil) continue;
+
+      const arr = unseenByActor.get(l.userId) ?? [];
+      arr.push(l);
+      unseenByActor.set(l.userId, arr);
+
+      const prevMax = maxDeliveredByActor.get(l.userId);
+      if (!prevMax || l.createdAt > prevMax) maxDeliveredByActor.set(l.userId, l.createdAt);
+    }
+
+    const likeNotis: NotiItem[] = [];
+    for (const [actorId, likes] of unseenByActor.entries()) {
+      // recentPostLikes ist desc => likes ist ebenfalls desc pro Actor
+      likes.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+      const newest = likes[0];
+      const actor = newest.User;
+
+      if (likes.length <= 1) {
+        likeNotis.push({
+          id: `like:${newest.userId}:${newest.postId}:${newest.createdAt.getTime()}`,
+          kind: 'like',
+          time: newest.createdAt.toISOString(),
+          user: {
+            id: newest.userId,
+            handle: actor.handle,
+            displayName: actor.displayName,
+            avatarUrl: actor.avatarUrl,
+            phoneVerified: !!actor.phone,
+            createdAt: actor.createdAt,
+            viewerFollows: iFollowSet.has(newest.userId),
+          },
+          text: newest.Post.text,
+          postId: newest.Post.id,
+        });
+      } else {
+        likeNotis.push({
+          id: `like_batch:${actorId}:${newest.createdAt.getTime()}`,
+          kind: 'like_batch',
+          time: newest.createdAt.toISOString(),
+          user: {
+            id: actorId,
+            handle: actor.handle,
+            displayName: actor.displayName,
+            avatarUrl: actor.avatarUrl,
+            phoneVerified: !!actor.phone,
+            createdAt: actor.createdAt,
+            viewerFollows: iFollowSet.has(actorId),
+          },
+          count: likes.length,
+        });
+      }
+    }
 
     // ---- Mentions in posts & comments ----
     const handlePattern = `@${me.handle}`;
@@ -268,22 +347,10 @@ export async function GET(req: Request) {
           viewerFollows: iFollowSet.has(f.follower.id),
         },
       })),
-      ...postLikes.map((l) => ({
-        id: `like:${l.userId}:${l.postId}:${l.createdAt.getTime()}`,
-        kind: 'like' as const,
-        time: l.createdAt.toISOString(),
-        user: {
-          id: l.userId,
-          handle: l.User.handle,
-          displayName: l.User.displayName,
-          avatarUrl: l.User.avatarUrl,
-          phoneVerified: !!l.User.phone,
-          createdAt: l.User.createdAt,
-          viewerFollows: iFollowSet.has(l.userId),
-        },
-        text: l.Post.text,
-        postId: l.Post.id,
-      })),
+
+      // ✅ Likes jetzt aggregiert (like / like_batch) seit Cursor
+      ...likeNotis,
+
       ...postsWithMention.map((p) => ({
         id: `mention:post:${p.id}`,
         kind: 'mention' as const,
@@ -378,6 +445,35 @@ export async function GET(req: Request) {
       .filter((n) => (seen.has(n.id) ? false : (seen.add(n.id), true)))
       .sort((a, b) => +new Date(b.time) - +new Date(a.time))
       .slice(0, limit);
+
+    // ---- Option B: Cursor "seen until delivered" updaten (für ausgelieferte like/like_batch) ----
+    const deliveredLikeActors = new Set(
+      filtered
+        .filter(n => n.kind === 'like' || n.kind === 'like_batch')
+        .map(n => n.user?.id)
+        .filter(Boolean) as string[]
+    );
+
+    if (deliveredLikeActors.size > 0) {
+      const stmts: Array<ReturnType<typeof prisma.$executeRaw>> = [];
+      for (const actorId of deliveredLikeActors) {
+        const maxTs = maxDeliveredByActor.get(actorId);
+        if (!maxTs) continue;
+
+        // Erwartet UNIQUE(recipientId, actorId, kind) auf NotificationSeenCursor
+        const cursorId = randomUUID();
+
+        stmts.push(prisma.$executeRaw`
+          INSERT INTO "NotificationSeenCursor" ("id","recipientId","actorId","kind","seenUntil")
+          VALUES (${cursorId}, ${me.id}, ${actorId}, 'LIKE_POST', ${maxTs})
+          ON CONFLICT ("recipientId","actorId","kind")
+          DO UPDATE SET "seenUntil" = EXCLUDED."seenUntil"
+        `);
+      }
+      if (stmts.length) {
+        await prisma.$transaction(stmts);
+      }
+    }
 
     return NextResponse.json(
       { ok: true, items: filtered },

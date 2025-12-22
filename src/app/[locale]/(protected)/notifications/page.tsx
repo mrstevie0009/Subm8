@@ -17,25 +17,42 @@ type ApiUser = {
 };
 
 type ApiFollow       = { id: string; kind: 'follow';        time: string; user: ApiUser };
-type ApiLike         = { id: string; kind: 'like';          time: string; user: ApiUser; text: string; postId: string };
+type ApiLike         = { id: string; kind: 'like'; time: string; user: ApiUser; text: string; postId: string };
 type ApiMention      = { id: string; kind: 'mention';       time: string; user: ApiUser; text: string; postId?: string };
 type ApiComment      = { id: string; kind: 'comment';       time: string; user: ApiUser; text: string; postId: string };
 type ApiReply        = { id: string; kind: 'reply';         time: string; user: ApiUser; text: string; postId: string };
 type ApiCommentLike  = { id: string; kind: 'comment_like';  time: string; user: ApiUser; text: string; postId: string };
-type ApiNoti = ApiFollow | ApiLike | ApiMention | ApiComment | ApiReply | ApiCommentLike;
+type ApiLikeBatch = {
+  id: string;
+  kind: 'like_batch';
+  time: string;        
+  user: ApiUser;
+  count: number;
+};
+type ApiNoti =
+  | ApiFollow
+  | ApiLike
+  | ApiLikeBatch
+  | ApiMention
+  | ApiComment
+  | ApiReply
+  | ApiCommentLike;
 
 // ---------- UI Types ----------
 type NotiBase = {
   id: string;
-  time: string; // relative, already localized short form
+  time: string;
   user: { id?: string; handle: string; name?: string; avatar?: string; viewerFollows?: boolean };
   postId?: string;
   text?: string;
+
+  count?: number;
 };
 
 type Noti =
   | (NotiBase & { kind: 'follow' })
   | (NotiBase & { kind: 'like' })
+  | (NotiBase & { kind: 'like_batch' })   
   | (NotiBase & { kind: 'mention' })
   | (NotiBase & { kind: 'comment' })
   | (NotiBase & { kind: 'reply' })
@@ -130,6 +147,7 @@ export default function NotificationsPage() {
               },
               postId: 'postId' in n ? n.postId : undefined,
               text: 'text' in n ? n.text : undefined,
+              count: n.kind === 'like_batch' ? n.count : undefined,
             };
             return { ...base, kind: n.kind } as Noti;
           });
@@ -202,15 +220,28 @@ export default function NotificationsPage() {
           <li key={n.id} className="px-4 py-3 hover:bg-white/5 border-b border-white/10">
             <div className="flex items-start gap-3">
               {/* Avatar + kind badge */}
-              <div className="relative">
+              <button
+                type="button"
+                className="relative shrink-0"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  router.push(`/${locale}/u/${n.user.handle}`);
+                }}
+                aria-label={`Open profile @${n.user.handle}`}
+              >
                 <Avatar size={40} name={n.user.name ?? n.user.handle} src={n.user.avatar} />
                 <div className="absolute -bottom-1 -right-1 grid place-items-center rounded-full border border-black size-5 bg-[var(--purple)] text-white">
                   {n.kind === 'follow' && <SmallUserPlusIcon />}
                   {n.kind === 'mention' && <SmallAtIcon />}
-                  {(n.kind === 'like' || n.kind === 'comment_like') && <SmallHeartIcon />}
+                  {(n.kind === 'like' || n.kind === 'comment_like' || n.kind === 'like_batch') && <SmallHeartIcon />}
+                  {n.kind === 'like_batch' && (n.count ?? 0) > 1 && (
+                    <span className="absolute -top-2 -left-2 text-[10px] px-1.5 py-0.5 rounded-full bg-black/70 border border-white/15">
+                      {n.count}
+                    </span>
+                  )}
                   {(n.kind === 'comment' || n.kind === 'reply') && <SmallCommentIcon />}
                 </div>
-              </div>
+              </button>
 
               {/* Text */}
               <div className="flex-1 min-w-0 leading-tight">
@@ -233,6 +264,13 @@ export default function NotificationsPage() {
                   <div>
                     <b>@{n.user.handle}</b> {t('messages.likedYourPost')}{' '}
                     <span className="opacity-90">{n.text}</span>{' '}
+                    <span className="text-xs opacity-60">{t('messages.timeSep', { time: n.time })}</span>
+                  </div>
+                )}
+
+                {n.kind === 'like_batch' && (
+                  <div>
+                    <b>@{n.user.handle}</b> {t('messages.likedYourPostsBatch', { count: n.count ?? 0 })}{' '}
                     <span className="text-xs opacity-60">{t('messages.timeSep', { time: n.time })}</span>
                   </div>
                 )}
@@ -270,6 +308,13 @@ export default function NotificationsPage() {
                   initialFollowing={!!n.user.viewerFollows}
                   labels={{ follow: t('actions.follow'), following: t('actions.following') }}
                 />
+              ) : n.kind === 'like_batch' ? (
+                <button
+                  className="px-3 py-1.5 rounded-full border border-white/20 hover:bg-white/5"
+                  onClick={() => router.push(`/${locale}/u/${n.user.handle}`)}
+                >
+                  {t('actions.view')}
+                </button>
               ) : (
                 <button
                   className="px-3 py-1.5 rounded-full border border-white/20 hover:bg-white/5"

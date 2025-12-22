@@ -68,6 +68,7 @@
       "title": "All caught up"
     },
     "messages": {
+      "likedYourPostsBatch": "liked {count} of your posts",
       "commentedOnYourPost": "commented on your post:",
       "followedYou": "followed you",
       "likedYourComment": "liked your comment:",
