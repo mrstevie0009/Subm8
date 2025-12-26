@@ -68,22 +68,25 @@ export default function SignInPage() {
   const [mounted, setMounted] = React.useState(false);
 
   function mapAuthError(code?: string | null) {
-   if (!code) return null;
-   if (code === 'BRUTE_BLOCK') {
-     // i18n Key vorschlag: auth.auth.signin.alerts.bruteBlocked
-     return t('alerts.bruteBlocked', {
-       // z.B. support@deine-domain
-       contact: 'support@subm8.com'
-     });
-   }
-   if (code === 'CredentialsSignin') {
-     return t('errors.invalidCredentials');
-   }
-   if (code === 'ACCOUNT_DEACTIVATED') {
-     return t('alerts.deactivated');
-   }
-   return code; // fallback: rohen Code zeigen
- }
+    if (!code) return null;
+
+    if (code === 'BRUTE_BLOCK') {
+      return t('alerts.bruteBlocked', { contact: 'support@subm8.com' });
+    }
+    if (code === 'CredentialsSignin') {
+      return t('errors.invalidCredentials');
+    }
+    if (code === 'ACCOUNT_DEACTIVATED') {
+      return t('alerts.deactivated');
+    }
+
+    //Google OAuth kein Account vorhanden
+    if (code === 'OAuthAccountNotLinked') {
+      return t('errors.oauthAccountNotLinked');
+    }
+
+    return code;
+  }
 
   React.useEffect(() => {
     setMounted(true);
@@ -366,7 +369,25 @@ export default function SignInPage() {
                       ? 'border-green-400/40 bg-green-400/15 text-green-100'
                       : 'border-red-400/40 bg-red-400/15 text-red-100'}`}
               >
-                {registered ? t('alerts.registered') : resetSuccess ? t('alerts.resetSuccess') : topPretty}
+                {registered ? (
+                  t('alerts.registered')
+                ) : resetSuccess ? (
+                  t('alerts.resetSuccess')
+                ) : topPretty ? (
+                  <div className="space-y-1.5">
+                    <div>{topPretty}</div>
+
+                    {topErrorMsg === 'OAuthAccountNotLinked' && (
+                      <Link
+                        href={`/${locale}/signup${preset ? `?email=${encodeURIComponent(preset)}` : ''}`}
+                        className="underline text-red-100 hover:text-white"
+                        prefetch={false}
+                      >
+                        {t('errors.oauthAccountNotLinkedCta')}
+                      </Link>
+                    )}
+                  </div>
+                ) : null}
               </div>
             )}
 

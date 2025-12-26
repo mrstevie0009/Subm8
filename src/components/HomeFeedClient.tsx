@@ -244,6 +244,7 @@ export default function HomeFeedClient({ initialItems }: Props) {
   const searchParams = useSearchParams();
 
   const PAGE_SIZE = 12; // kleinere erste Ladung für schnellere Wahrnehmung
+  const hasServerItems = initialItems.length > 0;
 
   // Nur relevante Query-Keys übernehmen
   const feedQuery = React.useMemo(() => {
@@ -307,6 +308,9 @@ export default function HomeFeedClient({ initialItems }: Props) {
   const [newCount, setNewCount] = React.useState(0);
   const [loadingNew, setLoadingNew] = React.useState(false);
   const [atTop, setAtTop] = React.useState(true);
+  const [items, setItems] = React.useState<FeedPost[]>(() => dedupeById(initialItems));
+  const [firstLoading, setFirstLoading] = React.useState(items.length === 0);
+  const [feedReady, setFeedReady] = React.useState(items.length > 0);
   
 
   // Bottom-Infinite-Scroll
@@ -317,8 +321,6 @@ export default function HomeFeedClient({ initialItems }: Props) {
   const topSentinelRef = React.useRef<HTMLDivElement | null>(null);
   const [headerHeight, setHeaderHeight] = React.useState(64);
   const [buttonTop, setButtonTop] = React.useState(12);
-  const [items, setItems] = React.useState<FeedPost[]>(() => dedupeById(initialItems));
-  const [firstLoading, setFirstLoading] = React.useState(items.length === 0);
   React.useEffect(() => {
     // beim ersten Client-Mount alles mit lokalen Snapshots überschreiben
     setItems(prev => prev.map(applyLocalSnapshot));
@@ -373,6 +375,8 @@ export default function HomeFeedClient({ initialItems }: Props) {
 
   // --- REHYDRATE ITEMS SOFORT aus SessionStorage (verhindert "Sprung nach oben")
   React.useEffect(() => {
+    if (hasServerItems) return;
+
     const raw = sessionStorage.getItem(dataKey);
     if (raw) {
       try {
@@ -380,10 +384,11 @@ export default function HomeFeedClient({ initialItems }: Props) {
         if (Array.isArray(parsed.items) && parsed.items.length) {
           setItems(parsed.items.map(applyLocalSnapshot));
           setFirstLoading(false);
+          setFeedReady(true);
         }
       } catch {}
     }
-  }, [dataKey]);
+  }, [dataKey, hasServerItems]);
 
   // --- PERSIST ITEMS in SessionStorage
   React.useEffect(() => {
@@ -400,6 +405,16 @@ export default function HomeFeedClient({ initialItems }: Props) {
     let cancelled = false;
 
     const load = async () => {
+      const prev = prevFeedQueryRef.current;
+      const firstMount = prev === null;
+
+      if (firstMount && hasServerItems) {
+        // wir sind bereits "ready"
+        setFirstLoading(false);
+        setFeedReady(true);
+        prevFeedQueryRef.current = feedQuery;
+        return;
+      }
       const sp = new URLSearchParams(feedQuery);
       sp.set('limit', String(PAGE_SIZE));
       const qs = sp.toString() ? `?${sp.toString()}` : '';
@@ -414,8 +429,8 @@ export default function HomeFeedClient({ initialItems }: Props) {
         setEndReached(false);
         setFirstLoading(false);
 
-        // Nur nach oben scrollen, wenn der Filter sich wirklich geändert hat
-        // UND es KEIN back/forward war (History-Restore soll Position behalten).
+        setFeedReady(true);
+
         const prev = prevFeedQueryRef.current;
         const changed = prev !== null && prev !== feedQuery;
         if (changed && !isBackForwardNav()) {
@@ -425,19 +440,17 @@ export default function HomeFeedClient({ initialItems }: Props) {
       }
     };
 
-    // prev initialisieren, falls erster Mount
-    if (prevFeedQueryRef.current === null) {
-      prevFeedQueryRef.current = feedQuery;
-    }
-
     load();
     return () => {
       cancelled = true;
     };
-  }, [feedQuery, PAGE_SIZE, isBackForwardNav]);
+  }, [feedQuery, PAGE_SIZE, isBackForwardNav, hasServerItems]);
 
   // --- Polling: nur zählen
   React.useEffect(() => {
+    if (!feedReady) return;
+    if (!items.length) return;
+
     let active = true;
     const tick = async () => {
       try {
@@ -456,7 +469,7 @@ export default function HomeFeedClient({ initialItems }: Props) {
       active = false;
       clearInterval(id);
     };
-  }, [latestISO, feedQuery]);
+  }, [feedReady, items.length, latestISO, feedQuery]);
 
   // --- Neue Posts laden
   const loadNewPosts = React.useCallback(async () => {
@@ -564,7 +577,7 @@ export default function HomeFeedClient({ initialItems }: Props) {
       <div
         className={`
           fixed left-1/2 -translate-x-1/2 z-[70]
-          ${(loadingNew || (newCount > 0 && !atTop))
+          ${(feedReady && (loadingNew || (newCount > 0 && !atTop)))
             ? 'opacity-100 pointer-events-auto'
             : 'opacity-0 pointer-events-none'}
           transition-opacity duration-300
