@@ -301,7 +301,7 @@ export default function EditProfileTabs({
   <main className="mx-auto px-3" style={{ maxWidth: 760 }}>
     {/* Sticky Header */}
     <div
-      className="sticky top-'clamp(24px, 2.8vw, 50px)' bg-black/55 backdrop-blur border-b border-white/10"
+      className="sticky top-[clamp(24px,2.8vw,50px)] bg-black/55 backdrop-blur border-b border-white/10"
       style={{ ['--edit-sticky-h']: '48px' } as CSSVars}
     >
       <div className="h-[var(--edit-sticky-h)] flex items-center gap-2 px-2">
@@ -343,7 +343,7 @@ export default function EditProfileTabs({
           )}
         </div>
       </div>
-      <div style={{ height: 'calc(var(--edit-sticky-h) + 8px)' } as CSSVars} aria-hidden />
+      <div style={{ height: 20 }} aria-hidden />
 
 
       {tab === 'general' ? (

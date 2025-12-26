@@ -38,6 +38,7 @@ const toDbRole = (r: Profile['role'] | string): DbRole =>
 type ProfileWithBadges = Profile & {
   premiumUntil?: string | null;
   isFirstAdopter?: boolean;
+  kinks?: string[] | null;
 };
 
 const isPremiumActive = (iso?: string | null) =>
@@ -663,6 +664,7 @@ export default function ProfileHeader({
   const pwb = profile as ProfileWithBadges;
   const premiumActive = isPremiumActive(pwb.premiumUntil ?? null);
   const firstAdopter = !!pwb.isFirstAdopter;
+  const kinks = Array.isArray(pwb.kinks) ? pwb.kinks.filter(Boolean).slice(0, 10) : [];
 
   // Tip-Button State (nur Domme-Profile)
   const [tipMenuOpen, setTipMenuOpen] = React.useState(false);
@@ -794,6 +796,51 @@ export default function ProfileHeader({
       </div>
     );
   }
+
+  function KinksCard({
+  kinks,
+}: {
+  kinks?: string[] | null;
+}) {
+
+  const items = Array.isArray(kinks)
+    ? kinks.map(k => k.trim()).filter(Boolean)
+    : [];
+
+  if (items.length === 0) return null;
+
+  return (
+    <div className="mt-3 rounded-app border border-sub bg-card p-4">
+      <div className="text-sm font-semibold text-white/90 mb-3">
+        Kinks
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {items.map((k) => (
+          <span
+            key={k}
+            className="
+              text-[12px]
+              px-2.5 py-1
+              rounded-full
+              border
+              leading-none
+              select-none
+            "
+            style={{
+              color: 'var(--purple)',
+              background: 'rgba(139,92,246,0.10)',
+              borderColor: 'rgba(139,92,246,0.25)',
+            }}
+          >
+            {k}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 
   return (
     <section
@@ -1141,6 +1188,8 @@ export default function ProfileHeader({
         isOwner={isOwner}
         editHref={`/${locale}/u/${profile.username}/edit`}
       />
+
+      <KinksCard kinks={kinks} />
 
       <div className="mt-3 flex items-center text-[12px] leading-[1.35] text-white/65 flex-wrap gap-x-3 gap-y-1">
         {profile.location && (

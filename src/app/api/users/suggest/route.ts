@@ -29,6 +29,11 @@ export async function GET(req: Request) {
         displayName: true,
         avatarUrl: true,
         _count: { select: { followers: true } },
+        kinks: true,
+        bio: true,
+        role: true, 
+        premiumUntil: true, 
+        isFirstAdopter: true,
       },
     });
 
@@ -48,6 +53,11 @@ export async function GET(req: Request) {
       avatarUrl: u.avatarUrl,
       followers: u._count.followers,
       viewerFollows: viewerFollowsSet.has(u.id),
+      kinks: Array.isArray(u.kinks) ? u.kinks : (u.kinks ?? null),
+      bio: u.bio ?? null,
+      role: u.role ?? null,
+      premiumUntil: u.premiumUntil ? u.premiumUntil.toISOString() : null,
+      isFirstAdopter: !!u.isFirstAdopter,
     }));
 
     return NextResponse.json({ ok: true, users: payload });

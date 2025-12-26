@@ -16,6 +16,7 @@ export async function GET(req: Request) {
       { handle: { contains: q, mode: 'insensitive' } },
       { displayName: { contains: q, mode: 'insensitive' } },
       { bio: { contains: q, mode: 'insensitive' } },
+      { kinks: { has: q } },
     ],
   });
 
@@ -29,6 +30,7 @@ export async function GET(req: Request) {
       role: true,               
       premiumUntil: true,       
       isFirstAdopter: true,
+      kinks: true,
       _count: { select: { followers: true } },
     },
     orderBy:
@@ -52,6 +54,7 @@ export async function GET(req: Request) {
       role: u.role,
       premiumUntil: u.premiumUntil ? u.premiumUntil.toISOString() : null,
       isFirstAdopter: !!u.isFirstAdopter,
+      kinks: Array.isArray(u.kinks) ? u.kinks : (u.kinks ?? null),
     })),
   });
 }

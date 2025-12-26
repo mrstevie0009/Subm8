@@ -21,6 +21,20 @@ export async function updateProfileAction(formData: FormData) {
   const locale = String(formData.get('locale') ?? 'en');
   const websiteUrlRaw = String(formData.get('websiteUrl') ?? '').trim();
 
+  const kinksRaw = String(formData.get('kinks') ?? '[]');
+  let kinks: string[] = [];
+  try {
+    const parsed = JSON.parse(kinksRaw);
+    if (Array.isArray(parsed)) {
+      kinks = parsed
+        .map((x) => String(x).trim())
+        .filter(Boolean)
+        .slice(0, 10);
+    }
+  } catch {
+    kinks = [];
+  }
+
   const prismaRole: Role = roleStr === 'domme' ? 'DOMME' : 'SUBMISSIVE';
 
   const avatarUrlFromClient = formData.get('avatarUrl');
@@ -48,6 +62,7 @@ export async function updateProfileAction(formData: FormData) {
     nsfwDefault,
     role: prismaRole,
     websiteUrl,
+    kinks,
   };
   if (avatarUrl !== null) data.avatarUrl = avatarUrl;
   if (bannerUrl !== null) data.bannerUrl = bannerUrl;

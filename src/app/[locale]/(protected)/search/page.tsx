@@ -12,13 +12,13 @@ import { UserBadges } from '@/components/UserBadges';
 type PostCounts = { likes: number; comments: number; bookmarks: number };
 
 type Author = {
-  id: string;                                   
+  id: string; 
   handle: string;
   name: string;
   avatar?: string | null;
-  role?: 'DOMME' | 'SUBMISSIVE' | null;          
-  premiumUntil?: string | null;                  
-  isFirstAdopter?: boolean | null;               
+  role?: 'DOMME' | 'SUBMISSIVE' | null;
+  premiumUntil?: string | null;
+  isFirstAdopter?: boolean | null;
 };
 type PostItem = {
   id: string;
@@ -43,8 +43,9 @@ type SearchUser = {
   viewerFollows?: boolean;
   bio?: string | null;
   role?: 'DOMME' | 'SUBMISSIVE' | null; 
-  premiumUntil?: string | null;          
+  premiumUntil?: string | null;
   isFirstAdopter?: boolean | null;
+  kinks?: string[] | null;
 };
 
 function mapPostToFeedPost(p: PostItem): FeedPost {
@@ -70,10 +71,10 @@ function mapPostToFeedPost(p: PostItem): FeedPost {
         id: p.author.id ?? p.author.handle,
         handle: p.author.handle,
         displayName: p.author.name,
-        role: p.author.role ?? null,                
+        role: p.author.role ?? null,
         avatarUrl: p.author.avatar ?? null,
-        premiumUntil: p.author.premiumUntil ?? null, 
-        isFirstAdopter: !!p.author.isFirstAdopter,    
+        premiumUntil: p.author.premiumUntil ?? null,
+        isFirstAdopter: !!p.author.isFirstAdopter,
       },
       quote: null,
     },
@@ -101,6 +102,84 @@ const AVATAR_PH = '/images/avatar-placeholder.png';
 
 const isPremiumActive = (iso?: string | null) =>
   !!iso && new Date(iso).getTime() > Date.now();
+
+function norm(s: string) {
+  return s.trim().toLowerCase();
+}
+
+function uniq(arr: string[]) {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const x of arr) {
+    const k = norm(x);
+    if (!k || seen.has(k)) continue;
+    seen.add(k);
+    out.push(x.trim());
+  }
+  return out;
+}
+
+// einfache stabile Hash-Funktion (deterministisches "Random")
+function hashStr(input: string) {
+  let h = 2166136261;
+  for (let i = 0; i < input.length; i++) {
+    h ^= input.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+function pickDeterministic<T>(arr: T[], seed: string, max: number) {
+  const a = arr.slice();
+  if (a.length <= max) return a;
+
+  // “Shuffle” deterministisch
+  let h = hashStr(seed);
+  for (let i = a.length - 1; i > 0; i--) {
+    h = (h * 1664525 + 1013904223) >>> 0;
+    const j = h % (i + 1);
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a.slice(0, max);
+}
+
+// erkennt, ob der Query einen Kink enthält, den der User wirklich hat
+function findMatchedKink(userKinks: string[], query: string) {
+  const q = norm(query);
+  if (!q) return null;
+
+  // Match-Regel: “q enthält kink” oder “kink enthält q”
+  // damit funktioniert: "tpe", "humiliation", "wallet", etc.
+  const normalized = userKinks.map((k) => ({ raw: k, n: norm(k) }));
+  for (const k of normalized) {
+    if (!k.n) continue;
+    if (q.includes(k.n) || k.n.includes(q)) return k.raw;
+  }
+  return null;
+}
+
+function computeDisplayKinks(opts: {
+  userKinks?: string[] | null;
+  query: string;
+  userHandle: string;
+  max?: number;
+}) {
+  const max = opts.max ?? 5;
+  const base = uniq((opts.userKinks ?? []).filter(Boolean).map(String));
+  if (base.length === 0) return [];
+
+  const matched = findMatchedKink(base, opts.query);
+
+  // Wenn Query einen Kink matcht -> muss enthalten sein
+  if (matched) {
+    const rest = base.filter((k) => norm(k) !== norm(matched));
+    const picked = pickDeterministic(rest, `${opts.userHandle}|${opts.query}|rest`, max - 1);
+    return [matched, ...picked].slice(0, max);
+  }
+
+  // sonst “random” (deterministisch) 5 aus allen
+  return pickDeterministic(base, `${opts.userHandle}|${opts.query}|all`, max);
+}
 
 export default function SearchPage() {
   const router = useRouter();
@@ -401,6 +480,12 @@ export default function SearchPage() {
                         const avatar = u.avatarUrl ?? u.avatar ?? AVATAR_PH;
                         const name = u.displayName ?? u.name ?? u.handle;
                         const bio = u.bio ?? null;
+                        const displayKinks = computeDisplayKinks({
+                          userKinks: u.kinks ?? null,
+                          query: qParam,
+                          userHandle: u.handle,
+                          max: 4,
+                        });
                         const uiRole =
                           u.role === 'DOMME'
                             ? 'domme'
@@ -450,6 +535,24 @@ export default function SearchPage() {
                                   <p className="mt-1 text-sm opacity-80 break-words line-clamp-2">
                                     {bio}
                                   </p>
+                                )}
+
+                                {displayKinks.length > 0 && (
+                                  <div className="mt-2 flex flex-wrap gap-2">
+                                    {displayKinks.map((k) => (
+                                      <span
+                                        key={k}
+                                        className="text-[12px] px-2 py-1 rounded-full border"
+                                        style={{
+                                          color: 'var(--purple)',
+                                          background: 'rgba(139,92,246,0.12)',
+                                          borderColor: 'rgba(139,92,246,0.25)',
+                                        }}
+                                      >
+                                        {k}
+                                      </span>
+                                    ))}
+                                  </div>
                                 )}
                               </div>
                             </div>
@@ -526,6 +629,13 @@ export default function SearchPage() {
                     const name = u.displayName ?? u.name ?? u.handle;
                     const bio = u.bio ?? null; 
 
+                    const displayKinks = computeDisplayKinks({
+                      userKinks: u.kinks ?? null,
+                      query: qParam,
+                      userHandle: u.handle,
+                      max: 4,
+                    });
+
                     const uiRole =
                       u.role === 'DOMME'
                         ? 'domme'
@@ -569,6 +679,24 @@ export default function SearchPage() {
                               <p className="mt-1 text-sm opacity-80 break-words line-clamp-2">
                                 {bio}
                               </p>
+                            )}
+
+                            {displayKinks.length > 0 && (
+                              <div className="mt-2 flex flex-wrap gap-2">
+                                {displayKinks.map((k) => (
+                                  <span
+                                    key={k}
+                                    className="text-[12px] px-2 py-1 rounded-full border"
+                                    style={{
+                                      color: 'var(--purple)',
+                                      background: 'rgba(139,92,246,0.12)',
+                                      borderColor: 'rgba(139,92,246,0.25)',
+                                    }}
+                                  >
+                                    {k}
+                                  </span>
+                                ))}
+                              </div>
                             )}
                           </div>
                         </div>

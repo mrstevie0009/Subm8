@@ -21,6 +21,7 @@ model User {
   bannerUrl     String?
   websiteUrl    String?   @db.VarChar(255)
   bio           String?   @db.VarChar(300)
+  kinks         String[]  @default([])
   location      String?
   nsfwDefault   Boolean   @default(false)
   ageVerifiedAt DateTime?

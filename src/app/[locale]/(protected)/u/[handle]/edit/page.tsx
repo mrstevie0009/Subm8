@@ -39,6 +39,7 @@ export default async function Page({ params }: { params: Promise<Params> }) {
       bannerUrl: true,
       role: true,
       websiteUrl: true,
+      kinks: true,
     },
   });
   if (!u) notFound();
@@ -53,6 +54,7 @@ export default async function Page({ params }: { params: Promise<Params> }) {
     avatarUrl: u.avatarUrl ?? undefined,
     bannerUrl: u.bannerUrl ?? undefined,
     websiteUrl: u.websiteUrl ?? '',
+    kinks: u.kinks ?? [],
   };
 
   const isDomme = u.role === 'DOMME';

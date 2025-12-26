@@ -21,6 +21,19 @@ const FONT_OPTIONS = [
 ] as const;
 type FontKey = (typeof FONT_OPTIONS)[number]['key'];
 
+const KINK_OPTIONS = [
+  'no limits', 'Power Exchange', 'Control & Obedience', 'Ownership', 
+  'Training & Conditioning', 'Tasking', 'Financial Domination',  
+  'Tribute', 'Wallet Control', 'Debt Play', 'Silent Sending', 
+  'Total Power Exchange (TPE)', 'Slave / Ownership Fantasy', 'Hypnosis', 'Ignoring',
+  'Bondage', 'Domination', 'Submission', 'Roleplay',
+  'Praise', 'Degradation', 'Edging', 'Teasing', 'Sensory play',
+  'Impact play', 'Spanking', 'Choking', 'Foot worship',
+  'Petplay', 'CNC', 'Humiliation', 'Exhibitionism', 'Shemale',
+  'Voyeurism', 'Anal', 'Oral', 'Threesome', 'Femdom', 'Pegging',
+  'Latex', 'Leather', 'Handcuffs', 'Whips', 'SPH', 'golden shower',
+] as const;
+
 export type EditInitial = {
   displayName: string;
   username: string;
@@ -31,6 +44,7 @@ export type EditInitial = {
   avatarUrl?: string;
   bannerUrl?: string;
   websiteUrl?: string;
+  kinks?: string[];
 };
 
 type CheckState = 'idle' | 'checking' | 'ok' | 'taken' | 'error';
@@ -54,6 +68,9 @@ export default function EditProfileForm({
 
   const [avatarPreview, setAvatarPreview] = React.useState<string>(initial.avatarUrl || AVATAR_PH);
   const [bannerPreview, setBannerPreview] = React.useState<string>(initial.bannerUrl || BANNER_PH);
+
+  const [kinksOpen, setKinksOpen] = React.useState(false);
+  const [kinks, setKinks] = React.useState<string[]>(initial.kinks ?? []);
 
   const [offerOpen, setOfferOpen] = React.useState(false);
 
@@ -151,6 +168,10 @@ export default function EditProfileForm({
     setUsername(initial.username);
   }, [initial.displayName, initial.username]);
 
+  React.useEffect(() => {
+    setKinks(initial.kinks ?? []);
+  }, [initial.kinks]);
+
   // debounce effects
   React.useEffect(() => {
     if (displayDebRef.current) window.clearTimeout(displayDebRef.current);
@@ -237,6 +258,7 @@ export default function EditProfileForm({
     fd.append('location', (document.querySelector('input[name="location"]') as HTMLInputElement)?.value ?? '');
     fd.append('websiteUrl', (document.querySelector('input[name="websiteUrl"]') as HTMLInputElement)?.value ?? '');
     fd.append('role', initial.role);
+    fd.append('kinks', JSON.stringify(kinks.slice(0, 10)));
     if (uploads.avatarUrl) fd.append('avatarUrl', uploads.avatarUrl);
     if (uploads.bannerUrl) fd.append('bannerUrl', uploads.bannerUrl);
 
@@ -505,6 +527,40 @@ export default function EditProfileForm({
             />
           </Field>
 
+          <Field label="Kinks">
+            <div className="flex items-center justify-between gap-3">
+              <div className="text-sm text-white/70">
+                {kinks.length ? `${kinks.length}/10 selected` : 'No kinks selected'}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setKinksOpen(true)}
+                className="px-3 h-9 rounded-full border border-white/15 hover:bg-white/5"
+              >
+                {kinks.length ? 'Edit kinks' : 'Add kinks'}
+              </button>
+            </div>
+
+            {kinks.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {kinks.map((x) => (
+                  <span
+                    key={x}
+                    className="text-[12px] px-2 py-1 rounded-full border"
+                    style={{
+                      color: 'var(--purple)',
+                      background: 'rgba(139,92,246,0.12)',
+                      borderColor: 'rgba(139,92,246,0.25)',
+                    }}
+                  >
+                    {x}
+                  </span>
+                ))}
+              </div>
+            )}
+          </Field>
+
           <Field label={t('fields.website')}>
             <input
               name="websiteUrl"
@@ -591,7 +647,163 @@ export default function EditProfileForm({
         handle={username}
         teNS={te}
       />
+
+      <KinkPickerModal
+        open={kinksOpen}
+        onClose={() => setKinksOpen(false)}
+        options={KINK_OPTIONS}
+        value={kinks}
+        onChange={setKinks}
+        max={10}
+      />
     </form>
+  );
+}
+
+function KinkPickerModal({
+  open,
+  onClose,
+  options,
+  value,
+  onChange,
+  max = 10,
+}: {
+  open: boolean;
+  onClose: () => void;
+  options: readonly string[];
+  value: string[];
+  onChange: (next: string[]) => void;
+  max?: number;
+}) {
+  const [q, setQ] = React.useState('');
+
+  React.useEffect(() => {
+    if (!open) setQ('');
+  }, [open]);
+
+  const selected = React.useMemo(() => new Set(value), [value]);
+
+  const filtered = React.useMemo(() => {
+    const qq = q.trim().toLowerCase();
+    if (!qq) return options;
+    return options.filter((k) => k.toLowerCase().includes(qq));
+  }, [q, options]);
+
+  const toggle = (k: string) => {
+    const has = selected.has(k);
+    if (has) {
+      onChange(value.filter((x) => x !== k));
+      return;
+    }
+    if (value.length >= max) return;
+    onChange([...value, k]);
+  };
+
+  if (!open) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-[2200] grid place-items-center bg-black/70 backdrop-blur-sm p-4"
+      role="dialog"
+      aria-modal="true"
+      onMouseDown={(e) => e.currentTarget === e.target && onClose()}
+    >
+      <div className="w-full max-w-[720px] rounded-3xl border border-white/12 bg-[#111114] shadow-2xl overflow-hidden">
+        <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between gap-3">
+          <div>
+            <div className="text-[18px] font-semibold">Select kinks</div>
+            <div className="text-sm text-white/60">{value.length}/{max} selected</div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => onChange([])}
+              className="px-3 h-9 rounded-full border border-white/15 hover:bg-white/5"
+              disabled={value.length === 0}
+            >
+              Clear
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 h-9 rounded-full bg-[var(--purple)] text-white hover:opacity-95"
+            >
+              Done
+            </button>
+          </div>
+        </div>
+
+        <div className="p-4 border-b border-white/10">
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search kinks…"
+            className="w-full rounded-2xl bg-white/[.06] border border-white/10 px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--purple)]/40"
+          />
+          {value.length >= max && (
+            <div className="mt-2 text-sm text-yellow-200">
+              Max {max} reached. Remove one to add another.
+            </div>
+          )}
+        </div>
+
+        {value.length > 0 && (
+          <div className="px-4 pt-4">
+            <div className="text-xs text-white/60 mb-2">Selected</div>
+            <div className="flex flex-wrap gap-2">
+              {value.map((k) => (
+                <button
+                  key={k}
+                  type="button"
+                  onClick={() => toggle(k)}
+                  className="text-[12px] px-2 py-1 rounded-full border hover:opacity-95"
+                  style={{
+                    color: 'var(--purple)',
+                    background: 'rgba(139,92,246,0.12)',
+                    borderColor: 'rgba(139,92,246,0.25)',
+                  }}
+                  title="Remove"
+                >
+                  {k} <span className="opacity-70">×</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="p-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+            {filtered.map((k) => {
+              const isOn = selected.has(k);
+              const disabled = !isOn && value.length >= max;
+              return (
+                <button
+                  key={k}
+                  type="button"
+                  onClick={() => !disabled && toggle(k)}
+                  disabled={disabled}
+                  className={`rounded-2xl border px-3 py-2 text-left text-[13px] transition
+                    ${disabled ? 'opacity-40 cursor-not-allowed' : 'hover:bg-white/[.04]'}
+                  `}
+                  style={{
+                    borderColor: isOn ? 'rgba(139,92,246,0.35)' : 'rgba(255,255,255,0.12)',
+                    background: isOn ? 'rgba(139,92,246,0.14)' : 'rgba(255,255,255,0.03)',
+                    color: isOn ? 'var(--purple)' : 'rgba(255,255,255,0.9)',
+                  }}
+                >
+                  {k}
+                </button>
+              );
+            })}
+          </div>
+
+          {filtered.length === 0 && (
+            <div className="text-sm text-white/60">No results.</div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
 
