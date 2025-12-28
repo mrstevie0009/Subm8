@@ -32,17 +32,17 @@ export default async function LegalPage({ params }: { params: Promise<Params> })
       <p className="text-white/80">
         {t('content.line_1')}<br />
         Lyncora Media e.U.<br />
-        Salzburg<br />
-        5020, Österreich
+        5020 Salzburg<br />
+        Österreich
       </p>
       <p className="mt-3">
-        <strong>{t('content.contact_label')}:</strong> E-Mail: stephan.schmidbauer@subm8.com
+        <strong>{t('content.contact_label')}:</strong> stephan.schmidbauer@subm8.com
       </p>
       <p>
         <strong>{t('content.represented_by_label')}:</strong> Stephan Schmidbauer
       </p>
       <p>
-        <strong>{t('content.vat_label')}:</strong> Keine Umsatzsteuer gemäß § 6 Abs. 1 Z 27 UStG
+        <strong>{t('content.vat_label')}:</strong> No VAT according to § 6 para. 1 no. 27 UStG
       </p>
       <hr />
       <p className="text-sm text-white/70">
