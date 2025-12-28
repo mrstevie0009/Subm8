@@ -1,5 +1,13 @@
 {
   "editProfileForm": {
+    "bannerTip": {
+      "label": "Tipp:",
+      "text": "Du kannst hier auch GIF/Video als Banner verwenden. Videos/GIFs werden nicht zugeschnitten – empfohlen ist {ratio} (z. B. {examples}), {seconds}, {size}.",
+      "ratio": "3:1",
+      "examples": "1500×500 oder 1800×600",
+      "seconds": "3–8s",
+      "size": "unter 25 MB"
+    },
     "actions": {
       "changeAvatar": "Avatar ändern",
       "changeBanner": "Banner ändern",
@@ -20,7 +28,12 @@
     "hints": {
       "maxChars": "Max. {count} Zeichen",
       "roleFixed": "Rolle ist festgelegt",
-      "usernamePattern": "3–20 Zeichen, a–z, 0–9, _"
+      "usernamePattern": "3–20 Zeichen, a–z, 0–9, _",
+      "displayNameLength": "2–40 Zeichen erforderlich.",
+      "checkingAvailability": "Verfügbarkeit wird geprüft…",
+      "displayNameTaken": "Dieser Name ist bereits vergeben.",
+      "usernameTaken": "Benutzername ist bereits vergeben.",
+      "checkFailed": "Prüfung fehlgeschlagen. Bitte erneut versuchen."
     },
     "media": {
       "avatarAlt": "Avatar",

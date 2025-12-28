@@ -1,5 +1,13 @@
 {
   "editProfileForm": {
+    "bannerTip": {
+      "label": "Astuce :",
+      "text": "Tu peux aussi utiliser un GIF/une vidéo comme bannière. Les vidéos/GIF ne sont pas recadrés — recommandé : {ratio} (ex. {examples}), {seconds}, {size}.",
+      "ratio": "3:1",
+      "examples": "1500×500 ou 1800×600",
+      "seconds": "3–8s",
+      "size": "moins de 25 Mo"
+    },
     "actions": {
       "changeAvatar": "Changer l’avatar",
       "changeBanner": "Changer la bannière",
@@ -20,7 +28,12 @@
     "hints": {
       "maxChars": "Max. {count} caractères",
       "roleFixed": "Le rôle est fixé",
-      "usernamePattern": "3–20 caractères, a–z, 0–9, _"
+      "usernamePattern": "3–20 caractères, a–z, 0–9, _",
+      "displayNameLength": "2–40 caractères requis.",
+      "checkingAvailability": "Vérification de la disponibilité…",
+      "displayNameTaken": "Le nom d’affichage est déjà utilisé.",
+      "usernameTaken": "Le nom d’utilisateur est déjà pris.",
+      "checkFailed": "Échec de la vérification. Réessaie."
     },
     "media": {
       "avatarAlt": "Avatar",

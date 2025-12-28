@@ -34,9 +34,20 @@ export async function POST(req: Request) {
     const rawKind = (url.searchParams.get('kind') || 'post-media') as Kind;
     const kind: Kind = (ALLOWED_KINDS.has(rawKind) ? rawKind : 'post-media') as Kind;
 
-    if ((kind === 'avatars' || kind === 'banners') &&
-        files.some(f => !/^image\//.test(f.type || ''))) {
+    // Avatare: nur Bilder
+    if (kind === 'avatars' && files.some(f => !/^image\//.test(f.type || ''))) {
       return NextResponse.json({ error: 'images only' }, { status: 400 });
+    }
+
+    // Banner: Bilder + Videos (inkl. GIF = image/gif)
+    if (
+      kind === 'banners' &&
+      files.some(f => {
+        const t = (f.type || '').toLowerCase();
+        return !(t.startsWith('image/') || t.startsWith('video/'));
+      })
+    ) {
+      return NextResponse.json({ error: 'images or videos only' }, { status: 400 });
     }
 
     const items = await Promise.all(

@@ -30,6 +30,12 @@ function cdnify(u?: string | null): string {
   return u;                                            // leave anything else untouched (placeholders, data:, etc.)
 }
 
+function isVideoUrl(url?: string | null) {
+  if (!url) return false;
+  const u = url.split('?')[0].toLowerCase();
+  return u.endsWith('.mp4') || u.endsWith('.webm') || u.endsWith('.mov') || u.endsWith('.m4v');
+}
+
 // Falls dein Profile.role mal klein- oder großgeschrieben sein kann:
 const toDbRole = (r: Profile['role'] | string): DbRole =>
   String(r).toUpperCase() === 'DOMME' ? 'DOMME' : 'SUBMISSIVE';
@@ -932,20 +938,34 @@ export default function ProfileHeader({
       {/* Banner */}
       <div className="relative" style={{ height: 'var(--bannerH)' }}>
         <div className={`absolute inset-0 bg-white/10 ${bannerLoaded ? 'opacity-0' : 'opacity-100'} transition-opacity`} />
-        <Image
-          src={bannerSrc}
-          alt=""
-          fill
-          className="object-cover"
-          sizes="100vw"
-          priority
-          placeholder="blur"
-          blurDataURL={BLUR_PIXEL}
-          onLoad={() => setBannerLoaded(true)}
-          onError={() => setBannerSrc(BANNER_PH)}
-          fetchPriority="high"
-          decoding="async"
-        />
+        {isVideoUrl(bannerSrc) ? (
+          <video
+            src={bannerSrc}
+            className="absolute inset-0 w-full h-full object-cover"
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="metadata"
+            onLoadedData={() => setBannerLoaded(true)}
+            onError={() => setBannerSrc(BANNER_PH)}
+          />
+        ) : (
+          <Image
+            src={bannerSrc}
+            alt=""
+            fill
+            className="object-cover"
+            sizes="100vw"
+            priority
+            placeholder="blur"
+            blurDataURL={BLUR_PIXEL}
+            onLoad={() => setBannerLoaded(true)}
+            onError={() => setBannerSrc(BANNER_PH)}
+            fetchPriority="high"
+            decoding="async"
+          />
+        )}
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/30 via-black/0 to-black/35" />
         <div className="absolute top-2 left-2 z-10">
           <BackButton

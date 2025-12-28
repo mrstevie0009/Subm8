@@ -22,9 +22,10 @@ const FONT_OPTIONS = [
 type FontKey = (typeof FONT_OPTIONS)[number]['key'];
 
 const KINK_OPTIONS = [
-  'no limits', 'Power Exchange', 'Control & Obedience', 'Ownership', 
-  'Training & Conditioning', 'Tasking', 'Financial Domination',  
-  'Tribute', 'Wallet Control', 'Debt Play', 'Silent Sending', 
+  'Power Exchange', 'Techdommes', 'ATM', 
+  'Control & Obedience', 'Ownership', 'Training & Conditioning', 
+  'Tasking', 'Financial Domination', 'Tribute', 
+  'Wallet Control', 'Debt Play', 'Silent Sending', 
   'Total Power Exchange (TPE)', 'Slave / Ownership Fantasy', 'Hypnosis', 'Ignoring',
   'Bondage', 'Domination', 'Submission', 'Roleplay',
   'Praise', 'Degradation', 'Edging', 'Teasing', 'Sensory play',
@@ -96,6 +97,11 @@ export default function EditProfileForm({
   const displayDebRef = React.useRef<number | null>(null);
   const handleDebRef = React.useRef<number | null>(null);
 
+  const [bannerIsVideo, setBannerIsVideo] = React.useState(() => {
+    const u = (initial.bannerUrl || '').split('?')[0].toLowerCase();
+    return u.endsWith('.mp4') || u.endsWith('.webm') || u.endsWith('.mov') || u.endsWith('.m4v');
+  });
+
   // helpers
   const sanitizeHandle = (v: string) => v.toLowerCase().replace(/[^a-z0-9_]/g, '');
   const validHandle = (v: string) => /^[a-z0-9_]{3,20}$/.test(v);
@@ -154,6 +160,8 @@ export default function EditProfileForm({
   React.useEffect(() => {
     setAvatarPreview(initial.avatarUrl || AVATAR_PH);
     setBannerPreview(initial.bannerUrl || BANNER_PH);
+    const u = (initial.bannerUrl || '').split('?')[0].toLowerCase();
+    setBannerIsVideo(u.endsWith('.mp4') || u.endsWith('.webm') || u.endsWith('.mov') || u.endsWith('.m4v'));
     setAvatarFile(null);
     setBannerFile(null);
     setCropOpen(false);
@@ -271,9 +279,36 @@ export default function EditProfileForm({
 
   const onBannerChange = (file?: File | null) => {
     if (!file) return;
+
+    const t = (file.type || '').toLowerCase();
+    const isImage = t.startsWith('image/');
+    const isGif = t === 'image/gif';
+    const isVideo = t.startsWith('video/');
+
     const url = URL.createObjectURL(file);
-    setBannerCropSrc(url);
-    setBannerCropOpen(true);
+
+    // Video oder GIF: kein Crop, direkt übernehmen
+    if (isVideo || isGif) {
+      setBannerIsVideo(isVideo);
+      setBannerPreview((prev) => { revoke(prev); return url; });
+      setBannerFile(file);
+      // sicherstellen, dass kein Crop-Flow offen bleibt
+      setBannerCropOpen(false);
+      revoke(bannerCropSrc);
+      setBannerCropSrc(null);
+      return;
+    }
+
+    // Normale Bilder: Cropper
+    if (isImage) {
+      setBannerIsVideo(false);
+      setBannerCropSrc(url);
+      setBannerCropOpen(true);
+      return;
+    }
+
+    // Fallback: nicht erlaubt
+    revoke(url);
   };
 
   const onAvatarChange = (file?: File | null) => {
@@ -317,15 +352,27 @@ export default function EditProfileForm({
       {/* Banner + Avatar */}
       <div className="relative">
         <div className="relative overflow-hidden" style={{ height: bannerH }}>
-          <Image
-            src={bannerPreview || BANNER_PH}
-            alt={t('media.bannerAlt')}
-            fill
-            className="object-cover"
-            sizes="(min-width:768px) 720px, 100vw"
-            priority
-            unoptimized
-          />
+          {bannerIsVideo ? (
+            <video
+              src={bannerPreview}
+              className="absolute inset-0 w-full h-full object-cover"
+              autoPlay
+              muted
+              loop
+              playsInline
+              preload="metadata"
+            />
+          ) : (
+            <Image
+              src={bannerPreview || BANNER_PH}
+              alt={t('media.bannerAlt')}
+              fill
+              className="object-cover"
+              sizes="(min-width:768px) 720px, 100vw"
+              priority
+              unoptimized
+            />
+          )}
           <label
             title={t('actions.changeBanner')}
             style={{ position: 'absolute', inset: 0, display: 'block', cursor: 'pointer' }}
@@ -356,13 +403,33 @@ export default function EditProfileForm({
             </span>
             <input
               type="file"
-              accept="image/*"
+              accept="image/*,video/*"
               name="banner"
               className="sr-only"
               aria-label={t('actions.changeBanner')}
-              onChange={(e) => onBannerChange(e.currentTarget.files?.[0])}
+              onChange={(e) => {
+                onBannerChange(e.currentTarget.files?.[0]);
+                e.currentTarget.value = '';
+              }}
             />
           </label>
+        </div>
+
+        <div
+          className="px-4 pb-2 border-b border-white/10 bg-black/30"
+          style={{
+            paddingLeft: avatarSize + 24,
+          }}
+        >
+          <div className="text-xs text-white/70 leading-relaxed">
+            <span className="font-medium text-white/80">{t('bannerTip.label')}</span>{' '}
+            {t('bannerTip.text', {
+              ratio: t('bannerTip.ratio'),
+              examples: t('bannerTip.examples'),
+              seconds: t('bannerTip.seconds'),
+              size: t('bannerTip.size'),
+            })}
+          </div>
         </div>
 
         <div className="absolute left-4 z-10" style={{ bottom: -(avatarSize * avatarOverlap) }}>
@@ -446,16 +513,16 @@ export default function EditProfileForm({
             {/* Helper Row */}
             <div className="mt-1 text-xs">
               {displayName && !validDisplay(displayName) && (
-                <span className="text-red-300">2–40 characters required.</span>
+                <span className="text-red-300">{t('hints.displayNameLength')}</span>
               )}
               {validDisplay(displayName) && !unchangedDisplay && displayState === 'checking' && (
-                <span className="text-white/70">Checking availability…</span>
+                <span className="text-white/70">{t('hints.checkingAvailability')}</span>
               )}
               {validDisplay(displayName) && !unchangedDisplay && displayState === 'taken' && (
-                <span className="text-red-300">{displayMsg || 'Display name already in use.'}</span>
+                <span className="text-red-300">{displayMsg || t('hints.displayNameTaken')}</span>
               )}
               {validDisplay(displayName) && !unchangedDisplay && displayState === 'error' && (
-                <span className="text-yellow-200">{displayMsg || 'Check failed.'}</span>
+                <span className="text-yellow-200">{displayMsg || t('hints.checkFailed')}</span>
               )}
             </div>
           </div>
@@ -483,13 +550,13 @@ export default function EditProfileForm({
                 <span className="text-red-300">{t('hints.usernamePattern')}</span>
               )}
               {validHandle(username) && !unchangedHandle && handleState === 'checking' && (
-                <span className="text-white/70">Checking availability…</span>
+                <span className="text-white/70">{t('hints.checkingAvailability')}</span>
               )}
               {validHandle(username) && !unchangedHandle && handleState === 'taken' && (
-                <span className="text-red-300">{handleMsg || 'Username is already taken.'}</span>
+                <span className="text-red-300">{handleMsg || t('hints.usernameTaken')}</span>
               )}
               {validHandle(username) && !unchangedHandle && handleState === 'error' && (
-                <span className="text-yellow-200">{handleMsg || 'Check failed.'}</span>
+                <span className="text-yellow-200">{handleMsg || t('hints.checkFailed')}</span>
               )}
             </div>
 
