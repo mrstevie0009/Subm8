@@ -31,18 +31,18 @@ export default async function LegalPage({ params }: { params: Promise<Params> })
     >
       <p className="text-white/80">
         {t('content.line_1')}<br />
-        [Dein Firmenname oder bürgerlicher Name]<br />
-        [Straße Hausnummer]<br />
-        [PLZ, Stadt, Land]
+        Lyncora Media e.U.<br />
+        Salzburg<br />
+        5020, Österreich
       </p>
       <p className="mt-3">
-        <strong>{t('content.contact_label')}:</strong> E-Mail: [deine Mailadresse]
+        <strong>{t('content.contact_label')}:</strong> E-Mail: stephan.schmidbauer@subm8.com
       </p>
       <p>
-        <strong>{t('content.represented_by_label')}:</strong> [Name, falls juristische Person]
+        <strong>{t('content.represented_by_label')}:</strong> Stephan Schmidbauer
       </p>
       <p>
-        <strong>{t('content.vat_label')}:</strong> [falls vorhanden]
+        <strong>{t('content.vat_label')}:</strong> Keine Umsatzsteuer gemäß § 6 Abs. 1 Z 27 UStG
       </p>
       <hr />
       <p className="text-sm text-white/70">
