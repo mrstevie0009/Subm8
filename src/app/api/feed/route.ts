@@ -45,6 +45,24 @@ function mapUploaded(
   });
 }
 
+function parseKinks(searchParams: URLSearchParams) {
+  const raw = (searchParams.get('kinks') || '').trim();
+  if (!raw) return [] as string[];
+
+  // Format ist bei dir: encodeURIComponent pro Item, dann per "," getrennt
+  const arr = raw
+    .split(',')
+    .map((s) => {
+      try { return decodeURIComponent(s).trim(); } catch { return s.trim(); }
+    })
+    .filter(Boolean)
+    .slice(0, 10);
+
+  // Optional: harte Längenbegrenzung, um Missbrauch zu vermeiden
+  return arr.filter((x) => x.length <= 80);
+}
+
+
 function parseFilters(searchParams: URLSearchParams) {
   const feedRaw = (searchParams.get('feed') || '')
     .split(',')
@@ -59,12 +77,14 @@ function parseFilters(searchParams: URLSearchParams) {
     roleParam === 'dommes' ? 'DOMME' :
     roleParam === 'subs'   ? 'SUBMISSIVE' : null;
 
-  return { following, sort, role };
+  const kinks = parseKinks(searchParams);
+
+  return { following, sort, role, kinks };
 }
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
-  const { following, sort, role } = parseFilters(searchParams);
+  const { following, sort, role, kinks } = parseFilters(searchParams);
 
   // NEU: Pagination nach unten
   const beforeISO = searchParams.get('before');
@@ -154,6 +174,25 @@ export async function GET(req: Request) {
     return { allowed, communitiesById: byId };
   }
 
+  const kinkWhere =
+  kinks.length === 0
+    ? {}
+    : {
+        OR: [
+          // Normaler Post (inkl. Quote-Post): author muss matchen
+          {
+            repostOfId: null,
+            author: { kinks: { hasSome: kinks } },
+          },
+          // Repost: original author muss matchen
+          {
+            repostOf: {
+              author: { kinks: { hasSome: kinks } },
+            },
+          },
+        ],
+      };
+
   // Hilfsfunktion: Role-Filter auf den *Inhalt* (bei Repost der Original-Author, sonst Post-Author)
   const passesRoleFilter = (p: {
     author: { role: Role }; repostOf?: { author: { role: Role } } | null;
@@ -169,6 +208,7 @@ export async function GET(req: Request) {
       where: {
         ...(sinceDate ? { createdAt: { gt: sinceDate } } : {}),
         ...(following ? { authorId: { in: Array.from(followingUserIds) } } : {}),
+        ...kinkWhere,
       },
       select: {
         id: true,
@@ -202,6 +242,7 @@ export async function GET(req: Request) {
       ...(sinceDate ? { createdAt: { gt: sinceDate } } : {}),
       ...(beforeDate ? { createdAt: { lt: beforeDate } } : {}), // NEU: nach unten paginieren
       ...(following ? { authorId: { in: Array.from(followingUserIds) } } : {}),
+      ...kinkWhere,
     },
     orderBy,
     include: {

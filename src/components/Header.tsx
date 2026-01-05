@@ -8,6 +8,8 @@ import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { useScrollHide } from '../hooks/useScrollHide';
 import { useSession } from 'next-auth/react';
 import { useTranslations } from 'next-intl';
+import KinkPickerModal from '@/components/KinkPickModal';
+import { KINK_OPTIONS } from '@/lib/kinks';
 
 
 
@@ -74,6 +76,12 @@ function FeedFilterToggle({ open, setOpen }: { open: boolean; setOpen: (v: boole
     return new Set(vals.filter(x => allowed.has(x)) as Array<'following' | 'new' | 'top'>);
   }, [searchParams]);
 
+  const urlKinks = React.useMemo(() => {
+    const v = searchParams.get('kinks'); // comma separated
+    if (!v) return [] as string[];
+    return v.split(',').map(s => decodeURIComponent(s).trim()).filter(Boolean).slice(0, 10);
+  }, [searchParams]);
+
   const urlRole = ((): 'dommes' | 'subs' | null => {
     const v = searchParams.get('role');
     if (v === 'dommes' || v === 'subs') return v;
@@ -87,6 +95,9 @@ function FeedFilterToggle({ open, setOpen }: { open: boolean; setOpen: (v: boole
   );
   const [roleType, setRoleType] = React.useState<'dommes' | 'subs' | null>(urlRole);
 
+  const [kinksOpen, setKinksOpen] = React.useState(false);
+  const [kinks, setKinks] = React.useState<string[]>(urlKinks);
+
   // Standard-Zustand: nur "new" (oder gar kein feed-Param), kein following, keine Rolle
   const isDefaultFilter = React.useMemo(() => {
     const onlyNew =
@@ -94,8 +105,9 @@ function FeedFilterToggle({ open, setOpen }: { open: boolean; setOpen: (v: boole
     const noFollowing = !urlFeedSet.has('following');
     const noTop = !urlFeedSet.has('top');
     const noRole = urlRole == null;
-    return onlyNew && noFollowing && noTop && noRole;
-  }, [urlFeedSet, urlRole]);
+    const noKinks = urlKinks.length === 0;
+    return onlyNew && noFollowing && noTop && noRole && noKinks;
+  }, [urlFeedSet, urlRole, urlKinks]);
 
 
   // Beim Öffnen aus URL spiegeln
@@ -104,7 +116,8 @@ function FeedFilterToggle({ open, setOpen }: { open: boolean; setOpen: (v: boole
     setFollowing(urlFeedSet.has('following'));
     setFeedType(urlFeedSet.has('new') ? 'new' : urlFeedSet.has('top') ? 'top' : 'new');
     setRoleType(urlRole);
-  }, [open, urlFeedSet, urlRole]);
+    setKinks(urlKinks);
+  }, [open, urlFeedSet, urlRole, urlKinks]);
 
   // Outside click / ESC
   React.useEffect(() => {
@@ -154,10 +167,13 @@ function FeedFilterToggle({ open, setOpen }: { open: boolean; setOpen: (v: boole
     const feedCsv = feedParts.join(',');
     const roleVal = roleType ?? undefined;
 
+    const kinkCsv = kinks.slice(0, 10).map(encodeURIComponent).join(',');
+
     router.push(
       withQuery(pathname, searchParams, {
         feed: feedCsv || undefined,
         role: roleVal,
+        kinks: kinkCsv || undefined,
       }),
       { scroll: false }
     );
@@ -168,6 +184,7 @@ function FeedFilterToggle({ open, setOpen }: { open: boolean; setOpen: (v: boole
     setFollowing(false);
     setFeedType('new');  // Standard wieder aktiv
     setRoleType(null);
+    setKinks([]);
   };
 
   // Checkbox/Häkchen
@@ -280,6 +297,53 @@ function FeedFilterToggle({ open, setOpen }: { open: boolean; setOpen: (v: boole
             );
           })}
         </ul>
+
+        {/* Divider */}
+        <div className="mx-3 my-1 h-px bg-white/10" />
+
+        {/* Section 4: Kinks */}
+        <div className="py-2 px-4">
+          <div className="flex items-center justify-between gap-2">
+            <div className="text-[13px] text-white/70">Kinks</div>
+            <button
+              type="button"
+              onClick={() => setKinksOpen(true)}
+              className="px-3 h-8 rounded-full border border-white/15 hover:bg-white/5 text-[13px]"
+            >
+              {kinks.length ? 'Edit kinks' : 'Add kink'}
+            </button>
+          </div>
+
+          {kinks.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {kinks.map((x) => (
+                <button
+                  key={x}
+                  type="button"
+                  onClick={() => setKinks(prev => prev.filter(k => k !== x))}
+                  className="text-[12px] px-2 py-1 rounded-full border hover:opacity-95"
+                  style={{
+                    color: 'var(--purple)',
+                    background: 'rgba(139,92,246,0.12)',
+                    borderColor: 'rgba(139,92,246,0.25)',
+                  }}
+                  title="Remove"
+                >
+                  {x} <span className="opacity-70">×</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <KinkPickerModal
+          open={kinksOpen}
+          onClose={() => setKinksOpen(false)}
+          options={KINK_OPTIONS}
+          value={kinks}
+          onChange={(next) => setKinks(next.slice(0, 10))}
+          max={10}
+        />
 
         {/* Footer */}
         <div className="flex items-center justify-between gap-2 px-3 py-3 border-t border-white/10">

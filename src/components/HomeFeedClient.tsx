@@ -251,8 +251,10 @@ export default function HomeFeedClient({ initialItems }: Props) {
     const sp = new URLSearchParams();
     const feed = searchParams.get('feed');
     const role = searchParams.get('role');
+    const kinks = searchParams.get('kinks');
     if (feed) sp.set('feed', feed);
     if (role) sp.set('role', role);
+    if (kinks) sp.set('kinks', kinks);
     return sp.toString();
   }, [searchParams]);
 

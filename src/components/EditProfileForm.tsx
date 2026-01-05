@@ -22,13 +22,13 @@ const FONT_OPTIONS = [
 type FontKey = (typeof FONT_OPTIONS)[number]['key'];
 
 const KINK_OPTIONS = [
-  'Power Exchange', 'Techdommes', 'ATM', 
+  'Power Exchange', '2DFD', 'Techdommes', 'ATM', 
   'Control & Obedience', 'Ownership', 'Training & Conditioning', 
-  'Tasking', 'Financial Domination', 'Tribute', 
+  'Tasking', 'Financial Domination', 'Blackmail',
   'Wallet Control', 'Debt Play', 'Silent Sending', 
-  'Total Power Exchange (TPE)', 'Slave / Ownership Fantasy', 'Hypnosis', 'Ignoring',
-  'Bondage', 'Domination', 'Submission', 'Roleplay',
-  'Praise', 'Degradation', 'Edging', 'Teasing', 'Sensory play',
+  'Total Power Exchange (TPE)', 'Slave', 'Hypnosis', 'Ignoring',
+  'Bondage', 'Roleplay', 'Praise', 'Degradation', 
+  'Edging', 'Teasing', 'Sensory play',
   'Impact play', 'Spanking', 'Choking', 'Foot worship',
   'Petplay', 'CNC', 'Humiliation', 'Exhibitionism', 'Shemale',
   'Voyeurism', 'Anal', 'Oral', 'Threesome', 'Femdom', 'Pegging',
