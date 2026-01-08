@@ -6,6 +6,8 @@ import { getCurrentUser } from "@/lib/currentUser";
 import { cancelAutodrainAction } from "@/app/actions/autodrain";
 import { createTranslator } from "next-intl";
 import { notFound } from "next/navigation";
+import PayoutButton from "@/components/PayoutButton";
+import PayoutBalances from "@/components/PayoutBalances";
 
 type Params = { locale: string };
 
@@ -28,10 +30,8 @@ function parseMeta(input: unknown): PaymentMeta {
 type AutoDrainCadence = "DAILY" | "WEEKLY" | "MONTHLY";
 
 export default async function PaymentsPage({ params }: { params: Promise<Params> }) {
-  // Dein Projekt gibt params als Promise – also so lassen
   const { locale } = await params;
 
-  // Messages manuell laden & Translator bauen (Namespace = "payment")
   let t: ReturnType<typeof createTranslator>;
   try {
     const paymentFile = (await import(`@/messages/${locale}/payments.json`)).default;
@@ -85,6 +85,7 @@ export default async function PaymentsPage({ params }: { params: Promise<Params>
     orderBy: { createdAt: "desc" },
   });
 
+  // Earned (DB)
   const balanceCents = payments
     .filter((p) => p.payeeId === me.id && p.status === "SUCCEEDED")
     .reduce((acc, p) => acc + (p.amountNetToDommeCents || 0), 0);
@@ -128,7 +129,9 @@ export default async function PaymentsPage({ params }: { params: Promise<Params>
     orderBy: { nextChargeAt: "asc" },
   });
 
-  const counterpartIds = Array.from(new Set([...outgoingSubs.map((s) => s.dommeId), ...incomingSubs.map((s) => s.subId)]));
+  const counterpartIds = Array.from(
+    new Set([...outgoingSubs.map((s) => s.dommeId), ...incomingSubs.map((s) => s.subId)])
+  );
   const counterparts =
     counterpartIds.length > 0
       ? await prisma.user.findMany({
@@ -145,8 +148,8 @@ export default async function PaymentsPage({ params }: { params: Promise<Params>
     <section className="rounded-app border border-sub overflow-hidden shadow-app">
       {/* Header */}
       <header className="px-4 pt-3 pb-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
             <Link
               href={`/${locale}`}
               aria-label={t("paymentsPage.ariaBack")}
@@ -155,42 +158,29 @@ export default async function PaymentsPage({ params }: { params: Promise<Params>
             >
               <ChevronLeftIcon />
             </Link>
-            <div className="ml-2 sm:ml-3">
-              <h1 className="text-[22px] font-bold leading-tight">{t("paymentsPage.title")}</h1>
-              <div className="text-sm text-white/60">@{handle}</div>
+            <div className="ml-2 sm:ml-3 min-w-0">
+              <h1 className="text-[22px] font-bold leading-tight truncate">{t("paymentsPage.title")}</h1>
+              <div className="text-sm text-white/60 truncate">@{handle}</div>
             </div>
           </div>
 
-          <button
-            type="button"
-            className="px-4 py-1.5 rounded-full bg-[var(--purple)] hover:opacity-95 text-white"
-            title={t("paymentsPage.payoutTooltip")}
-          >
-            {t("paymentsPage.payoutBtn")}
-          </button>
+          <div className="shrink-0">
+            <PayoutButton tooltip={t("paymentsPage.payoutTooltip")} />
+          </div>
         </div>
       </header>
 
-      {/* Balance */}
-      <section className="border-y border-white/10">
-        <div className="px-4 py-8 md:py-10 min-h-[50px] flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="text-[17px] font-medium opacity-90 whitespace-nowrap">
-              {t("paymentsPage.balance.title")}
-            </div>
-            <a
-              href={csvUrl}
-              className="px-4 py-2 rounded-full bg-[var(--purple)]/90 hover:bg-[var(--purple)] text-white text-[14px] whitespace-nowrap"
-            >
-              {t("paymentsPage.balance.export")}
-            </a>
-          </div>
-
-          <div className="px-5 py-2 font-semibold whitespace-nowrap text-[15px]">
-            {fmtMoney(balanceCents, balanceCurrency, locale)}
-          </div>
-        </div>
-      </section>
+      {/* Balance (Earned DB + Available Stripe) */}
+      <PayoutBalances
+        earnedCents={balanceCents}
+        earnedCurrency={balanceCurrency}
+        csvUrl={csvUrl}
+        tBalanceTitle={t("paymentsPage.balance.title")}
+        tExportLabel={t("paymentsPage.balance.export")}
+        tEarnedLabel={"Earned (DB)"}
+        tAvailableLabel={"Available (Stripe)"}
+        tAvailableHint={"Das ist dein Stripe-Connect Guthaben, das du tatsächlich auszahlen kannst."}
+      />
 
       {/* Active Autodrain */}
       <section className="px-4 py-6 border-b border-white/10">

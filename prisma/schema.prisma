@@ -72,7 +72,7 @@ model User {
 
   notificationSettings UserNotificationSettings?
   reportsMade          ContentReport[]
-  conversationReports ConversationReport[] @relation("ConversationReportsByUser")
+  conversationReports  ConversationReport[]      @relation("ConversationReportsByUser")
 
   // Gegenrelation für CommentLike
   commentLikes CommentLike[]
@@ -110,26 +110,34 @@ model User {
 
   conversationMemberships ConversationMember[] // NEU: Gruppenteilnahmen
 
-  @@index([verifiedByUserId])
-  @@index([premiumUntil])
-
   notificationSeenAsRecipient NotificationSeenCursor[] @relation("NotificationSeenRecipient")
   notificationSeenAsActor     NotificationSeenCursor[] @relation("NotificationSeenActor")
+
+  //STRIPE
+  stripeCustomerId       String?
+  stripeDefaultPmId      String? // optional
+  stripeConnectAccountId String? // nur für Dommes (Creator)
+  stripeAccountId        String? @unique
+
+  @@index([verifiedByUserId])
+  @@index([premiumUntil])
+  @@index([stripeCustomerId])
+  @@index([stripeConnectAccountId])
 }
 
 /// --- Brute-force / Login Throttle -----------------------------------------
 /// Speichert Fehlversuche pro (ip, identifier) und erlaubt temp/permanent Blocks.
 model LoginThrottle {
-  id           String   @id @default(cuid())
-  createdAt    DateTime @default(now())
-  lastAttempt  DateTime @updatedAt
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+  lastAttempt DateTime @updatedAt
 
-  ip          String
-  identifier  String   // normalisierte E-Mail oder @handle (lowercase)
-  fails       Int      @default(0)
+  ip         String
+  identifier String // normalisierte E-Mail oder @handle (lowercase)
+  fails      Int    @default(0)
 
   blockedUntil DateTime?
-  permanent    Boolean  @default(false)
+  permanent    Boolean   @default(false)
   note         String?
 
   @@unique([ip, identifier], name: "LoginThrottle_ip_identifier_unique")
@@ -219,7 +227,7 @@ model Conversation {
   updatedAt DateTime         @updatedAt
   type      ConversationType @default(DM)
   title     String?
-  avatarUrl  String?
+  avatarUrl String?
 
   createdById String?
   createdBy   User?   @relation("ConversationCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
@@ -230,19 +238,19 @@ model Conversation {
   domme         User?   @relation("domme", fields: [dommeId], references: [id], onDelete: Cascade)
   sub           User?   @relation("sub", fields: [subId], references: [id], onDelete: Cascade)
 
-  unreadForDomme Int                  @default(0)
-  unreadForSub   Int                  @default(0)
+  unreadForDomme Int @default(0)
+  unreadForSub   Int @default(0)
 
   hiddenForDomme DateTime?
   hiddenForSub   DateTime?
 
-  members        ConversationMember[]
-  messages       Message[]
-  tips           Tip[]
-  lastMessageId  String?              @unique
-  lastMessageAt  DateTime?
+  members       ConversationMember[]
+  messages      Message[]
+  tips          Tip[]
+  lastMessageId String?              @unique
+  lastMessageAt DateTime?
 
-  reports       ConversationReport[] 
+  reports ConversationReport[]
 
   @@unique([type, dommeId, subId], name: "Conversation_type_domme_sub_unique")
   @@index([dommeId])
@@ -250,9 +258,8 @@ model Conversation {
   @@index([createdById]) // (optional aber sinnvoll)
   @@index([updatedAt(sort: Desc)], name: "Conversation_updated_desc_idx")
   @@index([lastMessageAt(sort: Desc)], name: "Conversation_lastMessageAt_desc_idx")
-
   @@index([type, dommeId, hiddenForDomme], name: "Conversation_dm_domme_hidden_idx")
-  @@index([type, subId,   hiddenForSub],   name: "Conversation_dm_sub_hidden_idx")
+  @@index([type, subId, hiddenForSub], name: "Conversation_dm_sub_hidden_idx")
 }
 
 model ConversationMember {
@@ -327,7 +334,7 @@ model Tip {
   toUserId       String
   amountCents    Int
   currency       String        @db.VarChar(3)
-  methodRef      String?
+  methodRef      String?       @unique
   status         TipStatus     @default(PENDING)
   note           String?       @db.VarChar(200)
   conversationId String?
@@ -560,7 +567,6 @@ model Like {
   @@id([userId, postId])
   @@index([postId])
   @@index([userId])
-
   @@index([userId, createdAt])
   @@index([createdAt])
 }
@@ -580,7 +586,7 @@ model Payment {
   vatAmountCents        Int           @default(0)
   currency              String        @default("EUR")
   status                PaymentStatus
-  externalRef           String?
+  externalRef           String? // = stripe payment_intent id
   paymentProvider       String?       @default("Segpay")
   buyerCountry          String?       @db.VarChar(2)
   buyerIp               String?
@@ -588,12 +594,15 @@ model Payment {
   metadataJson          Json?
   createdAt             DateTime      @default(now())
   updatedAt             DateTime      @updatedAt
+  stripeChargeId        String?
 
   Ledger          Ledger[]
   evidences       BuyerEvidence[]
   vatEntries      VatLedger[]
   platformRevenue PlatformRevenue?
   processorFees   ProcessorFeeLedger[]
+
+  stripeTransferId String? @unique
 
   User_Payment_payeeIdToUser User @relation("Payment_payeeIdToUser", fields: [payeeId], references: [id], onDelete: Cascade)
   User_Payment_payerIdToUser User @relation("Payment_payerIdToUser", fields: [payerId], references: [id], onDelete: Cascade)
@@ -730,8 +739,8 @@ model ConversationReport {
   reason         String
   createdAt      DateTime @default(now())
 
-  conversation   Conversation @relation(fields: [conversationId], references: [id])
-  reporter       User         @relation("ConversationReportsByUser", fields: [reporterId], references: [id])
+  conversation Conversation @relation(fields: [conversationId], references: [id])
+  reporter     User         @relation("ConversationReportsByUser", fields: [reporterId], references: [id])
 
   @@index([conversationId, createdAt])
 }
@@ -760,23 +769,23 @@ model UserNotificationSettings {
 }
 
 model NotificationSeenCursor {
-  id          String   @id @default(cuid())
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Der Empfänger, der Notifications anschaut (du)
   recipientId String
-  recipient   User     @relation("NotificationSeenRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  recipient   User   @relation("NotificationSeenRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
 
   // Der Actor, dessen Events aggregiert werden (der Liker)
-  actorId     String
-  actor       User     @relation("NotificationSeenActor", fields: [actorId], references: [id], onDelete: Cascade)
+  actorId String
+  actor   User   @relation("NotificationSeenActor", fields: [actorId], references: [id], onDelete: Cascade)
 
   // Welche Aggregation/Cursor-Art (z.B. "LIKE_POST", später evtl. "LIKE_COMMENT", "FOLLOW", etc.)
-  kind        NotificationCursorKind
+  kind NotificationCursorKind
 
   // Alles <= seenUntil gilt als "gesehen"
-  seenUntil   DateTime @default(dbgenerated("'1970-01-01T00:00:00.000Z'::timestamptz"))
+  seenUntil DateTime @default(dbgenerated("'1970-01-01T00:00:00.000Z'::timestamptz"))
 
   @@unique([recipientId, actorId, kind], name: "NotificationSeenCursor_unique")
   @@index([recipientId, kind, seenUntil])

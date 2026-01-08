@@ -1,37 +1,27 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { getCurrentUser } from '@/lib/currentUser';
-import { segpayCharge } from '@/lib/segpay';
+// src/app/api/payments/tips/confirm/route.ts
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { getCurrentUser } from "@/lib/currentUser";
+import Stripe from "stripe";
+
+export const runtime = "nodejs";
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+
+type ConfirmBody = { paymentId?: string };
 
 const TOPUP_PCT = 0.10;
-const SPLIT_PCT = 0.10;
 
-/** Struktur der Metadaten, die wir in Payment.metadataJson ablegen */
 type TipPaymentMeta = {
   baseAmountCents?: number;
-  note?: string | null;
-  conversationId?: string | null;
 };
 
-/** Sichere, typisierte Extraktion aus unknown (vermeidet `any`) */
 function parseMeta(input: unknown): TipPaymentMeta {
   const out: TipPaymentMeta = {};
-  if (!input || typeof input !== 'object') return out;
+  if (!input || typeof input !== "object") return out;
   const obj = input as Record<string, unknown>;
-
   const bac = obj.baseAmountCents;
-  if (typeof bac === 'number' && Number.isFinite(bac)) {
-    out.baseAmountCents = Math.round(bac);
-  }
-
-  const note = obj.note;
-  if (typeof note === 'string') out.note = note;
-  else if (note === null) out.note = null;
-
-  const cid = obj.conversationId;
-  if (typeof cid === 'string') out.conversationId = cid;
-  else if (cid === null) out.conversationId = null;
-
+  if (typeof bac === "number" && Number.isFinite(bac)) out.baseAmountCents = Math.round(bac);
   return out;
 }
 
@@ -49,21 +39,21 @@ function inferBaseFromGross(gross: number): number {
 
 export async function POST(req: NextRequest) {
   const me = await getCurrentUser();
-  if (!me) return NextResponse.json({ ok: false, error: 'Not signed in' }, { status: 401 });
+  if (!me) return NextResponse.json({ ok: false, error: "Not signed in" }, { status: 401 });
 
-  const body = (await req.json().catch(() => ({}))) as { paymentId?: string };
-  const paymentId = String(body.paymentId || '');
-  if (!paymentId) return NextResponse.json({ ok: false, error: 'paymentId missing' }, { status: 400 });
+  const body = (await req.json().catch(() => ({}))) as ConfirmBody;
+  const paymentId = String(body.paymentId || "");
+  if (!paymentId) return NextResponse.json({ ok: false, error: "paymentId missing" }, { status: 400 });
 
   const payment = await prisma.payment.findUnique({ where: { id: paymentId } });
   if (!payment || payment.payerId !== me.id) {
-    return NextResponse.json({ ok: false, error: 'Payment not found' }, { status: 404 });
+    return NextResponse.json({ ok: false, error: "Payment not found" }, { status: 404 });
   }
 
   const meta = parseMeta(payment.metadataJson);
 
-  // Idempotenz
-  if (payment.status === 'SUCCEEDED') {
+  // 1) Webhook hat finalisiert -> sofort ok
+  if (payment.status === "SUCCEEDED") {
     const gross = payment.amountGrossCents;
     const base = meta.baseAmountCents ?? inferBaseFromGross(gross);
     return NextResponse.json({
@@ -73,69 +63,56 @@ export async function POST(req: NextRequest) {
       currency: payment.currency,
     });
   }
-  if (payment.status !== 'CREATED' && payment.status !== 'PROCESSING') {
-    return NextResponse.json({ ok: true });
+
+  // 2) Terminal states -> klarer Fehler
+  if (payment.status === "FAILED") {
+    return NextResponse.json({ ok: false, error: "Payment failed" }, { status: 400 });
+  }
+  if (payment.status === "CANCELED") {
+    return NextResponse.json({ ok: false, error: "Payment canceled" }, { status: 400 });
   }
 
-  // Werte aus metadataJson (mit Fallbacks)
-  const baseAmountCents = meta.baseAmountCents ?? inferBaseFromGross(payment.amountGrossCents);
-  const note = meta.note ?? null;
-  const conversationId = meta.conversationId ?? null;
+  // 3) Noch nicht finalisiert: EINMAL Stripe-Status prüfen (ohne selbst zu finalisieren)
+  const paymentIntentId = payment.externalRef;
+  if (!paymentIntentId) {
+    return NextResponse.json({ ok: false, error: "Missing Stripe reference (externalRef)" }, { status: 400 });
+  }
 
-  // Nachrechnen (konsistent mit /create)
-  const topup = Math.round(baseAmountCents * TOPUP_PCT);
-  const split = Math.round(baseAmountCents * SPLIT_PCT);
-  const platformFeeTotal = topup + split;
-  const gross = baseAmountCents + topup;
+  const pi = await stripe.paymentIntents.retrieve(paymentIntentId);
 
-  // Charge
-  const charge = await segpayCharge({
-    amountCents: gross,
-    currency: payment.currency,
-    orderId: payment.id,
-  });
+  // Stripe sagt "failed/canceled" -> DB nachziehen (nur Status) und Fehler zurück
+  if (pi.status === "canceled") {
+    await prisma.payment.update({ where: { id: payment.id }, data: { status: "CANCELED" } });
+    return NextResponse.json({ ok: false, error: "Payment canceled" }, { status: 400 });
+  }
 
-  if (!charge.ok) {
-    await prisma.payment.update({
-      where: { id: payment.id },
-      data: { status: 'FAILED' },
+  if (pi.status === "requires_payment_method") {
+    await prisma.payment.update({ where: { id: payment.id }, data: { status: "FAILED" } });
+    return NextResponse.json({ ok: false, error: "Payment failed" }, { status: 400 });
+  }
+
+  // Stripe sagt "succeeded", aber DB ist noch nicht SUCCEEDED:
+  // -> Webhook soll finalisieren. Wir setzen DB auf PROCESSING (falls nicht schon),
+  // -> UI soll kurz pollen.
+  if (pi.status === "succeeded") {
+    if (payment.status !== "PROCESSING") {
+      await prisma.payment.update({ where: { id: payment.id }, data: { status: "PROCESSING" } });
+    }
+    return NextResponse.json({
+      ok: false,
+      status: "PROCESSING",
+      error: "Finalizing on webhook",
     });
-    return NextResponse.json({ ok: false, error: charge.error || 'Charge failed' }, { status: 400 });
   }
 
-  const processorFee = charge.providerFeeCents ?? 0;
-
-  // Payment aktualisieren (Admin-Reporting konsistent)
-  const updated = await prisma.payment.update({
-    where: { id: payment.id },
-    data: {
-      status: 'SUCCEEDED',
-      platformFeeCents: platformFeeTotal,
-      processorFeeCents: processorFee,
-      externalRef: charge.providerRef ?? null,
-      amountGrossCents: gross,                        // Sub zahlte base + topup
-      amountNetToDommeCents: baseAmountCents - split, // Domme netto (für spätere Payouts)
-    },
-  });
-
-  // Tip-Row (Domme sieht BASISbetrag), inkl. note & conversationId
-  await prisma.tip.create({
-    data: {
-      fromUserId: updated.payerId,
-      toUserId: updated.payeeId,
-      amountCents: baseAmountCents,
-      currency: updated.currency,
-      status: 'SUCCEEDED',
-      note,
-      conversationId,
-      methodRef: updated.externalRef ?? undefined,
-    },
-  });
+  // Alles andere: in Arbeit (requires_action / processing / requires_confirmation etc.)
+  if (payment.status !== "PROCESSING") {
+    await prisma.payment.update({ where: { id: payment.id }, data: { status: "PROCESSING" } });
+  }
 
   return NextResponse.json({
-    ok: true,
-    baseAmountCents,
-    totalCents: gross,
-    currency: updated.currency,
+    ok: false,
+    status: pi.status,
+    error: "Payment not completed yet",
   });
 }

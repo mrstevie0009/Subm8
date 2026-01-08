@@ -1,54 +1,87 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { getCurrentUser } from '@/lib/currentUser';
-import { randomUUID } from 'node:crypto';
+// src/app/api/payments/tips/create/route.ts
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { getCurrentUser } from "@/lib/currentUser";
+import { randomUUID } from "node:crypto";
+import Stripe from "stripe";
 
-const CURRENCY = 'EUR';
-const TOPUP_PCT = 0.10; // 10% on top (Sub zahlt extra)
-const SPLIT_PCT = 0.10; // 10% vom Basisbetrag (Domme-Seite)
+export const runtime = "nodejs";
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {});
+
+const CURRENCY = "eur";
+const DB_CURRENCY = "EUR";
+const TOPUP_PCT = 0.10;
+const SPLIT_PCT = 0.10;
+
+type CreateBody = {
+  toUserId?: string;
+  amountCents?: number;
+  note?: string;
+  conversationId?: string;
+};
+
+type MeCustomer = {
+  id: string;
+  email: string | null;
+  stripeCustomerId: string | null;
+};
+
+async function loadMeCustomer(meId: string): Promise<MeCustomer> {
+  const u = await prisma.user.findUnique({
+    where: { id: meId },
+    select: { id: true, email: true, stripeCustomerId: true },
+  });
+  if (!u) throw new Error("User not found");
+  return { id: u.id, email: u.email ?? null, stripeCustomerId: u.stripeCustomerId ?? null };
+}
+
+async function ensureStripeCustomer(me: MeCustomer): Promise<string> {
+  if (me.stripeCustomerId) return me.stripeCustomerId;
+
+  const customer = await stripe.customers.create({
+    email: me.email ?? undefined,
+    metadata: { userId: me.id },
+  });
+
+  await prisma.user.update({
+    where: { id: me.id },
+    data: { stripeCustomerId: customer.id },
+  });
+
+  return customer.id;
+}
 
 export async function POST(req: NextRequest) {
   const me = await getCurrentUser();
-  if (!me) {
-    return NextResponse.json({ ok: false, error: 'Not signed in' }, { status: 401 });
-  }
+  if (!me) return NextResponse.json({ ok: false, error: "Not signed in" }, { status: 401 });
 
-  const body = (await req.json().catch(() => ({}))) as {
-    toUserId?: string;
-    amountCents?: number;   // Basisbetrag, den die Domme will (z.B. 5000 = 50,00 €)
-    note?: string;
-    conversationId?: string;
-  };
+  const body = (await req.json().catch(() => ({}))) as CreateBody;
 
-  const toUserId = String(body.toUserId || '');
+  const toUserId = String(body.toUserId || "");
   const baseAmountCents = Math.round(Number(body.amountCents || 0));
-  const note = typeof body.note === 'string' ? body.note.slice(0, 200) : undefined;
+  const note = typeof body.note === "string" ? body.note.slice(0, 200) : undefined;
   const conversationId = body.conversationId ? String(body.conversationId) : undefined;
 
   if (!toUserId || !Number.isFinite(baseAmountCents) || baseAmountCents <= 0) {
-    return NextResponse.json({ ok: false, error: 'Invalid input' }, { status: 400 });
+    return NextResponse.json({ ok: false, error: "Invalid input" }, { status: 400 });
   }
 
   const payee = await prisma.user.findUnique({
     where: { id: toUserId },
     select: { id: true },
   });
-  if (!payee) {
-    return NextResponse.json({ ok: false, error: 'User not found' }, { status: 404 });
-  }
+  if (!payee) return NextResponse.json({ ok: false, error: "User not found" }, { status: 404 });
 
-  // Gebühren
-  const topupCents = Math.round(baseAmountCents * TOPUP_PCT); // zahlt der Sub zusätzlich
-  const splitCents = Math.round(baseAmountCents * SPLIT_PCT); // vom Domme-Basisbetrag
-  const grossCents = baseAmountCents + topupCents;            // was insgesamt abgebucht wird
-  const amountNetToDommeCents = baseAmountCents - splitCents; // Netto für Domme
-  const platformFeeCents = topupCents + splitCents;           // Gesamte Plattformgebühr (Admin)
+  const topupCents = Math.round(baseAmountCents * TOPUP_PCT);
+  const splitCents = Math.round(baseAmountCents * SPLIT_PCT);
+  const grossCents = baseAmountCents + topupCents;
+  const amountNetToDommeCents = baseAmountCents - splitCents;
+  const platformFeeCents = topupCents + splitCents;
 
-  // Falls Payment.id kein default hat
   const id = randomUUID();
 
-  // note + conversationId + base in metadataJson ablegen, damit /confirm sie hat
-  const metadata = {
+  const metadataJson = {
     baseAmountCents,
     note: note ?? null,
     conversationId: conversationId ?? null,
@@ -59,26 +92,49 @@ export async function POST(req: NextRequest) {
       id,
       payerId: me.id,
       payeeId: payee.id,
-
       amountGrossCents: grossCents,
       amountNetToDommeCents,
-      platformFeeCents,       // = topup + split
-      processorFeeCents: 0,   // kommt bei confirm
-      vatAmountCents: 0,      // VAT fällt weg
-      currency: CURRENCY,
-      status: 'CREATED',
+      platformFeeCents,
+      processorFeeCents: 0,
+      vatAmountCents: 0,
+      currency: DB_CURRENCY,
+      status: "CREATED",
       externalRef: null,
-      // paymentProvider default "Segpay"
-      metadataJson: metadata,
-      // buyerCountry/buyerIp/cardBin optional -> lassen wir leer
-      // createdAt default, updatedAt @updatedAt
+      paymentProvider: "Stripe",
+      metadataJson,
     },
+  });
+
+  const meDb = await loadMeCustomer(me.id);
+  const customerId = await ensureStripeCustomer(meDb);
+
+  const pi = await stripe.paymentIntents.create({
+    amount: grossCents,
+    currency: CURRENCY,
+
+    customer: customerId,
+    automatic_payment_methods: { enabled: true },
+    setup_future_usage: "off_session",
+
+    metadata: {
+      paymentId: id,
+      payerId: me.id,
+      payeeId: payee.id,
+      kind: "tip",
+    },
+  });
+
+  await prisma.payment.update({
+    where: { id },
+    data: { externalRef: pi.id, status: "PROCESSING" },
   });
 
   return NextResponse.json({
     ok: true,
     paymentId: id,
-    currency: CURRENCY,
-    totalCents: grossCents, // informativ; maßgeblich ist /confirm
+    currency: DB_CURRENCY,
+    baseAmountCents,
+    totalCents: grossCents,
+    clientSecret: pi.client_secret,
   });
 }
