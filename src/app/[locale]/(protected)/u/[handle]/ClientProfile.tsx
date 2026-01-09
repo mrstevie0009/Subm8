@@ -149,8 +149,6 @@ export default function ClientProfile({
         onTabChange={setTab}
         showTabs={true}
         onInlineButtonClick={() => setOfferOpen(true)}
-        onOpenTip={() => setTipOpen(true)}
-        onOpenAutoDrain={() => setAutoDrainOpen(true)}
         onOpenVerify={() => setVerifyOpen(true)}
       />
 
