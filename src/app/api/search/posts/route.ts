@@ -10,11 +10,37 @@ export async function GET(req: Request) {
 
   if (!q) return Response.json({ ok: true, posts: [] });
 
+  // 1) Author-IDs finden, deren kinks[] partial match auf q haben (Postgres unnest + ILIKE)
+  //    - Optional: ab 2 Zeichen, um "%a%" Explosionen zu vermeiden
+  const kinkAuthorIds =
+    q.length >= 2
+      ? await prisma.$queryRaw<Array<{ id: string }>>`
+          SELECT u.id
+          FROM "User" u
+          WHERE u."isDeactivated" = false
+            AND u."isAdmin" = false
+            AND EXISTS (
+              SELECT 1
+              FROM unnest(u.kinks) AS k
+              WHERE k ILIKE ('%' || ${q} || '%')
+            )
+        `
+      : [];
+
+  const kinkIds = kinkAuthorIds.map((x) => x.id);
+
+  // 2) Posts suchen: (Text matcht q) ODER (Autor in kinkIds)
+  //    + weiterhin: excludeAdminAuthor() auf Autor-Relation anwenden
   const posts = await prisma.post.findMany({
     where: {
       AND: [
-        { text: { contains: q, mode: 'insensitive' } },
-        { author: excludeAdminAuthor() }, // Autor darf nicht Admin sein
+        { author: excludeAdminAuthor() }, // Autor darf nicht Admin sein (und ggf. nicht deaktiviert, je nach deiner impl.)
+        {
+          OR: [
+            { text: { contains: q, mode: 'insensitive' } },
+            ...(kinkIds.length > 0 ? [{ authorId: { in: kinkIds } }] : []),
+          ],
+        },
       ],
     },
     select: {
@@ -25,13 +51,13 @@ export async function GET(req: Request) {
       createdAt: true,
       author: {
         select: {
-          id: true,               
+          id: true,
           handle: true,
           displayName: true,
           avatarUrl: true,
-          role: true,              
-          premiumUntil: true,     
-          isFirstAdopter: true,    
+          role: true,
+          premiumUntil: true,
+          isFirstAdopter: true,
         },
       },
       _count: { select: { Like: true, Comment: true, bookmarks: true } },
@@ -39,37 +65,32 @@ export async function GET(req: Request) {
     orderBy:
       sort === 'latest'
         ? [{ createdAt: 'desc' }]
-        : [
-            { Like: { _count: 'desc' } }, // „Top“ = nach Like-Anzahl
-            { createdAt: 'desc' },
-          ],
+        : [{ Like: { _count: 'desc' } }, { createdAt: 'desc' }],
     take: limit,
   });
 
   return Response.json({
-  ok: true,
-  posts: posts.map((p) => ({
-    id: p.id,
-    text: p.text,
-    mediaUrl: p.mediaUrl ?? undefined,
-    mediaAlt: p.mediaAlt ?? undefined,
-    createdAt: p.createdAt,
-    author: {
-      id: p.author.id,        
-      handle: p.author.handle,
-      name: p.author.displayName || p.author.handle,
-      avatar: p.author.avatarUrl ?? undefined,
-      role: p.author.role,                                 
-      premiumUntil: p.author.premiumUntil                 
-        ? p.author.premiumUntil.toISOString()
-        : null,
-      isFirstAdopter: !!p.author.isFirstAdopter,         
-    },
-    counts: {
-      likes: p._count.Like,
-      comments: p._count.Comment,
-      bookmarks: p._count.bookmarks,
-    },
-  })),
-});
+    ok: true,
+    posts: posts.map((p) => ({
+      id: p.id,
+      text: p.text,
+      mediaUrl: p.mediaUrl ?? undefined,
+      mediaAlt: p.mediaAlt ?? undefined,
+      createdAt: p.createdAt,
+      author: {
+        id: p.author.id,
+        handle: p.author.handle,
+        name: p.author.displayName || p.author.handle,
+        avatar: p.author.avatarUrl ?? undefined,
+        role: p.author.role,
+        premiumUntil: p.author.premiumUntil ? p.author.premiumUntil.toISOString() : null,
+        isFirstAdopter: !!p.author.isFirstAdopter,
+      },
+      counts: {
+        likes: p._count.Like,
+        comments: p._count.Comment,
+        bookmarks: p._count.bookmarks,
+      },
+    })),
+  });
 }

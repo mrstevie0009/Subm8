@@ -1,3 +1,4 @@
+//src/api/search/route.ts
 import { prisma } from '@/lib/prisma';
 
 type Person = { handle: string; name: string; avatar?: string };
@@ -13,6 +14,8 @@ export async function GET(req: Request) {
   if (q) {
     const users = await prisma.user.findMany({
       where: {
+        isDeactivated: false,
+        isAdmin: false,
         OR: [
           { handle: { contains: q, mode: 'insensitive' } },
           { displayName: { contains: q, mode: 'insensitive' } },

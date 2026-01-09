@@ -828,6 +828,10 @@ model AutoDrainSubscription {
   sub     User              @relation("AutoDrainSub", fields: [subId], references: [id], onDelete: Cascade)
   charges AutoDrainCharge[]
 
+  stripeSubscriptionId String?
+  stripeCustomerId     String?
+  stripeStatus         String?
+
   @@index([subId, active, nextChargeAt])
   @@index([dommeId, subId, active])
 }

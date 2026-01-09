@@ -16,6 +16,9 @@ import { toast } from '@/lib/toast';
 import BackButton from '@/components/BackButton';
 import { UserBadges } from '@/components/UserBadges';
 
+import TipModal from '@/components/TipModal';
+import AutoDrainRequestAcceptModal from '@/components/AutoDrainRequestAcceptModal';
+
 
 type DbRole = 'DOMME' | 'SUBMISSIVE';
 
@@ -136,8 +139,6 @@ type Props = {
   viewerHasBlocked?: boolean;
   isBlockedByProfile?: boolean;
   onInlineButtonClick?: () => void;
-  onOpenTip?: () => void;
-  onOpenAutoDrain?: () => void;
   onOpenVerify?: () => void;
 };
 
@@ -151,8 +152,6 @@ export default function ProfileHeader({
   viewerHasBlocked = false,
   isBlockedByProfile = false,
   onInlineButtonClick,
-  onOpenTip,
-  onOpenAutoDrain,
   onOpenVerify,
 }: Props) {
   const locale = useLocale();
@@ -674,6 +673,8 @@ export default function ProfileHeader({
 
   // Tip-Button State (nur Domme-Profile)
   const [tipMenuOpen, setTipMenuOpen] = React.useState(false);
+  const [tipOpen, setTipOpen] = React.useState(false);
+  const [autoDrainOpen, setAutoDrainOpen] = React.useState(false);
   const [tipAnchorRect, setTipAnchorRect] = React.useState<DOMRect | null>(null);
   const tipBtnRef = React.useRef<HTMLButtonElement | null>(null);
   // ⬇️ ersetzt deine bisherige openTipMenu-Definition
@@ -1072,7 +1073,7 @@ export default function ProfileHeader({
                         className="w-full text-left px-3 py-2 rounded-lg hover:bg-white/10"
                         onClick={() => {
                           setTipMenuOpen(false);
-                          onOpenTip?.();
+                          setTipOpen(true);
                         }}
                       >
                         {tProf('sendTip')}
@@ -1083,7 +1084,7 @@ export default function ProfileHeader({
                         className="w-full text-left px-3 py-2 rounded-lg hover:bg-white/10"
                         onClick={() => {
                           setTipMenuOpen(false);
-                          onOpenAutoDrain?.();
+                          setAutoDrainOpen(true);
                         }}
                       >
                         {tProf('autodrain')}
@@ -1290,7 +1291,43 @@ export default function ProfileHeader({
         </ul>
       </nav>
     )}
+
+    {/* Stripe Tip Modal */}
+      {!isOwner && profile.role === 'domme' && (
+        <TipModal
+          open={tipOpen}
+          onClose={() => setTipOpen(false)}
+          toUserId={profile.id}
+          toDisplayName={profile.displayName}
+          toRole={toDbRole(profile.role)} // 'DOMME' | 'SUBMISSIVE' passt bei dir
+          toAvatarUrl={cdnify(profile.avatarUrl) || undefined}
+          // conversationId optional – wenn du später hast, hier reinreichen
+          onSuccess={() => {
+            // optional: toast / refresh
+          }}
+        />
+      )}
+
+      {/* Stripe AutoDrain Modal */}
+      {!isOwner && profile.role === 'domme' && (
+        <AutoDrainRequestAcceptModal
+          open={autoDrainOpen}
+          onClose={() => setAutoDrainOpen(false)}
+          amountCents={5000}          // <-- WICHTIG: hier deinen Default/Picker-Wert einsetzen
+          currency="EUR"              // oder aus Settings/Locale ziehen
+          cadence="MONTHLY"           // <-- WICHTIG: hier deinen Default/Picker-Wert einsetzen
+          toUserId={profile.id}
+          toDisplayName={profile.displayName}
+          toAvatarUrl={cdnify(profile.avatarUrl) || undefined}
+          // conversationId optional (nach Änderung in Modal)
+          onSuccess={() => {
+            // optional: toast / refresh
+          }}
+        />
+      )}
+      
   </section>
+  
 );
 
 

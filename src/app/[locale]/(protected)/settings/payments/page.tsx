@@ -118,8 +118,18 @@ export default async function PaymentsPage({ params }: { params: Promise<Params>
   const sentRows = rows.filter((r) => r.direction === "out");
 
   const outgoingSubs = await prisma.autoDrainSubscription.findMany({
-    where: { subId: me.id, active: true },
-    select: { id: true, dommeId: true, amountCents: true, currency: true, cadence: true, nextChargeAt: true },
+  where: { subId: me.id, active: true },
+    select: {
+      id: true,
+      dommeId: true,
+      amountCents: true,
+      currency: true,
+      cadence: true,
+      nextChargeAt: true,
+
+      stripeSubscriptionId: true,
+      stripeStatus: true,
+    },
     orderBy: { nextChargeAt: "asc" },
   });
 
@@ -229,13 +239,22 @@ export default async function PaymentsPage({ params }: { params: Promise<Params>
                           <form action={cancelAutodrainAction}>
                             <input type="hidden" name="id" value={s.id} />
                             <input type="hidden" name="locale" value={locale} />
+
                             <button
                               type="submit"
-                              className="px-3 py-1.5 rounded-lg border border-white/20 hover:bg-white/10 text-[13px]"
+                              disabled={!s.stripeSubscriptionId}
+                              className={`px-3 py-1.5 rounded-lg border text-[13px] ${
+                                s.stripeSubscriptionId ? "border-white/20 hover:bg-white/10" : "border-white/10 opacity-60 cursor-not-allowed"
+                              }`}
+                              title={!s.stripeSubscriptionId ? "Stripe Subscription noch nicht vorhanden (pending)" : undefined}
                             >
                               {t("paymentsPage.autodrain.cancel")}
                             </button>
                           </form>
+
+                          {!s.stripeSubscriptionId ? (
+                            <div className="mt-1 text-[11px] text-white/50">Pending…</div>
+                          ) : null}
                         </td>
                       </tr>
                     );
