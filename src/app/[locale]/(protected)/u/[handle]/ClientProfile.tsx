@@ -17,10 +17,7 @@ const OfferViewerModal = dynamic(() => import('@/components/OfferViewerModal'), 
   loading: () => null,
 });
 
-const TipModal = dynamic(() => import('@/components/TipModal'), {
-  ssr: false,
-  loading: () => null,
-});
+
 const AutoDrainEnableModal = dynamic(() => import('@/components/AutoDrainEnableModal'), {
   ssr: false,
   loading: () => null,
@@ -64,7 +61,6 @@ export default function ClientProfile({
   const [tab, setTab] = React.useState<Tab>('posts');
   const [offerOpen, setOfferOpen] = React.useState(false);
 
-  const [tipOpen, setTipOpen] = React.useState(false);
   const [autoDrainOpen, setAutoDrainOpen] = React.useState(false);
   const [verifyOpen, setVerifyOpen] = React.useState(false);
 
@@ -73,11 +69,7 @@ export default function ClientProfile({
   const tVerify = useTranslations('verify');
   const { data: session } = useSession();
 
-  const TIPPAID_PREFIX = 'TIPPAID::';
   const ADACC_PREFIX = 'ADACC::';
-
-  const tipModalRole: 'domme' | 'submissive' =
-    profile.role === 'domme' ? 'domme' : 'submissive';
 
   const startAgeVerification = React.useCallback(async () => {
     try {
@@ -165,21 +157,6 @@ export default function ClientProfile({
         open={offerOpen}
         onClose={() => setOfferOpen(false)}
         handle={profile.username}
-      />
-
-      <TipModal
-        open={tipOpen}
-        onClose={() => setTipOpen(false)}
-        toUserId={profile.id}
-        toDisplayName={profile.displayName}
-        toRole={tipModalRole}
-        toAvatarUrl={profile.avatarUrl || undefined}
-        onSuccess={({ paymentId, amountCents, currency, note }) => {
-          const payload = { id: paymentId, amountCents, currency, note: note?.trim() || undefined };
-          const envelope = `${TIPPAID_PREFIX}${JSON.stringify(payload)}`;
-          setTipOpen(false);
-          router.push(`/${locale}/chat/new?to=${profile.username}&text=${encodeURIComponent(envelope)}`);
-        }}
       />
 
       <AutoDrainEnableModal

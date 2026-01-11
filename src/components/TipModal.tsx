@@ -4,6 +4,7 @@
 import * as React from 'react';
 import Image from 'next/image';
 import { useTranslations } from 'next-intl';
+import { createPortal } from 'react-dom';
 
 import { loadStripe } from '@stripe/stripe-js';
 import type { Stripe } from '@stripe/stripe-js';
@@ -38,6 +39,12 @@ const GIFT_ACK_KEY = 'subm8_gift_ack_v1';
 const STRIPE_PK = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? '';
 const stripePromise: Promise<Stripe | null> = STRIPE_PK ? loadStripe(STRIPE_PK) : Promise.resolve(null);
 
+function useMounted() {
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => setMounted(true), []);
+  return mounted;
+}
+
 function parseCents(input: string): number | null {
   const norm = input.replace(',', '.').replace(/[^\d.]/g, '');
   if (!norm) return null;
@@ -51,6 +58,8 @@ function fmtCurrency(cents: number, currency = CURRENCY) {
 }
 
 function RolePill({ role }: { role: Props['toRole'] }) {
+  // Hinweis: In deinem Code war hier "payment.tipModal.roles" – ich lasse es unverändert,
+  // damit du nichts an den Namespaces ändern musst.
   const t = useTranslations('payment.tipModal.roles');
   const isDomme = String(role).toUpperCase() === 'DOMME';
   return (
@@ -75,8 +84,6 @@ type CreateOk = {
   baseAmountCents: number;
   clientSecret: string;
 };
-
-
 
 type ConfirmOk = {
   ok: true;
@@ -108,12 +115,7 @@ function getCreateError(x: unknown): string | null {
 function isConfirmOk(x: unknown): x is ConfirmOk {
   if (!x || typeof x !== 'object') return false;
   const o = x as Record<string, unknown>;
-  return (
-    o.ok === true &&
-    typeof o.baseAmountCents === 'number' &&
-    typeof o.totalCents === 'number' &&
-    typeof o.currency === 'string'
-  );
+  return o.ok === true && typeof o.baseAmountCents === 'number' && typeof o.totalCents === 'number' && typeof o.currency === 'string';
 }
 function getConfirmError(x: unknown): string | null {
   if (!x || typeof x !== 'object') return null;
@@ -181,10 +183,12 @@ function PaymentMethodsModal({
   open,
   onClose,
   onChanged,
+  t,
 }: {
   open: boolean;
   onClose: () => void;
   onChanged: () => void;
+  t: ReturnType<typeof useTranslations>;
 }) {
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -194,19 +198,19 @@ function PaymentMethodsModal({
   const [methods, setMethods] = React.useState<SavedMethod[]>([]);
   const [defaultId, setDefaultId] = React.useState<string | null>(null);
 
-  async function loadMethods() {
+  const loadMethods = React.useCallback(async () => {
     const res = await fetch('/api/payments/methods/list', { method: 'GET' });
     const j: unknown = await res.json().catch(() => null);
 
     if (!res.ok) {
-      const err = getUpdateError(j) ?? 'Failed to load payment methods';
+      const err = getUpdateError(j) ?? t('methods.errors.loadFailed');
       throw new Error(err);
     }
 
-    if (!isMethodsListOk(j)) throw new Error('Invalid response');
+    if (!isMethodsListOk(j)) throw new Error(t('methods.errors.invalidResponse'));
     setMethods(j.methods);
     setDefaultId(j.defaultPaymentMethodId);
-  }
+  }, [t]); // t ist die einzige externe Referenz hier
 
   React.useEffect(() => {
     if (!open) return;
@@ -218,9 +222,9 @@ function PaymentMethodsModal({
 
     setLoading(true);
     loadMethods()
-      .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load'))
+      .catch((e) => setError(e instanceof Error ? e.message : t('methods.errors.loadFailed')))
       .finally(() => setLoading(false));
-  }, [open]);
+  }, [open, loadMethods, t]);
 
   async function startSetupIntent() {
     setLoading(true);
@@ -229,8 +233,8 @@ function PaymentMethodsModal({
       const res = await fetch('/api/payments/methods/setup-intent', { method: 'POST' });
       const j: unknown = await res.json().catch(() => null);
 
-      if (!res.ok) throw new Error(getSetupIntentError(j) || 'Failed to start setup');
-      if (!isSetupIntentOk(j)) throw new Error('Invalid response');
+      if (!res.ok) throw new Error(getSetupIntentError(j) || t('methods.errors.startSetupFailed'));
+      if (!isSetupIntentOk(j)) throw new Error(t('methods.errors.invalidResponse'));
 
       setClientSecret(j.clientSecret);
     } catch (e) {
@@ -251,8 +255,8 @@ function PaymentMethodsModal({
       });
       const j: unknown = await res.json().catch(() => null);
 
-      if (!res.ok) throw new Error(getUpdateError(j) || 'Failed to set default');
-      if (!isUpdateOk(j)) throw new Error('Invalid response');
+      if (!res.ok) throw new Error(getUpdateError(j) || t('methods.errors.setDefaultFailed'));
+      if (!isUpdateOk(j)) throw new Error(t('methods.errors.invalidResponse'));
 
       await loadMethods();
       onChanged();
@@ -274,8 +278,8 @@ function PaymentMethodsModal({
       });
       const j: unknown = await res.json().catch(() => null);
 
-      if (!res.ok) throw new Error(getUpdateError(j) || 'Failed to remove method');
-      if (!isUpdateOk(j)) throw new Error('Invalid response');
+      if (!res.ok) throw new Error(getUpdateError(j) || t('methods.errors.removeFailed'));
+      if (!isUpdateOk(j)) throw new Error(t('methods.errors.invalidResponse'));
 
       await loadMethods();
       onChanged();
@@ -286,7 +290,8 @@ function PaymentMethodsModal({
     }
   }
 
-  if (!open) return null;
+  const mounted = useMounted();
+  if (!open || !mounted) return null;
 
   const elementsOptions =
     clientSecret
@@ -303,10 +308,15 @@ function PaymentMethodsModal({
         }
       : undefined;
 
-  return (
-    <div className="fixed inset-0 z-[1100] grid place-items-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[2147483603] grid place-items-center bg-black/60 backdrop-blur-sm overscroll-contain p-3 sm:p-0"
+      onClick={onClose}
+    >
       <div
-        className="relative w-[min(720px,94vw)] rounded-2xl overflow-hidden border border-white/10 bg-[#0b0b0d]"
+        className="relative w-full sm:w-[min(720px,94vw)] max-w-[720px]
+                   max-h-[calc(100dvh-24px)] sm:max-h-[85vh]
+                   rounded-2xl overflow-hidden border border-white/10 bg-[#0b0b0d] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="relative px-5 py-4 border-b border-white/10">
@@ -317,7 +327,7 @@ function PaymentMethodsModal({
             }}
           />
           <div className="flex items-center gap-2">
-            <div className="font-semibold text-[16px]">Zahlungsmethoden</div>
+            <div className="font-semibold text-[16px]">{t('methods.title')}</div>
             <div className="ml-auto flex items-center gap-2">
               <button
                 type="button"
@@ -331,12 +341,10 @@ function PaymentMethodsModal({
               </button>
             </div>
           </div>
-          <div className="mt-1 text-[12px] text-white/65">
-            Speichere eine Karte einmal – danach kannst du überall schneller zahlen.
-          </div>
+          <div className="mt-1 text-[12px] text-white/65">{t('methods.subtitle')}</div>
         </div>
 
-        <div className="px-5 py-5">
+        <div className="px-5 py-5 overflow-y-auto overscroll-contain [ -webkit-overflow-scrolling:touch ]">
           {error && (
             <div className="mb-3 text-[13px] text-red-300 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">
               {error}
@@ -345,7 +353,7 @@ function PaymentMethodsModal({
 
           <div className="rounded-xl border border-white/10 bg-white/[.03] p-3">
             <div className="flex items-center justify-between">
-              <div className="text-[13px] text-white/80">Gespeicherte Karten</div>
+              <div className="text-[13px] text-white/80">{t('methods.savedCards')}</div>
               <button
                 type="button"
                 onClick={startSetupIntent}
@@ -353,15 +361,15 @@ function PaymentMethodsModal({
                 className="px-3 py-1.5 rounded-lg border border-white/15 hover:bg-white/10 text-[13px] disabled:opacity-60"
                 title={!STRIPE_PK ? 'Missing NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY' : undefined}
               >
-                + Karte hinzufügen
+                {t('methods.actions.addCard')}
               </button>
             </div>
 
             <div className="mt-3 space-y-2">
               {loading && methods.length === 0 ? (
-                <div className="text-[13px] text-white/60">Lade …</div>
+                <div className="text-[13px] text-white/60">{t('methods.loading')}</div>
               ) : methods.length === 0 ? (
-                <div className="text-[13px] text-white/60">Noch keine Zahlungsmethode gespeichert.</div>
+                <div className="text-[13px] text-white/60">{t('methods.empty')}</div>
               ) : (
                 methods.map((m) => {
                   const isDef = defaultId === m.id;
@@ -376,7 +384,7 @@ function PaymentMethodsModal({
                         </div>
                         <div className="text-[12px] text-white/55">
                           Exp {String(m.expMonth).padStart(2, '0')}/{String(m.expYear).slice(-2)}
-                          {isDef ? <span className="ml-2 text-[11px] text-[var(--purple)]">Default</span> : null}
+                          {isDef ? <span className="ml-2 text-[11px] text-[var(--purple)]">{t('methods.default')}</span> : null}
                         </div>
                       </div>
 
@@ -388,7 +396,7 @@ function PaymentMethodsModal({
                             disabled={loading}
                             className="px-2.5 py-1.5 rounded-lg border border-white/15 hover:bg-white/10 text-[12px] disabled:opacity-60"
                           >
-                            Als Default
+                            {t('methods.actions.setDefault')}
                           </button>
                         )}
                         <button
@@ -397,7 +405,7 @@ function PaymentMethodsModal({
                           disabled={loading}
                           className="px-2.5 py-1.5 rounded-lg border border-white/15 hover:bg-white/10 text-[12px] disabled:opacity-60"
                         >
-                          Entfernen
+                          {t('methods.actions.remove')}
                         </button>
                       </div>
                     </div>
@@ -413,6 +421,7 @@ function PaymentMethodsModal({
               <div className="mt-3 rounded-xl border border-white/10 bg-black/30 p-3">
                 <Elements stripe={stripePromise} options={elementsOptions}>
                   <SetupIntentForm
+                    t={t}
                     onDone={async () => {
                       setClientSecret(null);
                       await loadMethods();
@@ -422,18 +431,25 @@ function PaymentMethodsModal({
                   />
                 </Elements>
               </div>
-              <div className="mt-2 text-[12px] text-white/55">
-                Die Karte wird sicher von Stripe gespeichert. Du kannst sie jederzeit entfernen.
-              </div>
+              <div className="mt-2 text-[12px] text-white/55">{t('methods.securityNote')}</div>
             </div>
           ) : null}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
-function SetupIntentForm({ onDone, onError }: { onDone: () => void; onError: (msg: string) => void }) {
+function SetupIntentForm({
+  onDone,
+  onError,
+  t,
+}: {
+  onDone: () => void;
+  onError: (msg: string) => void;
+  t: ReturnType<typeof useTranslations>;
+}) {
   const stripe = useStripe();
   const elements = useElements();
   const [saving, setSaving] = React.useState(false);
@@ -443,22 +459,22 @@ function SetupIntentForm({ onDone, onError }: { onDone: () => void; onError: (ms
       setSaving(true);
       onError('');
 
-      if (!stripe || !elements) throw new Error('Stripe not ready');
+      if (!stripe || !elements) throw new Error(t('stripe.errors.notReady'));
 
       const { error, setupIntent } = await stripe.confirmSetup({
         elements,
         redirect: 'if_required',
       });
 
-      if (error) throw new Error(error.message || 'Failed to save');
+      if (error) throw new Error(error.message || t('methods.errors.saveFailed'));
       if (setupIntent?.status !== 'succeeded' && setupIntent?.status !== 'processing') {
-        throw new Error('Setup not completed');
+        throw new Error(t('methods.errors.setupNotCompleted'));
       }
 
       await sleep(300);
       onDone();
     } catch (e) {
-      onError(e instanceof Error ? e.message : 'Failed to save');
+      onError(e instanceof Error ? e.message : t('methods.errors.saveFailed'));
     } finally {
       setSaving(false);
     }
@@ -476,7 +492,7 @@ function SetupIntentForm({ onDone, onError }: { onDone: () => void; onError: (ms
             !saving && stripe && elements ? 'bg-[var(--purple)] hover:opacity-95' : 'bg-white/10 opacity-60 cursor-not-allowed'
           }`}
         >
-          {saving ? 'Speichern…' : 'Karte speichern'}
+          {saving ? t('methods.actions.saving') : t('methods.actions.saveCard')}
         </button>
       </div>
     </div>
@@ -548,7 +564,7 @@ function StripePayStep({
       setSending(true);
       setError(null);
 
-      if (!stripe || !elements) throw new Error('Stripe not ready');
+      if (!stripe || !elements) throw new Error(t('stripe.errors.notReady'));
 
       const { error, paymentIntent } = await stripe.confirmPayment({
         elements,
@@ -559,8 +575,8 @@ function StripePayStep({
       });
 
       if (error) throw new Error(error.message || t('errors.generic'));
-      if (paymentIntent?.status === 'canceled') throw new Error('Payment canceled');
-      if (paymentIntent?.status === 'requires_payment_method') throw new Error('Payment failed');
+      if (paymentIntent?.status === 'canceled') throw new Error(t('stripe.errors.canceled'));
+      if (paymentIntent?.status === 'requires_payment_method') throw new Error(t('stripe.errors.paymentFailed'));
 
       await finalizeWithPoll();
     } catch (e) {
@@ -573,14 +589,14 @@ function StripePayStep({
   return (
     <div className="mt-4 rounded-xl border border-white/10 bg-white/[.03] p-3">
       <div className="flex items-center justify-between gap-2">
-        <div className="text-[13px] text-white/80">{t('stripe.enterCard') ?? 'Karte eingeben'}</div>
+        <div className="text-[13px] text-white/80">{t('stripe.enterCard')}</div>
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={onOpenMethods}
             disabled={sending}
             className="px-3 py-1.5 rounded-lg border border-white/15 hover:bg-white/10 text-[13px] disabled:opacity-60"
-            title="Gespeicherte Karten verwalten"
+            title={t('methods.actions.manageTitle')}
           >
             Zahlungsmethoden
           </button>
@@ -590,7 +606,7 @@ function StripePayStep({
             disabled={sending}
             className="px-3 py-1.5 rounded-lg border border-white/15 hover:bg-white/10 text-[13px] disabled:opacity-60"
           >
-            {t('actions.back') ?? 'Zurück'}
+            {t('actions.back')}
           </button>
         </div>
       </div>
@@ -598,17 +614,13 @@ function StripePayStep({
       {savedSummary.count > 0 ? (
         <div className="mt-3 rounded-xl border border-white/10 bg-black/20 px-3 py-2">
           <div className="text-[12px] text-white/70">
-            Gespeicherte Karten: <span className="text-white/85">{savedSummary.count}</span>
-            {savedSummary.hasDefault ? <span className="ml-2 text-[var(--purple)]">Default gesetzt</span> : null}
+            {t('stripe.savedCardsSummary', { count: savedSummary.count })}
+            {savedSummary.hasDefault ? <span className="ml-2 text-[var(--purple)]">{t('stripe.defaultSet')}</span> : null}
           </div>
-          <div className="mt-1 text-[12px] text-white/55">
-            Du kannst unten im Stripe-Feld eine gespeicherte Methode auswählen oder eine neue eingeben.
-          </div>
+          <div className="mt-1 text-[12px] text-white/55">{t('stripe.savedCardsHint')}</div>
         </div>
       ) : (
-        <div className="mt-3 text-[12px] text-white/55">
-          Tipp: Speichere deine Karte einmal über „Zahlungsmethoden“, dann geht das hier künftig schneller.
-        </div>
+        <div className="mt-3 text-[12px] text-white/55">{t('stripe.tipSaveCard')}</div>
       )}
 
       <div className="mt-3 rounded-xl border border-white/10 bg-black/30 p-3">
@@ -631,9 +643,7 @@ function StripePayStep({
         </button>
       </div>
 
-      <div className="mt-2 text-[12px] text-white/55">
-        {t('stripe.secureHint') ?? 'Die Zahlungsdaten werden sicher von Stripe verarbeitet.'}
-      </div>
+      <div className="mt-2 text-[12px] text-white/55">{t('stripe.secureHint')}</div>
     </div>
   );
 }
@@ -648,7 +658,7 @@ export default function TipModal({
   conversationId,
   onSuccess,
 }: Props) {
-  const t = useTranslations('payment.tipModal');
+  const t = useTranslations('payments.tipModal');
 
   const [amount, setAmount] = React.useState('50');
   const [note, setNote] = React.useState('');
@@ -719,7 +729,7 @@ export default function TipModal({
       setSending(true);
       setError(null);
 
-      if (!STRIPE_PK) throw new Error('Missing NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY');
+      if (!STRIPE_PK) throw new Error(t('stripe.errors.missingPublishableKey'));
 
       const body = { toUserId, amountCents, note: note.trim() || undefined, conversationId };
 
@@ -769,7 +779,8 @@ export default function TipModal({
     });
   }
 
-  if (!open) return null;
+  const mounted = useMounted();
+  if (!open || !mounted) return null;
 
   const elementsOptions =
     stripeClientSecret && step === 'pay'
@@ -786,7 +797,7 @@ export default function TipModal({
         }
       : undefined;
 
-  return (
+  const modalUi = (
     <>
       <PaymentMethodsModal
         open={methodsOpen}
@@ -794,34 +805,39 @@ export default function TipModal({
         onChanged={() => {
           refreshSavedSummary();
         }}
+        t={t}
       />
 
       <div
-        className="fixed inset-0 z-[1000] grid place-items-center bg-black/60 backdrop-blur-sm"
+        className="fixed inset-0 z-[2147483600] grid place-items-center bg-black/60 backdrop-blur-sm overscroll-contain p-3 sm:p-0"
         onClick={() => {
           setSuccess(null);
           onClose();
         }}
       >
         <div
-          className="relative w-[min(680px,94vw)] rounded-2xl overflow-hidden border border-white/10 bg-[#0b0b0d]"
+          className="relative w-full sm:w-[min(680px,94vw)] max-w-[680px]
+                     max-h-[calc(100dvh-24px)] sm:max-h-[85vh]
+                     rounded-2xl overflow-hidden border border-white/10 bg-[#0b0b0d] flex flex-col"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="relative px-5 py-4">
+          <div className="relative px-4 py-3 sm:px-5 sm:py-4">
             <div
               className="absolute inset-0 -z-10"
               style={{
                 background: 'radial-gradient(1200px 220px at 50% 0%, rgba(139,92,246,.35), rgba(139,92,246,0))',
               }}
             />
-            <div className="flex items-center gap-3">
-              <div className="relative w-10 h-10 rounded-full overflow-hidden border border-white/15 bg-white/10">
+
+            {/* Row 1: Avatar + Title/Role + Close */}
+            <div className="flex items-start gap-3">
+              <div className="relative w-10 h-10 rounded-full overflow-hidden border border-white/15 bg-white/10 shrink-0">
                 {toAvatarUrl ? (
                   <Image src={toAvatarUrl} alt="" fill className="object-cover" sizes="40px" />
                 ) : (
                   <div className="grid place-items-center w-full h-full text-white/70">
-                    <svg viewBox="0 0 24 24" width="18" height="18">
+                    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden>
                       <circle cx="12" cy="8.5" r="3.5" fill="currentColor" />
                       <path d="M4 19.5a8 8 0 0 1 16 0" fill="none" stroke="currentColor" strokeWidth="2" />
                     </svg>
@@ -829,43 +845,51 @@ export default function TipModal({
                 )}
               </div>
 
-              <div className="min-w-0">
-                <div className="font-semibold text-[16px] leading-tight truncate">{t('header.title', { name: toDisplayName })}</div>
-                <div className="flex items-center gap-2 text-[12px] text-white/70">
-                  <RolePill role={toRole} />
-                  <span>{t('header.subtitleFinal')}</span>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-start gap-2">
+                  {/* Auf Mobile NICHT hart truncate, sondern 2 Zeilen erlauben */}
+                  <div className="min-w-0">
+                    <div className="font-semibold text-[15px] sm:text-[16px] leading-snug break-words line-clamp-2">
+                      {t('header.title', { name: toDisplayName })}
+                    </div>
+                    <div className="mt-1 flex items-center gap-2 text-[12px] text-white/70">
+                      <RolePill role={toRole} />
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSuccess(null);
+                      onClose();
+                    }}
+                    className="ml-auto inline-grid place-items-center w-9 h-9 rounded-full hover:bg-white/10 shrink-0"
+                    aria-label={t('aria.close')}
+                  >
+                    <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" strokeWidth="2" fill="none" aria-hidden>
+                      <path d="M6 6l12 12M18 6L6 18" />
+                    </svg>
+                  </button>
                 </div>
               </div>
+            </div>
 
-              <div className="ml-auto flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setMethodsOpen(true)}
-                  className="px-3 py-1.5 rounded-lg border border-white/15 hover:bg-white/10 text-[13px]"
-                  title="Gespeicherte Karten verwalten"
-                >
-                  Zahlungsmethoden
-                </button>
-
-                <button
-                  onClick={() => {
-                    setSuccess(null);
-                    onClose();
-                  }}
-                  className="inline-grid place-items-center w-9 h-9 rounded-full hover:bg-white/10"
-                  aria-label={t('aria.close')}
-                >
-                  <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" strokeWidth="2" fill="none">
-                    <path d="M6 6l12 12M18 6L6 18" />
-                  </svg>
-                </button>
-              </div>
+            {/* Row 2: Payment methods (stacked on mobile, inline on sm+) */}
+            <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <button
+                type="button"
+                onClick={() => setMethodsOpen(true)}
+                className="w-full sm:w-auto px-3 py-2 sm:py-1.5 rounded-lg border border-white/15 hover:bg-white/10 text-[13px]"
+                title={t('methods.actions.manageTitle')}
+              >
+                Zahlungsmethoden
+              </button>
             </div>
           </div>
 
           {/* Body */}
           {step !== 'success' ? (
-            <div className="px-5 pb-5">
+            <div className="px-5 pb-5 overflow-y-auto overscroll-contain" style={{ WebkitOverflowScrolling: 'touch' }}>
               <div className="mb-3 text-[12px] text-white/75">{t('disclaimer.top')}</div>
 
               <div className="rounded-xl border border-white/10 bg-white/[.03] p-3">
@@ -985,7 +1009,7 @@ export default function TipModal({
                     className={`relative px-4 py-2 rounded-lg text-white transition ${
                       canSend && STRIPE_PK ? 'bg-[var(--purple)] hover:opacity-95' : 'bg-white/10 opacity-60 cursor-not-allowed'
                     }`}
-                    title={!STRIPE_PK ? 'Missing NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY' : undefined}
+                    title={!STRIPE_PK ? t('stripe.errors.missingPublishableKey') : undefined}
                   >
                     <span className="inline-flex items-center gap-2">
                       <SparkleIcon />
@@ -1039,6 +1063,8 @@ export default function TipModal({
       </div>
     </>
   );
+
+  return createPortal(modalUi, document.body);
 }
 
 function SparkleIcon() {

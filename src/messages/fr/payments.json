@@ -119,7 +119,10 @@
       "cancel": "Annuler",
       "done": "Terminé",
       "sendGift": "Envoyer un cadeau",
-      "sending": "Envoi…"
+      "sending": "Envoi…",
+      "back": "Retour",
+      "continueToPay": "Continuer vers le paiement",
+      "payNow": "Payer maintenant"
     },
     "amount": {
       "label": "Montant pour la créatrice/le créateur",
@@ -129,13 +132,13 @@
       "close": "Fermer"
     },
     "breakdown": {
-      "amountToCreator": "Montant (versé au/à la créateur·rice)",
-      "platformFeeTop": "Frais de plateforme (10 % ajoutés)",
-      "youPay": "Tu paies"
+      "amountToCreator": "Montant (reçu par le créateur)",
+      "platformFeeTop": "Frais de plateforme (10 % en plus)",
+      "youPay": "Vous payez"
     },
     "disclaimer": {
-      "legal": "En confirmant, tu envoies un cadeau volontaire. Il ne s’agit pas d’un paiement pour des services. Les cadeaux sont définitifs (pas de remboursement, sauf obligation légale).",
-      "top": "Les cadeaux sont volontaires et ne rémunèrent pas des services. Subm8 ne fait qu’intermédier le transfert."
+      "top": "Les cadeaux sont volontaires et ne constituent pas un paiement pour des services. Subm8 facilite uniquement le transfert.",
+      "legal": "En confirmant, vous envoyez un cadeau volontaire. Ce n’est pas un paiement pour des services. Les cadeaux sont définitifs (aucun remboursement sauf obligation légale)."
     },
     "errors": {
       "confirmFailed": "Échec de la confirmation",
@@ -143,12 +146,12 @@
       "generic": "Une erreur est survenue"
     },
     "header": {
-      "subtitleFinal": "Les cadeaux sont volontaires et définitifs.",
-      "title": "Envoyer un cadeau à {name}"
+      "title": "Envoyer un cadeau à {name}",
+      "subtitleFinal": "Les cadeaux sont volontaires et définitifs."
     },
     "note": {
-      "label": "Note (optionnel)",
-      "placeholder": "Écris un mot gentil…"
+      "label": "Note (facultative)",
+      "placeholder": "Écris quelque chose de gentil…"
     },
     "roles": {
       "domme": "Domme",
@@ -156,7 +159,50 @@
     },
     "success": {
       "title": "Cadeau envoyé !",
-      "youPaid": "Tu as payé {amount}"
+      "youPaid": "Vous avez payé {amount}"
+    },
+    "stripe": {
+      "enterCard": "Saisir les informations de la carte",
+      "secureHint": "Les informations de paiement sont traitées de manière sécurisée par Stripe.",
+      "savedCardsSummary": "Cartes enregistrées : {count}",
+      "savedCardsHint": "Vous pouvez sélectionner une carte enregistrée ou en saisir une nouvelle.",
+      "defaultSet": "Définie par défaut",
+      "tipSaveCard": "Astuce : enregistrez votre carte une fois pour payer plus rapidement la prochaine fois.",
+      "errors": {
+        "notReady": "Stripe n’est pas encore prêt",
+        "canceled": "Paiement annulé",
+        "paymentFailed": "Paiement échoué",
+        "missingPublishableKey": "Variable d’environnement manquante : NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY"
+      }
+    },
+    "methods": {
+      "title": "Moyens de paiement",
+      "subtitle": "Enregistrez une carte une fois pour payer plus rapidement partout.",
+      "savedCards": "Cartes enregistrées",
+      "newCardTitle": "Enregistrer une nouvelle carte",
+      "loading": "Chargement…",
+      "empty": "Aucun moyen de paiement enregistré.",
+      "default": "Par défaut",
+      "exp": "Exp {month}/{year}",
+      "securityNote": "Votre carte est stockée de manière sécurisée par Stripe. Vous pouvez la supprimer à tout moment.",
+      "actions": {
+        "closeAria": "Fermer",
+        "manageTitle": "Gérer les cartes enregistrées",
+        "addCard": "+ Ajouter une carte",
+        "setDefault": "Définir par défaut",
+        "remove": "Supprimer",
+        "saveCard": "Enregistrer la carte",
+        "saving": "Enregistrement…"
+      },
+      "errors": {
+        "loadFailed": "Impossible de charger les moyens de paiement",
+        "startSetupFailed": "Impossible de démarrer la configuration",
+        "saveFailed": "Échec de l’enregistrement",
+        "setupNotCompleted": "Configuration non terminée",
+        "setDefaultFailed": "Impossible de définir par défaut",
+        "removeFailed": "Impossible de supprimer le moyen de paiement",
+        "invalidResponse": "Réponse invalide"
+      }
     }
   },
   "tipRequest": {

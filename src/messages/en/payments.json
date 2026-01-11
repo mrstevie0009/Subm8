@@ -119,7 +119,10 @@
       "cancel": "Cancel",
       "done": "Done",
       "sendGift": "Send gift",
-      "sending": "Sending…"
+      "sending": "Sending…",
+      "back": "Back",
+      "continueToPay": "Continue to payment",
+      "payNow": "Pay now"
     },
     "amount": {
       "label": "Amount for the creator",
@@ -134,17 +137,17 @@
       "youPay": "You pay"
     },
     "disclaimer": {
-      "legal": "By confirming you send a voluntary gift. It is not a payment for services. Gifts are final (no refunds, unless required by law).",
-      "top": "Gifts are voluntary and not payment for services. Subm8 only facilitates the transfer."
+      "top": "Gifts are voluntary and not payment for services. Subm8 only facilitates the transfer.",
+      "legal": "By confirming, you send a voluntary gift. This is not a payment for services. Gifts are final (no refunds unless required by law)."
     },
     "errors": {
       "confirmFailed": "Confirmation failed",
-      "createFailed": "Could not create payment",
+      "createFailed": "Payment could not be created",
       "generic": "Something went wrong"
     },
     "header": {
-      "subtitleFinal": "Gifts are voluntary and final.",
-      "title": "Send a gift to {name}"
+      "title": "Send a gift to {name}",
+      "subtitleFinal": "Gifts are voluntary and final."
     },
     "note": {
       "label": "Note (optional)",
@@ -157,6 +160,49 @@
     "success": {
       "title": "Gift sent!",
       "youPaid": "You paid {amount}"
+    },
+    "stripe": {
+      "enterCard": "Enter card details",
+      "secureHint": "Payment details are securely processed by Stripe.",
+      "savedCardsSummary": "Saved cards: {count}",
+      "savedCardsHint": "You can select a saved method below or enter a new card.",
+      "defaultSet": "Default set",
+      "tipSaveCard": "Tip: Save your card once via “Payment methods” to pay faster next time.",
+      "errors": {
+        "notReady": "Stripe is not ready yet",
+        "canceled": "Payment canceled",
+        "paymentFailed": "Payment failed",
+        "missingPublishableKey": "Missing environment variable: NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY"
+      }
+    },
+    "methods": {
+      "title": "Payment methods",
+      "subtitle": "Save a card once — then you can pay faster everywhere.",
+      "savedCards": "Saved cards",
+      "newCardTitle": "Save a new card",
+      "loading": "Loading…",
+      "empty": "No payment method saved yet.",
+      "default": "Default",
+      "exp": "Exp {month}/{year}",
+      "securityNote": "Your card is securely stored by Stripe. You can remove it anytime.",
+      "actions": {
+        "closeAria": "Close",
+        "manageTitle": "Manage saved cards",
+        "addCard": "+ Add card",
+        "setDefault": "Set default",
+        "remove": "Remove",
+        "saveCard": "Save card",
+        "saving": "Saving…"
+      },
+      "errors": {
+        "loadFailed": "Failed to load payment methods",
+        "startSetupFailed": "Failed to start setup",
+        "saveFailed": "Failed to save",
+        "setupNotCompleted": "Setup not completed",
+        "setDefaultFailed": "Failed to set default",
+        "removeFailed": "Failed to remove payment method",
+        "invalidResponse": "Invalid response"
+      }
     }
   },
   "tipRequest": {

@@ -17,7 +17,7 @@ import BackButton from '@/components/BackButton';
 import { UserBadges } from '@/components/UserBadges';
 
 import TipModal from '@/components/TipModal';
-import AutoDrainRequestAcceptModal from '@/components/AutoDrainRequestAcceptModal';
+import AutoDrainEnableModal from '@/components/AutoDrainEnableModal';
 
 
 type DbRole = 'DOMME' | 'SUBMISSIVE';
@@ -1310,18 +1310,33 @@ export default function ProfileHeader({
 
       {/* Stripe AutoDrain Modal */}
       {!isOwner && profile.role === 'domme' && (
-        <AutoDrainRequestAcceptModal
+        <AutoDrainEnableModal
           open={autoDrainOpen}
           onClose={() => setAutoDrainOpen(false)}
-          amountCents={5000}          // <-- WICHTIG: hier deinen Default/Picker-Wert einsetzen
-          currency="EUR"              // oder aus Settings/Locale ziehen
-          cadence="MONTHLY"           // <-- WICHTIG: hier deinen Default/Picker-Wert einsetzen
           toUserId={profile.id}
           toDisplayName={profile.displayName}
           toAvatarUrl={cdnify(profile.avatarUrl) || undefined}
-          // conversationId optional (nach Änderung in Modal)
-          onSuccess={() => {
-            // optional: toast / refresh
+          defaultCurrency="EUR"
+          onSuccess={({ autoDrainId, amountCents, currency, cadence }) => {
+            // 2) Erfolgsmeldung inkl. ID (oder zumindest nutzbare Aktion)
+            toast.show?.({
+              title: `AutoDrain aktiviert`,
+              // wenn toast bei dir description unterstützt:
+              // description: `ID: ${autoDrainId}`,
+              variant: 'success',
+              durationMs: 2200,
+            });
+
+            // 3) Optional, aber sehr sinnvoll:
+            // Refresh, damit UI (Badges/Buttons/Payments-State) nachzieht
+            router.refresh();
+
+            // 4) Optional: Event für andere Komponenten (falls du irgendwo Listener hast)
+            window.dispatchEvent(
+              new CustomEvent('autodrain:enabled', {
+                detail: { autoDrainId, amountCents, currency, cadence, toUserId: profile.id },
+              })
+            );
           }}
         />
       )}

@@ -119,7 +119,10 @@
       "cancel": "Abbrechen",
       "done": "Fertig",
       "sendGift": "Geschenk senden",
-      "sending": "Sende…"
+      "sending": "Sende…",
+      "back": "Zurück",
+      "continueToPay": "Weiter zur Zahlung",
+      "payNow": "Jetzt zahlen"
     },
     "amount": {
       "label": "Betrag für die Creatorin/den Creator",
@@ -130,12 +133,12 @@
     },
     "breakdown": {
       "amountToCreator": "Betrag (geht an Creator:in)",
-      "platformFeeTop": "Plattformgebühr (10% oben drauf)",
+      "platformFeeTop": "Plattformgebühr (10 % oben drauf)",
       "youPay": "Du zahlst"
     },
     "disclaimer": {
-      "legal": "Mit der Bestätigung sendest du ein freiwilliges Geschenk. Es handelt sich nicht um eine Bezahlung für Dienstleistungen. Geschenke sind endgültig (keine Rückerstattung, außer gesetzlich vorgeschrieben).",
-      "top": "Geschenke sind freiwillig und keine Bezahlung für Dienstleistungen. Subm8 vermittelt nur die Übertragung."
+      "top": "Geschenke sind freiwillig und keine Bezahlung für Dienstleistungen. Subm8 vermittelt nur die Übertragung.",
+      "legal": "Mit der Bestätigung sendest du ein freiwilliges Geschenk. Es handelt sich nicht um eine Bezahlung für Dienstleistungen. Geschenke sind endgültig (keine Rückerstattung, außer gesetzlich vorgeschrieben)."
     },
     "errors": {
       "confirmFailed": "Bestätigung fehlgeschlagen",
@@ -143,8 +146,8 @@
       "generic": "Etwas ist schiefgelaufen"
     },
     "header": {
-      "subtitleFinal": "Geschenke sind freiwillig und endgültig.",
-      "title": "Sende ein Geschenk an {name}"
+      "title": "Sende ein Geschenk an {name}",
+      "subtitleFinal": "Geschenke sind freiwillig und endgültig."
     },
     "note": {
       "label": "Notiz (optional)",
@@ -157,6 +160,49 @@
     "success": {
       "title": "Geschenk gesendet!",
       "youPaid": "Du hast {amount} bezahlt"
+    },
+    "stripe": {
+      "enterCard": "Kartendaten eingeben",
+      "secureHint": "Die Zahlungsdaten werden sicher von Stripe verarbeitet.",
+      "savedCardsSummary": "Gespeicherte Karten: {count}",
+      "savedCardsHint": "Du kannst unten eine gespeicherte Zahlungsmethode auswählen oder eine neue Karte eingeben.",
+      "defaultSet": "Als Standard gesetzt",
+      "tipSaveCard": "Tipp: Speichere deine Karte einmal über „Zahlungsmethoden“, dann geht das hier künftig schneller.",
+      "errors": {
+        "notReady": "Stripe ist noch nicht bereit",
+        "canceled": "Zahlung abgebrochen",
+        "paymentFailed": "Zahlung fehlgeschlagen",
+        "missingPublishableKey": "Fehlende Umgebungsvariable: NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY"
+      }
+    },
+    "methods": {
+      "title": "Zahlungsmethoden",
+      "subtitle": "Speichere eine Karte einmal – danach kannst du überall schneller zahlen.",
+      "savedCards": "Gespeicherte Karten",
+      "newCardTitle": "Neue Karte speichern",
+      "loading": "Lade …",
+      "empty": "Noch keine Zahlungsmethode gespeichert.",
+      "default": "Standard",
+      "exp": "Gültig bis {month}/{year}",
+      "securityNote": "Deine Karte wird sicher bei Stripe gespeichert. Du kannst sie jederzeit entfernen.",
+      "actions": {
+        "closeAria": "Schließen",
+        "manageTitle": "Gespeicherte Karten verwalten",
+        "addCard": "+ Karte hinzufügen",
+        "setDefault": "Als Standard",
+        "remove": "Entfernen",
+        "saveCard": "Karte speichern",
+        "saving": "Speichern…"
+      },
+      "errors": {
+        "loadFailed": "Zahlungsmethoden konnten nicht geladen werden",
+        "startSetupFailed": "Setup konnte nicht gestartet werden",
+        "saveFailed": "Speichern fehlgeschlagen",
+        "setupNotCompleted": "Setup nicht abgeschlossen",
+        "setDefaultFailed": "Standard konnte nicht gesetzt werden",
+        "removeFailed": "Zahlungsmethode konnte nicht entfernt werden",
+        "invalidResponse": "Ungültige Serverantwort"
+      }
     }
   },
   "tipRequest": {

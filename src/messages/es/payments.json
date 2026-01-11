@@ -119,36 +119,39 @@
       "cancel": "Cancelar",
       "done": "Listo",
       "sendGift": "Enviar regalo",
-      "sending": "Enviando…"
+      "sending": "Enviando…",
+      "back": "Atrás",
+      "continueToPay": "Continuar al pago",
+      "payNow": "Pagar ahora"
     },
     "amount": {
-      "label": "Importe para la creadora/el creador",
+      "label": "Cantidad para la creadora/el creador",
       "placeholder": "50"
     },
     "aria": {
       "close": "Cerrar"
     },
     "breakdown": {
-      "amountToCreator": "Importe (para la persona creadora)",
-      "platformFeeTop": "Comisión de la plataforma (10% añadido)",
+      "amountToCreator": "Cantidad (para la creadora/el creador)",
+      "platformFeeTop": "Tarifa de la plataforma (10 % adicional)",
       "youPay": "Pagas"
     },
     "disclaimer": {
-      "legal": "Al confirmar envías un regalo voluntario. No es un pago por servicios. Los regalos son definitivos (sin reembolso salvo obligación legal).",
-      "top": "Los regalos son voluntarios y no un pago por servicios. Subm8 solo intermedia la transferencia."
+      "top": "Los regalos son voluntarios y no un pago por servicios. Subm8 solo facilita la transferencia.",
+      "legal": "Al confirmar, envías un regalo voluntario. No es un pago por servicios. Los regalos son definitivos (sin reembolsos salvo obligación legal)."
     },
     "errors": {
-      "confirmFailed": "La confirmación ha fallado",
+      "confirmFailed": "Confirmación fallida",
       "createFailed": "No se pudo crear el pago",
       "generic": "Algo salió mal"
     },
     "header": {
-      "subtitleFinal": "Los regalos son voluntarios y definitivos.",
-      "title": "Envía un regalo a {name}"
+      "title": "Enviar un regalo a {name}",
+      "subtitleFinal": "Los regalos son voluntarios y definitivos."
     },
     "note": {
       "label": "Nota (opcional)",
-      "placeholder": "Escribe algo agradable…"
+      "placeholder": "Escribe algo bonito…"
     },
     "roles": {
       "domme": "Domme",
@@ -157,6 +160,49 @@
     "success": {
       "title": "¡Regalo enviado!",
       "youPaid": "Has pagado {amount}"
+    },
+    "stripe": {
+      "enterCard": "Introduce los datos de la tarjeta",
+      "secureHint": "Los datos de pago se procesan de forma segura por Stripe.",
+      "savedCardsSummary": "Tarjetas guardadas: {count}",
+      "savedCardsHint": "Puedes elegir una tarjeta guardada o introducir una nueva.",
+      "defaultSet": "Predeterminada",
+      "tipSaveCard": "Consejo: guarda tu tarjeta una vez para pagar más rápido la próxima vez.",
+      "errors": {
+        "notReady": "Stripe aún no está listo",
+        "canceled": "Pago cancelado",
+        "paymentFailed": "Pago fallido",
+        "missingPublishableKey": "Falta la variable de entorno: NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY"
+      }
+    },
+    "methods": {
+      "title": "Métodos de pago",
+      "subtitle": "Guarda una tarjeta una vez y paga más rápido en todas partes.",
+      "savedCards": "Tarjetas guardadas",
+      "newCardTitle": "Guardar nueva tarjeta",
+      "loading": "Cargando…",
+      "empty": "Aún no hay métodos de pago guardados.",
+      "default": "Predeterminada",
+      "exp": "Exp {month}/{year}",
+      "securityNote": "Tu tarjeta se guarda de forma segura en Stripe. Puedes eliminarla en cualquier momento.",
+      "actions": {
+        "closeAria": "Cerrar",
+        "manageTitle": "Gestionar tarjetas guardadas",
+        "addCard": "+ Añadir tarjeta",
+        "setDefault": "Establecer como predeterminada",
+        "remove": "Eliminar",
+        "saveCard": "Guardar tarjeta",
+        "saving": "Guardando…"
+      },
+      "errors": {
+        "loadFailed": "No se pudieron cargar los métodos de pago",
+        "startSetupFailed": "No se pudo iniciar la configuración",
+        "saveFailed": "Error al guardar",
+        "setupNotCompleted": "Configuración no completada",
+        "setDefaultFailed": "No se pudo establecer como predeterminada",
+        "removeFailed": "No se pudo eliminar el método de pago",
+        "invalidResponse": "Respuesta inválida"
+      }
     }
   },
   "tipRequest": {
