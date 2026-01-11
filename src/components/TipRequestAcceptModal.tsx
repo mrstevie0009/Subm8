@@ -46,6 +46,7 @@ type CreateOk = {
   totalCents: number;
   baseAmountCents: number;
   clientSecret: string;
+  customerSessionClientSecret?: string;
 };
 
 type ConfirmOk = {
@@ -616,6 +617,7 @@ export default function TipRequestAcceptModal({
   const [error, setError] = React.useState<string | null>(null);
 
   const [stripeClientSecret, setStripeClientSecret] = React.useState<string | null>(null);
+  const [customerSessionClientSecret, setCustomerSessionClientSecret] = React.useState<string | null>(null);
   const [paymentId, setPaymentId] = React.useState<string | null>(null);
 
   const [methodsOpen, setMethodsOpen] = React.useState(false);
@@ -651,6 +653,7 @@ export default function TipRequestAcceptModal({
     setSending(false);
     setStep('review');
     setStripeClientSecret(null);
+    setCustomerSessionClientSecret(null);
     setPaymentId(null);
 
     refreshSavedSummary();
@@ -676,6 +679,7 @@ export default function TipRequestAcceptModal({
 
       setPaymentId(j1.paymentId);
       setStripeClientSecret(j1.clientSecret);
+      setCustomerSessionClientSecret(j1.customerSessionClientSecret ?? null);
       setStep('pay');
 
       refreshSavedSummary();
@@ -697,6 +701,7 @@ export default function TipRequestAcceptModal({
     stripeClientSecret && step === 'pay'
       ? {
           clientSecret: stripeClientSecret,
+          customerSessionClientSecret: customerSessionClientSecret ?? undefined,
           appearance: {
             theme: 'night' as const,
             variables: {
@@ -826,6 +831,7 @@ export default function TipRequestAcceptModal({
                       setStep('review');
                       setError(null);
                       setStripeClientSecret(null);
+                      setCustomerSessionClientSecret(null);
                       setPaymentId(null);
                     }}
                     onPaid={(r) => handlePaidFinal(r)}

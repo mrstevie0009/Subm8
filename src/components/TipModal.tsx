@@ -83,6 +83,7 @@ type CreateOk = {
   totalCents: number;
   baseAmountCents: number;
   clientSecret: string;
+  customerSessionClientSecret?: string;
 };
 
 type ConfirmOk = {
@@ -670,6 +671,7 @@ export default function TipModal({
   const [step, setStep] = React.useState<Step>('form');
 
   const [stripeClientSecret, setStripeClientSecret] = React.useState<string | null>(null);
+  const [customerSessionClientSecret, setCustomerSessionClientSecret] = React.useState<string | null>(null); // NEU
   const [paymentId, setPaymentId] = React.useState<string | null>(null);
 
   const [success, setSuccess] = React.useState<null | { paymentId: string; totalCents: number; currency: string }>(null);
@@ -707,6 +709,7 @@ export default function TipModal({
     setSending(false);
     setStep('form');
     setStripeClientSecret(null);
+    setCustomerSessionClientSecret(null);
     setPaymentId(null);
 
     refreshSavedSummary();
@@ -749,6 +752,7 @@ export default function TipModal({
 
       setPaymentId(j.paymentId);
       setStripeClientSecret(j.clientSecret);
+      setCustomerSessionClientSecret(j.customerSessionClientSecret ?? null);
       setStep('pay');
 
       refreshSavedSummary();
@@ -788,6 +792,7 @@ export default function TipModal({
     stripeClientSecret && step === 'pay'
       ? {
           clientSecret: stripeClientSecret,
+          customerSessionClientSecret: customerSessionClientSecret ?? undefined,
           appearance: {
             theme: 'night' as const,
             variables: {
@@ -984,6 +989,7 @@ export default function TipModal({
                       setStep('form');
                       setError(null);
                       setStripeClientSecret(null);
+                      setCustomerSessionClientSecret(null);
                       setPaymentId(null);
                     }}
                     onPaid={(r) => handlePaidFinal(r)}

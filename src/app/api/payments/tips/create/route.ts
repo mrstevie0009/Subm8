@@ -108,14 +108,19 @@ export async function POST(req: NextRequest) {
   const meDb = await loadMeCustomer(me.id);
   const customerId = await ensureStripeCustomer(meDb);
 
+  const cs = await stripe.customerSessions.create({
+    customer: customerId,
+    components: {
+      payment_element: { enabled: true },
+    },
+  });
+
   const pi = await stripe.paymentIntents.create({
     amount: grossCents,
     currency: CURRENCY,
-
     customer: customerId,
     automatic_payment_methods: { enabled: true },
     setup_future_usage: "off_session",
-
     metadata: {
       paymentId: id,
       payerId: me.id,
@@ -136,5 +141,6 @@ export async function POST(req: NextRequest) {
     baseAmountCents,
     totalCents: grossCents,
     clientSecret: pi.client_secret,
+    customerSessionClientSecret: cs.client_secret,
   });
 }

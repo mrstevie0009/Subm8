@@ -18,6 +18,7 @@ type Props = {
   amountCents: number;
   currency: string;
   cadence: AutoDrainCadence;
+  customerSessionClientSecret?: string;
 
   toUserId: string; // Domme
   toDisplayName: string;
@@ -54,6 +55,7 @@ type CreateOk = {
   currency: string;
   amountCents: number;
   cadence: AutoDrainCadence;
+  customerSessionClientSecret?: string;
 };
 function isCreateOk(x: unknown): x is CreateOk {
   if (!x || typeof x !== 'object') return false;
@@ -602,6 +604,7 @@ export default function AutoDrainRequestAcceptModal({
 
   const [step, setStep] = React.useState<'review' | 'pay'>('review');
   const [clientSecret, setClientSecret] = React.useState<string | null>(null);
+  const [customerSessionClientSecret, setCustomerSessionClientSecret] = React.useState<string | null>(null);
   const [autoDrainId, setAutoDrainId] = React.useState<string | null>(null);
 
   // NEW: payment methods like TipRequestAcceptModal
@@ -635,6 +638,7 @@ export default function AutoDrainRequestAcceptModal({
     setStep('review');
     setClientSecret(null);
     setAutoDrainId(null);
+    setCustomerSessionClientSecret(null);
 
     try {
       const v = typeof window !== 'undefined' ? window.localStorage.getItem(GIFT_ACK_KEY) : '1';
@@ -680,6 +684,7 @@ export default function AutoDrainRequestAcceptModal({
 
       setAutoDrainId(j.autoDrainId);
       setClientSecret(j.clientSecret);
+      setCustomerSessionClientSecret(j.customerSessionClientSecret ?? null);
       setStep('pay');
 
       refreshSavedSummary();
@@ -707,6 +712,7 @@ export default function AutoDrainRequestAcceptModal({
     clientSecret && step === 'pay'
       ? {
           clientSecret,
+          customerSessionClientSecret: customerSessionClientSecret ?? undefined,
           appearance: {
             theme: 'night' as const,
             variables: {
@@ -840,6 +846,7 @@ export default function AutoDrainRequestAcceptModal({
                     setStep('review');
                     setError(null);
                     setClientSecret(null);
+                    setCustomerSessionClientSecret(null);
                     setAutoDrainId(null);
                   }}
                   onActivated={() => {

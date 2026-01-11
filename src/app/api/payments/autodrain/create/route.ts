@@ -216,6 +216,11 @@ export async function POST(req: NextRequest) {
     },
   });
 
+  const customerSession = await stripe.customerSessions.create({
+    customer: customerId,
+    components: { payment_element: { enabled: true } },
+  });
+
   return NextResponse.json({
     ok: true,
     autoDrainId: ad.id,
@@ -224,5 +229,6 @@ export async function POST(req: NextRequest) {
     amountCents,
     cadence,
     clientSecret,
+    customerSessionClientSecret: customerSession.client_secret,
   });
 }

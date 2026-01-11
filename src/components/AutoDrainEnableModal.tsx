@@ -66,6 +66,7 @@ type CreateOk = {
   currency: string;
   amountCents: number;
   cadence: AutoDrainCadence;
+  customerSessionClientSecret?: string;
 };
 
 function isCreateOk(x: unknown): x is CreateOk {
@@ -654,6 +655,7 @@ export default function AutoDrainEnableModal({
 
   const [step, setStep] = React.useState<'form' | 'pay'>('form');
   const [clientSecret, setClientSecret] = React.useState<string | null>(null);
+  const [customerSessionClientSecret, setCustomerSessionClientSecret] = React.useState<string | null>(null);
   const [autoDrainId, setAutoDrainId] = React.useState<string | null>(null);
 
   // Payment methods integration (wie TipModal)
@@ -691,6 +693,7 @@ export default function AutoDrainEnableModal({
 
     setStep('form');
     setClientSecret(null);
+    setCustomerSessionClientSecret(null);
     setAutoDrainId(null);
 
     refreshSavedSummary();
@@ -754,6 +757,7 @@ export default function AutoDrainEnableModal({
 
       setAutoDrainId(j.autoDrainId);
       setClientSecret(j.clientSecret);
+      setCustomerSessionClientSecret(j.customerSessionClientSecret ?? null);
       setStep('pay');
 
       // sofort Summary aktualisieren, falls Stripe schon etwas erzeugt hat / default vorhanden
@@ -771,6 +775,7 @@ export default function AutoDrainEnableModal({
     clientSecret && step === 'pay'
       ? {
           clientSecret,
+          customerSessionClientSecret: customerSessionClientSecret ?? undefined,
           appearance: {
             theme: 'night' as const,
             variables: {
@@ -1022,6 +1027,7 @@ export default function AutoDrainEnableModal({
                         setError(null);
                         setClientSecret(null);
                         setAutoDrainId(null);
+                        setCustomerSessionClientSecret(null);
                       }}
                       onActivated={() => {
                         markAck();
