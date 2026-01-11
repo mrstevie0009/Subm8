@@ -314,9 +314,11 @@ function PaymentMethodsModal({
       onClick={onClose}
     >
       <div
-        className="relative w-full sm:w-[min(720px,94vw)] max-w-[720px]
-                   max-h-[calc(100dvh-24px)] sm:max-h-[85vh]
-                   rounded-2xl overflow-hidden border border-white/10 bg-[#0b0b0d] flex flex-col"
+        className={[
+          "relative w-full sm:w-[min(720px,94vw)] max-w-[720px]",
+          "max-h-[calc(100dvh-24px)] sm:max-h-[85vh]",
+          "rounded-2xl overflow-hidden border border-white/10 bg-[#0b0b0d] flex flex-col",
+        ].join(" ")}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="relative px-5 py-4 border-b border-white/10">
@@ -816,9 +818,10 @@ export default function TipModal({
         }}
       >
         <div
-          className="relative w-full sm:w-[min(680px,94vw)] max-w-[680px]
-                     max-h-[calc(100dvh-24px)] sm:max-h-[85vh]
-                     rounded-2xl overflow-hidden border border-white/10 bg-[#0b0b0d] flex flex-col"
+          className={["relative w-full sm:w-[min(680px,94vw)] max-w-[680px]",
+                     "max-h-[calc(100dvh-24px)] sm:max-h-[85vh]",
+                     "rounded-2xl overflow-hidden border border-white/10 bg-[#0b0b0d] flex flex-col",
+                  ].join(" ")}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}

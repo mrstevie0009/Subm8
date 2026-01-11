@@ -17,12 +17,6 @@ const OfferViewerModal = dynamic(() => import('@/components/OfferViewerModal'), 
   loading: () => null,
 });
 
-
-const AutoDrainEnableModal = dynamic(() => import('@/components/AutoDrainEnableModal'), {
-  ssr: false,
-  loading: () => null,
-});
-
 type Tab = 'posts' | 'gallery' | 'leaderboard';
 
 type Props = {
@@ -60,16 +54,12 @@ export default function ClientProfile({
 }: Props) {
   const [tab, setTab] = React.useState<Tab>('posts');
   const [offerOpen, setOfferOpen] = React.useState(false);
-
-  const [autoDrainOpen, setAutoDrainOpen] = React.useState(false);
   const [verifyOpen, setVerifyOpen] = React.useState(false);
 
   const router = useRouter();
   const locale = useLocale();
   const tVerify = useTranslations('verify');
   const { data: session } = useSession();
-
-  const ADACC_PREFIX = 'ADACC::';
 
   const startAgeVerification = React.useCallback(async () => {
     try {
@@ -157,21 +147,6 @@ export default function ClientProfile({
         open={offerOpen}
         onClose={() => setOfferOpen(false)}
         handle={profile.username}
-      />
-
-      <AutoDrainEnableModal
-        open={autoDrainOpen}
-        onClose={() => setAutoDrainOpen(false)}
-        toUserId={profile.id}
-        toDisplayName={profile.displayName}
-        toAvatarUrl={profile.avatarUrl || undefined}
-        defaultCurrency="EUR"
-        onSuccess={({ autoDrainId, amountCents, currency, cadence }) => {
-          const payload = { id: autoDrainId, amountCents, currency, cadence };
-          const envelope = `${ADACC_PREFIX}${JSON.stringify(payload)}`;
-          setAutoDrainOpen(false);
-          router.push(`/${locale}/chat/new?to=${profile.username}&text=${encodeURIComponent(envelope)}`);
-        }}
       />
 
       {/* Verify Prompt jetzt auf der Page */}
