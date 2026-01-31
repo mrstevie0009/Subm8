@@ -54,7 +54,26 @@ export async function GET() {
     type: "card",
   });
 
-  const methods: ListOk["methods"] = pms.data.map((pm) => ({
+  const seen = new Set<string>();
+  const unique: Stripe.PaymentMethod[] = [];
+  const noFp: Stripe.PaymentMethod[] = [];
+
+  for (const pm of pms.data) {
+    const fp = pm.card?.fingerprint;
+
+    if (!fp) {
+      noFp.push(pm);
+      continue;
+    }
+
+    if (seen.has(fp)) continue;
+    seen.add(fp);
+    unique.push(pm);
+  }
+
+  const chosen = unique.length > 0 ? unique : pms.data;
+
+  const methods: ListOk["methods"] = chosen.map((pm) => ({
     id: pm.id,
     brand: pm.card?.brand ?? "card",
     last4: pm.card?.last4 ?? "0000",

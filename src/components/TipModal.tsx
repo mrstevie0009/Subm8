@@ -195,6 +195,7 @@ function PaymentMethodsModal({
   const [error, setError] = React.useState<string | null>(null);
 
   const [clientSecret, setClientSecret] = React.useState<string | null>(null);
+  const [peKey, setPeKey] = React.useState(0);
 
   const [methods, setMethods] = React.useState<SavedMethod[]>([]);
   const [defaultId, setDefaultId] = React.useState<string | null>(null);
@@ -238,6 +239,7 @@ function PaymentMethodsModal({
       if (!isSetupIntentOk(j)) throw new Error(t('methods.errors.invalidResponse'));
 
       setClientSecret(j.clientSecret);
+      setPeKey((k) => k + 1);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to start setup');
     } finally {
@@ -425,7 +427,9 @@ function PaymentMethodsModal({
                 <Elements stripe={stripePromise} options={elementsOptions}>
                   <SetupIntentForm
                     t={t}
+                    peKey={peKey}
                     onDone={async () => {
+                      setPeKey((k) => k + 1);
                       setClientSecret(null);
                       await loadMethods();
                       onChanged();
@@ -448,14 +452,19 @@ function SetupIntentForm({
   onDone,
   onError,
   t,
+  peKey,
 }: {
   onDone: () => void;
   onError: (msg: string) => void;
   t: ReturnType<typeof useTranslations>;
+  peKey: number;
 }) {
   const stripe = useStripe();
   const elements = useElements();
   const [saving, setSaving] = React.useState(false);
+  const [billName, setBillName] = React.useState('');
+  const [billEmail, setBillEmail] = React.useState('');
+  const [billPhone, setBillPhone] = React.useState('');
 
   async function handleSave() {
     try {
@@ -467,6 +476,15 @@ function SetupIntentForm({
       const { error, setupIntent } = await stripe.confirmSetup({
         elements,
         redirect: 'if_required',
+        confirmParams: {
+          payment_method_data: {
+            billing_details: {
+              name: billName || undefined,
+              email: billEmail || undefined,
+              phone: billPhone || undefined,
+            },
+          },
+        },
       });
 
       if (error) throw new Error(error.message || t('methods.errors.saveFailed'));
@@ -485,7 +503,28 @@ function SetupIntentForm({
 
   return (
     <div>
-      <PaymentElement />
+      <div className="grid gap-2 mb-3">
+        <input
+          value={billName}
+          onChange={(e) => setBillName(e.target.value)}
+          placeholder="Name"
+          className="w-full rounded-lg bg-black/30 border border-white/10 px-3 py-2 outline-none"
+        />
+        <input
+          value={billEmail}
+          onChange={(e) => setBillEmail(e.target.value)}
+          placeholder="E-Mail"
+          className="w-full rounded-lg bg-black/30 border border-white/10 px-3 py-2 outline-none"
+        />
+        <input
+          value={billPhone}
+          onChange={(e) => setBillPhone(e.target.value)}
+          placeholder="Telefon"
+          className="w-full rounded-lg bg-black/30 border border-white/10 px-3 py-2 outline-none"
+        />
+      </div>
+
+      <PaymentElement key={`setup-pe-${peKey}`} options={{ layout: 'tabs' }} />
       <div className="mt-4 flex items-center justify-end">
         <button
           type="button"
@@ -510,7 +549,6 @@ function StripePayStep({
   setError,
   onBack,
   onPaid,
-  onOpenMethods,
   savedSummary,
 }: {
   t: ReturnType<typeof useTranslations>;
@@ -520,7 +558,6 @@ function StripePayStep({
   setError: (s: string | null) => void;
   onBack: () => void;
   onPaid: (r: { paymentId: string; totalCents: number; currency: string; baseAmountCents: number }) => void;
-  onOpenMethods: () => void;
   savedSummary: { count: number; hasDefault: boolean };
 }) {
   const stripe = useStripe();
@@ -596,15 +633,6 @@ function StripePayStep({
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={onOpenMethods}
-            disabled={sending}
-            className="px-3 py-1.5 rounded-lg border border-white/15 hover:bg-white/10 text-[13px] disabled:opacity-60"
-            title={t('methods.actions.manageTitle')}
-          >
-            Zahlungsmethoden
-          </button>
-          <button
-            type="button"
             onClick={onBack}
             disabled={sending}
             className="px-3 py-1.5 rounded-lg border border-white/15 hover:bg-white/10 text-[13px] disabled:opacity-60"
@@ -627,7 +655,14 @@ function StripePayStep({
       )}
 
       <div className="mt-3 rounded-xl border border-white/10 bg-black/30 p-3">
-        <PaymentElement />
+        <PaymentElement
+          options={{
+            wallets: {
+              applePay: 'never',
+              googlePay: 'never',
+            },
+          }}
+        />
       </div>
 
       <div className="mt-4 flex items-center justify-end gap-2">
@@ -881,18 +916,6 @@ export default function TipModal({
                 </div>
               </div>
             </div>
-
-            {/* Row 2: Payment methods (stacked on mobile, inline on sm+) */}
-            <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <button
-                type="button"
-                onClick={() => setMethodsOpen(true)}
-                className="w-full sm:w-auto px-3 py-2 sm:py-1.5 rounded-lg border border-white/15 hover:bg-white/10 text-[13px]"
-                title={t('methods.actions.manageTitle')}
-              >
-                Zahlungsmethoden
-              </button>
-            </div>
           </div>
 
           {/* Body */}
@@ -993,7 +1016,6 @@ export default function TipModal({
                       setPaymentId(null);
                     }}
                     onPaid={(r) => handlePaidFinal(r)}
-                    onOpenMethods={() => setMethodsOpen(true)}
                     savedSummary={{ count: savedCount, hasDefault: hasDefaultSaved }}
                   />
                 </Elements>

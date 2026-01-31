@@ -48,7 +48,7 @@ export async function POST() {
 
   const si = await stripe.setupIntents.create({
     customer: customerId,
-    automatic_payment_methods: { enabled: true },
+    payment_method_types: ["card"],
     usage: "off_session",
     metadata: { userId: me.id, kind: "payment_method_setup" },
   });

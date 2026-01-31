@@ -226,7 +226,18 @@
       "cancel": "Cancel",
       "closeAria": "Close",
       "processing": "Processing…",
-      "sendGiftAccept": "Send gift & accept ({total})"
+      "sendGiftAccept": "Send gift & accept ({total})",
+      "back": "Back",
+      "done": "Done",
+      "payNow": "Pay now"
+    },
+    "stripe": {
+      "enterCard": "Enter card details",
+      "secureHint": "Payment details are securely processed by Stripe."
+    },
+    "success": {
+      "title": "Gift sent!",
+      "youPaid": "You paid {amount}"
     },
     "breakdown": {
       "amount": "Amount",

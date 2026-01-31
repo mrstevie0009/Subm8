@@ -1,4 +1,3 @@
-//src/app/api/payments/autodrain/create/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/currentUser";
@@ -54,6 +53,179 @@ function cadenceToStripeInterval(c: "DAILY" | "WEEKLY" | "MONTHLY"): "day" | "we
   return "month";
 }
 
+function sleep(ms: number) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+/** ---- Tiny typed helpers (NO any) ---- */
+
+function getInvoiceIdFromSub(sub: Stripe.Subscription): string | null {
+  const li = sub.latest_invoice;
+  return typeof li === "string" ? li : li?.id ?? null;
+}
+
+function getPendingSetupIntentClientSecret(sub: Stripe.Subscription): string | null {
+  const psi = sub.pending_setup_intent;
+  if (!psi) return null;
+  if (typeof psi === "string") return null;
+  return psi.client_secret ?? null;
+}
+
+function isRecord(x: unknown): x is Record<string, unknown> {
+  return !!x && typeof x === "object";
+}
+
+function getStringProp(o: Record<string, unknown>, key: string): string | null {
+  const v = o[key];
+  return typeof v === "string" ? v : null;
+}
+
+function getInvoiceMeta(inv: Stripe.Invoice): {
+  invoiceId: string;
+  invoiceStatus: Stripe.Invoice.Status | null;
+  collectionMethod: Stripe.Invoice.CollectionMethod | null;
+  paymentIntentId: string | null;
+  paymentIntentExpanded: Stripe.PaymentIntent | null;
+} {
+  const invoiceId = inv.id;
+  const invoiceStatus = inv.status ?? null;
+  const collectionMethod = inv.collection_method ?? null;
+
+  let paymentIntentId: string | null = null;
+  let paymentIntentExpanded: Stripe.PaymentIntent | null = null;
+
+  const raw: unknown = inv as unknown;
+  if (isRecord(raw)) {
+    const pi = raw["payment_intent"];
+
+    // payment_intent kann string oder object sein
+    if (typeof pi === "string") {
+      paymentIntentId = pi;
+    } else if (isRecord(pi)) {
+      const id = getStringProp(pi, "id");
+      paymentIntentId = id;
+      // wir casten erst nachdem wir die Form geprüft haben
+      paymentIntentExpanded = id ? (pi as unknown as Stripe.PaymentIntent) : null;
+    }
+  }
+
+  return { invoiceId, invoiceStatus, collectionMethod, paymentIntentId, paymentIntentExpanded };
+}
+
+async function resolveClientSecretForSubscription(
+  subId: string
+): Promise<{
+  clientSecret: string | null;
+  kind: "payment_intent" | "setup_intent" | null;
+  debug: {
+    subStatus?: Stripe.Subscription.Status;
+    hasPendingSetupIntent?: boolean;
+    pendingSetupIntentId?: string | null;
+    invoiceId?: string | null;
+    invoiceStatus?: Stripe.Invoice.Status | null;
+    collectionMethod?: Stripe.Invoice.CollectionMethod | null;
+    paymentIntentExists?: boolean;
+    paymentIntentId?: string | null;
+    reason?: string;
+  };
+}> {
+  const delays = [0, 250, 500, 900, 1300, 2000];
+
+  for (const d of delays) {
+    if (d) await sleep(d);
+
+    const sub = await stripe.subscriptions.retrieve(subId, {
+      expand: ["latest_invoice.payment_intent", "latest_invoice", "pending_setup_intent"],
+    });
+
+    // 1) SetupIntent (pending_setup_intent) bevorzugen
+    const psi = sub.pending_setup_intent;
+    if (psi && typeof psi !== "string" && psi.client_secret) {
+      return {
+        clientSecret: psi.client_secret,
+        kind: "setup_intent",
+        debug: {
+          subStatus: sub.status,
+          hasPendingSetupIntent: true,
+          pendingSetupIntentId: psi.id,
+          invoiceId: getInvoiceIdFromSub(sub),
+        },
+      };
+    }
+
+    const invoiceId = getInvoiceIdFromSub(sub);
+    if (!invoiceId) continue;
+
+    // 2) Invoice PI (retrieve + ggf. finalize)
+    let inv = await stripe.invoices.retrieve(invoiceId, { expand: ["payment_intent"] });
+    let meta = getInvoiceMeta(inv);
+
+    if (meta.collectionMethod === "send_invoice") {
+      return {
+        clientSecret: null,
+        kind: null,
+        debug: {
+          subStatus: sub.status,
+          hasPendingSetupIntent: false,
+          invoiceId: meta.invoiceId,
+          invoiceStatus: meta.invoiceStatus,
+          collectionMethod: meta.collectionMethod,
+          paymentIntentExists: !!meta.paymentIntentId,
+          paymentIntentId: meta.paymentIntentId,
+        },
+      };
+    }
+
+    // draft -> finalize
+    if (!meta.paymentIntentId && meta.invoiceStatus === "draft") {
+      inv = await stripe.invoices.finalizeInvoice(invoiceId, { expand: ["payment_intent"] });
+      meta = getInvoiceMeta(inv);
+    }
+
+    // PI expanded?
+    const expanded = meta.paymentIntentExpanded;
+    if (expanded?.client_secret) {
+      return {
+        clientSecret: expanded.client_secret,
+        kind: "payment_intent",
+        debug: {
+          subStatus: sub.status,
+          hasPendingSetupIntent: false,
+          invoiceId: meta.invoiceId,
+          invoiceStatus: meta.invoiceStatus,
+          collectionMethod: meta.collectionMethod,
+          paymentIntentExists: true,
+          paymentIntentId: expanded.id,
+        },
+      };
+    }
+
+    // PI id vorhanden -> retrieve PI
+    if (meta.paymentIntentId) {
+      const pi = await stripe.paymentIntents.retrieve(meta.paymentIntentId);
+      if (pi.client_secret) {
+        return {
+          clientSecret: pi.client_secret,
+          kind: "payment_intent",
+          debug: {
+            subStatus: sub.status,
+            hasPendingSetupIntent: false,
+            invoiceId: meta.invoiceId,
+            invoiceStatus: meta.invoiceStatus,
+            collectionMethod: meta.collectionMethod,
+            paymentIntentExists: true,
+            paymentIntentId: pi.id,
+          },
+        };
+      }
+    }
+
+    // next retry loop
+  }
+
+  return { clientSecret: null, kind: null, debug: { reason: "not_resolved_after_retries" } };
+}
+
 export async function POST(req: NextRequest) {
   const me = await getCurrentUser();
   if (!me) return NextResponse.json({ ok: false, error: "Not signed in" }, { status: 401 });
@@ -76,7 +248,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "Cannot enable autodrain to yourself" }, { status: 400 });
   }
 
-  // --- Rollen/Conversation prüfen (gleiche Logik wie bei deinem accept) ---
+  // --- Rollen/Conversation prüfen ---
   let dommeId: string | null = null;
   let subId: string | null = null;
 
@@ -91,6 +263,7 @@ export async function POST(req: NextRequest) {
       },
       select: { id: true, dommeId: true, subId: true },
     });
+
     if (!convo) {
       return NextResponse.json({ ok: false, error: "Conversation mismatch" }, { status: 403 });
     }
@@ -120,7 +293,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "Only the submissive can enable autodrain" }, { status: 403 });
   }
 
-  // Erstelle/Reuse DB Record zunächst als "pending" (active=false) – erst nach Stripe Confirm aktiv schalten.
   const now = new Date();
   const next = addCadence(now, cadence);
 
@@ -144,68 +316,102 @@ export async function POST(req: NextRequest) {
       cadence,
       nextChargeAt: next,
       lastChargeAt: null,
-      active: false, // <-- pending bis Stripe bestätigt
+      active: false,
       stripeCustomerId: customerId,
       stripeStatus: "incomplete",
     },
     select: { id: true },
   });
 
-  // Stripe Product (TS-sicher, weil deine Stripe-Typen kein product_data in price_data erlauben)
   const product = await stripe.products.create({
     name: "Subm8 AutoDrain",
     metadata: { kind: "autodrain" },
   });
 
-  // Stripe Subscription (incomplete) + PaymentIntent client_secret für PaymentElement
-  const sub = await stripe.subscriptions.create({
-    customer: customerId,
-    payment_behavior: "default_incomplete",
-    payment_settings: {
-      // Speichert die PaymentMethod nach erfolgreicher Aktivierung fürs nächste Mal:
-      save_default_payment_method: "on_subscription",
-    },
-    items: [
-      {
-        price_data: {
+  const sub = await stripe.subscriptions.create(
+    {
+      customer: customerId,
+      collection_method: "charge_automatically",
+      payment_behavior: "default_incomplete",
+      payment_settings: {
+        save_default_payment_method: "on_subscription",
+        payment_method_types: ["card"],
+      },
+      items: [
+        {
+          price_data: {
             currency: currency.toLowerCase(),
             unit_amount: amountCents,
             product: product.id,
             recurring: {
-                interval: cadenceToStripeInterval(cadence),
-                interval_count: 1,
+              interval: cadenceToStripeInterval(cadence),
+              interval_count: 1,
             },
+          },
         },
+      ],
+      metadata: {
+        kind: "autodrain",
+        autoDrainId: ad.id,
+        dommeId: dommeId!,
+        subId: subId!,
       },
-    ],
-    metadata: {
-      kind: "autodrain",
-      autoDrainId: ad.id,
-      dommeId: dommeId!,
-      subId: subId!,
+      expand: ["latest_invoice.payment_intent", "latest_invoice", "pending_setup_intent"],
     },
-    expand: ["latest_invoice.payment_intent"],
+    { idempotencyKey: `autodrain_create:${ad.id}` }
+  );
+
+  // Schritt 1: frisch retrieved (nur fürs Debug / Reality-Check)
+  const subFresh = await stripe.subscriptions.retrieve(sub.id, {
+    expand: ["latest_invoice.payment_intent", "latest_invoice", "pending_setup_intent"],
   });
 
-  type InvoiceWithPI = Stripe.Invoice & {
-    payment_intent?: string | Stripe.PaymentIntent | null;
-  };
-
-  const inv = (sub.latest_invoice as InvoiceWithPI | string | null) && typeof sub.latest_invoice !== "string"
-    ? (sub.latest_invoice as InvoiceWithPI)
-    : null;
-
-  const pi =
-    typeof inv?.payment_intent === "string"
-      ? await stripe.paymentIntents.retrieve(inv.payment_intent)
-      : inv?.payment_intent ?? null;
-
-  const clientSecret = typeof pi === "object" && pi ? pi.client_secret : null;
+  const resolved = await resolveClientSecretForSubscription(sub.id);
+  const clientSecret = resolved.clientSecret;
 
   if (!clientSecret) {
-    // Cleanup DB, damit kein "hängender" Eintrag bleibt
     await prisma.autoDrainSubscription.delete({ where: { id: ad.id } }).catch(() => {});
-    return NextResponse.json({ ok: false, error: "Missing payment intent" }, { status: 500 });
+    await stripe.subscriptions.cancel(sub.id).catch(() => {});
+
+    const isDev = process.env.NODE_ENV !== "production";
+
+    const invoiceId = getInvoiceIdFromSub(subFresh);
+    let invoiceStatus: Stripe.Invoice.Status | null = null;
+    let collectionMethod: Stripe.Invoice.CollectionMethod | null = null;
+    let paymentIntentExists: boolean | null = null;
+
+    if (invoiceId) {
+      try {
+        const inv = await stripe.invoices.retrieve(invoiceId, { expand: ["payment_intent"] });
+        const meta = getInvoiceMeta(inv);
+        invoiceStatus = meta.invoiceStatus;
+        collectionMethod = meta.collectionMethod;
+        paymentIntentExists = !!meta.paymentIntentId;
+      } catch {
+        // ignore
+      }
+    }
+
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "Missing payment intent",
+        ...(isDev
+          ? {
+              debug: {
+                subStatus: sub.status,
+                pendingSetupIntentClientSecret: getPendingSetupIntentClientSecret(subFresh),
+                invoiceStatus,
+                collectionMethod,
+                paymentIntentExists,
+                resolvedKind: resolved.kind,
+                resolvedDebug: resolved.debug,
+              },
+            }
+          : undefined),
+      },
+      { status: 500 }
+    );
   }
 
   await prisma.autoDrainSubscription.update({
@@ -216,9 +422,19 @@ export async function POST(req: NextRequest) {
     },
   });
 
+  // Schritt 3: CustomerSession Features aktivieren
   const customerSession = await stripe.customerSessions.create({
     customer: customerId,
-    components: { payment_element: { enabled: true } },
+    components: {
+      payment_element: {
+        enabled: true,
+        features: {
+          payment_method_redisplay: "enabled",
+          payment_method_save: "enabled",
+          payment_method_remove: "enabled",
+        },
+      },
+    },
   });
 
   return NextResponse.json({

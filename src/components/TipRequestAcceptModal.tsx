@@ -280,22 +280,6 @@ function PaymentMethodsModal({
               background: 'radial-gradient(1200px 220px at 50% 0%, rgba(139,92,246,.30), rgba(139,92,246,0))',
             }}
           />
-          <div className="flex items-center gap-2">
-            <div className="font-semibold text-[16px]">Zahlungsmethoden</div>
-            <div className="ml-auto flex items-center gap-2">
-              <button
-                type="button"
-                onClick={onClose}
-                className="inline-grid place-items-center w-9 h-9 rounded-full hover:bg-white/10"
-                aria-label="Close"
-              >
-                <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" strokeWidth="2" fill="none">
-                  <path d="M6 6l12 12M18 6L6 18" />
-                </svg>
-              </button>
-            </div>
-          </div>
-          <div className="mt-1 text-[12px] text-white/65">Speichere eine Karte einmal – danach zahlst du schneller.</div>
         </div>
 
         <div className="px-5 py-5">
@@ -455,8 +439,6 @@ function StripePayStep({
   setError,
   onBack,
   onPaid,
-  onOpenMethods,
-  savedSummary,
 }: {
   t: ReturnType<typeof useTranslations>;
   paymentId: string;
@@ -465,8 +447,6 @@ function StripePayStep({
   setError: (s: string | null) => void;
   onBack: () => void;
   onPaid: (r: { paymentId: string; totalCents: number; currency: string; baseAmountCents: number }) => void;
-  onOpenMethods: () => void;
-  savedSummary: { count: number; hasDefault: boolean };
 }) {
   const stripe = useStripe();
   const elements = useElements();
@@ -541,15 +521,6 @@ function StripePayStep({
         <div className="flex items-center justify-end gap-2">
           <button
             type="button"
-            onClick={onOpenMethods}
-            disabled={sending}
-            className="px-3 py-1.5 rounded-lg border border-white/15 hover:bg-white/10 text-[13px] disabled:opacity-60 whitespace-nowrap"
-            title="Gespeicherte Karten verwalten"
-          >
-            Zahlungsmethoden
-          </button>
-          <button
-            type="button"
             onClick={onBack}
             disabled={sending}
             className="px-3 py-1.5 rounded-lg border border-white/15 hover:bg-white/10 text-[13px] disabled:opacity-60 whitespace-nowrap"
@@ -558,22 +529,6 @@ function StripePayStep({
           </button>
         </div>
       </div>
-
-      {savedSummary.count > 0 ? (
-        <div className="mt-3 rounded-xl border border-white/10 bg-black/20 px-3 py-2">
-          <div className="text-[12px] text-white/70">
-            Gespeicherte Karten: <span className="text-white/85">{savedSummary.count}</span>
-            {savedSummary.hasDefault ? <span className="ml-2 text-[var(--purple)]">Default gesetzt</span> : null}
-          </div>
-          <div className="mt-1 text-[12px] text-white/55">
-            Du kannst im Stripe-Feld eine gespeicherte Methode auswählen oder eine neue eingeben.
-          </div>
-        </div>
-      ) : (
-        <div className="mt-3 text-[12px] text-white/55">
-          Tipp: Speichere deine Karte einmal über „Zahlungsmethoden“, dann geht das künftig schneller.
-        </div>
-      )}
 
       <div className="mt-3 rounded-xl border border-white/10 bg-black/30 p-3">
         <PaymentElement />
@@ -621,8 +576,6 @@ export default function TipRequestAcceptModal({
   const [paymentId, setPaymentId] = React.useState<string | null>(null);
 
   const [methodsOpen, setMethodsOpen] = React.useState(false);
-  const [savedCount, setSavedCount] = React.useState(0);
-  const [hasDefaultSaved, setHasDefaultSaved] = React.useState(false);
 
   const platformFeeCents = Math.round(amountCents * TOPUP_PCT);
   const totalCents = amountCents + platformFeeCents;
@@ -632,17 +585,10 @@ export default function TipRequestAcceptModal({
     try {
       const res = await fetch('/api/payments/methods/list', { method: 'GET' });
       const j: unknown = await res.json().catch(() => null);
-
       if (!res.ok || !isMethodsListOk(j)) {
-        setSavedCount(0);
-        setHasDefaultSaved(false);
         return;
       }
-      setSavedCount(j.methods.length);
-      setHasDefaultSaved(!!j.defaultPaymentMethodId);
     } catch {
-      setSavedCount(0);
-      setHasDefaultSaved(false);
     }
   }
 
@@ -755,15 +701,6 @@ export default function TipRequestAcceptModal({
 
               <div className="ml-auto flex items-center gap-2">
                 <button
-                  type="button"
-                  onClick={() => setMethodsOpen(true)}
-                  className="hidden sm:inline-flex px-3 py-1.5 rounded-lg border border-white/15 hover:bg-white/10 text-[13px]"
-                  title="Gespeicherte Karten verwalten"
-                >
-                  Zahlungsmethoden
-                </button>
-
-                <button
                   onClick={onClose}
                   className="inline-grid place-items-center w-9 h-9 rounded-full hover:bg-white/10"
                   aria-label={t('actions.closeAria')}
@@ -773,17 +710,6 @@ export default function TipRequestAcceptModal({
                   </svg>
                 </button>
               </div>
-            </div>
-
-            {/* Mobile: methods button */}
-            <div className="sm:hidden mt-3">
-              <button
-                type="button"
-                onClick={() => setMethodsOpen(true)}
-                className="w-full px-3 py-2 rounded-lg border border-white/15 hover:bg-white/10 text-[13px]"
-              >
-                Zahlungsmethoden
-              </button>
             </div>
           </div>
 
@@ -835,8 +761,6 @@ export default function TipRequestAcceptModal({
                       setPaymentId(null);
                     }}
                     onPaid={(r) => handlePaidFinal(r)}
-                    onOpenMethods={() => setMethodsOpen(true)}
-                    savedSummary={{ count: savedCount, hasDefault: hasDefaultSaved }}
                   />
                 </Elements>
               ) : (
