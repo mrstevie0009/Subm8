@@ -20,12 +20,14 @@
     "title": "Create autodrain request"
   },
   "autoDrainAcceptModal": {
+    "cancelAnytime": "You can cancel AutoDrain anytime in your Payments.",
     "acknowledge": "I understand that gifts are voluntary and final. No services are promised.",
     "actions": {
       "cancel": "Cancel",
       "closeAria": "Close",
       "enable": "Enable autodrain",
-      "enabling": "Enabling…"
+      "enabling": "Enabling…",
+      "back": "Back"
     },
     "cadence": {
       "daily": "daily",
@@ -43,6 +45,14 @@
     "header": {
       "title": "Enable autodrain",
       "to": "for {name}"
+    },
+    "stripe": {
+      "enterCard": "Choose payment method",
+      "secureHint": "Your payment details are securely processed by Stripe.",
+      "savedCardsSummary": "{count} saved card(s)",
+      "savedCardsHint": "You can set a default card.",
+      "defaultSet": "Default set",
+      "tipSaveCard": "You can save your card to pay faster."
     }
   },
   "paymentsPage": {
@@ -180,6 +190,7 @@
       "subtitle": "Save a card once — then you can pay faster everywhere.",
       "savedCards": "Saved cards",
       "newCardTitle": "Save a new card",
+      "addNewTitle": "Save a new card",
       "loading": "Loading…",
       "empty": "No payment method saved yet.",
       "default": "Default",
@@ -187,6 +198,7 @@
       "securityNote": "Your card is securely stored by Stripe. You can remove it anytime.",
       "actions": {
         "closeAria": "Close",
+        "manage": "Payment methods",
         "manageTitle": "Manage saved cards",
         "addCard": "+ Add card",
         "setDefault": "Set default",

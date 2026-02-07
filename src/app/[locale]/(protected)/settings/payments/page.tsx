@@ -1,4 +1,4 @@
-// src/app/[locale]/settings/payments/page.tsx
+// src/app/[locale]/(protected)/settings/payments/page.tsx
 import Image from "next/image";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
@@ -8,6 +8,7 @@ import { createTranslator } from "next-intl";
 import { notFound } from "next/navigation";
 import PayoutButton from "@/components/PayoutButton";
 import PayoutBalances from "@/components/PayoutBalances";
+import SepaPayoutForm from "@/components/SepaPayoutForm";
 
 type Params = { locale: string };
 
@@ -85,12 +86,24 @@ export default async function PaymentsPage({ params }: { params: Promise<Params>
     orderBy: { createdAt: "desc" },
   });
 
-  // Earned (DB)
-  const balanceCents = payments
-    .filter((p) => p.payeeId === me.id && p.status === "SUCCEEDED")
-    .reduce((acc, p) => acc + (p.amountNetToDommeCents || 0), 0);
+  // Earned (DB) - calculate available balance
+  const availablePayments = payments.filter(
+    (p) => p.payeeId === me.id && p.status === "SUCCEEDED" && !p.payoutRequestId
+  );
+
+  const balanceCents = availablePayments.reduce((acc, p) => acc + (p.amountNetToDommeCents || 0), 0);
 
   const balanceCurrency = payments.find((p) => p.payeeId === me.id)?.currency ?? "EUR";
+
+  // Fetch SEPA settings
+  const sepaSettings = await prisma.user.findUnique({
+    where: { id: me.id },
+    select: {
+      payoutIban: true,
+      payoutAccountHolder: true,
+      payoutBic: true,
+    },
+  });
 
   const rows = payments.map((p) => {
     const incoming = p.payeeId === me.id;
@@ -118,7 +131,7 @@ export default async function PaymentsPage({ params }: { params: Promise<Params>
   const sentRows = rows.filter((r) => r.direction === "out");
 
   const outgoingSubs = await prisma.autoDrainSubscription.findMany({
-  where: { subId: me.id, active: true },
+    where: { subId: me.id, active: true },
     select: {
       id: true,
       dommeId: true,
@@ -126,7 +139,6 @@ export default async function PaymentsPage({ params }: { params: Promise<Params>
       currency: true,
       cadence: true,
       nextChargeAt: true,
-
       stripeSubscriptionId: true,
       stripeStatus: true,
     },
@@ -175,7 +187,7 @@ export default async function PaymentsPage({ params }: { params: Promise<Params>
           </div>
 
           <div className="shrink-0">
-            <PayoutButton tooltip={t("paymentsPage.payoutTooltip")} />
+            <PayoutButton availableCents={balanceCents} locale={locale} />
           </div>
         </div>
       </header>
@@ -191,6 +203,16 @@ export default async function PaymentsPage({ params }: { params: Promise<Params>
         tAvailableLabel={"Available (Stripe)"}
         tAvailableHint={"Das ist dein Stripe-Connect Guthaben, das du tatsächlich auszahlen kannst."}
       />
+
+      {/* SEPA Payout Settings */}
+      <section className="px-4 py-6 border-b border-white/10">
+        <SepaPayoutForm
+          currentIban={sepaSettings?.payoutIban}
+          currentHolder={sepaSettings?.payoutAccountHolder}
+          currentBic={sepaSettings?.payoutBic}
+          locale={locale}
+        />
+      </section>
 
       {/* Active Autodrain */}
       <section className="px-4 py-6 border-b border-white/10">

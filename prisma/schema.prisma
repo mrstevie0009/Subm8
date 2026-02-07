@@ -113,6 +113,13 @@ model User {
   notificationSeenAsRecipient NotificationSeenCursor[] @relation("NotificationSeenRecipient")
   notificationSeenAsActor     NotificationSeenCursor[] @relation("NotificationSeenActor")
 
+  // SEPA Payout Settings
+  payoutIban          String?
+  payoutAccountHolder String?
+  payoutBic           String?
+
+  payoutRequests SepaPayoutRequest[]
+
   //STRIPE
   stripeCustomerId       String?
   stripeDefaultPmId      String? // optional
@@ -604,12 +611,42 @@ model Payment {
 
   stripeTransferId String? @unique
 
+  payoutRequestId String?
+  payoutRequest   SepaPayoutRequest? @relation(fields: [payoutRequestId], references: [id])
+
   User_Payment_payeeIdToUser User @relation("Payment_payeeIdToUser", fields: [payeeId], references: [id], onDelete: Cascade)
   User_Payment_payerIdToUser User @relation("Payment_payerIdToUser", fields: [payerId], references: [id], onDelete: Cascade)
 
   @@index([createdAt])
   @@index([payerId])
   @@index([payeeId])
+  @@index([payoutRequestId])
+}
+
+model SepaPayoutRequest {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  amountCents Int
+  currency    String @default("EUR")
+
+  iban          String
+  accountHolder String
+  bic           String?
+
+  status            SepaPayoutStatus @default(PENDING)
+  transferReference String?
+
+  createdAt    DateTime  @default(now())
+  processedAt  DateTime?
+  failedReason String?
+
+  payments Payment[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
 }
 
 /**
@@ -656,6 +693,13 @@ enum EvidenceType {
   CARD_BIN
   BILLING
   USER_DECLARED
+}
+
+enum SepaPayoutStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
 }
 
 model BuyerEvidence {

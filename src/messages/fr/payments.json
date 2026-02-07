@@ -17,15 +17,17 @@
       }
     },
     "subtitle": "Définir le montant et la répétition.",
-    "title": "Créer une demande d’autodrain"
+    "title": "Créer une demande d'autodrain"
   },
   "autoDrainAcceptModal": {
-    "acknowledge": "Je comprends que les cadeaux sont volontaires et définitifs. Aucune prestation n’est garantie.",
+    "cancelAnytime": "Tu peux annuler AutoDrain à tout moment dans tes Paiements.",
+    "acknowledge": "Je comprends que les cadeaux sont volontaires et définitifs. Aucune prestation n'est garantie.",
     "actions": {
       "cancel": "Annuler",
       "closeAria": "Fermer",
-      "enable": "Activer l’autodrain",
-      "enabling": "Activation…"
+      "enable": "Activer l'autodrain",
+      "enabling": "Activation…",
+      "back": "Retour"
     },
     "cadence": {
       "daily": "quotidien",
@@ -34,15 +36,23 @@
     },
     "charge": {
       "label": "Montant du prélèvement",
-      "recurringNote": "Prélèvement récurrent jusqu’à résiliation."
+      "recurringNote": "Prélèvement récurrent jusqu'à résiliation."
     },
     "disclaimer": "Les cadeaux sont volontaires et ne constituent pas un paiement pour des services. Les cadeaux sont définitifs (pas de remboursement, sauf obligation légale).",
     "errors": {
       "generic": "Une erreur est survenue"
     },
     "header": {
-      "title": "Activer l’autodrain",
+      "title": "Activer l'autodrain",
       "to": "pour {name}"
+    },
+    "stripe": {
+      "enterCard": "Choisir le moyen de paiement",
+      "secureHint": "Vos informations de paiement sont traitées de manière sécurisée par Stripe.",
+      "savedCardsSummary": "{count} carte(s) enregistrée(s)",
+      "savedCardsHint": "Vous pouvez définir une carte par défaut.",
+      "defaultSet": "Définie par défaut",
+      "tipSaveCard": "Vous pouvez enregistrer votre carte pour payer plus rapidement."
     }
   },
   "paymentsPage": {
@@ -100,7 +110,7 @@
         "avatar": "Avatar",
         "date": "Date",
         "status": "Statut",
-        "username": "Nom d’utilisateur",
+        "username": "Nom d'utilisateur",
         "what": "Objet"
       },
       "what": {
@@ -138,7 +148,7 @@
     },
     "disclaimer": {
       "top": "Les cadeaux sont volontaires et ne constituent pas un paiement pour des services. Subm8 facilite uniquement le transfert.",
-      "legal": "En confirmant, vous envoyez un cadeau volontaire. Ce n’est pas un paiement pour des services. Les cadeaux sont définitifs (aucun remboursement sauf obligation légale)."
+      "legal": "En confirmant, vous envoyez un cadeau volontaire. Ce n'est pas un paiement pour des services. Les cadeaux sont définitifs (aucun remboursement sauf obligation légale)."
     },
     "errors": {
       "confirmFailed": "Échec de la confirmation",
@@ -169,10 +179,10 @@
       "defaultSet": "Définie par défaut",
       "tipSaveCard": "Astuce : enregistrez votre carte une fois pour payer plus rapidement la prochaine fois.",
       "errors": {
-        "notReady": "Stripe n’est pas encore prêt",
+        "notReady": "Stripe n'est pas encore prêt",
         "canceled": "Paiement annulé",
         "paymentFailed": "Paiement échoué",
-        "missingPublishableKey": "Variable d’environnement manquante : NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY"
+        "missingPublishableKey": "Variable d'environnement manquante : NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY"
       }
     },
     "methods": {
@@ -180,6 +190,7 @@
       "subtitle": "Enregistrez une carte une fois pour payer plus rapidement partout.",
       "savedCards": "Cartes enregistrées",
       "newCardTitle": "Enregistrer une nouvelle carte",
+      "addNewTitle": "Enregistrer une nouvelle carte",
       "loading": "Chargement…",
       "empty": "Aucun moyen de paiement enregistré.",
       "default": "Par défaut",
@@ -187,6 +198,7 @@
       "securityNote": "Votre carte est stockée de manière sécurisée par Stripe. Vous pouvez la supprimer à tout moment.",
       "actions": {
         "closeAria": "Fermer",
+        "manage": "Moyens de paiement",
         "manageTitle": "Gérer les cartes enregistrées",
         "addCard": "+ Ajouter une carte",
         "setDefault": "Définir par défaut",
@@ -197,7 +209,7 @@
       "errors": {
         "loadFailed": "Impossible de charger les moyens de paiement",
         "startSetupFailed": "Impossible de démarrer la configuration",
-        "saveFailed": "Échec de l’enregistrement",
+        "saveFailed": "Échec de l'enregistrement",
         "setupNotCompleted": "Configuration non terminée",
         "setDefaultFailed": "Impossible de définir par défaut",
         "removeFailed": "Impossible de supprimer le moyen de paiement",
@@ -244,7 +256,7 @@
       "fee": "Frais de plateforme ({pct}%)",
       "youPay": "Tu paies"
     },
-    "disclaimer": "En confirmant, tu envoies un cadeau volontaire. Ce n’est pas un paiement pour des services. Les cadeaux sont définitifs (pas de remboursement, sauf obligation légale).",
+    "disclaimer": "En confirmant, tu envoies un cadeau volontaire. Ce n'est pas un paiement pour des services. Les cadeaux sont définitifs (pas de remboursement, sauf obligation légale).",
     "errors": {
       "confirm": "Échec de la confirmation",
       "create": "Impossible de créer le paiement",

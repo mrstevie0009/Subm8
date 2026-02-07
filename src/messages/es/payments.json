@@ -20,12 +20,14 @@
     "title": "Crear solicitud de Autodrain"
   },
   "autoDrainAcceptModal": {
+    "cancelAnytime": "Puedes cancelar AutoDrain en cualquier momento en tus Pagos.",
     "acknowledge": "Entiendo que los regalos son voluntarios y definitivos. No se prometen prestaciones.",
     "actions": {
       "cancel": "Cancelar",
       "closeAria": "Cerrar",
       "enable": "Activar Autodrain",
-      "enabling": "Activando…"
+      "enabling": "Activando…",
+      "back": "Atrás"
     },
     "cadence": {
       "daily": "diario",
@@ -43,6 +45,14 @@
     "header": {
       "title": "Activar Autodrain",
       "to": "para {name}"
+    },
+    "stripe": {
+      "enterCard": "Elegir método de pago",
+      "secureHint": "Tus datos de pago se procesan de forma segura por Stripe.",
+      "savedCardsSummary": "{count} tarjeta(s) guardada(s)",
+      "savedCardsHint": "Puedes establecer una tarjeta predeterminada.",
+      "defaultSet": "Predeterminada",
+      "tipSaveCard": "Puedes guardar tu tarjeta para pagar más rápido."
     }
   },
   "paymentsPage": {
@@ -180,6 +190,7 @@
       "subtitle": "Guarda una tarjeta una vez y paga más rápido en todas partes.",
       "savedCards": "Tarjetas guardadas",
       "newCardTitle": "Guardar nueva tarjeta",
+      "addNewTitle": "Guardar nueva tarjeta",
       "loading": "Cargando…",
       "empty": "Aún no hay métodos de pago guardados.",
       "default": "Predeterminada",
@@ -187,6 +198,7 @@
       "securityNote": "Tu tarjeta se guarda de forma segura en Stripe. Puedes eliminarla en cualquier momento.",
       "actions": {
         "closeAria": "Cerrar",
+        "manage": "Métodos de pago",
         "manageTitle": "Gestionar tarjetas guardadas",
         "addCard": "+ Añadir tarjeta",
         "setDefault": "Establecer como predeterminada",

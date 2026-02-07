@@ -20,12 +20,14 @@
     "title": "Autodrain-Anfrage erstellen"
   },
   "autoDrainAcceptModal": {
+    "cancelAnytime": "Du kannst AutoDrain jederzeit in deinen Zahlungen wieder beenden.",
     "acknowledge": "Ich verstehe, dass Geschenke freiwillig und endgültig sind. Es werden keine Leistungen zugesichert.",
     "actions": {
       "cancel": "Abbrechen",
       "closeAria": "Schließen",
       "enable": "Autodrain aktivieren",
-      "enabling": "Aktiviere…"
+      "enabling": "Aktiviere…",
+      "back": "Zurück"
     },
     "cadence": {
       "daily": "täglich",
@@ -43,6 +45,14 @@
     "header": {
       "title": "Autodrain aktivieren",
       "to": "für {name}"
+    },
+    "stripe": {
+      "enterCard": "Zahlungsmethode wählen",
+      "secureHint": "Deine Zahlungsdaten werden sicher von Stripe verarbeitet.",
+      "savedCardsSummary": "{count} gespeicherte Karte(n)",
+      "savedCardsHint": "Du kannst eine Standardkarte festlegen.",
+      "defaultSet": "Standard gesetzt",
+      "tipSaveCard": "Du kannst deine Karte speichern, um schneller zu zahlen."
     }
   },
   "paymentsPage": {
@@ -180,6 +190,7 @@
       "subtitle": "Speichere eine Karte einmal – danach kannst du überall schneller zahlen.",
       "savedCards": "Gespeicherte Karten",
       "newCardTitle": "Neue Karte speichern",
+      "addNewTitle": "Neue Karte speichern",
       "loading": "Lade …",
       "empty": "Noch keine Zahlungsmethode gespeichert.",
       "default": "Standard",
@@ -187,6 +198,7 @@
       "securityNote": "Deine Karte wird sicher bei Stripe gespeichert. Du kannst sie jederzeit entfernen.",
       "actions": {
         "closeAria": "Schließen",
+        "manage": "Zahlungsmethoden",
         "manageTitle": "Gespeicherte Karten verwalten",
         "addCard": "+ Karte hinzufügen",
         "setDefault": "Als Standard",
@@ -232,8 +244,8 @@
       "payNow": "Jetzt zahlen"
     },
     "stripe": {
-    "enterCard": "Kartendaten eingeben",
-    "secureHint": "Die Zahlungsdaten werden sicher von Stripe verarbeitet."
+      "enterCard": "Kartendaten eingeben",
+      "secureHint": "Die Zahlungsdaten werden sicher von Stripe verarbeitet."
     },
     "success": {
       "title": "Geschenk gesendet!",

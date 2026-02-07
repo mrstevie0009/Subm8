@@ -30,6 +30,7 @@ type Props = {
 };
 
 const GIFT_ACK_KEY = 'subm8_gift_ack_v1';
+const PLATFORM_FEE_BPS_TOPUP = 1000; // 10% on top
 
 // Stripe
 const STRIPE_PK = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? '';
@@ -56,7 +57,9 @@ type CreateOk = {
   amountCents: number;
   cadence: AutoDrainCadence;
   customerSessionClientSecret?: string;
+  intentType?: 'payment_intent' | 'setup_intent' | null;
 };
+
 function isCreateOk(x: unknown): x is CreateOk {
   if (!x || typeof x !== 'object') return false;
   const o = x as Record<string, unknown>;
@@ -442,22 +445,22 @@ function PaymentMethodsModal({
 function StripeSubscribeStep({
   t,
   autoDrainId,
+  intentType,
   sending,
   setSending,
   setError,
   onBack,
   onActivated,
-  onOpenMethods,
   savedSummary,
 }: {
   t: ReturnType<typeof useTranslations>;
   autoDrainId: string;
+  intentType: 'payment_intent' | 'setup_intent' | null;
   sending: boolean;
   setSending: (v: boolean) => void;
   setError: (s: string | null) => void;
   onBack: () => void;
   onActivated: () => void;
-  onOpenMethods: () => void;
   savedSummary: { count: number; hasDefault: boolean };
 }) {
   const stripe = useStripe();
@@ -466,22 +469,34 @@ function StripeSubscribeStep({
   async function confirmAndFinalize() {
     if (!stripe || !elements) throw new Error('Stripe not ready');
 
-    // 1) PaymentIntent (für Subscription/erste Invoice) bestätigen
-    // PaymentElement zeigt gespeicherte Methoden oder neue Karte
-    const { error, paymentIntent } = await stripe.confirmPayment({
-      elements,
-      confirmParams: {
-        return_url: typeof window !== 'undefined' ? window.location.href : undefined,
-      },
-      redirect: 'if_required',
-    });
+    if (intentType === 'setup_intent') {
+      const { error, setupIntent } = await stripe.confirmSetup({
+        elements,
+        confirmParams: {
+          return_url: typeof window !== 'undefined' ? window.location.href : undefined,
+        },
+        redirect: 'if_required',
+      });
 
-    if (error) throw new Error(error.message || t('errors.generic'));
-    if (paymentIntent?.status === 'canceled') throw new Error('Payment canceled');
-    if (paymentIntent?.status === 'requires_payment_method') throw new Error('Payment failed');
+      if (error) throw new Error(error.message || t('errors.generic'));
+      if (setupIntent?.status !== 'succeeded' && setupIntent?.status !== 'processing') {
+        throw new Error('Setup Intent not completed');
+      }
+    } else {
+      const { error, paymentIntent } = await stripe.confirmPayment({
+        elements,
+        confirmParams: {
+          return_url: typeof window !== 'undefined' ? window.location.href : undefined,
+        },
+        redirect: 'if_required',
+      });
 
-    // 2) Backend bestätigt, dass Subscription jetzt active ist
-    const delays = [0, 400, 800, 1200];
+      if (error) throw new Error(error.message || t('errors.generic'));
+      if (paymentIntent?.status === 'canceled') throw new Error('Payment canceled');
+      if (paymentIntent?.status === 'requires_payment_method') throw new Error('Payment failed');
+    }
+
+    const delays = [0, 400, 800, 1200, 2000];
     let last: string | null = null;
 
     for (const d of delays) {
@@ -526,15 +541,6 @@ function StripeSubscribeStep({
         <div className="flex items-center justify-end gap-2">
           <button
             type="button"
-            onClick={onOpenMethods}
-            disabled={sending}
-            className="px-3 py-1.5 rounded-lg border border-white/15 hover:bg-white/10 text-[13px] disabled:opacity-60 whitespace-nowrap"
-            title="Gespeicherte Karten verwalten"
-          >
-            Zahlungsmethoden
-          </button>
-          <button
-            type="button"
             onClick={onBack}
             disabled={sending}
             className="px-3 py-1.5 rounded-lg border border-white/15 hover:bg-white/10 text-[13px] disabled:opacity-60 whitespace-nowrap"
@@ -556,7 +562,7 @@ function StripeSubscribeStep({
         </div>
       ) : (
         <div className="mt-3 text-[12px] text-white/55">
-          Tipp: Speichere deine Karte einmal über „Zahlungsmethoden“, dann geht das künftig schneller.
+          Tipp: Speichere deine Karte einmal über Zahlungsmethoden, dann geht das künftig schneller.
         </div>
       )}
 
@@ -606,11 +612,15 @@ export default function AutoDrainRequestAcceptModal({
   const [clientSecret, setClientSecret] = React.useState<string | null>(null);
   const [customerSessionClientSecret, setCustomerSessionClientSecret] = React.useState<string | null>(null);
   const [autoDrainId, setAutoDrainId] = React.useState<string | null>(null);
+  const [intentType, setIntentType] = React.useState<'payment_intent' | 'setup_intent' | null>(null);
 
-  // NEW: payment methods like TipRequestAcceptModal
   const [methodsOpen, setMethodsOpen] = React.useState(false);
   const [savedCount, setSavedCount] = React.useState(0);
   const [hasDefaultSaved, setHasDefaultSaved] = React.useState(false);
+
+  // ⭐ Platform Fee Berechnung
+  const topupFeeCents = Math.round(amountCents * (PLATFORM_FEE_BPS_TOPUP / 10_000));
+  const totalCents = amountCents + topupFeeCents;
 
   async function refreshSavedSummary() {
     try {
@@ -639,6 +649,7 @@ export default function AutoDrainRequestAcceptModal({
     setClientSecret(null);
     setAutoDrainId(null);
     setCustomerSessionClientSecret(null);
+    setIntentType(null);
 
     try {
       const v = typeof window !== 'undefined' ? window.localStorage.getItem(GIFT_ACK_KEY) : '1';
@@ -685,6 +696,7 @@ export default function AutoDrainRequestAcceptModal({
       setAutoDrainId(j.autoDrainId);
       setClientSecret(j.clientSecret);
       setCustomerSessionClientSecret(j.customerSessionClientSecret ?? null);
+      setIntentType(j.intentType ?? null);
       setStep('pay');
 
       refreshSavedSummary();
@@ -763,16 +775,6 @@ export default function AutoDrainRequestAcceptModal({
               </div>
 
               <div className="ml-auto flex items-center gap-2">
-                {/* NEW: methods button (desktop) */}
-                <button
-                  type="button"
-                  onClick={() => setMethodsOpen(true)}
-                  className="hidden sm:inline-flex px-3 py-1.5 rounded-lg border border-white/15 hover:bg-white/10 text-[13px]"
-                  title="Gespeicherte Karten verwalten"
-                >
-                  Zahlungsmethoden
-                </button>
-
                 <button
                   onClick={onClose}
                   className="inline-grid place-items-center w-9 h-9 rounded-full hover:bg-white/10"
@@ -784,33 +786,38 @@ export default function AutoDrainRequestAcceptModal({
                 </button>
               </div>
             </div>
-
-            {/* NEW: methods button (mobile) */}
-            <div className="sm:hidden mt-3">
-              <button
-                type="button"
-                onClick={() => setMethodsOpen(true)}
-                className="w-full px-3 py-2 rounded-lg border border-white/15 hover:bg-white/10 text-[13px]"
-              >
-                Zahlungsmethoden
-              </button>
-            </div>
           </div>
 
           {/* Body */}
           <div className="px-5 pb-5">
             <div className="text-[12px] text-white/75 mb-3">{t('disclaimer')}</div>
 
+            {/* ⭐ GEÄNDERT: Breakdown mit Platform Fee wie im TipModal */}
             <div className="rounded-xl border border-white/10 bg-white/[.03] p-3">
-              <div className="text-[13px] text-white/70 mb-1">{t('charge.label')}</div>
-              <div className="text-[24px] font-semibold">
-                {fmtCurrency(amountCents, currency)}{' '}
-                <span className="text-[13px] font-normal text-white/70">({cadenceLabel})</span>
+              <div className="text-[13px] text-white/70 mb-2">{t('charge.label')}</div>
+              
+              <div className="rounded-xl border border-white/10 bg-gradient-to-b from-white/[.04] to-transparent p-3">
+                <div className="flex items-center justify-between text-[14px] mb-1">
+                  <span>Betrag an {toDisplayName}</span>
+                  <strong className="text-white">{fmtCurrency(amountCents, currency)}</strong>
+                </div>
+                <div className="flex items-center justify-between text-[13px] text-white/70">
+                  <span>Plattform-Gebühr (10%)</span>
+                  <span>{fmtCurrency(topupFeeCents, currency)}</span>
+                </div>
+                <div className="mt-2 border-t border-white/10 pt-2 flex items-center justify-between">
+                  <span className="text-[14px]">Du zahlst</span>
+                  <span className="text-[24px] font-semibold">
+                    {fmtCurrency(totalCents, currency)}{' '}
+                    <span className="text-[13px] font-normal text-white/70">({cadenceLabel})</span>
+                  </span>
+                </div>
               </div>
-              <div className="mt-1 text-[12px] text-white/60">{t('charge.recurringNote')}</div>
+
+              <div className="mt-3 text-[12px] text-white/60">{t('charge.recurringNote')}</div>
 
               <div className="mt-3 rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-[12px] text-white/70">
-                Du kannst AutoDrain jederzeit in deinen <span className="text-white/85">Zahlungen</span> wieder beenden.
+                {t('cancelAnytime', { default: 'Du kannst AutoDrain jederzeit in deinen Zahlungen wieder beenden.' })}
               </div>
             </div>
 
@@ -837,10 +844,10 @@ export default function AutoDrainRequestAcceptModal({
                 <StripeSubscribeStep
                   t={t}
                   autoDrainId={autoDrainId}
+                  intentType={intentType}
                   sending={sending}
                   setSending={setSending}
                   setError={setError}
-                  onOpenMethods={() => setMethodsOpen(true)}
                   savedSummary={{ count: savedCount, hasDefault: hasDefaultSaved }}
                   onBack={() => {
                     setStep('review');
@@ -848,6 +855,7 @@ export default function AutoDrainRequestAcceptModal({
                     setClientSecret(null);
                     setCustomerSessionClientSecret(null);
                     setAutoDrainId(null);
+                    setIntentType(null);
                   }}
                   onActivated={() => {
                     markAck();

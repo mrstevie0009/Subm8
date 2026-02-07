@@ -16,21 +16,19 @@ type Props = {
   open: boolean;
   onClose: () => void;
 
-  // Empfänger (Domme)
   toUserId: string;
   toDisplayName: string;
   toAvatarUrl?: string | null;
 
-  defaultCurrency?: string; // default: 'EUR'
-  conversationId?: string;  // optional
+  defaultCurrency?: string;
+  conversationId?: string;
 
-  // Wird nach erfolgreichem Enable aufgerufen (liefert die Daten fürs ADACC-Envelope)
   onSuccess: (p: { autoDrainId: string; amountCents: number; currency: string; cadence: AutoDrainCadence }) => void;
 };
 
 const GIFT_ACK_KEY = 'subm8_gift_ack_v1';
+const PLATFORM_FEE_BPS_TOPUP = 1000; // 10% on top
 
-// Stripe
 const STRIPE_PK = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? '';
 const stripePromise: Promise<Stripe | null> = STRIPE_PK ? loadStripe(STRIPE_PK) : Promise.resolve(null);
 
@@ -56,8 +54,6 @@ function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-/** ---------- API Shapes ---------- */
-
 type CreateOk = {
   ok: true;
   autoDrainId: string;
@@ -67,6 +63,7 @@ type CreateOk = {
   amountCents: number;
   cadence: AutoDrainCadence;
   customerSessionClientSecret?: string;
+  intentType?: 'payment_intent' | 'setup_intent' | null;
 };
 
 function isCreateOk(x: unknown): x is CreateOk {
@@ -99,8 +96,6 @@ function getStatusString(x: unknown): string | null {
   const o = x as Record<string, unknown>;
   return typeof o.status === 'string' ? o.status : null;
 }
-
-/** ---------- Payment methods (wie TipModal) ---------- */
 
 type SavedMethod = {
   id: string;
@@ -479,29 +474,27 @@ function PaymentMethodsModal({
   );
 }
 
-/** ---------- Stripe pay step (AutoDrain) + Saved methods summary + Manage button ---------- */
-
 function StripeSubscribeStep({
   t,
   tMethods,
   autoDrainId,
+  intentType,
   sending,
   setSending,
   setError,
   onBack,
   onActivated,
-  onOpenMethods,
   savedSummary,
 }: {
   t: ReturnType<typeof useTranslations>;
   tMethods: ReturnType<typeof useTranslations>;
   autoDrainId: string;
+  intentType: 'payment_intent' | 'setup_intent' | null;
   sending: boolean;
   setSending: (v: boolean) => void;
   setError: (s: string | null) => void;
   onBack: () => void;
   onActivated: () => void;
-  onOpenMethods: () => void;
   savedSummary: { count: number; hasDefault: boolean };
 }) {
   const stripe = useStripe();
@@ -510,21 +503,34 @@ function StripeSubscribeStep({
   async function confirmAndFinalize() {
     if (!stripe || !elements) throw new Error('Stripe not ready');
 
-    // 1) PaymentIntent bestätigen (PaymentElement zeigt gespeicherte Methoden oder neue Karte)
-    const { error, paymentIntent } = await stripe.confirmPayment({
-      elements,
-      confirmParams: {
-        return_url: typeof window !== 'undefined' ? window.location.href : undefined,
-      },
-      redirect: 'if_required',
-    });
+    if (intentType === 'setup_intent') {
+      const { error, setupIntent } = await stripe.confirmSetup({
+        elements,
+        confirmParams: {
+          return_url: typeof window !== 'undefined' ? window.location.href : undefined,
+        },
+        redirect: 'if_required',
+      });
 
-    if (error) throw new Error(error.message || t('errors.generic', { default: 'Etwas ist schiefgelaufen.' }));
-    if (paymentIntent?.status === 'canceled') throw new Error('Payment canceled');
-    if (paymentIntent?.status === 'requires_payment_method') throw new Error('Payment failed');
+      if (error) throw new Error(error.message || t('errors.generic', { default: 'Etwas ist schiefgelaufen.' }));
+      if (setupIntent?.status !== 'succeeded' && setupIntent?.status !== 'processing') {
+        throw new Error('Setup Intent not completed');
+      }
+    } else {
+      const { error, paymentIntent } = await stripe.confirmPayment({
+        elements,
+        confirmParams: {
+          return_url: typeof window !== 'undefined' ? window.location.href : undefined,
+        },
+        redirect: 'if_required',
+      });
 
-    // 2) Backend bestätigt, dass Subscription jetzt active ist
-    const delays = [0, 400, 800, 1200];
+      if (error) throw new Error(error.message || t('errors.generic', { default: 'Etwas ist schiefgelaufen.' }));
+      if (paymentIntent?.status === 'canceled') throw new Error('Payment canceled');
+      if (paymentIntent?.status === 'requires_payment_method') throw new Error('Payment failed');
+    }
+
+    const delays = [0, 400, 800, 1200, 2000];
     let last: string | null = null;
 
     for (const d of delays) {
@@ -564,21 +570,10 @@ function StripeSubscribeStep({
 
   return (
     <div className="mt-4 rounded-xl border border-white/10 bg-white/[.03] p-3">
-      {/* Header row (stack on mobile) */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="text-[13px] text-white/80">{t('stripe.enterCard', { default: 'Zahlungsmethode wählen' })}</div>
 
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
-          <button
-            type="button"
-            onClick={onOpenMethods}
-            disabled={sending}
-            className="px-3 py-2 sm:py-1.5 rounded-lg border border-white/15 hover:bg-white/10 text-[13px] disabled:opacity-60 w-full sm:w-auto"
-            title={tMethods('methods.actions.manageTitle', { default: 'Zahlungsmethoden verwalten' })}
-          >
-            {tMethods('methods.actions.manage', { default: 'Zahlungsmethoden' })}
-          </button>
-
           <button
             type="button"
             onClick={onBack}
@@ -590,7 +585,6 @@ function StripeSubscribeStep({
         </div>
       </div>
 
-      {/* Saved summary */}
       {savedSummary.count > 0 ? (
         <div className="mt-3 rounded-xl border border-white/10 bg-black/20 px-3 py-2">
           <div className="text-[12px] text-white/70">
@@ -627,8 +621,6 @@ function StripeSubscribeStep({
   );
 }
 
-/** ---------- Main modal ---------- */
-
 export default function AutoDrainEnableModal({
   open,
   onClose,
@@ -639,10 +631,8 @@ export default function AutoDrainEnableModal({
   conversationId,
   onSuccess,
 }: Props) {
-  // Für AutoDrain-Texte
   const t = useTranslations('payment.autoDrainAcceptModal');
-  // Für Payment-Methods-Texte (bereits in TipModal vorhanden)
-  const tMethods = useTranslations('payments.tipModal');
+  const tMethods = useTranslations('payment.tipModal');
 
   const mounted = useMounted();
 
@@ -657,8 +647,8 @@ export default function AutoDrainEnableModal({
   const [clientSecret, setClientSecret] = React.useState<string | null>(null);
   const [customerSessionClientSecret, setCustomerSessionClientSecret] = React.useState<string | null>(null);
   const [autoDrainId, setAutoDrainId] = React.useState<string | null>(null);
+  const [intentType, setIntentType] = React.useState<'payment_intent' | 'setup_intent' | null>(null);
 
-  // Payment methods integration (wie TipModal)
   const [methodsOpen, setMethodsOpen] = React.useState(false);
   const [savedCount, setSavedCount] = React.useState(0);
   const [hasDefaultSaved, setHasDefaultSaved] = React.useState(false);
@@ -685,7 +675,6 @@ export default function AutoDrainEnableModal({
   React.useEffect(() => {
     if (!open) return;
 
-    // Reset on open
     setAmount('50');
     setCadence('MONTHLY');
     setSending(false);
@@ -695,6 +684,7 @@ export default function AutoDrainEnableModal({
     setClientSecret(null);
     setCustomerSessionClientSecret(null);
     setAutoDrainId(null);
+    setIntentType(null);
 
     refreshSavedSummary();
 
@@ -707,8 +697,12 @@ export default function AutoDrainEnableModal({
   }, [open]);
 
   const amountCents = parseCents(amount) ?? 0;
-  const amountValid = amountCents >= 100 && amountCents <= 1_000_000; // 1 € – 10.000 €
+  const amountValid = amountCents >= 100 && amountCents <= 1_000_000;
   const currency = defaultCurrency;
+
+  // ⭐ Platform Fee Berechnung
+  const topupFeeCents = Math.round(amountCents * (PLATFORM_FEE_BPS_TOPUP / 10_000));
+  const totalCents = amountCents + topupFeeCents;
 
   const cadenceLabel =
     cadence === 'DAILY'
@@ -758,9 +752,9 @@ export default function AutoDrainEnableModal({
       setAutoDrainId(j.autoDrainId);
       setClientSecret(j.clientSecret);
       setCustomerSessionClientSecret(j.customerSessionClientSecret ?? null);
+      setIntentType(j.intentType ?? null);
       setStep('pay');
 
-      // sofort Summary aktualisieren, falls Stripe schon etwas erzeugt hat / default vorhanden
       refreshSavedSummary();
     } catch (e) {
       setError(e instanceof Error ? e.message : t('errors.generic', { default: 'Etwas ist schiefgelaufen.' }));
@@ -810,14 +804,12 @@ export default function AutoDrainEnableModal({
           ].join(' ')}
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Header */}
           <div className="relative px-4 py-3 sm:px-5 sm:py-4">
             <div
               className="absolute inset-0 -z-10"
               style={{ background: 'radial-gradient(1200px 220px at 50% 0%, rgba(139,92,246,.35), rgba(139,92,246,0))' }}
             />
 
-            {/* Row 1: Avatar + Title + Close */}
             <div className="flex items-start gap-3">
               <div className="relative w-10 h-10 rounded-full overflow-hidden border border-white/15 bg-white/10 shrink-0">
                 {toAvatarUrl ? (
@@ -856,21 +848,8 @@ export default function AutoDrainEnableModal({
                 </div>
               </div>
             </div>
-
-            {/* Row 2: Payment methods button (mobile stacked) */}
-            <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <button
-                type="button"
-                onClick={() => setMethodsOpen(true)}
-                className="w-full sm:w-auto px-3 py-2 sm:py-1.5 rounded-lg border border-white/15 hover:bg-white/10 text-[13px]"
-                title={tMethods('methods.actions.manageTitle', { default: 'Zahlungsmethoden verwalten' })}
-              >
-                {tMethods('methods.actions.manage', { default: 'Zahlungsmethoden' })}
-              </button>
-            </div>
           </div>
 
-          {/* Body */}
           <div className="px-4 sm:px-5 pb-5 overflow-y-auto overscroll-contain" style={{ WebkitOverflowScrolling: 'touch' }}>
             {step === 'form' ? (
               <>
@@ -878,7 +857,6 @@ export default function AutoDrainEnableModal({
                   {t('disclaimer', { default: 'Gifts are voluntary and final.' })}
                 </div>
 
-                {/* Amount */}
                 <div className="rounded-xl border border-white/10 bg-white/[.03] p-3">
                   <label className="block text-[12px] text-white/70 mb-1">
                     {t('charge.label', { default: 'Amount per charge' })}
@@ -913,13 +891,11 @@ export default function AutoDrainEnableModal({
                   </div>
                 </div>
 
-                {/* Cadence */}
                 <div className="mt-3 rounded-xl border border-white/10 bg-white/[.03] p-3">
                   <label className="block text-[12px] text-white/70 mb-2">
                     {t('charge.recurringNote', { default: 'Recurrence' })}
                   </label>
 
-                  {/* Mobile: 1 column if tight, sm+: 3 columns */}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     {(['DAILY', 'WEEKLY', 'MONTHLY'] as AutoDrainCadence[]).map((c) => {
                       const on = cadence === c;
@@ -944,20 +920,34 @@ export default function AutoDrainEnableModal({
                   </div>
                 </div>
 
-                {/* Preview */}
+                {/* ⭐ GEÄNDERT: Preview mit Platform Fee wie im TipModal */}
                 <div className="mt-3 rounded-xl border border-white/10 bg-white/[.03] p-3">
-                  <div className="text-[13px] text-white/70 mb-1">Preview</div>
-                  <div className="text-[24px] font-semibold break-words">
-                    {fmtCurrency(amountCents, currency)}{' '}
-                    <span className="text-[13px] font-normal text-white/70">({cadenceLabel})</span>
+                  <div className="text-[13px] text-white/70 mb-2">Zusammenfassung</div>
+                  
+                  <div className="rounded-xl border border-white/10 bg-gradient-to-b from-white/[.04] to-transparent p-3">
+                    <div className="flex items-center justify-between text-[14px] mb-1">
+                      <span>Betrag an {toDisplayName}</span>
+                      <strong className="text-white">{fmtCurrency(amountCents, currency)}</strong>
+                    </div>
+                    <div className="flex items-center justify-between text-[13px] text-white/70">
+                      <span>Plattform-Gebühr (10%)</span>
+                      <span>{fmtCurrency(topupFeeCents, currency)}</span>
+                    </div>
+                    <div className="mt-2 border-t border-white/10 pt-2 flex items-center justify-between">
+                      <span className="text-[14px]">Du zahlst</span>
+                      <span className="text-[24px] font-semibold break-words">
+                        {fmtCurrency(totalCents, currency)}{' '}
+                        <span className="text-[13px] font-normal text-white/70">({cadenceLabel})</span>
+                      </span>
+                    </div>
                   </div>
 
-                  <div className="mt-1 text-[12px] text-white/60">
-                    {t('charge.recurringNote', { default: 'Recurring charge until you cancel.' })}
+                  <div className="mt-3 text-[12px] text-white/60">
+                    {t('charge.recurringNote', { default: 'Wiederkehrende Zahlung bis zur Kündigung.' })}
                   </div>
 
                   <div className="mt-3 rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-[12px] text-white/70">
-                    Du kannst AutoDrain jederzeit in deinen <span className="text-white/85">Zahlungen</span> wieder beenden.
+                    {t('cancelAnytime', { default: 'Du kannst AutoDrain jederzeit in deinen Zahlungen wieder beenden.' })}
                   </div>
                 </div>
 
@@ -1019,6 +1009,7 @@ export default function AutoDrainEnableModal({
                       t={t}
                       tMethods={tMethods}
                       autoDrainId={autoDrainId}
+                      intentType={intentType}
                       sending={sending}
                       setSending={setSending}
                       setError={setError}
@@ -1028,13 +1019,13 @@ export default function AutoDrainEnableModal({
                         setClientSecret(null);
                         setAutoDrainId(null);
                         setCustomerSessionClientSecret(null);
+                        setIntentType(null);
                       }}
                       onActivated={() => {
                         markAck();
                         onSuccess({ autoDrainId, amountCents, currency, cadence });
                         onClose();
                       }}
-                      onOpenMethods={() => setMethodsOpen(true)}
                       savedSummary={{ count: savedCount, hasDefault: hasDefaultSaved }}
                     />
                   </Elements>

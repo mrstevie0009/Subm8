@@ -1,3 +1,4 @@
+//src/app/api/payments/autodrain/create/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/currentUser";
@@ -7,6 +8,9 @@ import Stripe from "stripe";
 export const runtime = "nodejs";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {});
+
+// ⭐ Platform Fee Konstante
+const PLATFORM_FEE_BPS_TOPUP = 1000; // 10% on top
 
 type Body = {
   toUserId?: string; // Domme
@@ -98,13 +102,11 @@ function getInvoiceMeta(inv: Stripe.Invoice): {
   if (isRecord(raw)) {
     const pi = raw["payment_intent"];
 
-    // payment_intent kann string oder object sein
     if (typeof pi === "string") {
       paymentIntentId = pi;
     } else if (isRecord(pi)) {
       const id = getStringProp(pi, "id");
       paymentIntentId = id;
-      // wir casten erst nachdem wir die Form geprüft haben
       paymentIntentExpanded = id ? (pi as unknown as Stripe.PaymentIntent) : null;
     }
   }
@@ -307,11 +309,13 @@ export async function POST(req: NextRequest) {
   const meDb = await loadMeCustomer(me.id);
   const customerId = await ensureStripeCustomer(meDb);
 
+  // ⭐ WICHTIG: amountCents in DB speichern (für die Domme)
+  // totalCents wird nur an Stripe übergeben (was der User zahlt)
   const ad = await prisma.autoDrainSubscription.create({
     data: {
       dommeId: dommeId!,
       subId: subId!,
-      amountCents,
+      amountCents, // ⭐ Dies ist der Betrag für die Domme (OHNE Fee)
       currency,
       cadence,
       nextChargeAt: next,
@@ -328,43 +332,42 @@ export async function POST(req: NextRequest) {
     metadata: { kind: "autodrain" },
   });
 
+  // ⭐ Platform Fee berechnen
+  const topupFeeCents = Math.round(amountCents * (PLATFORM_FEE_BPS_TOPUP / 10_000));
+  const totalCents = amountCents + topupFeeCents;
+
+  // ⭐ GEÄNDERT: totalCents (inkl. Platform Fee) wird an Stripe übergeben
+  const price = await stripe.prices.create({
+    currency: currency.toLowerCase(),
+    unit_amount: totalCents, // ⭐ WICHTIG: totalCents statt amountCents
+    product: product.id,
+    recurring: {
+      interval: cadenceToStripeInterval(cadence),
+      interval_count: 1,
+    },
+  });
+
   const sub = await stripe.subscriptions.create(
     {
       customer: customerId,
-      collection_method: "charge_automatically",
+      items: [{ price: price.id }],
       payment_behavior: "default_incomplete",
       payment_settings: {
         save_default_payment_method: "on_subscription",
         payment_method_types: ["card"],
       },
-      items: [
-        {
-          price_data: {
-            currency: currency.toLowerCase(),
-            unit_amount: amountCents,
-            product: product.id,
-            recurring: {
-              interval: cadenceToStripeInterval(cadence),
-              interval_count: 1,
-            },
-          },
-        },
-      ],
+      billing_cycle_anchor: Math.floor(Date.now() / 1000),
+      proration_behavior: "none",
       metadata: {
         kind: "autodrain",
         autoDrainId: ad.id,
         dommeId: dommeId!,
         subId: subId!,
       },
-      expand: ["latest_invoice.payment_intent", "latest_invoice", "pending_setup_intent"],
+      expand: ["latest_invoice.payment_intent", "pending_setup_intent"],
     },
     { idempotencyKey: `autodrain_create:${ad.id}` }
   );
-
-  // Schritt 1: frisch retrieved (nur fürs Debug / Reality-Check)
-  const subFresh = await stripe.subscriptions.retrieve(sub.id, {
-    expand: ["latest_invoice.payment_intent", "latest_invoice", "pending_setup_intent"],
-  });
 
   const resolved = await resolveClientSecretForSubscription(sub.id);
   const clientSecret = resolved.clientSecret;
@@ -375,7 +378,7 @@ export async function POST(req: NextRequest) {
 
     const isDev = process.env.NODE_ENV !== "production";
 
-    const invoiceId = getInvoiceIdFromSub(subFresh);
+    const invoiceId = getInvoiceIdFromSub(sub);
     let invoiceStatus: Stripe.Invoice.Status | null = null;
     let collectionMethod: Stripe.Invoice.CollectionMethod | null = null;
     let paymentIntentExists: boolean | null = null;
@@ -400,7 +403,7 @@ export async function POST(req: NextRequest) {
           ? {
               debug: {
                 subStatus: sub.status,
-                pendingSetupIntentClientSecret: getPendingSetupIntentClientSecret(subFresh),
+                pendingSetupIntentClientSecret: getPendingSetupIntentClientSecret(sub),
                 invoiceStatus,
                 collectionMethod,
                 paymentIntentExists,
@@ -422,7 +425,6 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  // Schritt 3: CustomerSession Features aktivieren
   const customerSession = await stripe.customerSessions.create({
     customer: customerId,
     components: {
@@ -442,9 +444,10 @@ export async function POST(req: NextRequest) {
     autoDrainId: ad.id,
     stripeSubscriptionId: sub.id,
     currency,
-    amountCents,
+    amountCents, // ⭐ Betrag für die Domme (OHNE Platform Fee)
     cadence,
     clientSecret,
     customerSessionClientSecret: customerSession.client_secret,
+    intentType: resolved.kind,
   });
 }
