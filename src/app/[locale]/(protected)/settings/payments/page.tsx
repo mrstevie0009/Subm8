@@ -8,7 +8,6 @@ import { createTranslator } from "next-intl";
 import { notFound } from "next/navigation";
 import PayoutButton from "@/components/PayoutButton";
 import PayoutBalances from "@/components/PayoutBalances";
-import SepaPayoutForm from "@/components/SepaPayoutForm";
 
 type Params = { locale: string };
 
@@ -187,7 +186,14 @@ export default async function PaymentsPage({ params }: { params: Promise<Params>
           </div>
 
           <div className="shrink-0">
-            <PayoutButton availableCents={balanceCents} locale={locale} />
+            <PayoutButton 
+              availableCents={balanceCents} 
+              locale={locale}
+              currentIban={sepaSettings?.payoutIban}
+              currentHolder={sepaSettings?.payoutAccountHolder}
+              currentBic={sepaSettings?.payoutBic}
+              tPayoutButton={t("paymentsPage.payoutBtn")}
+            />
           </div>
         </div>
       </header>
@@ -199,20 +205,10 @@ export default async function PaymentsPage({ params }: { params: Promise<Params>
         csvUrl={csvUrl}
         tBalanceTitle={t("paymentsPage.balance.title")}
         tExportLabel={t("paymentsPage.balance.export")}
-        tEarnedLabel={"Earned (DB)"}
-        tAvailableLabel={"Available (Stripe)"}
-        tAvailableHint={"Das ist dein Stripe-Connect Guthaben, das du tatsächlich auszahlen kannst."}
+        tEarnedLabel={"Auszahlbar (SEPA)"}
+        tPendingLabel={"Pending"}
+        tPendingHint={"Noch in Verarbeitung – wird später auszahlbar."}
       />
-
-      {/* SEPA Payout Settings */}
-      <section className="px-4 py-6 border-b border-white/10">
-        <SepaPayoutForm
-          currentIban={sepaSettings?.payoutIban}
-          currentHolder={sepaSettings?.payoutAccountHolder}
-          currentBic={sepaSettings?.payoutBic}
-          locale={locale}
-        />
-      </section>
 
       {/* Active Autodrain */}
       <section className="px-4 py-6 border-b border-white/10">

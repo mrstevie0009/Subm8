@@ -2,72 +2,45 @@
 'use client';
 
 import { useState } from 'react';
+import PayoutModal from '@/components/PayoutModal';
 
 export default function PayoutButton({ 
   availableCents,
   locale,
+  currentIban,
+  currentHolder,
+  currentBic,
+  tPayoutButton, 
 }: { 
   availableCents: number;
   locale: string;
+  currentIban?: string | null;
+  currentHolder?: string | null;
+  currentBic?: string | null;
+  tPayoutButton: string; 
 }) {
-  const [requesting, setRequesting] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-
-  async function handlePayout() {
-    if (availableCents < 1000) {
-      setMessage(locale === 'de' ? 'Mindestbetrag: €10' : 'Minimum: €10');
-      return;
-    }
-
-    setRequesting(true);
-    setMessage(null);
-
-    try {
-      const res = await fetch('/api/payout/sepa/request', { method: 'POST' });
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Fehler');
-      }
-
-      setMessage(locale === 'de' 
-        ? '✓ Auszahlung angefordert!' 
-        : '✓ Payout requested!'
-      );
-      
-      setTimeout(() => window.location.reload(), 2000);
-    } catch (e) {
-      setMessage(e instanceof Error ? e.message : 'Error');
-    } finally {
-      setRequesting(false);
-    }
-  }
-
-  const disabled = availableCents < 1000 || requesting;
+  const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div>
+    <>
       <button
         type="button"
-        onClick={handlePayout}
-        disabled={disabled}
-        className={`px-4 py-2 rounded-lg font-medium transition ${
-          disabled
-            ? 'bg-white/10 text-white/50 cursor-not-allowed'
-            : 'bg-[var(--purple)] text-white hover:opacity-90'
-        }`}
+        onClick={() => setIsOpen(true)}
+        className="px-4 py-2 rounded-lg bg-[var(--purple)] text-white font-medium hover:opacity-90 transition"
       >
-        {requesting 
-          ? (locale === 'de' ? 'Anfrage...' : 'Requesting...') 
-          : (locale === 'de' ? 'Auszahlen' : 'Payout')
-        }
+        {tPayoutButton}
       </button>
-      
-      {message && (
-        <div className="mt-2 text-[12px] text-white/70">
-          {message}
-        </div>
+
+      {isOpen && (
+        <PayoutModal
+          availableCents={availableCents}
+          locale={locale}
+          currentIban={currentIban}
+          currentHolder={currentHolder}
+          currentBic={currentBic}
+          onClose={() => setIsOpen(false)}
+        />
       )}
-    </div>
+    </>
   );
 }

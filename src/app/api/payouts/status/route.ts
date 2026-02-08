@@ -1,3 +1,4 @@
+// src/app/api/payouts/status/route.ts
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/currentUser";
@@ -7,47 +8,71 @@ export const runtime = "nodejs";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {});
 
+type Money = { amountCents: number; currency: string };
+
+type StripeBalanceItem = {
+  amount: number;
+  currency: string;
+};
+
+function pickPreferred(arr: StripeBalanceItem[] | null | undefined): StripeBalanceItem | null {
+  if (!arr || arr.length === 0) return null;
+  const eur = arr.find((x) => (x.currency || "").toLowerCase() === "eur");
+  return eur ?? arr[0] ?? null;
+}
+
+function toMoney(a: StripeBalanceItem | null): Money {
+  return {
+    amountCents: a?.amount ?? 0,
+    currency: (a?.currency ?? "eur").toUpperCase(),
+  };
+}
+
 export async function GET() {
-  const me = await getCurrentUser().catch(() => null);
-  if (!me) return NextResponse.json({ ok: false, error: "Not signed in" }, { status: 401 });
+  try {
+    const me = await getCurrentUser().catch(() => null);
+    if (!me) {
+      return NextResponse.json({
+        available: { amountCents: 0, currency: "EUR" },
+        pending: { amountCents: 0, currency: "EUR" },
+      });
+    }
 
-  const u = await prisma.user.findUnique({
-    where: { id: me.id },
-    select: { stripeAccountId: true },
-  });
+    const u = await prisma.user.findUnique({
+      where: { id: me.id },
+      select: { stripeAccountId: true },
+    });
 
-  const accountId = u?.stripeAccountId ?? null;
-  if (!accountId) {
+    const accountId = u?.stripeAccountId ?? null;
+    if (!accountId) {
+      return NextResponse.json({
+        available: { amountCents: 0, currency: "EUR" },
+        pending: { amountCents: 0, currency: "EUR" },
+      });
+    }
+
+    try {
+      const bal = await stripe.balance.retrieve({}, { stripeAccount: accountId });
+
+      // bal.available / bal.pending exist on Stripe's response;
+      // cast to our minimal shape to avoid version-specific Stripe TS types.
+      const availablePick = pickPreferred(bal.available as unknown as StripeBalanceItem[]);
+      const pendingPick = pickPreferred(bal.pending as unknown as StripeBalanceItem[]);
+
+      return NextResponse.json({
+        available: toMoney(availablePick),
+        pending: toMoney(pendingPick),
+      });
+    } catch {
+      return NextResponse.json({
+        available: { amountCents: 0, currency: "EUR" },
+        pending: { amountCents: 0, currency: "EUR" },
+      });
+    }
+  } catch {
     return NextResponse.json({
-      ok: true,
-      hasAccount: false,
-      onboardingComplete: false,
-      payoutsEnabled: false,
       available: { amountCents: 0, currency: "EUR" },
+      pending: { amountCents: 0, currency: "EUR" },
     });
   }
-
-  const acct = await stripe.accounts.retrieve(accountId);
-
-  // balance des connected accounts
-  const bal = await stripe.balance.retrieve(
-    {},
-    { stripeAccount: accountId }
-  );
-
-  // “available” kann mehrere currencies enthalten – wir nehmen EUR wenn vorhanden
-  const eur = bal.available.find((x) => x.currency.toLowerCase() === "eur");
-  const first = eur ?? bal.available[0];
-
-  return NextResponse.json({
-    ok: true,
-    hasAccount: true,
-    onboardingComplete: !!acct.details_submitted,
-    payoutsEnabled: !!acct.payouts_enabled,
-    requirementsDue: (acct.requirements?.currently_due ?? []).slice(0, 20),
-    available: {
-      amountCents: first?.amount ?? 0,
-      currency: (first?.currency ?? "eur").toUpperCase(),
-    },
-  });
 }
