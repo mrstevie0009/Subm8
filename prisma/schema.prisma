@@ -113,18 +113,17 @@ model User {
   notificationSeenAsRecipient NotificationSeenCursor[] @relation("NotificationSeenRecipient")
   notificationSeenAsActor     NotificationSeenCursor[] @relation("NotificationSeenActor")
 
-  // SEPA Payout Settings
-  payoutIban          String?
-  payoutAccountHolder String?
-  payoutBic           String?
-
-  payoutRequests SepaPayoutRequest[]
+  // Payout method selection + extra payout destinations
+  payoutMethod        PayoutMethod @default(STRIPE_CONNECT)
+  payoutPaxumEmail    String?
+  payoutCosmoWalletId String?
 
   //STRIPE
   stripeCustomerId       String?
   stripeDefaultPmId      String? // optional
   stripeConnectAccountId String? // nur für Dommes (Creator)
-  stripeAccountId        String? @unique
+  stripeAccountId        String?         @unique
+  payoutRequests         PayoutRequest[]
 
   @@index([verifiedByUserId])
   @@index([premiumUntil])
@@ -612,7 +611,7 @@ model Payment {
   stripeTransferId String? @unique
 
   payoutRequestId String?
-  payoutRequest   SepaPayoutRequest? @relation(fields: [payoutRequestId], references: [id])
+  payoutRequest   PayoutRequest? @relation(fields: [payoutRequestId], references: [id])
 
   User_Payment_payeeIdToUser User @relation("Payment_payeeIdToUser", fields: [payeeId], references: [id], onDelete: Cascade)
   User_Payment_payerIdToUser User @relation("Payment_payerIdToUser", fields: [payerId], references: [id], onDelete: Cascade)
@@ -623,7 +622,12 @@ model Payment {
   @@index([payoutRequestId])
 }
 
-model SepaPayoutRequest {
+enum FeePayer {
+  USER
+  PLATFORM
+}
+
+model PayoutRequest {
   id     String @id @default(cuid())
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -631,18 +635,26 @@ model SepaPayoutRequest {
   amountCents Int
   currency    String @default("EUR")
 
-  iban          String
-  accountHolder String
-  bic           String?
+  method      PayoutMethod
+  destination String // paxum email / cosmo wallet / stripe acct id
 
-  status            SepaPayoutStatus @default(PENDING)
-  transferReference String?
+  requestedCents Int
+  feeCents       Int @default(0)
+  payoutCents    Int
+
+  feePayer FeePayer @default(USER)
+
+  status PayoutStatus @default(REQUESTED)
 
   createdAt    DateTime  @default(now())
   processedAt  DateTime?
   failedReason String?
 
-  payments Payment[]
+  stripeTransferId   String? @unique
+  stripePayoutId     String? @unique
+  stripePayoutStatus String?
+
+  payments Payment[] @relation()
 
   @@index([userId])
   @@index([status])
@@ -693,13 +705,6 @@ enum EvidenceType {
   CARD_BIN
   BILLING
   USER_DECLARED
-}
-
-enum SepaPayoutStatus {
-  PENDING
-  PROCESSING
-  COMPLETED
-  FAILED
 }
 
 model BuyerEvidence {
@@ -972,6 +977,12 @@ enum PayoutStatus {
   PROCESSING
   PAID
   FAILED
+}
+
+enum PayoutMethod {
+  STRIPE_CONNECT
+  PAXUM
+  COSMO
 }
 
 enum CommunityJoinPolicy {

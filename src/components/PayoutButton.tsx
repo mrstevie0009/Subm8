@@ -1,23 +1,20 @@
-// src/components/PayoutButton.tsx
-'use client';
+//src/components/PayoutButton.tsx
+"use client";
 
-import { useState } from 'react';
-import PayoutModal from '@/components/PayoutModal';
+import { useState } from "react";
+import PayoutModal from "@/components/PayoutModal";
 
-export default function PayoutButton({ 
+export default function PayoutButton({
   availableCents,
   locale,
-  currentIban,
-  currentHolder,
-  currentBic,
-  tPayoutButton, 
-}: { 
+  tPayoutButton,
+}: {
   availableCents: number;
   locale: string;
   currentIban?: string | null;
   currentHolder?: string | null;
   currentBic?: string | null;
-  tPayoutButton: string; 
+  tPayoutButton: string;
 }) {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -31,16 +28,13 @@ export default function PayoutButton({
         {tPayoutButton}
       </button>
 
-      {isOpen && (
+      {isOpen ? (
         <PayoutModal
           availableCents={availableCents}
           locale={locale}
-          currentIban={currentIban}
-          currentHolder={currentHolder}
-          currentBic={currentBic}
           onClose={() => setIsOpen(false)}
         />
-      )}
+      ) : null}
     </>
   );
 }

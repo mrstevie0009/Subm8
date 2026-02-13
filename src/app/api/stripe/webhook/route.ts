@@ -53,9 +53,7 @@ function inferBaseFromGross(gross: number): number {
 }
 
 async function getChargeAndFeeCents(pi: Stripe.PaymentIntent): Promise<{ chargeId: string | null; feeCents: number }> {
-  const chargeId =
-    typeof pi.latest_charge === "string" ? pi.latest_charge : (pi.latest_charge?.id ?? null);
-
+  const chargeId = typeof pi.latest_charge === "string" ? pi.latest_charge : (pi.latest_charge?.id ?? null);
   if (!chargeId) return { chargeId: null, feeCents: 0 };
 
   // Charge expand -> balance_transaction für fee
@@ -63,6 +61,15 @@ async function getChargeAndFeeCents(pi: Stripe.PaymentIntent): Promise<{ chargeI
   const bt = ch.balance_transaction as Stripe.BalanceTransaction | null;
 
   return { chargeId, feeCents: bt?.fee ?? 0 };
+}
+
+/**
+ * Für Connect-Payout Events:
+ * payout.metadata enthält bei uns payoutRequestId (aus /api/payout/request)
+ */
+function getPayoutRequestIdFromPayout(p: Stripe.Payout): string | null {
+  const v = (p.metadata as Record<string, string | undefined> | null | undefined)?.payoutRequestId;
+  return typeof v === "string" && v.length > 0 ? v : null;
 }
 
 export async function POST(req: Request) {
@@ -80,6 +87,96 @@ export async function POST(req: Request) {
 
   try {
     switch (event.type) {
+      /**
+       * ===========================
+       *  PAYOUT TRACKING (CONNECT)
+       * ===========================
+       *
+       * Wichtig:
+       * - Das sind Payouts auf CONNECTED ACCOUNTS.
+       * - Dein Webhook Endpoint muss in Stripe als "Listen to events on connected accounts"
+       *   konfiguriert sein, sonst kommen payout.* Events nicht für connected accounts an.
+       */
+      case "payout.paid": {
+        const po = event.data.object as Stripe.Payout;
+
+        // Prefer mapping via payoutRequestId in metadata (иятий)
+        const payoutRequestId = getPayoutRequestIdFromPayout(po);
+
+        if (payoutRequestId) {
+          await prisma.payoutRequest.updateMany({
+            where: { id: payoutRequestId },
+            data: {
+              status: "PAID",
+              stripePayoutId: po.id,
+              stripePayoutStatus: po.status ?? null,
+              processedAt: new Date(),
+              failedReason: null,
+            },
+          });
+
+          return NextResponse.json({ ok: true });
+        }
+
+        // Fallback: map by stripePayoutId if metadata missing
+        await prisma.payoutRequest.updateMany({
+          where: { stripePayoutId: po.id },
+          data: {
+            status: "PAID",
+            stripePayoutStatus: po.status ?? null,
+            processedAt: new Date(),
+            failedReason: null,
+          },
+        });
+
+        return NextResponse.json({ ok: true });
+      }
+
+      case "payout.failed": {
+        const po = event.data.object as Stripe.Payout;
+
+        const payoutRequestId = getPayoutRequestIdFromPayout(po);
+
+        // best-effort failure message (fields depend on method / stripe version)
+        const failureMessage =
+          po.failure_message ??
+          po.failure_code ??
+          (po.status === "failed" ? "Stripe payout failed" : "Stripe payout error");
+
+        if (payoutRequestId) {
+          await prisma.payoutRequest.updateMany({
+            where: { id: payoutRequestId },
+            data: {
+              status: "FAILED",
+              stripePayoutId: po.id,
+              stripePayoutStatus: po.status ?? null,
+              processedAt: new Date(),
+              failedReason: String(failureMessage).slice(0, 500),
+            },
+          });
+
+          return NextResponse.json({ ok: true });
+        }
+
+        // Fallback: map by stripePayoutId if metadata missing
+        await prisma.payoutRequest.updateMany({
+          where: { stripePayoutId: po.id },
+          data: {
+            status: "FAILED",
+            stripePayoutStatus: po.status ?? null,
+            processedAt: new Date(),
+            failedReason: String(failureMessage).slice(0, 500),
+          },
+        });
+
+        return NextResponse.json({ ok: true });
+      }
+
+      /**
+       * ===========================
+       *  EXISTING TIP PAYMENTS
+       * ===========================
+       */
       case "payment_intent.succeeded": {
         const pi = event.data.object as Stripe.PaymentIntent;
         const paymentId = String(pi.metadata?.paymentId || "");
@@ -126,11 +223,8 @@ export async function POST(req: Request) {
 
         // Tip idempotent anlegen:
         // - primär über methodRef = PaymentIntent ID
-        // - zusätzlich guard über paymentId + from/to/amount, falls du das später brauchst
         const existingTip = await prisma.tip.findFirst({
-          where: {
-            methodRef: pi.id,
-          },
+          where: { methodRef: pi.id },
           select: { id: true },
         });
 
@@ -192,12 +286,14 @@ export async function POST(req: Request) {
       }
 
       default:
-        // alle anderen Events ignorieren (inkl. refunds, falls du die nicht willst)
+        // alle anderen Events ignorieren
         return NextResponse.json({ ok: true });
     }
   } catch (e) {
-    // Stripe retried bei non-2xx. Wenn hier was schiefgeht, lieber 500 liefern,
-    // damit Stripe nochmal zustellt (idempotent ist dein Code ja).
-    return NextResponse.json({ ok: false, error: e instanceof Error ? e.message : "Webhook error" }, { status: 500 });
+    // Stripe retried bei non-2xx -> 500 liefern, damit Stripe nochmal zustellt
+    return NextResponse.json(
+      { ok: false, error: e instanceof Error ? e.message : "Webhook error" },
+      { status: 500 }
+    );
   }
 }

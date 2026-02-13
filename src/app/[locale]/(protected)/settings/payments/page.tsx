@@ -95,14 +95,24 @@ export default async function PaymentsPage({ params }: { params: Promise<Params>
   const balanceCurrency = payments.find((p) => p.payeeId === me.id)?.currency ?? "EUR";
 
   // Fetch SEPA settings
-  const sepaSettings = await prisma.user.findUnique({
+  const payoutSettings = await prisma.user.findUnique({
     where: { id: me.id },
     select: {
-      payoutIban: true,
-      payoutAccountHolder: true,
-      payoutBic: true,
+      payoutMethod: true,
+      stripeAccountId: true,
+      payoutPaxumEmail: true,
+      payoutCosmoWalletId: true,
     },
   });
+
+  const methodLabel =
+  payoutSettings?.payoutMethod === "STRIPE_CONNECT"
+    ? "Auszahlbar (Stripe)"
+    : payoutSettings?.payoutMethod === "PAXUM"
+    ? "Auszahlbar (Paxum)"
+    : payoutSettings?.payoutMethod === "COSMO"
+    ? "Auszahlbar (Cosmo)"
+    : "Auszahlbar (SEPA)";
 
   const rows = payments.map((p) => {
     const incoming = p.payeeId === me.id;
@@ -186,12 +196,9 @@ export default async function PaymentsPage({ params }: { params: Promise<Params>
           </div>
 
           <div className="shrink-0">
-            <PayoutButton 
-              availableCents={balanceCents} 
+            <PayoutButton
+              availableCents={balanceCents}
               locale={locale}
-              currentIban={sepaSettings?.payoutIban}
-              currentHolder={sepaSettings?.payoutAccountHolder}
-              currentBic={sepaSettings?.payoutBic}
               tPayoutButton={t("paymentsPage.payoutBtn")}
             />
           </div>
@@ -205,7 +212,7 @@ export default async function PaymentsPage({ params }: { params: Promise<Params>
         csvUrl={csvUrl}
         tBalanceTitle={t("paymentsPage.balance.title")}
         tExportLabel={t("paymentsPage.balance.export")}
-        tEarnedLabel={"Auszahlbar (SEPA)"}
+        tEarnedLabel={methodLabel}
         tPendingLabel={"Pending"}
         tPendingHint={"Noch in Verarbeitung – wird später auszahlbar."}
       />

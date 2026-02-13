@@ -179,15 +179,15 @@ export async function GET(req: Request) {
     ? {}
     : {
         OR: [
-          // Normaler Post (inkl. Quote-Post): author muss matchen
+          // Normaler Post (inkl. Quote-Post): author muss *alle* kinks haben
           {
             repostOfId: null,
-            author: { kinks: { hasSome: kinks } },
+            author: { kinks: { hasEvery: kinks } },
           },
-          // Repost: original author muss matchen
+          // Repost: original author muss *alle* kinks haben
           {
             repostOf: {
-              author: { kinks: { hasSome: kinks } },
+              author: { kinks: { hasEvery: kinks } },
             },
           },
         ],
