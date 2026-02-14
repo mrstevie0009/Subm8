@@ -1,16 +1,11 @@
-//src/app/api/payout/settings/route.ts
+// src/app/api/payout/settings/route.ts
 import { NextResponse } from "next/server";
-import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/currentUser";
-
-const MethodEnum = z.enum(["STRIPE_CONNECT", "PAXUM", "COSMO"]);
+import { z } from "zod";
 
 const PayloadSchema = z.object({
-  method: MethodEnum,
-  // Paxum / Cosmo
-  paxumEmail: z.string().email("Ungültige Paxum E-Mail").optional().nullable(),
-  cosmoWalletId: z.string().min(4, "Cosmo Wallet ID zu kurz").max(120, "Cosmo Wallet ID zu lang").optional().nullable(),
+  method: z.literal("STRIPE_CONNECT"),
 });
 
 export async function GET() {
@@ -23,22 +18,12 @@ export async function GET() {
       select: {
         payoutMethod: true,
         stripeAccountId: true,
-        payoutPaxumEmail: true,
-        payoutCosmoWalletId: true,
       },
     });
 
     return NextResponse.json({
-      method: u?.payoutMethod ?? "STRIPE_CONNECT",
-      stripe: {
-        accountId: u?.stripeAccountId ?? null,
-      },
-      paxum: {
-        email: u?.payoutPaxumEmail ?? null,
-      },
-      cosmo: {
-        walletId: u?.payoutCosmoWalletId ?? null,
-      },
+      method: "STRIPE_CONNECT",
+      stripe: { accountId: u?.stripeAccountId ?? null },
     });
   } catch (e) {
     console.error("GET /api/payout/settings error:", e);
@@ -51,25 +36,16 @@ export async function POST(req: Request) {
     const me = await getCurrentUser().catch(() => null);
     if (!me) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const body = await req.json();
-    const data = PayloadSchema.parse(body);
-
-    // Methode-spezifische Pflichtfelder
-    if (data.method === "PAXUM") {
-      if (!data.paxumEmail) return NextResponse.json({ error: "Paxum E-Mail erforderlich" }, { status: 400 });
-    }
-    if (data.method === "COSMO") {
-      if (!data.cosmoWalletId) return NextResponse.json({ error: "Cosmo Wallet ID erforderlich" }, { status: 400 });
-    }
-    // STRIPE_CONNECT: hier speichern wir nur method; Account-Linking kommt separat.
+    const body = await req.json().catch(() => ({}));
+    PayloadSchema.parse(body);
 
     await prisma.user.update({
       where: { id: me.id },
       data: {
-        payoutMethod: data.method,
-        
-        payoutPaxumEmail: data.method === "PAXUM" ? data.paxumEmail! : undefined,
-        payoutCosmoWalletId: data.method === "COSMO" ? data.cosmoWalletId! : undefined,
+        payoutMethod: "STRIPE_CONNECT",
+        // optional: räum alte Felder auf, falls du sie in DB noch hast
+        payoutPaxumEmail: null,
+        payoutCosmoWalletId: null,
       },
     });
 

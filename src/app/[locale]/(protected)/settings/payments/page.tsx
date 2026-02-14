@@ -94,25 +94,17 @@ export default async function PaymentsPage({ params }: { params: Promise<Params>
 
   const balanceCurrency = payments.find((p) => p.payeeId === me.id)?.currency ?? "EUR";
 
-  // Fetch SEPA settings
   const payoutSettings = await prisma.user.findUnique({
     where: { id: me.id },
     select: {
       payoutMethod: true,
       stripeAccountId: true,
-      payoutPaxumEmail: true,
-      payoutCosmoWalletId: true,
     },
   });
 
   const methodLabel =
-  payoutSettings?.payoutMethod === "STRIPE_CONNECT"
-    ? "Auszahlbar (Stripe)"
-    : payoutSettings?.payoutMethod === "PAXUM"
-    ? "Auszahlbar (Paxum)"
-    : payoutSettings?.payoutMethod === "COSMO"
-    ? "Auszahlbar (Cosmo)"
-    : "Auszahlbar (SEPA)";
+  payoutSettings?.stripeAccountId ? "Auszahlbar (Stripe – verbunden)" : "Auszahlbar (Stripe – nicht verbunden)";
+
 
   const rows = payments.map((p) => {
     const incoming = p.payeeId === me.id;
