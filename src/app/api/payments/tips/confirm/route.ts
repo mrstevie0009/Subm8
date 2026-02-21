@@ -80,6 +80,25 @@ export async function POST(req: NextRequest) {
 
   const pi = await stripe.paymentIntents.retrieve(paymentIntentId);
 
+  // OPTIONAL: wenn Karte gespeichert werden soll -> setze default payment method
+  if (pi.status === "succeeded") {
+    const pm = typeof pi.payment_method === "string" ? pi.payment_method : null;
+    const customer = typeof pi.customer === "string" ? pi.customer : null;
+
+    // nur wenn im PI metadata flag gesetzt wurde
+    const wantsSave = (pi.metadata?.saveForFuture ?? "0") === "1";
+
+    if (wantsSave && pm && customer) {
+      try {
+        await stripe.customers.update(customer, {
+          invoice_settings: { default_payment_method: pm },
+        });
+      } catch {
+        // ignore: nicht blockieren
+      }
+    }
+  }
+
   // Stripe sagt "failed/canceled" -> DB nachziehen (nur Status) und Fehler zurück
   if (pi.status === "canceled") {
     await prisma.payment.update({ where: { id: payment.id }, data: { status: "CANCELED" } });

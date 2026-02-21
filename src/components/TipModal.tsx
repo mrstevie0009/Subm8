@@ -550,6 +550,9 @@ function StripePayStep({
   onBack,
   onPaid,
   savedSummary,
+  saveForFuture,
+  setSaveForFuture,
+  onRemoveSaved,
 }: {
   t: ReturnType<typeof useTranslations>;
   paymentId: string;
@@ -559,9 +562,13 @@ function StripePayStep({
   onBack: () => void;
   onPaid: (r: { paymentId: string; totalCents: number; currency: string; baseAmountCents: number }) => void;
   savedSummary: { count: number; hasDefault: boolean };
+  saveForFuture: boolean;
+  setSaveForFuture: (v: boolean) => void;
+  onRemoveSaved: () => Promise<void>;
 }) {
   const stripe = useStripe();
   const elements = useElements();
+  const [peComplete, setPeComplete] = React.useState(false);
 
   async function finalizeWithPoll() {
     const delays = [0, 400, 800, 1200];
@@ -630,7 +637,36 @@ function StripePayStep({
     <div className="mt-4 rounded-xl border border-white/10 bg-white/[.03] p-3">
       <div className="flex items-center justify-between gap-2">
         <div className="text-[13px] text-white/80">{t('stripe.enterCard')}</div>
+
         <div className="flex items-center gap-2">
+          {savedSummary.hasDefault ? (
+            <button
+              type="button"
+              onClick={() => void onRemoveSaved()}
+              disabled={sending}
+              className="px-3 py-1.5 rounded-lg border border-white/15 hover:bg-white/10 text-[13px] disabled:opacity-60"
+              title="Gespeicherte Karte entfernen"
+            >
+              Remove
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setSaveForFuture(!saveForFuture)}
+              disabled={sending || !peComplete}
+              className={`px-3 py-1.5 rounded-lg text-[13px] transition border ${
+                sending || !peComplete
+                  ? "opacity-60 cursor-not-allowed border-white/10 bg-white/5"
+                  : saveForFuture
+                    ? "border-[var(--purple)]/40 bg-[var(--purple)]/15 text-white"
+                    : "border-white/15 hover:bg-white/10 text-white"
+              }`}
+              title={!peComplete ? "Bitte Kartendaten ausfüllen" : undefined}
+            >
+              {saveForFuture ? "✓ Save" : "Save"}
+            </button>
+          )}
+
           <button
             type="button"
             onClick={onBack}
@@ -656,6 +692,7 @@ function StripePayStep({
 
       <div className="mt-3 rounded-xl border border-white/10 bg-black/30 p-3">
         <PaymentElement
+          onChange={(e) => setPeComplete(!!e.complete)}
           options={{
             wallets: {
               applePay: 'never',
@@ -663,6 +700,13 @@ function StripePayStep({
             },
           }}
         />
+      </div>
+      <div className="mt-2 text-[12px] text-white/55">
+        {savedSummary.hasDefault
+          ? "Du hast bereits eine gespeicherte Karte."
+          : saveForFuture
+            ? "Die Karte wird nach erfolgreicher Zahlung gespeichert."
+            : "Optional: Speichere die Karte für zukünftige Zahlungen."}
       </div>
 
       <div className="mt-4 flex items-center justify-end gap-2">
@@ -710,10 +754,19 @@ export default function TipModal({
   const [paymentId, setPaymentId] = React.useState<string | null>(null);
 
   const [success, setSuccess] = React.useState<null | { paymentId: string; totalCents: number; currency: string }>(null);
+  const [closingSoon, setClosingSoon] = React.useState(false);
+  const closeTimerRef = React.useRef<number | null>(null);
+
+  React.useEffect(() => {
+    return () => {
+      if (closeTimerRef.current) window.clearTimeout(closeTimerRef.current);
+    };
+  }, []);
 
   const [methodsOpen, setMethodsOpen] = React.useState(false);
 
   const [savedCount, setSavedCount] = React.useState(0);
+  const [saveForFuture, setSaveForFuture] = React.useState(false);
   const [hasDefaultSaved, setHasDefaultSaved] = React.useState(false);
 
   async function refreshSavedSummary() {
@@ -739,6 +792,12 @@ export default function TipModal({
   React.useEffect(() => {
     if (!open) return;
 
+    setClosingSoon(false);
+    if (closeTimerRef.current) {
+      window.clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+
     setSuccess(null);
     setError(null);
     setSending(false);
@@ -746,6 +805,7 @@ export default function TipModal({
     setStripeClientSecret(null);
     setCustomerSessionClientSecret(null);
     setPaymentId(null);
+    setSaveForFuture(false);
 
     refreshSavedSummary();
 
@@ -771,7 +831,7 @@ export default function TipModal({
 
       if (!STRIPE_PK) throw new Error(t('stripe.errors.missingPublishableKey'));
 
-      const body = { toUserId, amountCents, note: note.trim() || undefined, conversationId };
+      const body = { toUserId, amountCents, note: note.trim() || undefined, conversationId, saveForFuture };
 
       const res1 = await fetch('/api/payments/tips/create', {
         method: 'POST',
@@ -811,6 +871,7 @@ export default function TipModal({
       }).catch(() => {});
     } catch {}
 
+    // Event sofort feuern (damit Chat/UI gleich updatet)
     onSuccess?.({
       paymentId: r.paymentId,
       amountCents: r.baseAmountCents,
@@ -818,6 +879,16 @@ export default function TipModal({
       currency: r.currency,
       note: note.trim() || undefined,
     });
+
+    // Schöne "done" Animation und dann automatisch schließen
+    setClosingSoon(true);
+    if (closeTimerRef.current) window.clearTimeout(closeTimerRef.current);
+
+    closeTimerRef.current = window.setTimeout(() => {
+      setClosingSoon(false);
+      setSuccess(null);
+      onClose();
+    }, 1100); // 0.9–1.3s fühlt sich sehr "OnlyFans" an
   }
 
   const mounted = useMounted();
@@ -853,6 +924,7 @@ export default function TipModal({
       <div
         className="fixed inset-0 z-[2147483600] grid place-items-center bg-black/60 backdrop-blur-sm overscroll-contain p-3 sm:p-0"
         onClick={() => {
+          if (step === 'success') return;
           setSuccess(null);
           onClose();
         }}
@@ -902,11 +974,15 @@ export default function TipModal({
 
                   <button
                     type="button"
+                    disabled={step === 'success'}
                     onClick={() => {
+                      if (step === 'success') return;
                       setSuccess(null);
                       onClose();
                     }}
-                    className="ml-auto inline-grid place-items-center w-9 h-9 rounded-full hover:bg-white/10 shrink-0"
+                    className={`ml-auto inline-grid place-items-center w-9 h-9 rounded-full hover:bg-white/10 shrink-0 ${
+                      step === 'success' ? 'opacity-40 cursor-not-allowed hover:bg-transparent' : ''
+                    }`}
                     aria-label={t('aria.close')}
                   >
                     <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" strokeWidth="2" fill="none" aria-hidden>
@@ -1017,6 +1093,37 @@ export default function TipModal({
                     }}
                     onPaid={(r) => handlePaidFinal(r)}
                     savedSummary={{ count: savedCount, hasDefault: hasDefaultSaved }}
+                    saveForFuture={saveForFuture}
+                    setSaveForFuture={setSaveForFuture}
+                    onRemoveSaved={async () => {
+                      setSending(true);
+                      setError(null);
+                      try {
+                        // 1) default id holen
+                        const listRes = await fetch('/api/payments/methods/list', { method: 'GET' });
+                        const listJ: unknown = await listRes.json().catch(() => null);
+                        if (!listRes.ok || !isMethodsListOk(listJ)) throw new Error("Failed to load saved cards");
+
+                        const defaultId = listJ.defaultPaymentMethodId;
+                        if (!defaultId) throw new Error("No default card to remove");
+
+                        // 2) detach default
+                        const res = await fetch('/api/payments/methods/update', {
+                          method: 'POST',
+                          headers: { 'content-type': 'application/json' },
+                          body: JSON.stringify({ action: 'detach', paymentMethodId: defaultId }),
+                        });
+                        const j: unknown = await res.json().catch(() => null);
+                        if (!res.ok) throw new Error(getUpdateError(j) || 'Failed to remove');
+
+                        await refreshSavedSummary();
+                        setSaveForFuture(false);
+                      } catch (e) {
+                        setError(e instanceof Error ? e.message : 'Failed to remove');
+                      } finally {
+                        setSending(false);
+                      }
+                    }}
                   />
                 </Elements>
               ) : (
@@ -1051,25 +1158,27 @@ export default function TipModal({
               )}
             </div>
           ) : (
-            <div className="px-5 pb-6 pt-2 relative">
-              <ConfettiHearts />
-              <div className="text-center mt-4">
-                <div className="inline-grid place-items-center w-16 h-16 rounded-full bg-[var(--purple)]/20 border border-[var(--purple)]/30">
-                  <HeartIcon big />
-                </div>
-                <h3 className="mt-3 text-[18px] font-semibold">{t('success.title')}</h3>
-                <p className="mt-1 text-white/80">{t('success.youPaid', { amount: fmtCurrency(success?.totalCents ?? 0) })}</p>
-                <div className="mt-5">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSuccess(null);
-                      onClose();
-                    }}
-                    className="px-4 py-2 rounded-lg bg-[var(--purple)] text-white hover:opacity-95"
-                  >
-                    {t('actions.done')}
-                  </button>
+            <div className="px-5 py-10 relative overflow-hidden grid place-items-center">
+              <div
+                className={`absolute inset-0 -z-10 transition-opacity duration-300 ${closingSoon ? "opacity-100" : "opacity-90"}`}
+                style={{
+                  background: "radial-gradient(700px 260px at 50% 35%, rgba(139,92,246,.28), rgba(139,92,246,0))",
+                }}
+              />
+
+              <div className="text-center">
+                <CheckBurst closingSoon={closingSoon} />
+
+                <h3 className="mt-4 text-[18px] font-semibold tracking-tight">
+                  {t('success.title')}
+                </h3>
+
+                <p className="mt-1 text-white/80">
+                  {t('success.youPaid', { amount: fmtCurrency(success?.totalCents ?? 0) })}
+                </p>
+
+                <div className="mt-3 text-[12px] text-white/55">
+                  Closing…
                 </div>
               </div>
             </div>
@@ -1077,17 +1186,75 @@ export default function TipModal({
 
           <style jsx>{`
             @keyframes floatUp {
-              0% {
-                transform: translateY(10px) scale(0.9);
-                opacity: 0;
-              }
-              20% {
-                opacity: 1;
-              }
-              100% {
-                transform: translateY(-120px) scale(1.1);
-                opacity: 0;
-              }
+              0% { transform: translateY(10px) scale(0.9); opacity: 0; }
+              20% { opacity: 1; }
+              100% { transform: translateY(-120px) scale(1.1); opacity: 0; }
+            }
+
+            .checkRing {
+              width: 84px;
+              height: 84px;
+              border-radius: 999px;
+              border: 1px solid rgba(139,92,246,.35);
+              background: radial-gradient(circle at 30% 30%, rgba(139,92,246,.22), rgba(255,255,255,0));
+              box-shadow:
+                0 0 0 6px rgba(139,92,246,.10),
+                0 0 24px rgba(139,92,246,.25);
+              animation: ringPop 520ms cubic-bezier(.2, .9, .2, 1) both;
+            }
+
+            .checkPlate {
+              position: absolute;
+              inset: 10px;
+              border-radius: 999px;
+              border: 1px solid rgba(255,255,255,.12);
+              background: rgba(0,0,0,.25);
+              display: grid;
+              place-items: center;
+              color: rgba(255,255,255,.92);
+              box-shadow: inset 0 0 0 1px rgba(0,0,0,.35);
+              backdrop-filter: blur(6px);
+            }
+
+            .checkPath {
+              stroke-dasharray: 40;
+              stroke-dashoffset: 40;
+              animation: drawCheck 520ms 120ms ease-out forwards;
+            }
+
+            @keyframes ringPop {
+              0% { transform: scale(.82); opacity: 0; }
+              55% { transform: scale(1.03); opacity: 1; }
+              100% { transform: scale(1); opacity: 1; }
+            }
+
+            @keyframes drawCheck {
+              to { stroke-dashoffset: 0; }
+            }
+
+            .spark {
+              position: absolute;
+              width: 6px;
+              height: 6px;
+              border-radius: 999px;
+              background: rgba(139,92,246,.9);
+              opacity: 0;
+              transform: scale(.6);
+              filter: drop-shadow(0 0 10px rgba(139,92,246,.55));
+            }
+
+            .s1 { top: 6px; left: 10px; }
+            .s2 { right: 6px; top: 22px; }
+            .s3 { bottom: 8px; left: 22px; }
+
+            .spark.go {
+              animation: spark 620ms 120ms ease-out both;
+            }
+
+            @keyframes spark {
+              0% { opacity: 0; transform: scale(.6) translateY(0); }
+              35% { opacity: 1; }
+              100% { opacity: 0; transform: scale(1.3) translateY(-10px); }
             }
           `}</style>
         </div>
@@ -1109,16 +1276,33 @@ function SparkleIcon() {
     </svg>
   );
 }
-function HeartIcon({ big = false }: { big?: boolean }) {
+
+function CheckBurst({ closingSoon }: { closingSoon: boolean }) {
   return (
-    <svg viewBox="0 0 24 24" width={big ? 22 : 14} height={big ? 22 : 14} aria-hidden>
-      <path
-        d="M20.8 8.8a5.5 5.5 0 0 0-9.4-3.9l-.9.9-.9-.9a5.5 5.5 0 0 0-7.8 7.8l.9.9L10.5 21l8.7-7.4.9-.9a5.5 5.5 0 0 0 0-3.9Z"
-        fill="currentColor"
-      />
-    </svg>
+    <div className="relative inline-grid place-items-center">
+      {/* Outer ring */}
+      <div className="checkRing" />
+
+      {/* Inner plate */}
+      <div className="checkPlate">
+        <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden>
+          <path
+            d="M20 6 9 17l-5-5"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="checkPath"
+          />
+        </svg>
+      </div>
+
+      {/* tiny sparkles */}
+      <span className={`spark s1 ${closingSoon ? "go" : ""}`} />
+      <span className={`spark s2 ${closingSoon ? "go" : ""}`} />
+      <span className={`spark s3 ${closingSoon ? "go" : ""}`} />
+    </div>
   );
 }
-function ConfettiHearts() {
-  return null;
-}
+

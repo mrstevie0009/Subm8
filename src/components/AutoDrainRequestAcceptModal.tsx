@@ -4,6 +4,7 @@
 import * as React from 'react';
 import Image from 'next/image';
 import { useTranslations } from 'next-intl';
+import { createPortal } from 'react-dom';
 
 import { loadStripe } from '@stripe/stripe-js';
 import type { Stripe } from '@stripe/stripe-js';
@@ -36,6 +37,12 @@ const PLATFORM_FEE_BPS_TOPUP = 1000; // 10% on top
 const STRIPE_PK = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? '';
 const stripePromise: Promise<Stripe | null> = STRIPE_PK ? loadStripe(STRIPE_PK) : Promise.resolve(null);
 
+function useMounted() {
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => setMounted(true), []);
+  return mounted;
+}
+
 function fmtCurrency(cents: number, currency = 'EUR') {
   try {
     return new Intl.NumberFormat(undefined, { style: 'currency', currency }).format((cents || 0) / 100);
@@ -63,12 +70,7 @@ type CreateOk = {
 function isCreateOk(x: unknown): x is CreateOk {
   if (!x || typeof x !== 'object') return false;
   const o = x as Record<string, unknown>;
-  return (
-    o.ok === true &&
-    typeof o.autoDrainId === 'string' &&
-    typeof o.stripeSubscriptionId === 'string' &&
-    typeof o.clientSecret === 'string'
-  );
+  return o.ok === true && typeof o.autoDrainId === 'string' && typeof o.stripeSubscriptionId === 'string' && typeof o.clientSecret === 'string';
 }
 function getErr(x: unknown): string | null {
   if (!x || typeof x !== 'object') return null;
@@ -89,7 +91,7 @@ function getStatusString(x: unknown): string | null {
 }
 
 /* =========================
-   Payment Methods (wie Tip)
+   Payment Methods (wie TipModal)
 ========================= */
 type SavedMethod = {
   id: string;
@@ -138,74 +140,31 @@ function getUpdateError(x: unknown): string | null {
   return o.ok === false && typeof o.error === 'string' ? o.error : null;
 }
 
-function SetupIntentForm({ onDone, onError }: { onDone: () => void; onError: (msg: string) => void }) {
-  const stripe = useStripe();
-  const elements = useElements();
-  const [saving, setSaving] = React.useState(false);
-
-  async function handleSave() {
-    try {
-      setSaving(true);
-      onError('');
-
-      if (!stripe || !elements) throw new Error('Stripe not ready');
-
-      const { error, setupIntent } = await stripe.confirmSetup({
-        elements,
-        redirect: 'if_required',
-      });
-
-      if (error) throw new Error(error.message || 'Failed to save');
-      if (setupIntent?.status !== 'succeeded' && setupIntent?.status !== 'processing') {
-        throw new Error('Setup not completed');
-      }
-
-      await sleep(300);
-      onDone();
-    } catch (e) {
-      onError(e instanceof Error ? e.message : 'Failed to save');
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  return (
-    <div>
-      <PaymentElement />
-      <div className="mt-4 flex items-center justify-end">
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={saving || !stripe || !elements}
-          className={`relative px-4 py-2 rounded-lg text-white transition ${
-            !saving && stripe && elements ? 'bg-[var(--purple)] hover:opacity-95' : 'bg-white/10 opacity-60 cursor-not-allowed'
-          }`}
-        >
-          {saving ? 'Speichern…' : 'Karte speichern'}
-        </button>
-      </div>
-    </div>
-  );
-}
-
 function PaymentMethodsModal({
   open,
   onClose,
   onChanged,
+  title = 'Zahlungsmethoden',
+  subtitle = 'Speichere eine Karte einmal – danach geht AutoDrain schneller.',
 }: {
   open: boolean;
   onClose: () => void;
   onChanged: () => void;
+  title?: string;
+  subtitle?: string;
 }) {
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
   const [clientSecret, setClientSecret] = React.useState<string | null>(null);
+  const [peKey, setPeKey] = React.useState(0);
 
   const [methods, setMethods] = React.useState<SavedMethod[]>([]);
   const [defaultId, setDefaultId] = React.useState<string | null>(null);
 
-  async function loadMethods() {
+  const mounted = useMounted();
+
+  const loadMethods = React.useCallback(async () => {
     const res = await fetch('/api/payments/methods/list', { method: 'GET' });
     const j: unknown = await res.json().catch(() => null);
 
@@ -214,7 +173,7 @@ function PaymentMethodsModal({
 
     setMethods(j.methods);
     setDefaultId(j.defaultPaymentMethodId);
-  }
+  }, []);
 
   React.useEffect(() => {
     if (!open) return;
@@ -228,7 +187,7 @@ function PaymentMethodsModal({
     loadMethods()
       .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load'))
       .finally(() => setLoading(false));
-  }, [open]);
+  }, [open, loadMethods]);
 
   async function startSetupIntent() {
     setLoading(true);
@@ -241,6 +200,7 @@ function PaymentMethodsModal({
       if (!isSetupIntentOk(j)) throw new Error('Invalid response');
 
       setClientSecret(j.clientSecret);
+      setPeKey((k) => k + 1);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to start setup');
     } finally {
@@ -294,8 +254,6 @@ function PaymentMethodsModal({
     }
   }
 
-  if (!open) return null;
-
   const elementsOptions =
     clientSecret
       ? {
@@ -311,52 +269,49 @@ function PaymentMethodsModal({
         }
       : undefined;
 
-  return (
-    <div className="fixed inset-0 z-[1100] grid place-items-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
+  if (!open || !mounted) return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[2147483603] grid place-items-center bg-black/60 backdrop-blur-sm overscroll-contain p-3 sm:p-0" onClick={onClose}>
       <div
-        className="relative w-[min(720px,94vw)] rounded-2xl overflow-hidden border border-white/10 bg-[#0b0b0d]"
+        className={[
+          'relative w-full sm:w-[min(720px,94vw)] max-w-[720px]',
+          'max-h-[calc(100dvh-24px)] sm:max-h-[85vh]',
+          'rounded-2xl overflow-hidden border border-white/10 bg-[#0b0b0d] flex flex-col',
+        ].join(' ')}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="relative px-5 py-4 border-b border-white/10">
           <div
             className="absolute inset-0 -z-10"
-            style={{
-              background: 'radial-gradient(1200px 220px at 50% 0%, rgba(139,92,246,.30), rgba(139,92,246,0))',
-            }}
+            style={{ background: 'radial-gradient(1200px 220px at 50% 0%, rgba(139,92,246,.30), rgba(139,92,246,0))' }}
           />
           <div className="flex items-center gap-2">
-            <div className="font-semibold text-[16px]">Zahlungsmethoden</div>
+            <div className="font-semibold text-[16px]">{title}</div>
             <div className="ml-auto flex items-center gap-2">
-              <button
-                type="button"
-                onClick={onClose}
-                className="inline-grid place-items-center w-9 h-9 rounded-full hover:bg-white/10"
-                aria-label="Close"
-              >
+              <button type="button" onClick={onClose} className="inline-grid place-items-center w-9 h-9 rounded-full hover:bg-white/10" aria-label="Close">
                 <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" strokeWidth="2" fill="none">
                   <path d="M6 6l12 12M18 6L6 18" />
                 </svg>
               </button>
             </div>
           </div>
-          <div className="mt-1 text-[12px] text-white/65">Speichere eine Karte einmal – danach zahlst du schneller.</div>
+          <div className="mt-1 text-[12px] text-white/65">{subtitle}</div>
         </div>
 
-        <div className="px-5 py-5">
+        <div className="px-5 py-5 overflow-y-auto overscroll-contain [ -webkit-overflow-scrolling:touch ]">
           {error && (
-            <div className="mb-3 text-[13px] text-red-300 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">
-              {error}
-            </div>
+            <div className="mb-3 text-[13px] text-red-300 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">{error}</div>
           )}
 
           <div className="rounded-xl border border-white/10 bg-white/[.03] p-3">
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center justify-between">
               <div className="text-[13px] text-white/80">Gespeicherte Karten</div>
               <button
                 type="button"
                 onClick={startSetupIntent}
                 disabled={loading || !STRIPE_PK}
-                className="px-3 py-1.5 rounded-lg border border-white/15 hover:bg-white/10 text-[13px] disabled:opacity-60 whitespace-nowrap"
+                className="px-3 py-1.5 rounded-lg border border-white/15 hover:bg-white/10 text-[13px] disabled:opacity-60"
                 title={!STRIPE_PK ? 'Missing NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY' : undefined}
               >
                 + Karte hinzufügen
@@ -372,10 +327,7 @@ function PaymentMethodsModal({
                 methods.map((m) => {
                   const isDef = defaultId === m.id;
                   return (
-                    <div
-                      key={m.id}
-                      className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 rounded-lg border border-white/10 bg-black/30 px-3 py-2"
-                    >
+                    <div key={m.id} className="flex items-center justify-between gap-2 rounded-lg border border-white/10 bg-black/30 px-3 py-2">
                       <div className="min-w-0">
                         <div className="text-[13px] text-white/85 truncate">
                           {m.brand.toUpperCase()} •••• {m.last4}
@@ -386,7 +338,7 @@ function PaymentMethodsModal({
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-end gap-2">
+                      <div className="flex items-center gap-2">
                         {!isDef && (
                           <button
                             type="button"
@@ -419,28 +371,107 @@ function PaymentMethodsModal({
               <div className="mt-3 rounded-xl border border-white/10 bg-black/30 p-3">
                 <Elements stripe={stripePromise} options={elementsOptions}>
                   <SetupIntentForm
+                    peKey={peKey}
                     onDone={async () => {
+                      setPeKey((k) => k + 1);
                       setClientSecret(null);
                       await loadMethods();
                       onChanged();
                     }}
-                    onError={(msg) => setError(msg || null)}
+                    onError={(msg) => setError(msg)}
                   />
                 </Elements>
               </div>
-              <div className="mt-2 text-[12px] text-white/55">
-                Die Karte wird sicher von Stripe gespeichert. Du kannst sie jederzeit entfernen.
-              </div>
+              <div className="mt-2 text-[12px] text-white/55">Die Karte wird sicher von Stripe gespeichert. Du kannst sie jederzeit entfernen.</div>
             </div>
           ) : null}
         </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+function SetupIntentForm({
+  onDone,
+  onError,
+  peKey,
+}: {
+  onDone: () => void;
+  onError: (msg: string) => void;
+  peKey: number;
+}) {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [saving, setSaving] = React.useState(false);
+
+  const [billName, setBillName] = React.useState('');
+  const [billEmail, setBillEmail] = React.useState('');
+  const [billPhone, setBillPhone] = React.useState('');
+
+  async function handleSave() {
+    try {
+      setSaving(true);
+      onError('');
+
+      if (!stripe || !elements) throw new Error('Stripe not ready');
+
+      const { error, setupIntent } = await stripe.confirmSetup({
+        elements,
+        redirect: 'if_required',
+        confirmParams: {
+          payment_method_data: {
+            billing_details: {
+              name: billName || undefined,
+              email: billEmail || undefined,
+              phone: billPhone || undefined,
+            },
+          },
+        },
+      });
+
+      if (error) throw new Error(error.message || 'Failed to save');
+      if (setupIntent?.status !== 'succeeded' && setupIntent?.status !== 'processing') {
+        throw new Error('Setup not completed');
+      }
+
+      await sleep(300);
+      onDone();
+    } catch (e) {
+      onError(e instanceof Error ? e.message : 'Failed to save');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div>
+      <div className="grid gap-2 mb-3">
+        <input value={billName} onChange={(e) => setBillName(e.target.value)} placeholder="Name" className="w-full rounded-lg bg-black/30 border border-white/10 px-3 py-2 outline-none" />
+        <input value={billEmail} onChange={(e) => setBillEmail(e.target.value)} placeholder="E-Mail" className="w-full rounded-lg bg-black/30 border border-white/10 px-3 py-2 outline-none" />
+        <input value={billPhone} onChange={(e) => setBillPhone(e.target.value)} placeholder="Telefon" className="w-full rounded-lg bg-black/30 border border-white/10 px-3 py-2 outline-none" />
+      </div>
+
+      <PaymentElement key={`setup-pe-${peKey}`} options={{ layout: 'tabs' }} />
+
+      <div className="mt-4 flex items-center justify-end">
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={saving || !stripe || !elements}
+          className={`relative px-4 py-2 rounded-lg text-white transition ${
+            !saving && stripe && elements ? 'bg-[var(--purple)] hover:opacity-95' : 'bg-white/10 opacity-60 cursor-not-allowed'
+          }`}
+        >
+          {saving ? 'Speichern…' : 'Karte speichern'}
+        </button>
       </div>
     </div>
   );
 }
 
 /* =========================
-   Stripe Step (Subscription)
+   Stripe Step (Subscription) + Save/Remove (wie TipModal)
 ========================= */
 function StripeSubscribeStep({
   t,
@@ -452,6 +483,9 @@ function StripeSubscribeStep({
   onBack,
   onActivated,
   savedSummary,
+  saveForFuture,
+  setSaveForFuture,
+  onRemoveSaved,
 }: {
   t: ReturnType<typeof useTranslations>;
   autoDrainId: string;
@@ -462,9 +496,13 @@ function StripeSubscribeStep({
   onBack: () => void;
   onActivated: () => void;
   savedSummary: { count: number; hasDefault: boolean };
+  saveForFuture: boolean;
+  setSaveForFuture: (v: boolean) => void;
+  onRemoveSaved: () => Promise<void>;
 }) {
   const stripe = useStripe();
   const elements = useElements();
+  const [peComplete, setPeComplete] = React.useState(false);
 
   async function confirmAndFinalize() {
     if (!stripe || !elements) throw new Error('Stripe not ready');
@@ -472,9 +510,7 @@ function StripeSubscribeStep({
     if (intentType === 'setup_intent') {
       const { error, setupIntent } = await stripe.confirmSetup({
         elements,
-        confirmParams: {
-          return_url: typeof window !== 'undefined' ? window.location.href : undefined,
-        },
+        confirmParams: { return_url: typeof window !== 'undefined' ? window.location.href : undefined },
         redirect: 'if_required',
       });
 
@@ -485,9 +521,7 @@ function StripeSubscribeStep({
     } else {
       const { error, paymentIntent } = await stripe.confirmPayment({
         elements,
-        confirmParams: {
-          return_url: typeof window !== 'undefined' ? window.location.href : undefined,
-        },
+        confirmParams: { return_url: typeof window !== 'undefined' ? window.location.href : undefined },
         redirect: 'if_required',
       });
 
@@ -536,9 +570,38 @@ function StripeSubscribeStep({
 
   return (
     <div className="mt-4 rounded-xl border border-white/10 bg-white/[.03] p-3">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-center justify-between gap-2">
         <div className="text-[13px] text-white/80">{t('stripe.enterCard') ?? 'Zahlungsmethode wählen'}</div>
-        <div className="flex items-center justify-end gap-2">
+
+        <div className="flex items-center gap-2">
+          {savedSummary.hasDefault ? (
+            <button
+              type="button"
+              onClick={() => void onRemoveSaved()}
+              disabled={sending}
+              className="px-3 py-1.5 rounded-lg border border-white/15 hover:bg-white/10 text-[13px] disabled:opacity-60"
+              title="Gespeicherte Karte entfernen"
+            >
+              Remove
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setSaveForFuture(!saveForFuture)}
+              disabled={sending || !peComplete}
+              className={`px-3 py-1.5 rounded-lg text-[13px] transition border ${
+                sending || !peComplete
+                  ? 'opacity-60 cursor-not-allowed border-white/10 bg-white/5'
+                  : saveForFuture
+                    ? 'border-[var(--purple)]/40 bg-[var(--purple)]/15 text-white'
+                    : 'border-white/15 hover:bg-white/10 text-white'
+              }`}
+              title={!peComplete ? 'Bitte Kartendaten ausfüllen' : undefined}
+            >
+              {saveForFuture ? '✓ Save' : 'Save'}
+            </button>
+          )}
+
           <button
             type="button"
             onClick={onBack}
@@ -556,18 +619,22 @@ function StripeSubscribeStep({
             Gespeicherte Karten: <span className="text-white/85">{savedSummary.count}</span>
             {savedSummary.hasDefault ? <span className="ml-2 text-[var(--purple)]">Default gesetzt</span> : null}
           </div>
-          <div className="mt-1 text-[12px] text-white/55">
-            Du kannst im Stripe-Feld eine gespeicherte Methode auswählen oder eine neue eingeben.
-          </div>
+          <div className="mt-1 text-[12px] text-white/55">Du kannst im Stripe-Feld eine gespeicherte Methode auswählen oder eine neue eingeben.</div>
         </div>
       ) : (
-        <div className="mt-3 text-[12px] text-white/55">
-          Tipp: Speichere deine Karte einmal über Zahlungsmethoden, dann geht das künftig schneller.
-        </div>
+        <div className="mt-3 text-[12px] text-white/55">Optional: Speichere die Karte für zukünftige Abbuchungen.</div>
       )}
 
       <div className="mt-3 rounded-xl border border-white/10 bg-black/30 p-3">
-        <PaymentElement />
+        <PaymentElement onChange={(e) => setPeComplete(!!e.complete)} />
+      </div>
+
+      <div className="mt-2 text-[12px] text-white/55">
+        {savedSummary.hasDefault
+          ? 'Du hast bereits eine gespeicherte Karte.'
+          : saveForFuture
+            ? 'Die Karte wird nach erfolgreicher Aktivierung gespeichert.'
+            : 'Optional: Speichere die Karte für zukünftige Abbuchungen.'}
       </div>
 
       <div className="mt-4 flex items-center justify-end">
@@ -579,13 +646,14 @@ function StripeSubscribeStep({
             !sending && stripe && elements ? 'bg-[var(--purple)] hover:opacity-95' : 'bg-white/10 opacity-60 cursor-not-allowed'
           }`}
         >
-          {sending ? (t('actions.enabling') ?? 'Aktiviere…') : (t('actions.enable') ?? 'AutoDrain aktivieren')}
+          <span className="inline-flex items-center gap-2">
+            <SparkleIcon />
+            {sending ? (t('actions.enabling') ?? 'Aktiviere…') : (t('actions.enable') ?? 'AutoDrain aktivieren')}
+          </span>
         </button>
       </div>
 
-      <div className="mt-2 text-[12px] text-white/55">
-        {t('stripe.secureHint') ?? 'Deine Zahlungsdaten werden sicher von Stripe verarbeitet.'}
-      </div>
+      <div className="mt-2 text-[12px] text-white/55">{t('stripe.secureHint') ?? 'Deine Zahlungsdaten werden sicher von Stripe verarbeitet.'}</div>
     </div>
   );
 }
@@ -603,12 +671,13 @@ export default function AutoDrainRequestAcceptModal({
   onSuccess,
 }: Props) {
   const t = useTranslations('payment.autoDrainAcceptModal');
+  const mounted = useMounted();
 
   const [sending, setSending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [giftAck, setGiftAck] = React.useState<boolean>(true);
 
-  const [step, setStep] = React.useState<'review' | 'pay'>('review');
+  const [step, setStep] = React.useState<'review' | 'pay' | 'success'>('review');
   const [clientSecret, setClientSecret] = React.useState<string | null>(null);
   const [customerSessionClientSecret, setCustomerSessionClientSecret] = React.useState<string | null>(null);
   const [autoDrainId, setAutoDrainId] = React.useState<string | null>(null);
@@ -617,6 +686,10 @@ export default function AutoDrainRequestAcceptModal({
   const [methodsOpen, setMethodsOpen] = React.useState(false);
   const [savedCount, setSavedCount] = React.useState(0);
   const [hasDefaultSaved, setHasDefaultSaved] = React.useState(false);
+  const [saveForFuture, setSaveForFuture] = React.useState(false);
+
+  const [closingSoon, setClosingSoon] = React.useState(false);
+  const closeTimerRef = React.useRef<number | null>(null);
 
   // ⭐ Platform Fee Berechnung
   const topupFeeCents = Math.round(amountCents * (PLATFORM_FEE_BPS_TOPUP / 10_000));
@@ -641,6 +714,12 @@ export default function AutoDrainRequestAcceptModal({
   }
 
   React.useEffect(() => {
+    return () => {
+      if (closeTimerRef.current) window.clearTimeout(closeTimerRef.current);
+    };
+  }, []);
+
+  React.useEffect(() => {
     if (!open) return;
 
     setError(null);
@@ -650,6 +729,13 @@ export default function AutoDrainRequestAcceptModal({
     setAutoDrainId(null);
     setCustomerSessionClientSecret(null);
     setIntentType(null);
+    setSaveForFuture(false);
+
+    setClosingSoon(false);
+    if (closeTimerRef.current) {
+      window.clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
 
     try {
       const v = typeof window !== 'undefined' ? window.localStorage.getItem(GIFT_ACK_KEY) : '1';
@@ -661,12 +747,7 @@ export default function AutoDrainRequestAcceptModal({
     refreshSavedSummary();
   }, [open]);
 
-  const cadenceLabel =
-    cadence === 'DAILY'
-      ? t('cadence.daily')
-      : cadence === 'WEEKLY'
-      ? t('cadence.weekly')
-      : t('cadence.monthly');
+  const cadenceLabel = cadence === 'DAILY' ? t('cadence.daily') : cadence === 'WEEKLY' ? t('cadence.weekly') : t('cadence.monthly');
 
   async function handleStart() {
     try {
@@ -678,11 +759,13 @@ export default function AutoDrainRequestAcceptModal({
       const res = await fetch('/api/payments/autodrain/create', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
+        // ✅ API bereits angepasst: saveForFuture mitgeben
         body: JSON.stringify({
           toUserId,
           amountCents,
           currency,
           cadence,
+          saveForFuture,
           ...(conversationId ? { conversationId } : {}),
         }),
       });
@@ -718,7 +801,35 @@ export default function AutoDrainRequestAcceptModal({
     } catch {}
   }
 
-  if (!open) return null;
+  async function removeDefaultSaved() {
+    setSending(true);
+    setError(null);
+    try {
+      const listRes = await fetch('/api/payments/methods/list', { method: 'GET' });
+      const listJ: unknown = await listRes.json().catch(() => null);
+      if (!listRes.ok || !isMethodsListOk(listJ)) throw new Error('Failed to load saved cards');
+
+      const defaultId = listJ.defaultPaymentMethodId;
+      if (!defaultId) throw new Error('No default card to remove');
+
+      const res = await fetch('/api/payments/methods/update', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ action: 'detach', paymentMethodId: defaultId }),
+      });
+      const j: unknown = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(getUpdateError(j) || 'Failed to remove');
+
+      await refreshSavedSummary();
+      setSaveForFuture(false);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to remove');
+    } finally {
+      setSending(false);
+    }
+  }
+
+  if (!open || !mounted) return null;
 
   const elementsOptions =
     clientSecret && step === 'pay'
@@ -736,17 +847,23 @@ export default function AutoDrainRequestAcceptModal({
         }
       : undefined;
 
-  return (
+  return createPortal(
     <>
-      <PaymentMethodsModal
-        open={methodsOpen}
-        onClose={() => setMethodsOpen(false)}
-        onChanged={() => refreshSavedSummary()}
-      />
+      <PaymentMethodsModal open={methodsOpen} onClose={() => setMethodsOpen(false)} onChanged={() => refreshSavedSummary()} />
 
-      <div className="fixed inset-0 z-[1000] grid place-items-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
+      <div
+        className="fixed inset-0 z-[2147483600] grid place-items-center bg-black/60 backdrop-blur-sm overscroll-contain p-3 sm:p-0"
+        onClick={() => {
+          if (step === 'success') return;
+          onClose();
+        }}
+      >
         <div
-          className="relative w-[min(680px,94vw)] rounded-2xl overflow-hidden border border-white/10 bg-[#0b0b0d]"
+          className={[
+            'relative w-full sm:w-[min(680px,94vw)] max-w-[680px]',
+            'max-h-[calc(100dvh-24px)] sm:max-h-[85vh]',
+            'rounded-2xl overflow-hidden border border-white/10 bg-[#0b0b0d] flex flex-col',
+          ].join(' ')}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
@@ -756,7 +873,7 @@ export default function AutoDrainRequestAcceptModal({
               style={{ background: 'radial-gradient(1200px 220px at 50% 0%, rgba(139,92,246,.35), rgba(139,92,246,0))' }}
             />
             <div className="flex items-center gap-3">
-              <div className="relative w-10 h-10 rounded-full overflow-hidden border border-white/15 bg-white/10">
+              <div className="relative w-10 h-10 rounded-full overflow-hidden border border-white/15 bg-white/10 shrink-0">
                 {toAvatarUrl ? (
                   <Image src={toAvatarUrl} alt="" fill className="object-cover" sizes="40px" />
                 ) : (
@@ -776,8 +893,22 @@ export default function AutoDrainRequestAcceptModal({
 
               <div className="ml-auto flex items-center gap-2">
                 <button
+                  type="button"
+                  onClick={() => setMethodsOpen(true)}
+                  disabled={step === 'success'}
+                  className={`px-3 py-1.5 rounded-lg border border-white/15 hover:bg-white/10 text-[13px] ${
+                    step === 'success' ? 'opacity-50 cursor-not-allowed hover:bg-transparent' : ''
+                  }`}
+                >
+                  Karten
+                </button>
+
+                <button
                   onClick={onClose}
-                  className="inline-grid place-items-center w-9 h-9 rounded-full hover:bg-white/10"
+                  disabled={step === 'success'}
+                  className={`inline-grid place-items-center w-9 h-9 rounded-full hover:bg-white/10 ${
+                    step === 'success' ? 'opacity-50 cursor-not-allowed hover:bg-transparent' : ''
+                  }`}
                   aria-label={t('actions.closeAria')}
                 >
                   <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" strokeWidth="2" fill="none" aria-hidden>
@@ -789,108 +920,245 @@ export default function AutoDrainRequestAcceptModal({
           </div>
 
           {/* Body */}
-          <div className="px-5 pb-5">
-            <div className="text-[12px] text-white/75 mb-3">{t('disclaimer')}</div>
+          {step !== 'success' ? (
+            <div className="px-5 pb-5 overflow-y-auto overscroll-contain" style={{ WebkitOverflowScrolling: 'touch' }}>
+              <div className="text-[12px] text-white/75 mb-3">{t('disclaimer')}</div>
 
-            {/* ⭐ GEÄNDERT: Breakdown mit Platform Fee wie im TipModal */}
-            <div className="rounded-xl border border-white/10 bg-white/[.03] p-3">
-              <div className="text-[13px] text-white/70 mb-2">{t('charge.label')}</div>
-              
-              <div className="rounded-xl border border-white/10 bg-gradient-to-b from-white/[.04] to-transparent p-3">
-                <div className="flex items-center justify-between text-[14px] mb-1">
-                  <span>Betrag an {toDisplayName}</span>
-                  <strong className="text-white">{fmtCurrency(amountCents, currency)}</strong>
+              <div className="rounded-xl border border-white/10 bg-white/[.03] p-3">
+                <div className="text-[13px] text-white/70 mb-2">{t('charge.label')}</div>
+
+                <div className="rounded-xl border border-white/10 bg-gradient-to-b from-white/[.04] to-transparent p-3">
+                  <div className="flex items-center justify-between text-[14px] mb-1">
+                    <span>Betrag an {toDisplayName}</span>
+                    <strong className="text-white">{fmtCurrency(amountCents, currency)}</strong>
+                  </div>
+                  <div className="flex items-center justify-between text-[13px] text-white/70">
+                    <span>Plattform-Gebühr (10%)</span>
+                    <span>{fmtCurrency(topupFeeCents, currency)}</span>
+                  </div>
+                  <div className="mt-2 border-t border-white/10 pt-2 flex items-center justify-between">
+                    <span className="text-[14px]">Du zahlst</span>
+                    <span className="text-[24px] font-semibold">
+                      {fmtCurrency(totalCents, currency)} <span className="text-[13px] font-normal text-white/70">({cadenceLabel})</span>
+                    </span>
+                  </div>
                 </div>
-                <div className="flex items-center justify-between text-[13px] text-white/70">
-                  <span>Plattform-Gebühr (10%)</span>
-                  <span>{fmtCurrency(topupFeeCents, currency)}</span>
-                </div>
-                <div className="mt-2 border-t border-white/10 pt-2 flex items-center justify-between">
-                  <span className="text-[14px]">Du zahlst</span>
-                  <span className="text-[24px] font-semibold">
-                    {fmtCurrency(totalCents, currency)}{' '}
-                    <span className="text-[13px] font-normal text-white/70">({cadenceLabel})</span>
-                  </span>
+
+                <div className="mt-3 text-[12px] text-white/60">{t('charge.recurringNote')}</div>
+
+                <div className="mt-3 rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-[12px] text-white/70">
+                  {t('cancelAnytime', { default: 'Du kannst AutoDrain jederzeit in deinen Zahlungen wieder beenden.' })}
                 </div>
               </div>
 
-              <div className="mt-3 text-[12px] text-white/60">{t('charge.recurringNote')}</div>
+              {!giftAck && (
+                <label className="mt-3 flex items-start gap-2 text-[13px]">
+                  <input type="checkbox" className="accent-[var(--purple)] mt-[2px]" checked={giftAck} onChange={(e) => setGiftAck(e.target.checked)} />
+                  <span>{t('acknowledge')}</span>
+                </label>
+              )}
 
-              <div className="mt-3 rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-[12px] text-white/70">
-                {t('cancelAnytime', { default: 'Du kannst AutoDrain jederzeit in deinen Zahlungen wieder beenden.' })}
-              </div>
+              {error && (
+                <div className="mt-3 text-[13px] text-red-300 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">{error}</div>
+              )}
+
+              {step === 'pay' && clientSecret && elementsOptions && autoDrainId ? (
+                <Elements stripe={stripePromise} options={elementsOptions}>
+                  <StripeSubscribeStep
+                    t={t}
+                    autoDrainId={autoDrainId}
+                    intentType={intentType}
+                    sending={sending}
+                    setSending={setSending}
+                    setError={setError}
+                    savedSummary={{ count: savedCount, hasDefault: hasDefaultSaved }}
+                    saveForFuture={saveForFuture}
+                    setSaveForFuture={setSaveForFuture}
+                    onRemoveSaved={removeDefaultSaved}
+                    onBack={() => {
+                      setStep('review');
+                      setError(null);
+                      setClientSecret(null);
+                      setCustomerSessionClientSecret(null);
+                      setAutoDrainId(null);
+                      setIntentType(null);
+                    }}
+                    onActivated={() => {
+                      markAck();
+                      onSuccess({ autoDrainId, amountCents, currency, cadence });
+
+                      // ✅ Success animation + auto close
+                      setStep('success');
+                      setClosingSoon(true);
+                      if (closeTimerRef.current) window.clearTimeout(closeTimerRef.current);
+                      closeTimerRef.current = window.setTimeout(() => {
+                        setClosingSoon(false);
+                        onClose();
+                      }, 1100);
+                    }}
+                  />
+                </Elements>
+              ) : (
+                <div className="mt-4 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2">
+                  <button type="button" onClick={onClose} className="px-3 py-2 rounded-lg border border-white/15 hover:bg-white/10 w-full sm:w-auto" disabled={sending}>
+                    {t('actions.cancel')}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleStart}
+                    disabled={sending || !giftAck || !STRIPE_PK}
+                    className={`px-4 py-2 rounded-lg text-white transition w-full sm:w-auto ${
+                      giftAck && !sending && STRIPE_PK ? 'bg-[var(--purple)] hover:opacity-95' : 'bg-white/10 opacity-60 cursor-not-allowed'
+                    }`}
+                    title={!STRIPE_PK ? 'Missing NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY' : undefined}
+                  >
+                    <span className="inline-flex items-center gap-2">
+                      <SparkleIcon />
+                      {sending ? t('actions.enabling') : t('actions.enable')}
+                    </span>
+                  </button>
+                </div>
+              )}
             </div>
+          ) : (
+            <div className="px-5 py-10 relative overflow-hidden grid place-items-center">
+              <div
+                className={`absolute inset-0 -z-10 transition-opacity duration-300 ${closingSoon ? 'opacity-100' : 'opacity-90'}`}
+                style={{ background: 'radial-gradient(700px 260px at 50% 35%, rgba(139,92,246,.28), rgba(139,92,246,0))' }}
+              />
 
-            {!giftAck && (
-              <label className="mt-3 flex items-start gap-2 text-[13px]">
-                <input
-                  type="checkbox"
-                  className="accent-[var(--purple)] mt-[2px]"
-                  checked={giftAck}
-                  onChange={(e) => setGiftAck(e.target.checked)}
-                />
-                <span>{t('acknowledge')}</span>
-              </label>
-            )}
+              <div className="text-center">
+                <CheckBurst closingSoon={closingSoon} />
 
-            {error && (
-              <div className="mt-3 text-[13px] text-red-300 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">
-                {error}
+                <h3 className="mt-4 text-[18px] font-semibold tracking-tight">{t('success.title', { default: 'Aktiviert' })}</h3>
+
+                <p className="mt-1 text-white/80">
+                  {t('success.enabled', { default: 'AutoDrain wurde aktiviert.' })}
+                </p>
+
+                <div className="mt-3 text-[12px] text-white/55">Closing…</div>
               </div>
-            )}
 
-            {step === 'pay' && clientSecret && elementsOptions && autoDrainId ? (
-              <Elements stripe={stripePromise} options={elementsOptions}>
-                <StripeSubscribeStep
-                  t={t}
-                  autoDrainId={autoDrainId}
-                  intentType={intentType}
-                  sending={sending}
-                  setSending={setSending}
-                  setError={setError}
-                  savedSummary={{ count: savedCount, hasDefault: hasDefaultSaved }}
-                  onBack={() => {
-                    setStep('review');
-                    setError(null);
-                    setClientSecret(null);
-                    setCustomerSessionClientSecret(null);
-                    setAutoDrainId(null);
-                    setIntentType(null);
-                  }}
-                  onActivated={() => {
-                    markAck();
-                    onSuccess({ autoDrainId, amountCents, currency, cadence });
-                    onClose();
-                  }}
-                />
-              </Elements>
-            ) : (
-              <div className="mt-4 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="px-3 py-2 rounded-lg border border-white/15 hover:bg-white/10 w-full sm:w-auto"
-                  disabled={sending}
-                >
-                  {t('actions.cancel')}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleStart}
-                  disabled={sending || !giftAck || !STRIPE_PK}
-                  className={`px-4 py-2 rounded-lg text-white transition w-full sm:w-auto ${
-                    giftAck && !sending && STRIPE_PK ? 'bg-[var(--purple)] hover:opacity-95' : 'bg-white/10 opacity-60 cursor-not-allowed'
-                  }`}
-                  title={!STRIPE_PK ? 'Missing NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY' : undefined}
-                >
-                  {sending ? t('actions.enabling') : t('actions.enable')}
-                </button>
-              </div>
-            )}
-          </div>
+              <style jsx>{`
+                .checkRing {
+                  width: 84px;
+                  height: 84px;
+                  border-radius: 999px;
+                  border: 1px solid rgba(139, 92, 246, 0.35);
+                  background: radial-gradient(circle at 30% 30%, rgba(139, 92, 246, 0.22), rgba(255, 255, 255, 0));
+                  box-shadow: 0 0 0 6px rgba(139, 92, 246, 0.1), 0 0 24px rgba(139, 92, 246, 0.25);
+                  animation: ringPop 520ms cubic-bezier(0.2, 0.9, 0.2, 1) both;
+                }
+                .checkPlate {
+                  position: absolute;
+                  inset: 10px;
+                  border-radius: 999px;
+                  border: 1px solid rgba(255, 255, 255, 0.12);
+                  background: rgba(0, 0, 0, 0.25);
+                  display: grid;
+                  place-items: center;
+                  color: rgba(255, 255, 255, 0.92);
+                  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.35);
+                  backdrop-filter: blur(6px);
+                }
+                .checkPath {
+                  stroke-dasharray: 40;
+                  stroke-dashoffset: 40;
+                  animation: drawCheck 520ms 120ms ease-out forwards;
+                }
+                @keyframes ringPop {
+                  0% {
+                    transform: scale(0.82);
+                    opacity: 0;
+                  }
+                  55% {
+                    transform: scale(1.03);
+                    opacity: 1;
+                  }
+                  100% {
+                    transform: scale(1);
+                    opacity: 1;
+                  }
+                }
+                @keyframes drawCheck {
+                  to {
+                    stroke-dashoffset: 0;
+                  }
+                }
+                .spark {
+                  position: absolute;
+                  width: 6px;
+                  height: 6px;
+                  border-radius: 999px;
+                  background: rgba(139, 92, 246, 0.9);
+                  opacity: 0;
+                  transform: scale(0.6);
+                  filter: drop-shadow(0 0 10px rgba(139, 92, 246, 0.55));
+                }
+                .s1 {
+                  top: 6px;
+                  left: 10px;
+                }
+                .s2 {
+                  right: 6px;
+                  top: 22px;
+                }
+                .s3 {
+                  bottom: 8px;
+                  left: 22px;
+                }
+                .spark.go {
+                  animation: spark 620ms 120ms ease-out both;
+                }
+                @keyframes spark {
+                  0% {
+                    opacity: 0;
+                    transform: scale(0.6) translateY(0);
+                  }
+                  35% {
+                    opacity: 1;
+                  }
+                  100% {
+                    opacity: 0;
+                    transform: scale(1.3) translateY(-10px);
+                  }
+                }
+              `}</style>
+            </div>
+          )}
         </div>
       </div>
-    </>
+    </>,
+    document.body
+  );
+}
+
+function SparkleIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden>
+      <path
+        d="M12 2l1.8 4.2L18 8l-4.2 1.8L12 14l-1.8-4.2L6 8l4.2-1.8L12 2Zm6 8 1.2 2.8L22 14l-2.8 1.2L18 18l-1.2-2.8L14 14l2.8-1.2L18 10Z"
+        fill="currentColor"
+        opacity=".9"
+      />
+    </svg>
+  );
+}
+
+function CheckBurst({ closingSoon }: { closingSoon: boolean }) {
+  return (
+    <div className="relative inline-grid place-items-center">
+      <div className="checkRing" />
+      <div className="checkPlate">
+        <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden>
+          <path d="M20 6 9 17l-5-5" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" className="checkPath" />
+        </svg>
+      </div>
+
+      <span className={`spark s1 ${closingSoon ? 'go' : ''}`} />
+      <span className={`spark s2 ${closingSoon ? 'go' : ''}`} />
+      <span className={`spark s3 ${closingSoon ? 'go' : ''}`} />
+    </div>
   );
 }

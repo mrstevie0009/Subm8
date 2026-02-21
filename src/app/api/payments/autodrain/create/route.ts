@@ -1,4 +1,4 @@
-//src/app/api/payments/autodrain/create/route.ts
+// src/app/api/payments/autodrain/create/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/currentUser";
@@ -9,7 +9,7 @@ export const runtime = "nodejs";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {});
 
-// ⭐ Platform Fee Konstante
+// Platform Fee
 const PLATFORM_FEE_BPS_TOPUP = 1000; // 10% on top
 
 type Body = {
@@ -18,6 +18,7 @@ type Body = {
   currency?: string; // "EUR"
   cadence?: "DAILY" | "WEEKLY" | "MONTHLY";
   conversationId?: string;
+  saveForFuture?: boolean; // ✅ NEW (match TipModal toggle)
 };
 
 type MeCustomer = {
@@ -63,6 +64,14 @@ function sleep(ms: number) {
 
 /** ---- Tiny typed helpers (NO any) ---- */
 
+function isRecord(x: unknown): x is Record<string, unknown> {
+  return !!x && typeof x === "object";
+}
+function getStringProp(o: Record<string, unknown>, key: string): string | null {
+  const v = o[key];
+  return typeof v === "string" ? v : null;
+}
+
 function getInvoiceIdFromSub(sub: Stripe.Subscription): string | null {
   const li = sub.latest_invoice;
   return typeof li === "string" ? li : li?.id ?? null;
@@ -73,15 +82,6 @@ function getPendingSetupIntentClientSecret(sub: Stripe.Subscription): string | n
   if (!psi) return null;
   if (typeof psi === "string") return null;
   return psi.client_secret ?? null;
-}
-
-function isRecord(x: unknown): x is Record<string, unknown> {
-  return !!x && typeof x === "object";
-}
-
-function getStringProp(o: Record<string, unknown>, key: string): string | null {
-  const v = o[key];
-  return typeof v === "string" ? v : null;
 }
 
 function getInvoiceMeta(inv: Stripe.Invoice): {
@@ -140,7 +140,7 @@ async function resolveClientSecretForSubscription(
       expand: ["latest_invoice.payment_intent", "latest_invoice", "pending_setup_intent"],
     });
 
-    // 1) SetupIntent (pending_setup_intent) bevorzugen
+    // 1) SetupIntent preferred
     const psi = sub.pending_setup_intent;
     if (psi && typeof psi !== "string" && psi.client_secret) {
       return {
@@ -158,7 +158,7 @@ async function resolveClientSecretForSubscription(
     const invoiceId = getInvoiceIdFromSub(sub);
     if (!invoiceId) continue;
 
-    // 2) Invoice PI (retrieve + ggf. finalize)
+    // 2) Invoice PI
     let inv = await stripe.invoices.retrieve(invoiceId, { expand: ["payment_intent"] });
     let meta = getInvoiceMeta(inv);
 
@@ -178,13 +178,11 @@ async function resolveClientSecretForSubscription(
       };
     }
 
-    // draft -> finalize
     if (!meta.paymentIntentId && meta.invoiceStatus === "draft") {
       inv = await stripe.invoices.finalizeInvoice(invoiceId, { expand: ["payment_intent"] });
       meta = getInvoiceMeta(inv);
     }
 
-    // PI expanded?
     const expanded = meta.paymentIntentExpanded;
     if (expanded?.client_secret) {
       return {
@@ -202,7 +200,6 @@ async function resolveClientSecretForSubscription(
       };
     }
 
-    // PI id vorhanden -> retrieve PI
     if (meta.paymentIntentId) {
       const pi = await stripe.paymentIntents.retrieve(meta.paymentIntentId);
       if (pi.client_secret) {
@@ -221,8 +218,6 @@ async function resolveClientSecretForSubscription(
         };
       }
     }
-
-    // next retry loop
   }
 
   return { clientSecret: null, kind: null, debug: { reason: "not_resolved_after_retries" } };
@@ -239,6 +234,7 @@ export async function POST(req: NextRequest) {
   const currency = String(body.currency || "EUR").toUpperCase();
   const cadence = body.cadence as Body["cadence"];
   const conversationId = body.conversationId ? String(body.conversationId) : undefined;
+  const saveForFuture = body.saveForFuture === true;
 
   if (!toUserId || !Number.isFinite(amountCents) || amountCents <= 0 || !cadence) {
     return NextResponse.json({ ok: false, error: "Invalid input" }, { status: 400 });
@@ -250,7 +246,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "Cannot enable autodrain to yourself" }, { status: 400 });
   }
 
-  // --- Rollen/Conversation prüfen ---
+  // Role / conversation mapping (unchanged)
   let dommeId: string | null = null;
   let subId: string | null = null;
 
@@ -266,9 +262,7 @@ export async function POST(req: NextRequest) {
       select: { id: true, dommeId: true, subId: true },
     });
 
-    if (!convo) {
-      return NextResponse.json({ ok: false, error: "Conversation mismatch" }, { status: 403 });
-    }
+    if (!convo) return NextResponse.json({ ok: false, error: "Conversation mismatch" }, { status: 403 });
     dommeId = convo.dommeId;
     subId = convo.subId;
   } else {
@@ -302,20 +296,16 @@ export async function POST(req: NextRequest) {
     where: { dommeId: dommeId!, subId: subId!, active: true, amountCents, currency, cadence },
     select: { id: true },
   });
-  if (existing) {
-    return NextResponse.json({ ok: false, error: "Already active" }, { status: 409 });
-  }
+  if (existing) return NextResponse.json({ ok: false, error: "Already active" }, { status: 409 });
 
   const meDb = await loadMeCustomer(me.id);
   const customerId = await ensureStripeCustomer(meDb);
 
-  // ⭐ WICHTIG: amountCents in DB speichern (für die Domme)
-  // totalCents wird nur an Stripe übergeben (was der User zahlt)
   const ad = await prisma.autoDrainSubscription.create({
     data: {
       dommeId: dommeId!,
       subId: subId!,
-      amountCents, // ⭐ Dies ist der Betrag für die Domme (OHNE Fee)
+      amountCents, // net/base for domme
       currency,
       cadence,
       nextChargeAt: next,
@@ -332,14 +322,12 @@ export async function POST(req: NextRequest) {
     metadata: { kind: "autodrain" },
   });
 
-  // ⭐ Platform Fee berechnen
   const topupFeeCents = Math.round(amountCents * (PLATFORM_FEE_BPS_TOPUP / 10_000));
   const totalCents = amountCents + topupFeeCents;
 
-  // ⭐ GEÄNDERT: totalCents (inkl. Platform Fee) wird an Stripe übergeben
   const price = await stripe.prices.create({
     currency: currency.toLowerCase(),
-    unit_amount: totalCents, // ⭐ WICHTIG: totalCents statt amountCents
+    unit_amount: totalCents, // user pays gross
     product: product.id,
     recurring: {
       interval: cadenceToStripeInterval(cadence),
@@ -353,8 +341,9 @@ export async function POST(req: NextRequest) {
       items: [{ price: price.id }],
       payment_behavior: "default_incomplete",
       payment_settings: {
-        save_default_payment_method: "on_subscription",
         payment_method_types: ["card"],
+        // ✅ Match TipModal toggle: only save default PM when user opted-in
+        save_default_payment_method: saveForFuture ? "on_subscription" : "off",
       },
       billing_cycle_anchor: Math.floor(Date.now() / 1000),
       proration_behavior: "none",
@@ -363,6 +352,7 @@ export async function POST(req: NextRequest) {
         autoDrainId: ad.id,
         dommeId: dommeId!,
         subId: subId!,
+        saveForFuture: saveForFuture ? "1" : "0", // ✅ used by confirm route
       },
       expand: ["latest_invoice.payment_intent", "pending_setup_intent"],
     },
@@ -377,8 +367,8 @@ export async function POST(req: NextRequest) {
     await stripe.subscriptions.cancel(sub.id).catch(() => {});
 
     const isDev = process.env.NODE_ENV !== "production";
-
     const invoiceId = getInvoiceIdFromSub(sub);
+
     let invoiceStatus: Stripe.Invoice.Status | null = null;
     let collectionMethod: Stripe.Invoice.CollectionMethod | null = null;
     let paymentIntentExists: boolean | null = null;
@@ -390,9 +380,7 @@ export async function POST(req: NextRequest) {
         invoiceStatus = meta.invoiceStatus;
         collectionMethod = meta.collectionMethod;
         paymentIntentExists = !!meta.paymentIntentId;
-      } catch {
-        // ignore
-      }
+      } catch {}
     }
 
     return NextResponse.json(
@@ -425,6 +413,8 @@ export async function POST(req: NextRequest) {
     },
   });
 
+  // Customer Session: keep redisplay + remove, but DISABLE Stripe's own save checkbox
+  // so your UI toggle is the single source-of-truth (like TipModal).
   const customerSession = await stripe.customerSessions.create({
     customer: customerId,
     components: {
@@ -432,8 +422,8 @@ export async function POST(req: NextRequest) {
         enabled: true,
         features: {
           payment_method_redisplay: "enabled",
-          payment_method_save: "enabled",
           payment_method_remove: "enabled",
+          payment_method_save: "disabled",
         },
       },
     },
@@ -444,7 +434,7 @@ export async function POST(req: NextRequest) {
     autoDrainId: ad.id,
     stripeSubscriptionId: sub.id,
     currency,
-    amountCents, // ⭐ Betrag für die Domme (OHNE Platform Fee)
+    amountCents, // base for domme (without fee)
     cadence,
     clientSecret,
     customerSessionClientSecret: customerSession.client_secret,

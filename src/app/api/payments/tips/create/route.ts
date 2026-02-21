@@ -19,6 +19,7 @@ type CreateBody = {
   amountCents?: number;
   note?: string;
   conversationId?: string;
+  saveForFuture?: boolean;
 };
 
 type MeCustomer = {
@@ -62,6 +63,7 @@ export async function POST(req: NextRequest) {
   const baseAmountCents = Math.round(Number(body.amountCents || 0));
   const note = typeof body.note === "string" ? body.note.slice(0, 200) : undefined;
   const conversationId = body.conversationId ? String(body.conversationId) : undefined;
+  const saveForFuture = body.saveForFuture === true;
 
   if (!toUserId || !Number.isFinite(baseAmountCents) || baseAmountCents <= 0) {
     return NextResponse.json({ ok: false, error: "Invalid input" }, { status: 400 });
@@ -120,11 +122,13 @@ export async function POST(req: NextRequest) {
     currency: CURRENCY,
     customer: customerId,
     payment_method_types: ["card"],
+    setup_future_usage: saveForFuture ? "off_session" : undefined, //speichert Karte nach erfolgreicher Zahlung
     metadata: {
       paymentId: id,
       payerId: me.id,
       payeeId: payee.id,
       kind: "tip",
+      saveForFuture: saveForFuture ? "1" : "0", // optional (hilft später)
     },
   });
 
