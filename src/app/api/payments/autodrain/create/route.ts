@@ -13,12 +13,12 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {});
 const PLATFORM_FEE_BPS_TOPUP = 1000; // 10% on top
 
 type Body = {
-  toUserId?: string; // Domme
+  toUserId?: string;
   amountCents?: number;
-  currency?: string; // "EUR"
+  currency?: string;
   cadence?: "DAILY" | "WEEKLY" | "MONTHLY";
   conversationId?: string;
-  saveForFuture?: boolean; // ✅ NEW (match TipModal toggle)
+  saveForFuture?: boolean;
 };
 
 type MeCustomer = {
@@ -61,8 +61,6 @@ function cadenceToStripeInterval(c: "DAILY" | "WEEKLY" | "MONTHLY"): "day" | "we
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
 }
-
-/** ---- Tiny typed helpers (NO any) ---- */
 
 function isRecord(x: unknown): x is Record<string, unknown> {
   return !!x && typeof x === "object";
@@ -140,7 +138,6 @@ async function resolveClientSecretForSubscription(
       expand: ["latest_invoice.payment_intent", "latest_invoice", "pending_setup_intent"],
     });
 
-    // 1) SetupIntent preferred
     const psi = sub.pending_setup_intent;
     if (psi && typeof psi !== "string" && psi.client_secret) {
       return {
@@ -158,7 +155,6 @@ async function resolveClientSecretForSubscription(
     const invoiceId = getInvoiceIdFromSub(sub);
     if (!invoiceId) continue;
 
-    // 2) Invoice PI
     let inv = await stripe.invoices.retrieve(invoiceId, { expand: ["payment_intent"] });
     let meta = getInvoiceMeta(inv);
 
@@ -246,7 +242,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "Cannot enable autodrain to yourself" }, { status: 400 });
   }
 
-  // Role / conversation mapping (unchanged)
   let dommeId: string | null = null;
   let subId: string | null = null;
 
@@ -301,11 +296,20 @@ export async function POST(req: NextRequest) {
   const meDb = await loadMeCustomer(me.id);
   const customerId = await ensureStripeCustomer(meDb);
 
+  // ✅ NEU: Hole Default Payment Method vom Customer
+  const customer = await stripe.customers.retrieve(customerId);
+  const defaultPmId = 
+    typeof customer !== 'object' || customer.deleted
+      ? null
+      : typeof customer.invoice_settings?.default_payment_method === 'string'
+        ? customer.invoice_settings.default_payment_method
+        : customer.invoice_settings?.default_payment_method?.id ?? null;
+
   const ad = await prisma.autoDrainSubscription.create({
     data: {
       dommeId: dommeId!,
       subId: subId!,
-      amountCents, // net/base for domme
+      amountCents,
       currency,
       cadence,
       nextChargeAt: next,
@@ -327,7 +331,7 @@ export async function POST(req: NextRequest) {
 
   const price = await stripe.prices.create({
     currency: currency.toLowerCase(),
-    unit_amount: totalCents, // user pays gross
+    unit_amount: totalCents,
     product: product.id,
     recurring: {
       interval: cadenceToStripeInterval(cadence),
@@ -335,27 +339,34 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  const sub = await stripe.subscriptions.create(
-    {
-      customer: customerId,
-      items: [{ price: price.id }],
-      payment_behavior: "default_incomplete",
-      payment_settings: {
-        payment_method_types: ["card"],
-        // ✅ Match TipModal toggle: only save default PM when user opted-in
-        save_default_payment_method: saveForFuture ? "on_subscription" : "off",
-      },
-      billing_cycle_anchor: Math.floor(Date.now() / 1000),
-      proration_behavior: "none",
-      metadata: {
-        kind: "autodrain",
-        autoDrainId: ad.id,
-        dommeId: dommeId!,
-        subId: subId!,
-        saveForFuture: saveForFuture ? "1" : "0", // ✅ used by confirm route
-      },
-      expand: ["latest_invoice.payment_intent", "pending_setup_intent"],
+  // ✅ NEU: Subscription Params mit optionalem default_payment_method
+  const subParams: Stripe.SubscriptionCreateParams = {
+    customer: customerId,
+    items: [{ price: price.id }],
+    payment_behavior: "default_incomplete",
+    payment_settings: {
+      payment_method_types: ["card"],
+      save_default_payment_method: saveForFuture ? "on_subscription" : "off",
     },
+    billing_cycle_anchor: Math.floor(Date.now() / 1000),
+    proration_behavior: "none",
+    metadata: {
+      kind: "autodrain",
+      autoDrainId: ad.id,
+      dommeId: dommeId!,
+      subId: subId!,
+      saveForFuture: saveForFuture ? "1" : "0",
+    },
+    expand: ["latest_invoice.payment_intent", "pending_setup_intent"],
+  };
+
+  // ✅ NEU: Wenn Default Payment Method existiert, setze ihn
+  if (defaultPmId) {
+    subParams.default_payment_method = defaultPmId;
+  }
+
+  const sub = await stripe.subscriptions.create(
+    subParams,
     { idempotencyKey: `autodrain_create:${ad.id}` }
   );
 
@@ -413,17 +424,16 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  // Customer Session: keep redisplay + remove, but DISABLE Stripe's own save checkbox
-  // so your UI toggle is the single source-of-truth (like TipModal).
+  // ✅ NEU: Customer Session mit payment_method_redisplay
   const customerSession = await stripe.customerSessions.create({
     customer: customerId,
     components: {
       payment_element: {
         enabled: true,
         features: {
-          payment_method_redisplay: "enabled",
+          payment_method_redisplay: "enabled", // ✅ Zeigt gespeicherte Karten
           payment_method_remove: "enabled",
-          payment_method_save: "disabled",
+          payment_method_save: saveForFuture ? "enabled" : "disabled", // ✅ Match UI toggle
         },
       },
     },
@@ -434,7 +444,7 @@ export async function POST(req: NextRequest) {
     autoDrainId: ad.id,
     stripeSubscriptionId: sub.id,
     currency,
-    amountCents, // base for domme (without fee)
+    amountCents,
     cadence,
     clientSecret,
     customerSessionClientSecret: customerSession.client_secret,

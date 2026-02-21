@@ -53,6 +53,7 @@ async function ensureStripeCustomer(me: MeCustomer): Promise<string> {
   return customer.id;
 }
 
+// src/app/api/payments/tips/create/route.ts
 export async function POST(req: NextRequest) {
   const me = await getCurrentUser();
   if (!me) return NextResponse.json({ ok: false, error: "Not signed in" }, { status: 401 });
@@ -110,27 +111,51 @@ export async function POST(req: NextRequest) {
   const meDb = await loadMeCustomer(me.id);
   const customerId = await ensureStripeCustomer(meDb);
 
+  // ✅ NEU: Hole den Default Payment Method vom Customer
+  const customer = await stripe.customers.retrieve(customerId);
+  const defaultPmId = 
+    typeof customer !== 'object' || customer.deleted
+      ? null
+      : typeof customer.invoice_settings?.default_payment_method === 'string'
+        ? customer.invoice_settings.default_payment_method
+        : customer.invoice_settings?.default_payment_method?.id ?? null;
+
   const cs = await stripe.customerSessions.create({
     customer: customerId,
     components: {
-      payment_element: { enabled: true },
+      payment_element: { 
+        enabled: true,
+        features: {
+          payment_method_save: saveForFuture ? 'enabled' : 'disabled', // ✅ NEU
+          payment_method_remove: 'enabled', // ✅ NEU
+          payment_method_redisplay: 'enabled', // ✅ NEU: Zeigt gespeicherte Karten
+        },
+      },
     },
   });
 
-  const pi = await stripe.paymentIntents.create({
+  // ✅ NEU: Wenn Default Payment Method existiert, setze ihn im PaymentIntent
+  const piParams: Stripe.PaymentIntentCreateParams = {
     amount: grossCents,
     currency: CURRENCY,
     customer: customerId,
     payment_method_types: ["card"],
-    setup_future_usage: saveForFuture ? "off_session" : undefined, //speichert Karte nach erfolgreicher Zahlung
+    setup_future_usage: saveForFuture ? "off_session" : undefined,
     metadata: {
       paymentId: id,
       payerId: me.id,
       payeeId: payee.id,
       kind: "tip",
-      saveForFuture: saveForFuture ? "1" : "0", // optional (hilft später)
+      saveForFuture: saveForFuture ? "1" : "0",
     },
-  });
+  };
+
+  // ✅ NEU: Wenn Default Payment Method existiert, verwende ihn
+  if (defaultPmId) {
+    piParams.payment_method = defaultPmId;
+  }
+
+  const pi = await stripe.paymentIntents.create(piParams);
 
   await prisma.payment.update({
     where: { id },
