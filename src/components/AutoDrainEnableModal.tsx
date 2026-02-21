@@ -602,18 +602,19 @@ function StripeSubscribeStep({
   }
 
   async function handleEnable() {
-    try {
-      setSending(true);
-      setError(null);
-      await confirmStripe();
-      await finalizeWithPoll();
-      onActivated();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : t('errors.generic', { default: 'Etwas ist schiefgelaufen.' }));
-    } finally {
-      setSending(false);
-    }
+  try {
+    setSending(true);
+    setError(null);
+    await confirmStripe();
+    await finalizeWithPoll();
+    
+    onActivated();
+  } catch (e) {
+    setError(e instanceof Error ? e.message : t('errors.generic'));
+  } finally {
+    setSending(false);
   }
+}
 
   return (
     <div className="mt-4 rounded-xl border border-white/10 bg-white/[.03] p-3">

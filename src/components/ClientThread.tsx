@@ -2658,7 +2658,6 @@ export default function ChatThreadPage() {
           onSuccess={({ paymentId, amountCents, currency, note }) => {
             const payload: TipPaidPayload = { id: paymentId, amountCents, currency, note: note?.trim() || undefined };
             void sendMessage({ text: `${TIPPAID_PREFIX}${JSON.stringify(payload)}` });
-            setTipOpen(false);
           }}
         />
       )}

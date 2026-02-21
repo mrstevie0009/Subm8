@@ -505,68 +505,71 @@ function StripeSubscribeStep({
   const [peComplete, setPeComplete] = React.useState(false);
 
   async function confirmAndFinalize() {
-    if (!stripe || !elements) throw new Error('Stripe not ready');
+  if (!stripe || !elements) throw new Error('Stripe not ready');
 
-    if (intentType === 'setup_intent') {
-      const { error, setupIntent } = await stripe.confirmSetup({
-        elements,
-        confirmParams: { return_url: typeof window !== 'undefined' ? window.location.href : undefined },
-        redirect: 'if_required',
-      });
+  if (intentType === 'setup_intent') {
+    const { error, setupIntent } = await stripe.confirmSetup({
+      elements,
+      confirmParams: { return_url: typeof window !== 'undefined' ? window.location.href : undefined },
+      redirect: 'if_required',
+    });
 
-      if (error) throw new Error(error.message || t('errors.generic'));
-      if (setupIntent?.status !== 'succeeded' && setupIntent?.status !== 'processing') {
-        throw new Error('Setup Intent not completed');
-      }
-    } else {
-      const { error, paymentIntent } = await stripe.confirmPayment({
-        elements,
-        confirmParams: { return_url: typeof window !== 'undefined' ? window.location.href : undefined },
-        redirect: 'if_required',
-      });
-
-      if (error) throw new Error(error.message || t('errors.generic'));
-      if (paymentIntent?.status === 'canceled') throw new Error('Payment canceled');
-      if (paymentIntent?.status === 'requires_payment_method') throw new Error('Payment failed');
+    if (error) throw new Error(error.message || t('errors.generic'));
+    if (setupIntent?.status !== 'succeeded' && setupIntent?.status !== 'processing') {
+      throw new Error('Setup Intent not completed');
     }
+  } else {
+    const { error, paymentIntent } = await stripe.confirmPayment({
+      elements,
+      confirmParams: { return_url: typeof window !== 'undefined' ? window.location.href : undefined },
+      redirect: 'if_required',
+    });
 
-    const delays = [0, 400, 800, 1200, 2000];
-    let last: string | null = null;
-
-    for (const d of delays) {
-      if (d) await sleep(d);
-
-      const res = await fetch('/api/payments/autodrain/confirm', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ autoDrainId }),
-      });
-      const j: unknown = await res.json().catch(() => null);
-
-      if (res.ok && isConfirmOk(j)) return;
-
-      last = getErr(j) || getStatusString(j);
-
-      if (res.status === 400 || res.status === 401 || res.status === 403 || res.status === 404) {
-        throw new Error(getErr(j) || t('errors.generic'));
-      }
-    }
-
-    throw new Error(last || t('errors.generic'));
+    if (error) throw new Error(error.message || t('errors.generic'));
+    if (paymentIntent?.status === 'canceled') throw new Error('Payment canceled');
+    if (paymentIntent?.status === 'requires_payment_method') throw new Error('Payment failed');
   }
 
-  async function handleEnable() {
-    try {
-      setSending(true);
-      setError(null);
-      await confirmAndFinalize();
-      onActivated();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : t('errors.generic'));
-    } finally {
-      setSending(false);
+  // ⬇️ Polling OHNE return (läuft durch, wirft Error wenn failed)
+  const delays = [0, 400, 800, 1200, 2000];
+  let last: string | null = null;
+
+  for (const d of delays) {
+    if (d) await sleep(d);
+
+    const res = await fetch('/api/payments/autodrain/confirm', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ autoDrainId }),
+    });
+    const j: unknown = await res.json().catch(() => null);
+
+    if (res.ok && isConfirmOk(j)) return; // ✅ Success
+
+    last = getErr(j) || getStatusString(j);
+
+    if (res.status === 400 || res.status === 401 || res.status === 403 || res.status === 404) {
+      throw new Error(getErr(j) || t('errors.generic'));
     }
   }
+
+  throw new Error(last || t('errors.generic'));
+}
+
+async function handleEnable() {
+  try {
+    setSending(true);
+    setError(null);
+    await confirmAndFinalize();
+    
+    // ⬇️ NEU: onActivated ruft SOFORT handleActivatedFinal auf (wie TipModal)
+    onActivated();
+  } catch (e) {
+    setError(e instanceof Error ? e.message : t('errors.generic'));
+  } finally {
+    setSending(false);
+  }
+}
 
   return (
     <div className="mt-4 rounded-xl border border-white/10 bg-white/[.03] p-3">

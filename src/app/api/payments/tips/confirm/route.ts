@@ -66,10 +66,10 @@ export async function POST(req: NextRequest) {
 
   // 2) Terminal states -> klarer Fehler
   if (payment.status === "FAILED") {
-    return NextResponse.json({ ok: false, error: "Payment failed" }, { status: 400 });
+    return NextResponse.json({ ok: false, status: "FAILED", error: "Payment failed" }, { status: 400 });
   }
   if (payment.status === "CANCELED") {
-    return NextResponse.json({ ok: false, error: "Payment canceled" }, { status: 400 });
+    return NextResponse.json({ ok: false, status: "CANCELED", error: "Payment canceled" }, { status: 400 });
   }
 
   // 3) Noch nicht finalisiert: EINMAL Stripe-Status prüfen (ohne selbst zu finalisieren)

@@ -571,10 +571,18 @@ function StripePayStep({
   const [peComplete, setPeComplete] = React.useState(false);
 
   async function finalizeWithPoll() {
-    const delays = [0, 400, 800, 1200];
-    let lastErr: string | null = null;
+    // Ziel: 8–12s Gesamt-Wartezeit, mit kurzem "fast retry" am Anfang.
+    const startedAt = Date.now();
+    const timeoutMs = 12_000;
+
+    // Gute Praxis: erst schnell, dann "steady" (Webhook braucht oft 1–6s).
+    const delays = [0, 350, 650, 1000, 1400, 1800, 2200, 2600, 3000]; // ~13s inkl. network
+
+    let lastMsg: string | null = null;
+    let lastStatus: string | null = null;
 
     for (const d of delays) {
+      if (Date.now() - startedAt > timeoutMs) break;
       if (d) await sleep(d);
 
       const res = await fetch('/api/payments/tips/confirm', {
@@ -583,8 +591,9 @@ function StripePayStep({
         body: JSON.stringify({ paymentId }),
       });
 
-      const j: unknown = await res.json().catch(() => null);
+      const j = await res.json().catch(() => null);
 
+      // ✅ DONE
       if (res.ok && isConfirmOk(j)) {
         onPaid({
           paymentId,
@@ -595,15 +604,30 @@ function StripePayStep({
         return;
       }
 
+      // Hard failures (server uses 400/401/404 already)
       const err = getConfirmError(j);
-      lastErr = err || null;
-
       if (res.status === 400 || res.status === 401 || res.status === 404) {
         throw new Error(err || t('errors.confirmFailed'));
       }
+
+      // ✅ Soft states: keep polling (THIS is your PROCESSING path)
+      lastStatus = typeof j?.status === 'string' ? j.status : null;
+      lastMsg = err || j?.error || null;
+
+      // Optional: if Stripe says PI canceled/failed (server should already send 400, but just in case)
+      if (lastStatus === 'canceled' || lastStatus === 'requires_payment_method') {
+        throw new Error(lastMsg || t('errors.confirmFailed'));
+      }
+
+      // Otherwise continue polling
     }
 
-    throw new Error(lastErr || t('errors.confirmFailed'));
+    // Timeout: user-friendly message
+    throw new Error(
+      lastStatus === 'PROCESSING'
+        ? (t('errors.confirmProcessingTimeout') || 'Zahlung wird noch finalisiert… bitte kurz erneut versuchen.')
+        : (lastMsg || t('errors.confirmFailed'))
+    );
   }
 
   async function handleConfirmPayment() {
@@ -858,7 +882,7 @@ export default function TipModal({
     }
   }
 
-  function handlePaidFinal(r: { paymentId: string; totalCents: number; currency: string; baseAmountCents: number }) {
+  async function handlePaidFinal(r: { paymentId: string; totalCents: number; currency: string; baseAmountCents: number }) {
     setSuccess({ paymentId: r.paymentId, totalCents: r.totalCents, currency: r.currency });
     setStep('success');
 
@@ -872,6 +896,7 @@ export default function TipModal({
     } catch {}
 
     // Event sofort feuern (damit Chat/UI gleich updatet)
+    await new Promise<void>((r) => requestAnimationFrame(() => r()));
     onSuccess?.({
       paymentId: r.paymentId,
       amountCents: r.baseAmountCents,

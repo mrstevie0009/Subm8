@@ -790,7 +790,6 @@ export default function TipRequestAcceptModal({
 
     onSuccess({ amountCents: r.baseAmountCents, currency: r.currency, paymentId: r.paymentId });
 
-    // ✅ OnlyFans-like close animation
     setClosingSoon(true);
     if (closeTimerRef.current) window.clearTimeout(closeTimerRef.current);
 
