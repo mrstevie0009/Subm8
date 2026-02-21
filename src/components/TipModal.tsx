@@ -567,8 +567,6 @@ function StripePayStep({
   onBack,
   onPaid,
   savedSummary,
-  saveForFuture,
-  setSaveForFuture,
   onRemoveSaved,
 }: {
   t: ReturnType<typeof useTranslations>;
@@ -579,13 +577,10 @@ function StripePayStep({
   onBack: () => void;
   onPaid: (r: { paymentId: string; totalCents: number; currency: string; baseAmountCents: number }) => void;
   savedSummary: { count: number; hasDefault: boolean };
-  saveForFuture: boolean;
-  setSaveForFuture: (v: boolean) => void;
   onRemoveSaved: () => Promise<void>;
 }) {
   const stripe = useStripe();
   const elements = useElements();
-  const [peComplete, setPeComplete] = React.useState(false);
 
   async function finalizeWithPoll() {
     // Ziel: 8–12s Gesamt-Wartezeit, mit kurzem "fast retry" am Anfang.
@@ -690,23 +685,7 @@ function StripePayStep({
             >
               Remove
             </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setSaveForFuture(!saveForFuture)}
-              disabled={sending || !peComplete}
-              className={`px-3 py-1.5 rounded-lg text-[13px] transition border ${
-                sending || !peComplete
-                  ? "opacity-60 cursor-not-allowed border-white/10 bg-white/5"
-                  : saveForFuture
-                    ? "border-[var(--purple)]/40 bg-[var(--purple)]/15 text-white"
-                    : "border-white/15 hover:bg-white/10 text-white"
-              }`}
-              title={!peComplete ? "Bitte Kartendaten ausfüllen" : undefined}
-            >
-              {saveForFuture ? "✓ Save" : "Save"}
-            </button>
-          )}
+          ) : null}
 
           <button
             type="button"
@@ -733,7 +712,6 @@ function StripePayStep({
 
       <div className="mt-3 rounded-xl border border-white/10 bg-black/30 p-3">
         <PaymentElement
-          onChange={(e) => setPeComplete(!!e.complete)}
           options={{
             wallets: {
               applePay: 'never',
@@ -745,9 +723,7 @@ function StripePayStep({
       <div className="mt-2 text-[12px] text-white/55">
         {savedSummary.hasDefault
           ? "Du hast bereits eine gespeicherte Karte."
-          : saveForFuture
-            ? "Die Karte wird nach erfolgreicher Zahlung gespeichert."
-            : "Optional: Speichere die Karte für zukünftige Zahlungen."}
+          : "Die Karte wird nach erfolgreicher Zahlung automatisch gespeichert."}
       </div>
 
       <div className="mt-4 flex items-center justify-end gap-2">
@@ -807,7 +783,6 @@ export default function TipModal({
   const [methodsOpen, setMethodsOpen] = React.useState(false);
 
   const [savedCount, setSavedCount] = React.useState(0);
-  const [saveForFuture, setSaveForFuture] = React.useState(false);
   const [hasDefaultSaved, setHasDefaultSaved] = React.useState(false);
 
   async function refreshSavedSummary() {
@@ -846,7 +821,6 @@ export default function TipModal({
     setStripeClientSecret(null);
     setCustomerSessionClientSecret(null);
     setPaymentId(null);
-    setSaveForFuture(false);
 
     refreshSavedSummary();
 
@@ -872,7 +846,7 @@ export default function TipModal({
 
       if (!STRIPE_PK) throw new Error(t('stripe.errors.missingPublishableKey'));
 
-      const body = { toUserId, amountCents, note: note.trim() || undefined, conversationId, saveForFuture };
+      const body = { toUserId, amountCents, note: note.trim() || undefined, conversationId };
 
       const res1 = await fetch('/api/payments/tips/create', {
         method: 'POST',
@@ -1135,8 +1109,6 @@ export default function TipModal({
                     }}
                     onPaid={(r) => handlePaidFinal(r)}
                     savedSummary={{ count: savedCount, hasDefault: hasDefaultSaved }}
-                    saveForFuture={saveForFuture}
-                    setSaveForFuture={setSaveForFuture}
                     onRemoveSaved={async () => {
                       setSending(true);
                       setError(null);
@@ -1159,7 +1131,6 @@ export default function TipModal({
                         if (!res.ok) throw new Error(getUpdateError(j) || 'Failed to remove');
 
                         await refreshSavedSummary();
-                        setSaveForFuture(false);
                       } catch (e) {
                         setError(e instanceof Error ? e.message : 'Failed to remove');
                       } finally {

@@ -28,25 +28,28 @@ function extractPaymentMethodFromSubscription(sub: Stripe.Subscription): string 
   // 1) subscription.default_payment_method (string | PaymentMethod | null)
   const dpm = sub.default_payment_method;
   if (typeof dpm === "string") return dpm;
-  if (dpm && typeof dpm !== "string") {
-    return dpm.id ?? null;
+  if (dpm && typeof dpm !== "string") return dpm.id ?? null;
+
+  // 2) pending_setup_intent.payment_method (setup_intent flow)
+  const subU: unknown = sub;
+  if (isRecord(subU)) {
+    const psiU = subU["pending_setup_intent"];
+    if (typeof psiU !== "string" && isRecord(psiU)) {
+      const pmU = psiU["payment_method"];
+      if (typeof pmU === "string") return pmU;
+      if (isRecord(pmU)) return getStringProp(pmU, "id");
+    }
   }
 
-  // 2) fallback: latest_invoice.payment_intent.payment_method (expanded)
+  // 3) latest_invoice.payment_intent.payment_method (payment_intent flow)
   const li = sub.latest_invoice;
-
-  // stripe typings in some versions don't expose invoice.payment_intent,
-  // but the API returns it when expanded; so read it via unknown-record.
   if (li && typeof li !== "string") {
     const liU: unknown = li;
     if (isRecord(liU)) {
       const piU = liU["payment_intent"];
-
-      // payment_intent could be string or object
       if (typeof piU === "string") return null;
       if (piU && isRecord(piU)) {
         const pmU = piU["payment_method"];
-
         if (typeof pmU === "string") return pmU;
         if (pmU && isRecord(pmU)) return getStringProp(pmU, "id");
       }
@@ -73,7 +76,7 @@ export async function POST(req: NextRequest) {
   if (!ad.stripeSubscriptionId) return NextResponse.json({ ok: false, error: "No stripeSubscriptionId" }, { status: 400 });
 
   const sub = await stripe.subscriptions.retrieve(ad.stripeSubscriptionId, {
-    expand: ["latest_invoice.payment_intent", "default_payment_method"],
+    expand: ["latest_invoice.payment_intent", "default_payment_method", "pending_setup_intent"],
   });
 
   const okActive = sub.status === "active" || sub.status === "trialing";

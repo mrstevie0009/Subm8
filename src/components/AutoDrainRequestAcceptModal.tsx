@@ -500,8 +500,6 @@ function StripeSubscribeStep({
   onBack,
   onActivated,
   savedSummary,
-  saveForFuture,
-  setSaveForFuture,
   onRemoveSaved,
 }: {
   t: ReturnType<typeof useTranslations>;
@@ -513,13 +511,10 @@ function StripeSubscribeStep({
   onBack: () => void;
   onActivated: () => void;
   savedSummary: { count: number; hasDefault: boolean };
-  saveForFuture: boolean;
-  setSaveForFuture: (v: boolean) => void;
   onRemoveSaved: () => Promise<void>;
 }) {
   const stripe = useStripe();
   const elements = useElements();
-  const [peComplete, setPeComplete] = React.useState(false);
 
   async function confirmAndFinalize() {
   if (!stripe || !elements) throw new Error('Stripe not ready');
@@ -604,23 +599,7 @@ async function handleEnable() {
             >
               Remove
             </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setSaveForFuture(!saveForFuture)}
-              disabled={sending || !peComplete}
-              className={`px-3 py-1.5 rounded-lg text-[13px] transition border ${
-                sending || !peComplete
-                  ? 'opacity-60 cursor-not-allowed border-white/10 bg-white/5'
-                  : saveForFuture
-                    ? 'border-[var(--purple)]/40 bg-[var(--purple)]/15 text-white'
-                    : 'border-white/15 hover:bg-white/10 text-white'
-              }`}
-              title={!peComplete ? 'Bitte Kartendaten ausfüllen' : undefined}
-            >
-              {saveForFuture ? '✓ Save' : 'Save'}
-            </button>
-          )}
+          ) : null}
 
           <button
             type="button"
@@ -646,15 +625,13 @@ async function handleEnable() {
       )}
 
       <div className="mt-3 rounded-xl border border-white/10 bg-black/30 p-3">
-        <PaymentElement onChange={(e) => setPeComplete(!!e.complete)} />
+        <PaymentElement/>
       </div>
 
       <div className="mt-2 text-[12px] text-white/55">
         {savedSummary.hasDefault
           ? 'Du hast bereits eine gespeicherte Karte.'
-          : saveForFuture
-            ? 'Die Karte wird nach erfolgreicher Aktivierung gespeichert.'
-            : 'Optional: Speichere die Karte für zukünftige Abbuchungen.'}
+          : 'Die Karte wird nach erfolgreicher Aktivierung automatisch gespeichert.'}
       </div>
 
       <div className="mt-4 flex items-center justify-end">
@@ -706,7 +683,6 @@ export default function AutoDrainRequestAcceptModal({
   const [methodsOpen, setMethodsOpen] = React.useState(false);
   const [savedCount, setSavedCount] = React.useState(0);
   const [hasDefaultSaved, setHasDefaultSaved] = React.useState(false);
-  const [saveForFuture, setSaveForFuture] = React.useState(false);
 
   const [closingSoon, setClosingSoon] = React.useState(false);
   const closeTimerRef = React.useRef<number | null>(null);
@@ -749,7 +725,6 @@ export default function AutoDrainRequestAcceptModal({
     setAutoDrainId(null);
     setCustomerSessionClientSecret(null);
     setIntentType(null);
-    setSaveForFuture(false);
 
     setClosingSoon(false);
     if (closeTimerRef.current) {
@@ -785,7 +760,7 @@ export default function AutoDrainRequestAcceptModal({
           amountCents,
           currency,
           cadence,
-          saveForFuture,
+          saveForFuture: true,
           ...(conversationId ? { conversationId } : {}),
         }),
       });
@@ -841,7 +816,6 @@ export default function AutoDrainRequestAcceptModal({
       if (!res.ok) throw new Error(getUpdateError(j) || 'Failed to remove');
 
       await refreshSavedSummary();
-      setSaveForFuture(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to remove');
     } finally {
@@ -992,8 +966,6 @@ export default function AutoDrainRequestAcceptModal({
                     setSending={setSending}
                     setError={setError}
                     savedSummary={{ count: savedCount, hasDefault: hasDefaultSaved }}
-                    saveForFuture={saveForFuture}
-                    setSaveForFuture={setSaveForFuture}
                     onRemoveSaved={removeDefaultSaved}
                     onBack={() => {
                       setStep('review');

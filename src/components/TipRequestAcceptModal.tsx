@@ -516,8 +516,6 @@ function StripePayStep({
   onBack,
   onPaid,
   savedSummary,
-  saveForFuture,
-  setSaveForFuture,
   onRemoveSaved,
 }: {
   t: ReturnType<typeof useTranslations>;
@@ -528,13 +526,10 @@ function StripePayStep({
   onBack: () => void;
   onPaid: (r: { paymentId: string; totalCents: number; currency: string; baseAmountCents: number }) => void;
   savedSummary: { count: number; hasDefault: boolean };
-  saveForFuture: boolean;
-  setSaveForFuture: (v: boolean) => void;
   onRemoveSaved: () => Promise<void>;
 }) {
   const stripe = useStripe();
   const elements = useElements();
-  const [peComplete, setPeComplete] = React.useState(false);
 
   async function finalizeWithPoll() {
     const delays = [0, 400, 800, 1200];
@@ -613,29 +608,13 @@ function StripePayStep({
             >
               Remove
             </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setSaveForFuture(!saveForFuture)}
-              disabled={sending || !peComplete}
-              className={`px-3 py-1.5 rounded-lg text-[13px] transition border ${
-                sending || !peComplete
-                  ? 'opacity-60 cursor-not-allowed border-white/10 bg-white/5'
-                  : saveForFuture
-                    ? 'border-[var(--purple)]/40 bg-[var(--purple)]/15 text-white'
-                    : 'border-white/15 hover:bg-white/10 text-white'
-              }`}
-              title={!peComplete ? 'Bitte Kartendaten ausfüllen' : undefined}
-            >
-              {saveForFuture ? '✓ Save' : 'Save'}
-            </button>
-          )}
+          ) : null}
 
           <button
             type="button"
             onClick={onBack}
             disabled={sending}
-            className="px-3 py-1.5 rounded-lg border border-white/15 hover:bg-white/10 text-[13px] disabled:opacity-60"
+            className="px-3 py-1.5 rounded-lg border border-white/15 hover:bg-white/10 text-[13px] disabled:opacity-60 whitespace-nowrap"
           >
             {t('actions.back') ?? 'Zurück'}
           </button>
@@ -656,7 +635,6 @@ function StripePayStep({
 
       <div className="mt-3 rounded-xl border border-white/10 bg-black/30 p-3">
         <PaymentElement
-          onChange={(e) => setPeComplete(!!e.complete)}
           options={{
             wallets: { applePay: 'never', googlePay: 'never' },
           }}
@@ -666,9 +644,7 @@ function StripePayStep({
       <div className="mt-2 text-[12px] text-white/55">
         {savedSummary.hasDefault
           ? 'Du hast bereits eine gespeicherte Karte.'
-          : saveForFuture
-            ? 'Die Karte wird nach erfolgreicher Zahlung gespeichert.'
-            : 'Optional: Speichere die Karte für zukünftige Zahlungen.'}
+          : 'Die Karte wird nach erfolgreicher Aktivierung automatisch gespeichert.'}
       </div>
 
       <div className="mt-4 flex items-center justify-end">
@@ -718,7 +694,6 @@ export default function TipRequestAcceptModal({
 
   const [savedCount, setSavedCount] = React.useState(0);
   const [hasDefaultSaved, setHasDefaultSaved] = React.useState(false);
-  const [saveForFuture, setSaveForFuture] = React.useState(false);
 
   const [closingSoon, setClosingSoon] = React.useState(false);
   const closeTimerRef = React.useRef<number | null>(null);
@@ -759,7 +734,6 @@ export default function TipRequestAcceptModal({
     setStripeClientSecret(null);
     setCustomerSessionClientSecret(null);
     setPaymentId(null);
-    setSaveForFuture(false);
     setClosingSoon(false);
 
     if (closeTimerRef.current) {
@@ -781,7 +755,7 @@ export default function TipRequestAcceptModal({
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         // ✅ API bereits angepasst: saveForFuture mitgeben
-        body: JSON.stringify({ toUserId, amountCents, conversationId, saveForFuture }),
+        body: JSON.stringify({ toUserId, amountCents, conversationId, saveForFuture:true }),
       });
       const j1: unknown = await res1.json().catch(() => null);
 
@@ -837,7 +811,6 @@ export default function TipRequestAcceptModal({
       if (!res.ok) throw new Error(getUpdateError(j) || 'Failed to remove');
 
       await refreshSavedSummary();
-      setSaveForFuture(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to remove');
     } finally {
@@ -988,8 +961,6 @@ export default function TipRequestAcceptModal({
                     }}
                     onPaid={(r) => handlePaidFinal(r)}
                     savedSummary={{ count: savedCount, hasDefault: hasDefaultSaved }}
-                    saveForFuture={saveForFuture}
-                    setSaveForFuture={setSaveForFuture}
                     onRemoveSaved={removeDefaultSaved}
                   />
                 </Elements>

@@ -539,8 +539,6 @@ function StripeSubscribeStep({
   onBack,
   onActivated,
   savedSummary,
-  saveForFuture,
-  setSaveForFuture,
   onRemoveSaved,
 }: {
   t: ReturnType<typeof useTranslations>;
@@ -553,13 +551,10 @@ function StripeSubscribeStep({
   onBack: () => void;
   onActivated: () => void;
   savedSummary: { count: number; hasDefault: boolean };
-  saveForFuture: boolean;
-  setSaveForFuture: (v: boolean) => void;
   onRemoveSaved: () => Promise<void>;
 }) {
   const stripe = useStripe();
   const elements = useElements();
-  const [peComplete, setPeComplete] = React.useState(false);
 
   async function confirmStripe() {
     if (!stripe || !elements) throw new Error(paymentT('stripe.errors.notReady', { default: 'Stripe nicht bereit' }));
@@ -649,23 +644,7 @@ function StripeSubscribeStep({
             >
               Remove
             </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setSaveForFuture(!saveForFuture)}
-              disabled={sending || !peComplete}
-              className={`px-3 py-1.5 rounded-lg text-[13px] transition border ${
-                sending || !peComplete
-                  ? 'opacity-60 cursor-not-allowed border-white/10 bg-white/5'
-                  : saveForFuture
-                    ? 'border-[var(--purple)]/40 bg-[var(--purple)]/15 text-white'
-                    : 'border-white/15 hover:bg-white/10 text-white'
-              }`}
-              title={!peComplete ? 'Bitte Kartendaten ausfüllen' : undefined}
-            >
-              {saveForFuture ? '✓ Save' : 'Save'}
-            </button>
-          )}
+          ) : null}
 
           <button
             type="button"
@@ -692,7 +671,6 @@ function StripeSubscribeStep({
 
       <div className="mt-3 rounded-xl border border-white/10 bg-black/30 p-3">
         <PaymentElement
-          onChange={(e) => setPeComplete(!!e.complete)}
           options={{
             wallets: { applePay: 'never', googlePay: 'never' },
           }}
@@ -702,9 +680,7 @@ function StripeSubscribeStep({
       <div className="mt-2 text-[12px] text-white/55">
         {savedSummary.hasDefault
           ? 'Du hast bereits eine gespeicherte Karte.'
-          : saveForFuture
-            ? 'Die Karte wird nach erfolgreicher Aktivierung gespeichert.'
-            : 'Optional: Speichere die Karte für zukünftige AutoDrain-Zahlungen.'}
+          : 'Die Karte wird nach erfolgreicher Aktivierung automatisch gespeichert.'}
       </div>
 
       <div className="mt-4 flex items-center justify-end">
@@ -804,8 +780,6 @@ export default function AutoDrainEnableModal({
   const [savedCount, setSavedCount] = React.useState(0);
   const [hasDefaultSaved, setHasDefaultSaved] = React.useState(false);
 
-  const [saveForFuture, setSaveForFuture] = React.useState(false);
-
   const [success, setSuccess] = React.useState<null | { autoDrainId: string; totalCents: number; currency: string }>(null);
   const [closingSoon, setClosingSoon] = React.useState(false);
   const closeTimerRef = React.useRef<number | null>(null);
@@ -855,8 +829,6 @@ export default function AutoDrainEnableModal({
     setCustomerSessionClientSecret(null);
     setAutoDrainId(null);
     setIntentType(null);
-
-    setSaveForFuture(false);
 
     setSuccess(null);
 
@@ -914,7 +886,7 @@ export default function AutoDrainEnableModal({
           currency,
           cadence,
           conversationId,
-          saveForFuture, // ✅ same behavior as TipModal
+          saveForFuture: true, // ✅ same behavior as TipModal
         }),
       });
 
@@ -1185,27 +1157,11 @@ export default function AutoDrainEnableModal({
                   )}
 
                   {/* Save toggle hint (before starting) */}
-                  {!hasDefaultSaved && (
-                    <div className="mt-3 rounded-xl border border-white/10 bg-black/20 px-3 py-2">
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="text-[12px] text-white/70">{paymentT('stripe.tipSaveCard', { default: 'Optional: Karte nach Aktivierung speichern.' })}</div>
-                        <button
-                          type="button"
-                          onClick={() => setSaveForFuture(!saveForFuture)}
-                          disabled={sending}
-                          className={`px-3 py-1.5 rounded-lg text-[13px] transition border ${
-                            sending
-                              ? 'opacity-60 cursor-not-allowed border-white/10 bg-white/5'
-                              : saveForFuture
-                                ? 'border-[var(--purple)]/40 bg-[var(--purple)]/15 text-white'
-                                : 'border-white/15 hover:bg-white/10 text-white'
-                          }`}
-                        >
-                          {saveForFuture ? '✓ Save' : 'Save'}
-                        </button>
-                      </div>
+                  {!hasDefaultSaved ? (
+                    <div className="mt-3 text-[12px] text-white/55">
+                      {paymentT('stripe.tipSaveCard', { default: 'Die Karte wird nach erfolgreicher Aktivierung automatisch gespeichert.' })}
                     </div>
-                  )}
+                  ) : null}
 
                   <div className="mt-4 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2">
                     <button
@@ -1262,8 +1218,6 @@ export default function AutoDrainEnableModal({
                         }}
                         onActivated={handleActivatedFinal}
                         savedSummary={{ count: savedCount, hasDefault: hasDefaultSaved }}
-                        saveForFuture={saveForFuture}
-                        setSaveForFuture={setSaveForFuture}
                         onRemoveSaved={async () => {
                           setSending(true);
                           setError(null);
@@ -1284,7 +1238,6 @@ export default function AutoDrainEnableModal({
                             if (!res.ok) throw new Error(getUpdateError(j) || 'Failed to remove');
 
                             await refreshSavedSummary();
-                            setSaveForFuture(false);
                           } catch (e) {
                             setError(e instanceof Error ? e.message : 'Failed to remove');
                           } finally {

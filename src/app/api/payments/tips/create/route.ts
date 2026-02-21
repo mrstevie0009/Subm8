@@ -64,7 +64,6 @@ export async function POST(req: NextRequest) {
   const baseAmountCents = Math.round(Number(body.amountCents || 0));
   const note = typeof body.note === "string" ? body.note.slice(0, 200) : undefined;
   const conversationId = body.conversationId ? String(body.conversationId) : undefined;
-  const saveForFuture = body.saveForFuture === true;
 
   if (!toUserId || !Number.isFinite(baseAmountCents) || baseAmountCents <= 0) {
     return NextResponse.json({ ok: false, error: "Invalid input" }, { status: 400 });
@@ -126,27 +125,27 @@ export async function POST(req: NextRequest) {
       payment_element: { 
         enabled: true,
         features: {
-          payment_method_save: saveForFuture ? 'enabled' : 'disabled', // ✅ NEU
-          payment_method_remove: 'enabled', // ✅ NEU
-          payment_method_redisplay: 'enabled', // ✅ NEU: Zeigt gespeicherte Karten
+          payment_method_save: 'enabled', 
+          payment_method_remove: 'enabled', 
+          payment_method_redisplay: 'enabled', //Zeigt gespeicherte Karten
         },
       },
     },
   });
 
-  // ✅ NEU: Wenn Default Payment Method existiert, setze ihn im PaymentIntent
+  // Wenn Default Payment Method existiert, setze ihn im PaymentIntent
   const piParams: Stripe.PaymentIntentCreateParams = {
     amount: grossCents,
     currency: CURRENCY,
     customer: customerId,
     payment_method_types: ["card"],
-    setup_future_usage: saveForFuture ? "off_session" : undefined,
+    setup_future_usage: "off_session",
     metadata: {
       paymentId: id,
       payerId: me.id,
       payeeId: payee.id,
       kind: "tip",
-      saveForFuture: saveForFuture ? "1" : "0",
+      saveForFuture: "1",
     },
   };
 

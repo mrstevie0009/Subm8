@@ -230,7 +230,6 @@ export async function POST(req: NextRequest) {
   const currency = String(body.currency || "EUR").toUpperCase();
   const cadence = body.cadence as Body["cadence"];
   const conversationId = body.conversationId ? String(body.conversationId) : undefined;
-  const saveForFuture = body.saveForFuture === true;
 
   if (!toUserId || !Number.isFinite(amountCents) || amountCents <= 0 || !cadence) {
     return NextResponse.json({ ok: false, error: "Invalid input" }, { status: 400 });
@@ -346,7 +345,7 @@ export async function POST(req: NextRequest) {
     payment_behavior: "default_incomplete",
     payment_settings: {
       payment_method_types: ["card"],
-      save_default_payment_method: saveForFuture ? "on_subscription" : "off",
+      save_default_payment_method: "on_subscription",
     },
     billing_cycle_anchor: Math.floor(Date.now() / 1000),
     proration_behavior: "none",
@@ -355,7 +354,7 @@ export async function POST(req: NextRequest) {
       autoDrainId: ad.id,
       dommeId: dommeId!,
       subId: subId!,
-      saveForFuture: saveForFuture ? "1" : "0",
+      saveForFuture: "1",
     },
     expand: ["latest_invoice.payment_intent", "pending_setup_intent"],
   };
@@ -433,7 +432,7 @@ export async function POST(req: NextRequest) {
         features: {
           payment_method_redisplay: "enabled", // ✅ Zeigt gespeicherte Karten
           payment_method_remove: "enabled",
-          payment_method_save: saveForFuture ? "enabled" : "disabled", // ✅ Match UI toggle
+          payment_method_save: "enabled", // ✅ Match UI toggle
         },
       },
     },
