@@ -47,11 +47,14 @@ export async function POST() {
   const customerId = await ensureStripeCustomer(meDb);
 
   const si = await stripe.setupIntents.create({
-    customer: customerId,
-    payment_method_types: ["card"],
-    usage: "off_session",
-    metadata: { userId: me.id, kind: "payment_method_setup" },
-  });
+  customer: customerId,
+  automatic_payment_methods: {
+    enabled: true,
+    allow_redirects: 'never',
+  },
+  usage: "off_session",
+  metadata: { userId: me.id, kind: "payment_method_setup" },
+});
 
   if (!si.client_secret) {
     return NextResponse.json({ ok: false, error: "Missing client secret" }, { status: 500 });

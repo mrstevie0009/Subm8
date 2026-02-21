@@ -492,6 +492,23 @@ function SetupIntentForm({
         throw new Error(t('methods.errors.setupNotCompleted'));
       }
 
+      const setDefaultRes = await fetch('/api/payments/methods/update', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ 
+          action: 'set_default_from_setup', 
+          setupIntentId: setupIntent.id 
+        }),
+      });
+
+      const setDefaultJ: unknown = await setDefaultRes.json().catch(() => null);
+      if (!setDefaultRes.ok) {
+        const err = typeof setDefaultJ === 'object' && setDefaultJ && 'error' in setDefaultJ && typeof setDefaultJ.error === 'string'
+          ? setDefaultJ.error
+          : 'Failed to set default payment method';
+        throw new Error(err);
+      }
+
       await sleep(300);
       onDone();
     } catch (e) {

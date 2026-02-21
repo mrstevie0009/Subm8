@@ -410,33 +410,50 @@ function SetupIntentForm({
   const [billPhone, setBillPhone] = React.useState('');
 
   async function handleSave() {
-    try {
-      setSaving(true);
-      onError('');
+  try {
+    setSaving(true);
+    onError('');
 
-      if (!stripe || !elements) throw new Error('Stripe not ready');
+    if (!stripe || !elements) throw new Error('Stripe not ready');
 
-      const { error, setupIntent } = await stripe.confirmSetup({
-        elements,
-        redirect: 'if_required',
-        confirmParams: {
-          payment_method_data: {
-            billing_details: {
-              name: billName || undefined,
-              email: billEmail || undefined,
-              phone: billPhone || undefined,
-            },
+    const { error, setupIntent } = await stripe.confirmSetup({
+      elements,
+      redirect: 'if_required',
+      confirmParams: {
+        payment_method_data: {
+          billing_details: {
+            name: billName || undefined,
+            email: billEmail || undefined,
+            phone: billPhone || undefined,
           },
         },
-      });
+      },
+    });
 
-      if (error) throw new Error(error.message || 'Failed to save');
-      if (setupIntent?.status !== 'succeeded' && setupIntent?.status !== 'processing') {
-        throw new Error('Setup not completed');
-      }
+    if (error) throw new Error(error.message || 'Failed to save');
+    if (setupIntent?.status !== 'succeeded' && setupIntent?.status !== 'processing') {
+      throw new Error('Setup not completed');
+    }
 
-      await sleep(300);
-      onDone();
+    const setDefaultRes = await fetch('/api/payments/methods/update', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ 
+        action: 'set_default_from_setup', 
+        setupIntentId: setupIntent.id 
+      }),
+    });
+
+    const setDefaultJ: unknown = await setDefaultRes.json().catch(() => null);
+    if (!setDefaultRes.ok) {
+      const err = typeof setDefaultJ === 'object' && setDefaultJ && 'error' in setDefaultJ && typeof setDefaultJ.error === 'string'
+        ? setDefaultJ.error
+        : 'Failed to set default payment method';
+      throw new Error(err);
+    }
+
+    await sleep(300);
+    onDone();
     } catch (e) {
       onError(e instanceof Error ? e.message : 'Failed to save');
     } finally {
