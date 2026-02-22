@@ -82,6 +82,21 @@ function getPendingSetupIntentClientSecret(sub: Stripe.Subscription): string | n
   return psi.client_secret ?? null;
 }
 
+function getExpandedPaymentIntentFromInvoiceLike(
+      invLike: string | Stripe.Invoice | null | undefined
+    ): Stripe.PaymentIntent | null {
+      if (!invLike || typeof invLike === "string") return null;
+
+      // Stripe types sind hier oft unvollständig -> raw access
+      const raw: unknown = invLike as unknown;
+      if (!isRecord(raw)) return null;
+
+      const pi = raw["payment_intent"];
+      if (isRecord(pi)) return pi as unknown as Stripe.PaymentIntent;
+
+      return null;
+    }
+
 function getInvoiceMeta(inv: Stripe.Invoice): {
   invoiceId: string;
   invoiceStatus: Stripe.Invoice.Status | null;
@@ -295,6 +310,15 @@ export async function POST(req: NextRequest) {
   const meDb = await loadMeCustomer(me.id);
   const customerId = await ensureStripeCustomer(meDb);
 
+  async function syncStripeCustomerEmail(customerId: string, email: string | null) {
+    const e = (email || "").trim();
+    if (!e) return null;
+    await stripe.customers.update(customerId, { email: e }).catch(() => {});
+    return e;
+  }
+
+  const receiptEmail = await syncStripeCustomerEmail(customerId, meDb.email);
+
   // ✅ NEU: Hole Default Payment Method vom Customer
   const customer = await stripe.customers.retrieve(customerId);
   const defaultPmId = 
@@ -365,9 +389,16 @@ export async function POST(req: NextRequest) {
   }
 
   const sub = await stripe.subscriptions.create(
-    subParams,
-    { idempotencyKey: `autodrain_create:${ad.id}` }
-  );
+      subParams,
+      { idempotencyKey: `autodrain_create:${ad.id}` }
+    );
+
+    if (receiptEmail) {
+      const pi = getExpandedPaymentIntentFromInvoiceLike(sub.latest_invoice);
+      if (pi?.id) {
+        await stripe.paymentIntents.update(pi.id, { receipt_email: receiptEmail }).catch(() => {});
+      }
+    }
 
   const resolved = await resolveClientSecretForSubscription(sub.id);
   const clientSecret = resolved.clientSecret;

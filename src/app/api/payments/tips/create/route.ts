@@ -110,6 +110,15 @@ export async function POST(req: NextRequest) {
   const meDb = await loadMeCustomer(me.id);
   const customerId = await ensureStripeCustomer(meDb);
 
+  async function syncStripeCustomerEmail(customerId: string, email: string | null) {
+    const e = (email || "").trim();
+    if (!e) return null;
+    await stripe.customers.update(customerId, { email: e }).catch(() => {});
+    return e;
+  }
+
+  const receiptEmail = await syncStripeCustomerEmail(customerId, meDb.email);
+
   // ✅ NEU: Hole den Default Payment Method vom Customer
   const customer = await stripe.customers.retrieve(customerId);
   const defaultPmId = 
@@ -140,6 +149,7 @@ export async function POST(req: NextRequest) {
     customer: customerId,
     payment_method_types: ["card"],
     setup_future_usage: "off_session",
+    receipt_email: receiptEmail ?? undefined,
     metadata: {
       paymentId: id,
       payerId: me.id,

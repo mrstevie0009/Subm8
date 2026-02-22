@@ -427,7 +427,8 @@ function SetupIntentForm({
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ 
         action: 'set_default_from_setup', 
-        setupIntentId: setupIntent.id 
+        setupIntentId: setupIntent.id, 
+        billingEmail: billEmail.trim() || undefined
       }),
     });
 

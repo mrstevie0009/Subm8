@@ -46,6 +46,10 @@ export async function POST() {
   const meDb = await loadMeCustomer(me.id);
   const customerId = await ensureStripeCustomer(meDb);
 
+  if (meDb.email) {
+    await stripe.customers.update(customerId, { email: meDb.email }).catch(() => {});
+  }
+
   const si = await stripe.setupIntents.create({
   customer: customerId,
   automatic_payment_methods: {
@@ -60,5 +64,9 @@ export async function POST() {
     return NextResponse.json({ ok: false, error: "Missing client secret" }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true, clientSecret: si.client_secret });
+  return NextResponse.json({
+  ok: true,
+  clientSecret: si.client_secret,
+  email: meDb.email,
+});
 }

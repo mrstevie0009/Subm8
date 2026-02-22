@@ -9,7 +9,11 @@ export const runtime = "nodejs";
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {});
 
 type SetDefaultBody = { action: "set_default"; paymentMethodId: string };
-type SetDefaultFromSetupBody = { action: "set_default_from_setup"; setupIntentId: string };
+type SetDefaultFromSetupBody = {
+  action: "set_default_from_setup";
+  setupIntentId: string;
+  billingEmail?: string; 
+};
 type DetachBody = { action: "detach"; paymentMethodId: string };
 type Body = SetDefaultBody | SetDefaultFromSetupBody | DetachBody;
 
@@ -22,7 +26,10 @@ function isBody(x: unknown): x is Body {
   }
   
   if (o.action === "set_default_from_setup") {
-    return typeof o.setupIntentId === "string" && o.setupIntentId.length > 0;
+    const okId = typeof o.setupIntentId === "string" && o.setupIntentId.length > 0;
+    const okEmail =
+      !("billingEmail" in o) || typeof o.billingEmail === "string"; // optional string
+    return okId && okEmail;
   }
   
   if (o.action === "detach") {
@@ -43,7 +50,7 @@ export async function POST(req: NextRequest) {
 
   const u = await prisma.user.findUnique({
     where: { id: me.id },
-    select: { stripeCustomerId: true },
+    select: { stripeCustomerId: true, email: true }, 
   });
   const customerId = u?.stripeCustomerId ?? null;
   if (!customerId) return NextResponse.json({ ok: false, error: "No stripeCustomerId" }, { status: 400 });
@@ -61,10 +68,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "No payment method in SetupIntent" }, { status: 400 });
     }
 
-    // Setze als Default
+    // 1) default PM setzen
     await stripe.customers.update(customerId, {
       invoice_settings: { default_payment_method: pmId },
     });
+
+    // 2) Email bestimmen (override > db), aber NUR für Stripe verwenden
+    const billingEmailRaw = typeof raw.billingEmail === "string" ? raw.billingEmail.trim() : "";
+    const email = (billingEmailRaw || u?.email || "").trim() || null;
+
+    if (email) {
+      await stripe.customers.update(customerId, { email }).catch(() => {});
+    }
 
     return NextResponse.json({ ok: true });
   }
