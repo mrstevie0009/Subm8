@@ -100,15 +100,24 @@ function FeedFilterToggle({ open, setOpen }: { open: boolean; setOpen: (v: boole
 
   // Standard-Zustand: nur "new" (oder gar kein feed-Param), kein following, keine Rolle
   const isDefaultFilter = React.useMemo(() => {
+    const feed = Array.from(urlFeedSet);
+
     const onlyNew =
-      urlFeedSet.size === 0 || (urlFeedSet.size === 1 && urlFeedSet.has('new'));
-    const noFollowing = !urlFeedSet.has('following');
-    const noTop = !urlFeedSet.has('top');
-    const noRole = urlRole == null;
-    const noKinks = urlKinks.length === 0;
-    return onlyNew && noFollowing && noTop && noRole && noKinks;
+      feed.length === 0 ||
+      (feed.length === 1 && feed[0] === 'new');
+
+    return (
+      onlyNew &&
+      !feed.includes('following') &&
+      urlRole == null &&
+      urlKinks.length === 0
+    );
   }, [urlFeedSet, urlRole, urlKinks]);
 
+
+  React.useEffect(() => {
+    if (!open) setKinksOpen(false);
+  }, [open]);
 
   // Beim Öffnen aus URL spiegeln
   React.useEffect(() => {
@@ -208,14 +217,21 @@ function FeedFilterToggle({ open, setOpen }: { open: boolean; setOpen: (v: boole
         onClick={() => setOpen(!open)}
         aria-expanded={open}
         aria-label={t('toggleAria')}
-        className="relative grid place-items-center w-10 h-10 rounded-b-xl rounded-t-none border border-black bg-black"
+        className="p-2 rounded hover:bg-white/5 shrink-0 relative inline-grid place-items-center cursor-pointer transition-colors"
+        style={{ width: 'var(--icon-size)', height: 'var(--icon-size)' }}
       >
-        <span className="w-6 h-6" style={{ color: 'var(--purple)' }} aria-hidden="true">
-          {isDefaultFilter ? (
-            <FilterIconOutline style={{ width: '100%', height: '100%' }} />
-          ) : (
-            <FilterIconFilled style={{ width: '100%', height: '100%' }} />
-          )}
+        <span
+          aria-hidden="true"
+          style={{
+            color: 'var(--purple)',
+            position: 'absolute',
+            inset: 0,
+            width: '65%',
+            height: '65%',
+            margin: 'auto',
+          }}
+        >
+          {isDefaultFilter ? <FilterIconFilled /> : <FilterIconOutline />}
         </span>
       </button>
 
@@ -336,15 +352,6 @@ function FeedFilterToggle({ open, setOpen }: { open: boolean; setOpen: (v: boole
           )}
         </div>
 
-        <KinkPickerModal
-          open={kinksOpen}
-          onClose={() => setKinksOpen(false)}
-          options={KINK_OPTIONS}
-          value={kinks}
-          onChange={(next) => setKinks(next.slice(0, 10))}
-          max={10}
-        />
-
         {/* Footer */}
         <div className="flex items-center justify-between gap-2 px-3 py-3 border-t border-white/10">
           <button
@@ -363,6 +370,16 @@ function FeedFilterToggle({ open, setOpen }: { open: boolean; setOpen: (v: boole
           </button>
         </div>
       </div>
+
+      <KinkPickerModal
+        open={kinksOpen}
+        onClose={() => setKinksOpen(false)}
+        options={KINK_OPTIONS}
+        value={kinks}
+        onChange={(next) => setKinks(next.slice(0, 10))}
+        max={10}
+      />
+
     </div>
   );
 }
@@ -399,8 +416,6 @@ export default function Header({ locale }: { locale: string }) {
 
   const innerRef = React.useRef<HTMLDivElement | null>(null);
   const settingsRef = React.useRef<HTMLButtonElement | null>(null);
-  const [hangLeft, setHangLeft] = React.useState<number>(0);
-  const gapPx = 8;
 
   const onLogoClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     if (isHome) {
@@ -414,12 +429,6 @@ export default function Header({ locale }: { locale: string }) {
       const inner = innerRef.current;
       const settings = settingsRef.current;
       if (!inner || !settings) return;
-      const innerBox = inner.getBoundingClientRect();
-      const setBox = settings.getBoundingClientRect();
-      const center = setBox.left - innerBox.left + setBox.width + gapPx + 20; // 20 = 1/2 von 40px
-      const minX = 8;
-      const maxX = innerBox.width - 8;
-      setHangLeft(Math.max(minX, Math.min(maxX, center)));
     };
     update();
     window.addEventListener('resize', update);
@@ -502,8 +511,8 @@ export default function Header({ locale }: { locale: string }) {
               color: 'var(--purple)',
               position: 'absolute',
               inset: 0,
-              width: '70%',
-              height: '70%',
+              width: '90%',
+              height: '90%',
               margin: 'auto',
             }}
           >
@@ -521,7 +530,7 @@ export default function Header({ locale }: { locale: string }) {
           href={`/${locale}`}
           prefetch={false}
           onClick={onLogoClick}  // <-- neu
-          className="justify-self-center flex items-center"
+          className="justify-self-center flex items-center -translate-y-[2px]"
         >
           <Image
             src="/logo.svg"
@@ -533,14 +542,20 @@ export default function Header({ locale }: { locale: string }) {
           />
                   </Link>
 
-        {/* Compose */}
-        <button
-          type="button"
-          onClick={openCompose}
-          className="justify-self-end p-2 rounded hover:bg-white/5 shrink-0 relative inline-grid place-items-center cursor-pointer"
-          aria-label={session ? 'New Post' : 'Sign in to post'}
-          style={{ width: iconSize, height: iconSize }}
-        >
+        <div className="justify-self-end flex items-center gap-4">
+          {/* Filter nur Home */}
+          {isHome && (
+            <FeedFilterToggle open={filterOpen} setOpen={setFilterOpen} />
+          )}
+
+          {/* Compose */}
+          <button
+            type="button"
+            onClick={openCompose}
+            className="p-2 rounded hover:bg-white/5 shrink-0 relative inline-grid place-items-center cursor-pointer"
+            aria-label={session ? 'New Post' : 'Sign in to post'}
+            style={{ width: iconSize, height: iconSize }}
+          >
           <svg
             viewBox="0 0 72 72"
             aria-hidden="true"
@@ -548,8 +563,8 @@ export default function Header({ locale }: { locale: string }) {
               color: 'var(--purple)', // steuert die Icon-Farbe
               position: 'absolute',
               inset: 0,
-              width: '70%',
-              height: '70%',
+              width: '90%',
+              height: '90%',
               margin: 'auto',
             }}
           >
@@ -559,31 +574,7 @@ export default function Header({ locale }: { locale: string }) {
             />
           </svg>
         </button>
-
-        {/* Hänge-Overlay nur Home */}
-        {isHome && (
-          <div
-            aria-hidden
-            className={`pointer-events-none absolute left-0 right-0 transition-opacity duration-200 ${hidden ? 'opacity-0' : 'opacity-100'}`}
-            style={{ top: 'calc(100% - 6px)', height: 0, zIndex: 60 }}
-          >
-            <div
-              className={`absolute -translate-x-1/2 z-[70] ${hidden ? 'pointer-events-none' : 'pointer-events-auto'}`}
-              style={{ left: `${hangLeft}px`, top: 0 }}
-            >
-              <FeedFilterToggle open={filterOpen} setOpen={setFilterOpen} />
-            </div>
-            <div
-              className="absolute left-0 right-0 pointer-events-none z-[80]"
-              style={{
-                top: 0,
-                height: 5,
-                background:
-                  'linear-gradient(180deg, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 70%, rgba(0,0,0,0) 100%)',
-              }}
-            />
-          </div>
-        )}
+        </div>
       </div>
     </header>
   );
