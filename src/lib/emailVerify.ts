@@ -1,3 +1,4 @@
+//src/lib/emailVerify.ts
 import crypto from "crypto";
 
 export function make6DigitCode() {
