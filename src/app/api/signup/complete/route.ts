@@ -1,13 +1,13 @@
 // src/app/api/signup/complete/route.ts
-import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import bcrypt from 'bcryptjs';
-import { Role } from '@prisma/client';
-import { sendMail } from '@/lib/mailer';
-import { make6DigitCode, hashCode } from '@/lib/emailVerify';
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import bcrypt from "bcryptjs";
+import { Role } from "@prisma/client";
+import { sendMail } from "@/lib/mailer";
+import { make6DigitCode, hashCode } from "@/lib/emailVerify";
 
-export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 type Body = {
   handle?: string;
@@ -26,7 +26,7 @@ function isValidEmail(e: string) {
 
 const CODE_TTL_MIN = 10;
 const RESEND_COOLDOWN_SEC = 15;
-const BRAND = 'Subm8';
+const BRAND = "Subm8";
 
 async function sendVerifyEmail(to: string, code: string) {
   await sendMail({
@@ -45,80 +45,85 @@ async function sendVerifyEmail(to: string, code: string) {
 }
 
 export async function POST(req: Request) {
+  let createdUserId: string | null = null;
+
   try {
     const body = (await req.json().catch(() => null)) as Body | null;
 
-    const handleRaw = String(body?.handle ?? '').trim().toLowerCase();
-    const roleRaw = String(body?.role ?? '').trim();
-    const emailRaw = String(body?.email ?? '').trim();
-    const password = String(body?.password ?? '');
-
+    const handleRaw = String(body?.handle ?? "").trim().toLowerCase();
+    const roleRaw = String(body?.role ?? "").trim();
+    const emailRaw = String(body?.email ?? "").trim();
+    const password = String(body?.password ?? "");
     const emailLower = emailRaw.toLowerCase();
 
     if (!isValidHandle(handleRaw)) {
-      return NextResponse.json({ ok: false, error: 'Invalid handle' }, { status: 400 });
+      return NextResponse.json({ ok: false, error: "Invalid handle" }, { status: 400 });
     }
     if (!isValidEmail(emailLower)) {
-      return NextResponse.json({ ok: false, error: 'Invalid email' }, { status: 400 });
+      return NextResponse.json({ ok: false, error: "Invalid email" }, { status: 400 });
     }
     if (password.length < 8) {
-      return NextResponse.json({ ok: false, error: 'Password too short' }, { status: 400 });
+      return NextResponse.json({ ok: false, error: "Password too short" }, { status: 400 });
     }
 
     const roleUpper = roleRaw.toUpperCase();
-    if (roleUpper !== 'DOMME' && roleUpper !== 'SUBMISSIVE') {
-      return NextResponse.json({ ok: false, error: 'Invalid role' }, { status: 400 });
+    if (roleUpper !== "DOMME" && roleUpper !== "SUBMISSIVE") {
+      return NextResponse.json({ ok: false, error: "Invalid role" }, { status: 400 });
     }
-    const dbRole: Role = roleUpper === 'DOMME' ? Role.DOMME : Role.SUBMISSIVE;
+    const dbRole: Role = roleUpper === "DOMME" ? Role.DOMME : Role.SUBMISSIVE;
 
     // ✅ Domme Disclaimer server-side enforce
     if (dbRole === Role.DOMME && body?.dommeGiftDisclaimerAccepted !== true) {
-      return NextResponse.json({ ok: false, error: 'Domme disclaimer required' }, { status: 400 });
+      return NextResponse.json({ ok: false, error: "Domme disclaimer required" }, { status: 400 });
     }
 
-    // ---- Find existing user by email (case-insensitive safe path) ----
-    // If your Prisma schema uses a case-insensitive collation on email, findUnique is fine.
-    // Otherwise this still works because we store emailLower and always query lowercased.
+    // ---- Existing by email ----
     const existingByEmail = await prisma.user.findUnique({
       where: { email: emailLower },
       select: { id: true, handle: true, emailVerifiedAt: true, emailVerifyLastSentAt: true },
     });
 
-    // ---- Check handle conflict (case-insensitive) ----
+    // ---- Existing by handle (include verified + lastSent for resume/cooldown) ----
     const existingByHandle = await prisma.user.findFirst({
-      where: { handle: { equals: handleRaw, mode: 'insensitive' } },
-      select: { id: true, email: true },
+      where: { handle: { equals: handleRaw, mode: "insensitive" } },
+      select: { id: true, email: true, emailVerifiedAt: true, emailVerifyLastSentAt: true },
     });
 
-    // If handle exists and it's not the same user as existingByEmail -> conflict
-    if (existingByHandle && (!existingByEmail || existingByHandle.id !== existingByEmail.id)) {
-      return NextResponse.json({ ok: false, error: 'Handle already taken' }, { status: 409 });
+    // If handle exists and is VERIFIED -> conflict
+    if (existingByHandle?.emailVerifiedAt) {
+      return NextResponse.json({ ok: false, error: "Handle already taken" }, { status: 409 });
+    }
+
+    // If handle exists UNVERIFIED:
+    // - allow only if same email (resume), otherwise conflict
+    if (existingByHandle && (existingByHandle.email ?? "").toLowerCase() !== emailLower) {
+      return NextResponse.json({ ok: false, error: "Handle already taken" }, { status: 409 });
     }
 
     // If email exists and is verified -> conflict
     if (existingByEmail?.emailVerifiedAt) {
-      return NextResponse.json({ ok: false, error: 'Email already in use' }, { status: 409 });
+      return NextResponse.json({ ok: false, error: "Email already in use" }, { status: 409 });
     }
 
     // If email exists but unverified AND handle doesn't match -> conflict (prevents hijacking email)
     if (existingByEmail && existingByEmail.handle.toLowerCase() !== handleRaw) {
       return NextResponse.json(
-        { ok: false, error: 'Email already pending verification for another handle' },
+        { ok: false, error: "Email already pending verification for another handle" },
         { status: 409 }
       );
     }
 
-    // ---- Cooldown (for both: new signup and "resume verify") ----
     const now = Date.now();
-    const last = existingByEmail?.emailVerifyLastSentAt?.getTime() ?? 0;
+
+    // ---- Cooldown (use whichever lastSentAt we have) ----
+    const lastEmail = existingByEmail?.emailVerifyLastSentAt?.getTime() ?? 0;
+    const lastHandle = existingByHandle?.emailVerifyLastSentAt?.getTime() ?? 0;
+    const last = Math.max(lastEmail, lastHandle);
     const minNext = last + RESEND_COOLDOWN_SEC * 1000;
 
     if (last && now < minNext) {
       const retryAfterSec = Math.ceil((minNext - now) / 1000);
-      return NextResponse.json(
-        { ok: false, cooldown: true, retryAfterSec, error: 'Cooldown' },
-        { status: 429 }
-      );
+      return NextResponse.json({ ok: false, cooldown: true, retryAfterSec, error: "Cooldown" }, { status: 429 });
     }
 
     // ---- Create or update user ----
@@ -128,7 +133,18 @@ export async function POST(req: Request) {
       ? await prisma.user.update({
           where: { id: existingByEmail.id },
           data: {
-            // keep handle/email stable; but allow password update during "resume"
+            passwordHash,
+            role: dbRole,
+            displayName: handleRaw,
+            emailVerifyLastSentAt: new Date(now),
+          },
+          select: { id: true, email: true },
+        })
+      : existingByHandle
+      ? await prisma.user.update({
+          where: { id: existingByHandle.id },
+          data: {
+            // email matches by earlier guard; keep it stable
             passwordHash,
             role: dbRole,
             displayName: handleRaw,
@@ -149,6 +165,9 @@ export async function POST(req: Request) {
           },
           select: { id: true, email: true },
         });
+
+    // mark for cleanup only if we JUST created it (best-effort heuristic)
+    if (!existingByEmail && !existingByHandle) createdUserId = user.id;
 
     // ---- Create verification code (replace old) ----
     const code = make6DigitCode();
@@ -173,7 +192,7 @@ export async function POST(req: Request) {
       await sendVerifyEmail(emailLower, code);
     } catch (err) {
       emailSendFailed = true;
-      console.error('sendVerifyEmail failed', err);
+      console.error("sendVerifyEmail failed", err);
     }
 
     return NextResponse.json({
@@ -183,9 +202,19 @@ export async function POST(req: Request) {
       emailSendFailed,
     });
   } catch (e) {
-    console.error('signup/complete error', e);
+    console.error("signup/complete error", e);
+
+    // ✅ Best-effort cleanup only for newly created user in this request
+    if (createdUserId) {
+      try {
+        await prisma.user.delete({ where: { id: createdUserId } });
+      } catch (cleanupErr) {
+        console.error("signup/complete cleanup failed", cleanupErr);
+      }
+    }
+
     return NextResponse.json(
-      { ok: false, error: e instanceof Error ? e.message : 'Unexpected error' },
+      { ok: false, error: e instanceof Error ? e.message : "Unexpected error" },
       { status: 500 }
     );
   }
