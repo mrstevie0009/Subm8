@@ -50,6 +50,14 @@ export default function SignInPage() {
   const [resendBusy, setResendBusy] = React.useState(false);
   const [resendOk, setResendOk] = React.useState(false);
 
+  const [verifyOpen, setVerifyOpen] = React.useState(false);
+  const [verifyId, setVerifyId] = React.useState<string | null>(null);
+  const [verifyCode, setVerifyCode] = React.useState('');
+  const [verifyBusy, setVerifyBusy] = React.useState(false);
+  const [verifyErr, setVerifyErr] = React.useState<string | null>(null);
+  const [resendCooldownSec, setResendCooldownSec] = React.useState<number | null>(null);
+  const [verifyEmail, setVerifyEmail] = React.useState<string | null>(null);
+
   // "Passwort vergessen" State
   const [forgotMode, setForgotMode] = React.useState(false);
   const [forgotEmail, setForgotEmail] = React.useState('');
@@ -416,13 +424,21 @@ export default function SignInPage() {
                     id="identifier"
                     value={identifier}
                     onChange={(e) => { 
-                      setIdentifier(e.target.value); 
-                      if (invalid) { 
-                        setInvalid(false); 
-                        setInlineError(null); 
-                      } 
-                      setNeedsEmailVerify(false); 
-                      setResendOk(false);}}
+                      setIdentifier(e.target.value);
+                      //reset verify context when user changes identifier
+                      setVerifyEmail(null);
+                      setVerifyId(null);
+                      setVerifyOpen(false);
+                      setVerifyCode('');
+                      setVerifyErr(null);
+
+                      if (invalid) {
+                        setInvalid(false);
+                        setInlineError(null);
+                      }
+                      setNeedsEmailVerify(false);
+                      setResendOk(false);
+                    }}
                     type="text"
                     autoComplete="username"
                     required
@@ -487,6 +503,9 @@ export default function SignInPage() {
                             setResendBusy(true);
                             setResendOk(false);
 
+                            // Modal errors zurücksetzen
+                            setVerifyErr(null);
+
                             const r = await fetch('/api/auth/resend-verify-email', {
                               method: 'POST',
                               headers: { 'Content-Type': 'application/json' },
@@ -494,18 +513,29 @@ export default function SignInPage() {
                             });
 
                             const j = await r.json().catch(() => ({}));
+                            setVerifyEmail(null);
 
+                            // ✅ Cooldown sauber
                             if (r.status === 429 && j?.cooldown && typeof j?.retryAfterSec === 'number') {
+                              setResendCooldownSec(j.retryAfterSec);
                               setInlineError(tv('alerts.cooldown', { seconds: j.retryAfterSec }));
                               setInvalid(false);
                               return;
                             }
 
-                            if (!r.ok || !j.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+                            if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
 
+                            // ✅ verifyId übernehmen und Modal öffnen
+                            if (typeof j?.verifyId === 'string') setVerifyId(j.verifyId);
+                            if (typeof j?.emailUsed === 'string') setVerifyEmail(j.emailUsed);
+                            setVerifyCode('');
+                            setVerifyErr(null);
+                            setVerifyOpen(true);
+
+                            setResendCooldownSec(null);
                             setResendOk(true);
-                          } catch {
-                            setInlineError(t('errors.verifyResendFailed'));
+                          } catch (e) {
+                            setInlineError(e instanceof Error ? e.message : t('errors.verifyResendFailed'));
                           } finally {
                             setResendBusy(false);
                           }
@@ -791,6 +821,148 @@ export default function SignInPage() {
           </div>
         </div>
       )}
+
+      {/* ✅ EMAIL VERIFY MODAL (Signin) */}
+      {verifyOpen && verifyId && (
+        <div
+          className="fixed inset-0 z-[200] grid place-items-center p-4"
+          onClick={() => !verifyBusy && setVerifyOpen(false)}
+        >
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+
+          <div
+            className="relative w-full max-w-[360px] rounded-2xl border border-white/10 bg-[#0b0b0d] p-5 shadow-[0_18px_50px_-14px_rgba(0,0,0,.65)]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <div className="font-semibold text-white">{tv('title')}</div>
+              <button
+                type="button"
+                className="w-9 h-9 rounded-full hover:bg-white/10 text-white/80"
+                onClick={() => !verifyBusy && setVerifyOpen(false)}
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="mt-2 text-[13px] text-white/70">
+              {tv('subtitle', { email: verifyEmail ?? identifier })}
+            </div>
+
+            <input
+              value={verifyCode}
+              onChange={(e) => setVerifyCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              inputMode="numeric"
+              autoFocus
+              placeholder={tv('codePlaceholder')}
+              className="mt-4 w-full rounded-xl bg-white/[.03] border border-white/10 px-3 py-3 text-[18px] tracking-[0.3em] text-white outline-none"
+            />
+
+            {verifyErr && (
+              <div className="mt-3 text-[13px] text-red-300 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">
+                {verifyErr}
+              </div>
+            )}
+
+            <div className="mt-4 flex items-center justify-between gap-2">
+              {/* ✅ RESEND */}
+              <button
+                type="button"
+                disabled={verifyBusy}
+                className="px-3 py-2 rounded-lg border border-white/15 hover:bg-white/10 text-[13px] disabled:opacity-60"
+                onClick={async () => {
+                  if (verifyBusy) return;
+                  setVerifyBusy(true);
+                  setVerifyErr(null);
+
+                  try {
+                    const r = await fetch('/api/auth/resend-verify-email', {
+                      method: 'POST',
+                      headers: { 'content-type': 'application/json' },
+                      body: JSON.stringify({ email: identifier, locale }),
+                    });
+                    const j = await r.json().catch(() => null);
+
+                    if (r.status === 429 && j?.cooldown && typeof j?.retryAfterSec === 'number') {
+                      setResendCooldownSec(j.retryAfterSec);
+                      setVerifyErr(tv('alerts.cooldown', { seconds: j.retryAfterSec }));
+                      return;
+                    }
+
+                    if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+
+                    if (typeof j?.verifyId === 'string') setVerifyId(j.verifyId);
+                    if (typeof j?.emailUsed === 'string') setVerifyEmail(j.emailUsed);
+
+                    setResendCooldownSec(null);
+                    // optional: Code-Feld leeren nach neuem Code
+                    setVerifyCode('');
+                  } catch (e) {
+                    setVerifyErr(e instanceof Error ? e.message : tv('errors.resendFailed'));
+                  } finally {
+                    setVerifyBusy(false);
+                  }
+                }}
+              >
+                {verifyBusy ? tv('actions.resending') : tv('actions.resend')}
+              </button>
+
+              {/* ✅ VERIFY */}
+              <button
+                type="button"
+                disabled={verifyBusy || verifyCode.length !== 6}
+                className="px-4 py-2 rounded-lg bg-[var(--purple)]/90 hover:bg-[var(--purple)] text-white text-[13px] disabled:opacity-60"
+                onClick={async () => {
+                  setVerifyBusy(true);
+                  setVerifyErr(null);
+
+                  try {
+                    const r = await fetch('/api/auth/verify-email', {
+                      method: 'POST',
+                      headers: { 'content-type': 'application/json' },
+                      body: JSON.stringify({ verifyId, email: verifyEmail ?? identifier, code: verifyCode }),
+                    });
+
+                    const j = await r.json().catch(() => null);
+                    if (!r.ok || !j?.ok) throw new Error(j?.error || tv('errors.wrongCode'));
+
+                    // ✅ verified -> try sign in again
+                    const res = await signIn('credentials', {
+                      redirect: false,
+                      callbackUrl: `/${locale}`,
+                      identifier,
+                      password,
+                    });
+
+                    if (res?.error) throw new Error(res.error);
+
+                    setVerifyOpen(false);
+                    router.replace(res?.url ?? `/${locale}`);
+                  } catch (e) {
+                    setVerifyErr(e instanceof Error ? e.message : tv('errors.verifyFailed'));
+                  } finally {
+                    setVerifyBusy(false);
+                  }
+                }}
+              >
+                {verifyBusy ? tv('actions.verifying') : tv('actions.verify')}
+              </button>
+            </div>
+
+            {resendCooldownSec !== null && (
+              <div className="mt-3 text-[12px] text-yellow-200">
+                {tv('alerts.cooldown', { seconds: resendCooldownSec })}
+              </div>
+            )}
+
+            <div className="mt-3 text-[12px] text-white/55">
+              {tv('hintExpires', { minutes: 10 })}
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
