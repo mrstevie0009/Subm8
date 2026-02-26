@@ -109,6 +109,7 @@ function augmentedPrismaAdapter(): Adapter {
           avatarUrl: image,
           handle,
           role,
+          emailVerifiedAt: email ? new Date() : null,
         },
       });
 
@@ -179,8 +180,16 @@ export const authOptions: NextAuthOptions = {
             OR: [{ email: emailLike }, { handle: { equals: handleLike, mode: 'insensitive' } }],
           },
           select: {
-            id: true, email: true, displayName: true, avatarUrl: true,
-            passwordHash: true, handle: true, role: true, isDeactivated: true, ageVerified: true,
+            id: true,
+            email: true,
+            displayName: true,
+            avatarUrl: true,
+            passwordHash: true,
+            handle: true,
+            role: true,
+            isDeactivated: true,
+            ageVerified: true,
+            emailVerifiedAt: true,
           },
         });
 
@@ -201,7 +210,6 @@ export const authOptions: NextAuthOptions = {
         const ok = await verifyPassword(password, user.passwordHash);
         if (!ok) {
           try {
-            // Fire-and-forget: don't delay authorize response on DB write
             void recordFailure(ip, rawInput);
             console.log('auth.authorize: queued recordFailure (bad password)', { ip, rawInput });
           } catch (err) {
@@ -210,12 +218,17 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
 
-        // 3) Erfolg → Reset Throttle (fire-and-forget)
+        // ✅ Passwort ist korrekt → Throttle resetten
         try {
           void recordSuccess(ip, rawInput);
           console.log('auth.authorize: queued recordSuccess', { ip, rawInput, userId: user.id });
         } catch (err) {
           console.error('auth.authorize: recordSuccess error', { err, ip, rawInput });
+        }
+
+        // ✅ JETZT erst Email-Verified erzwingen (leakt weniger)
+        if (!user.emailVerifiedAt) {
+          throw new Error('EMAIL_NOT_VERIFIED');
         }
 
         // include ageVerified so callers / jwt callback can avoid another DB hit

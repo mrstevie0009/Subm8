@@ -238,6 +238,7 @@ export default function SignupAccountPage() {
   const locale = useLocale();
 
   const t = useTranslations('auth.auth.signupAccount');
+  const tv = useTranslations('auth.auth.signupAccount.emailVerify');
   const tRole = useTranslations('post.role');
 
   const handle = (sp.get('handle') || '').toLowerCase();
@@ -251,6 +252,15 @@ export default function SignupAccountPage() {
   const [agree, setAgree] = React.useState(false);
   const [dommeGiftAgree, setDommeGiftAgree] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
+
+  const [verifyOpen, setVerifyOpen] = React.useState(false);
+  const [verifyId, setVerifyId] = React.useState<string | null>(null);
+  const [verifyCode, setVerifyCode] = React.useState('');
+  const [verifyErr, setVerifyErr] = React.useState<string | null>(null);
+  const [verifyBusy, setVerifyBusy] = React.useState(false);
+
+  const [resendCooldownSec, setResendCooldownSec] = React.useState<number | null>(null);
+
   const [err, setErr] = React.useState<string | null>(null);
 
   const [legalOpen, setLegalOpen] = React.useState(false);
@@ -344,6 +354,15 @@ export default function SignupAccountPage() {
         return;
       }
 
+      if (json?.needsEmailVerify && typeof json?.verifyId === 'string') {
+        setVerifyId(json.verifyId);
+        setVerifyCode('');
+        setVerifyErr(null);
+        setVerifyOpen(true);
+        return;
+      }
+
+      // fallback (falls du später provider signups hast)
       await signIn('credentials', {
         redirect: true,
         callbackUrl: `/${locale}`,
@@ -500,9 +519,6 @@ export default function SignupAccountPage() {
                 <label className="block text-[13px] sm:text-sm font-medium mb-1 text-white/90">
                   {t('fields.email.label')}
                 </label>
-                <label className="block text-[13px] sm:text-sm font-medium mb-1 text-white/90">
-                  {t('fields.email.label')}
-                </label>
                 <Input
                   type="email"
                   value={email}
@@ -630,7 +646,139 @@ export default function SignupAccountPage() {
           </CardContent>
         </Card>
       </div>
+      {verifyOpen && verifyId && (
+        <div
+          className="fixed inset-0 z-[200] grid place-items-center p-4"
+          onClick={() => !verifyBusy && setVerifyOpen(false)}
+        >
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+          <div
+            className="relative w-full max-w-[360px] rounded-2xl border border-white/10 bg-[#0b0b0d] p-5 shadow-[0_18px_50px_-14px_rgba(0,0,0,.65)]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <div className="font-semibold text-white">{tv('title')}</div>
+              <button
+                type="button"
+                className="w-9 h-9 rounded-full hover:bg-white/10 text-white/80"
+                onClick={() => !verifyBusy && setVerifyOpen(false)}
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
 
+            <div className="mt-2 text-[13px] text-white/70">
+              {tv('subtitle', { email })}
+            </div>
+
+            <input
+              value={verifyCode}
+              onChange={(e) => setVerifyCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              inputMode="numeric"
+              autoFocus
+              placeholder={tv('codePlaceholder')}
+              className="mt-4 w-full rounded-xl bg-white/[.03] border border-white/10 px-3 py-3 text-[18px] tracking-[0.3em] text-white outline-none"
+            />
+
+            {verifyErr && (
+              <div className="mt-3 text-[13px] text-red-300 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">
+                {verifyErr}
+              </div>
+            )}
+
+            <div className="mt-4 flex items-center justify-between gap-2">
+              {/* ✅ RESEND */}
+              <button
+                type="button"
+                disabled={verifyBusy}
+                className="px-3 py-2 rounded-lg border border-white/15 hover:bg-white/10 text-[13px] disabled:opacity-60"
+                onClick={async () => {
+                  setVerifyBusy(true);
+                  setVerifyErr(null);
+
+                  try {
+                    const r = await fetch('/api/auth/resend-verify-email', {
+                      method: 'POST',
+                      headers: { 'content-type': 'application/json' },
+                      body: JSON.stringify({ email, locale }), // ✅ verifyId NICHT senden
+                    });
+
+                    const j = await r.json().catch(() => null);
+
+                    // ✅ Cooldown sauber (429)
+                    if (r.status === 429 && j?.cooldown && typeof j?.retryAfterSec === 'number') {
+                      setResendCooldownSec(j.retryAfterSec);
+                      setVerifyErr(tv('alerts.cooldown', { seconds: j.retryAfterSec }));
+                      return;
+                    }
+
+                    if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+
+                    // ✅ Resend gibt neue verifyId zurück -> update
+                    if (typeof j?.verifyId === 'string') setVerifyId(j.verifyId);
+
+                    setResendCooldownSec(null);
+                    setVerifyErr(null);
+                  } catch (e) {
+                    setVerifyErr(e instanceof Error ? e.message : tv('errors.resendFailed'));
+                  } finally {
+                    setVerifyBusy(false);
+                  }
+                }}
+              >
+                {verifyBusy ? tv('actions.resending') : tv('actions.resend')}
+              </button>
+
+              {/* ✅ VERIFY */}
+              <button
+                type="button"
+                disabled={verifyBusy || verifyCode.length !== 6}
+                className="px-4 py-2 rounded-lg bg-[var(--purple)]/90 hover:bg-[var(--purple)] text-white text-[13px] disabled:opacity-60"
+                onClick={async () => {
+                  setVerifyBusy(true);
+                  setVerifyErr(null);
+
+                  try {
+                    const r = await fetch('/api/auth/verify-email', {
+                      method: 'POST',
+                      headers: { 'content-type': 'application/json' },
+                      body: JSON.stringify({ verifyId, email, code: verifyCode }),
+                    });
+
+                    const j = await r.json().catch(() => null);
+                    if (!r.ok || !j?.ok) throw new Error(j?.error || tv('errors.wrongCode'));
+
+                    // ✅ verified -> sign in
+                    await signIn('credentials', {
+                      redirect: true,
+                      callbackUrl: `/${locale}`,
+                      identifier: email,
+                      password: pw,
+                    });
+                  } catch (e) {
+                    setVerifyErr(e instanceof Error ? e.message : tv('errors.verifyFailed'));
+                  } finally {
+                    setVerifyBusy(false);
+                  }
+                }}
+              >
+                {verifyBusy ? tv('actions.verifying') : tv('actions.verify')}
+              </button>
+            </div>
+
+            {resendCooldownSec !== null && (
+              <div className="mt-3 text-[12px] text-yellow-200">
+                {tv('alerts.cooldown', { seconds: resendCooldownSec })}
+              </div>
+            )}
+
+            <div className="mt-3 text-[12px] text-white/55">
+              {tv('hintExpires', { minutes: 10 })}
+            </div>
+          </div>
+        </div>
+      )}
       <TermsPrivacyModal open={legalOpen} onClose={() => setLegalOpen(false)} initialTab={legalTab} />
     </div>
   );

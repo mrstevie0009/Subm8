@@ -31,6 +31,7 @@ export default function SignInPage() {
   const t = useTranslations('auth.auth.signin');
   const tc = useTranslations('common');
   const t2fa = useTranslations('auth.auth.signin2fa');
+  const tv = useTranslations('auth.auth.signupAccount.emailVerify');
 
   const preset = sp.get('email') ?? sp.get('handle')?.replace(/^@/, '') ?? '';
 
@@ -45,6 +46,9 @@ export default function SignInPage() {
 
   const [invalid, setInvalid] = React.useState(false);
   const [inlineError, setInlineError] = React.useState<string | null>(null);
+  const [needsEmailVerify, setNeedsEmailVerify] = React.useState(false);
+  const [resendBusy, setResendBusy] = React.useState(false);
+  const [resendOk, setResendOk] = React.useState(false);
 
   // "Passwort vergessen" State
   const [forgotMode, setForgotMode] = React.useState(false);
@@ -72,6 +76,9 @@ export default function SignInPage() {
 
     if (code === 'BRUTE_BLOCK') {
       return t('alerts.bruteBlocked', { contact: 'support@subm8.com' });
+    }
+    if (code === 'EMAIL_NOT_VERIFIED') {
+      return t('errors.emailNotVerified'); // i18n key gleich unten ergänzen
     }
     if (code === 'CredentialsSignin') {
       return t('errors.invalidCredentials');
@@ -231,6 +238,14 @@ export default function SignInPage() {
       });
 
       if (res?.error) {
+        //Email verify Edge-Case: Passwort korrekt, aber email noch nicht verified
+        if (res.error === 'EMAIL_NOT_VERIFIED') {
+          setNeedsEmailVerify(true);
+          setInvalid(true);
+          setInlineError(t('errors.emailNotVerified'));
+          return;
+        }
+
         await twoFAReq;
         try {
           const r = await fetch(`/api/auth/brute-status?identifier=${encodeURIComponent(identifier)}`, {
@@ -400,7 +415,14 @@ export default function SignInPage() {
                   <Input
                     id="identifier"
                     value={identifier}
-                    onChange={(e) => { setIdentifier(e.target.value); if (invalid) { setInvalid(false); setInlineError(null); } }}
+                    onChange={(e) => { 
+                      setIdentifier(e.target.value); 
+                      if (invalid) { 
+                        setInvalid(false); 
+                        setInlineError(null); 
+                      } 
+                      setNeedsEmailVerify(false); 
+                      setResendOk(false);}}
                     type="text"
                     autoComplete="username"
                     required
@@ -421,7 +443,14 @@ export default function SignInPage() {
                   <Input
                     id="password"
                     value={password}
-                    onChange={(e) => { setPassword(e.target.value); if (invalid) { setInvalid(false); setInlineError(null); } }}
+                    onChange={(e) => { 
+                      setPassword(e.target.value); 
+                      if (invalid) { 
+                        setInvalid(false); 
+                        setInlineError(null); 
+                      } 
+                      setNeedsEmailVerify(false); 
+                      setResendOk(false);}}
                     type="password"
                     autoComplete="current-password"
                     required
@@ -442,6 +471,58 @@ export default function SignInPage() {
                     </button>
                   </div>
                 </div>
+
+                {needsEmailVerify && (
+                  <div className="mt-2 rounded-xl border border-yellow-300/30 bg-yellow-300/10 p-3">
+                    <div className="text-[13px] text-yellow-100">
+                      {t('errors.emailNotVerified')}
+                    </div>
+
+                    <div className="mt-2 flex items-center gap-2">
+                      <button
+                        type="button"
+                        disabled={resendBusy}
+                        onClick={async () => {
+                          try {
+                            setResendBusy(true);
+                            setResendOk(false);
+
+                            const r = await fetch('/api/auth/resend-verify-email', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ email: identifier, locale }),
+                            });
+
+                            const j = await r.json().catch(() => ({}));
+
+                            if (r.status === 429 && j?.cooldown && typeof j?.retryAfterSec === 'number') {
+                              setInlineError(tv('alerts.cooldown', { seconds: j.retryAfterSec }));
+                              setInvalid(false);
+                              return;
+                            }
+
+                            if (!r.ok || !j.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+
+                            setResendOk(true);
+                          } catch {
+                            setInlineError(t('errors.verifyResendFailed'));
+                          } finally {
+                            setResendBusy(false);
+                          }
+                        }}
+                        className="rounded-full px-4 py-2 text-[13px] font-medium border border-white/20 bg-black/20 hover:bg-black/30 disabled:opacity-60"
+                      >
+                        {resendBusy ? t('actions.sending') : t('actions.resendCode')}
+                      </button>
+
+                      {resendOk && (
+                        <span className="text-[12px] text-green-200">
+                          {t('alerts.verifyCodeSent')}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 <button
                   type="submit"

@@ -1,3 +1,4 @@
+//src/lib/mailer.ts
 import { Resend, type CreateEmailOptions } from 'resend';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
