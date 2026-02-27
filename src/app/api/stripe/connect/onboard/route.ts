@@ -41,9 +41,15 @@ export async function POST(req: Request) {
 
       accountId = acct.id;
       await prisma.user.update({
-        where: { id: me.id },
-        data: { stripeAccountId: accountId },
-      });
+      where: { id: me.id },
+      data: {
+        stripeAccountId: acct.id,
+        stripeDetailsSubmitted: Boolean(acct.details_submitted),
+        stripePayoutsEnabled: Boolean(acct.payouts_enabled),
+        stripeChargesEnabled: Boolean(acct.charges_enabled),
+        stripeOnboardingLastAt: new Date(),
+      },
+    });
     }
 
     const refreshUrl = `${baseUrl}/${locale}/settings/payments?stripe=refresh`;
@@ -56,9 +62,26 @@ export async function POST(req: Request) {
       type: "account_onboarding",
     });
 
-    return NextResponse.json({ url: link.url, accountId });
-  } catch (e) {
-    console.error("stripe connect onboard error:", e);
-    return NextResponse.json({ error: "Stripe Onboarding fehlgeschlagen" }, { status: 500 });
+  return NextResponse.json({ url: link.url, accountId });
+    } catch (e) {
+      const err = e as Stripe.errors.StripeError;
+    console.error("stripe connect onboard error:", {
+      type: err?.type,
+      code: err?.code,
+      message: err?.message,
+      requestId: err?.requestId,
+      statusCode: err?.statusCode,
+      raw: err?.raw,
+    });
+
+    return NextResponse.json(
+      {
+        error: "Stripe Onboarding fehlgeschlagen",
+        stripeMessage: err?.message ?? null,
+        stripeCode: err?.code ?? null,
+        requestId: err?.requestId ?? null,
+      },
+      { status: 500 }
+    );
   }
 }

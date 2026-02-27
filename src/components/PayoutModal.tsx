@@ -7,7 +7,13 @@ type StripePayoutMode = "AUTO_PAYOUT" | "TRANSFER_ONLY";
 
 type SettingsResponse = {
   method: "STRIPE_CONNECT";
-  stripe: { accountId: string | null };
+  stripe: {
+    accountId: string | null;
+    detailsSubmitted: boolean;
+    payoutsEnabled: boolean;
+    chargesEnabled: boolean;
+    onboardingLastAt: string | null; // JSON date
+  };
 };
 
 function fmtMoney(cents: number, currency: string, locale?: string) {
@@ -59,6 +65,12 @@ export default function PayoutModal({
 
   const [loading, setLoading] = React.useState(true);
   const [stripeAccountId, setStripeAccountId] = React.useState<string | null>(null);
+  const [stripeStatus, setStripeStatus] = React.useState<null | {
+    detailsSubmitted: boolean;
+    payoutsEnabled: boolean;
+    chargesEnabled: boolean;
+    onboardingLastAt: string | null;
+  }>(null);
 
   const [requesting, setRequesting] = React.useState(false);
   const [msg, setMsg] = React.useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -70,19 +82,30 @@ export default function PayoutModal({
     message: string;
   }>(null);
 
-  const canRequest = availableCents >= 1000 && !!stripeAccountId;
+  const connected = !!stripeAccountId;
+  const onboardingOk =
+    Boolean(stripeStatus?.detailsSubmitted) && Boolean(stripeStatus?.payoutsEnabled);
 
-  const loadSettings = React.useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/payout/settings", { method: "GET", cache: "no-store" });
-      if (!res.ok) return;
-      const data = (await res.json()) as SettingsResponse;
-      setStripeAccountId(data?.stripe?.accountId ?? null);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const canRequest = availableCents >= 1000 && connected && onboardingOk;
+
+    const loadSettings = React.useCallback(async () => {
+      setLoading(true);
+      try {
+        const res = await fetch("/api/payout/settings", { method: "GET", cache: "no-store" });
+        if (!res.ok) return;
+        const data = (await res.json()) as SettingsResponse;
+
+        setStripeAccountId(data?.stripe?.accountId ?? null);
+        setStripeStatus({
+          detailsSubmitted: Boolean(data?.stripe?.detailsSubmitted),
+          payoutsEnabled: Boolean(data?.stripe?.payoutsEnabled),
+          chargesEnabled: Boolean(data?.stripe?.chargesEnabled),
+          onboardingLastAt: data?.stripe?.onboardingLastAt ?? null,
+        });
+      } finally {
+        setLoading(false);
+      }
+    }, []);
 
   React.useEffect(() => {
     void loadSettings();
@@ -281,15 +304,15 @@ export default function PayoutModal({
                   <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-black/30 border border-white/10">
                     <div className="text-[13px] text-white/75">
                       {locale === "de" ? "Status" : "Status"}:{" "}
-                      <span className={stripeAccountId ? "text-emerald-300" : "text-yellow-200"}>
-                        {stripeAccountId
-                          ? locale === "de"
-                            ? "Verbunden"
-                            : "Connected"
-                          : locale === "de"
-                          ? "Nicht verbunden"
-                          : "Not connected"}
-                      </span>
+                      {!connected ? (
+                        <span className="text-yellow-200">{locale === "de" ? "Nicht verbunden" : "Not connected"}</span>
+                      ) : onboardingOk ? (
+                        <span className="text-emerald-300">{locale === "de" ? "Bereit" : "Ready"}</span>
+                      ) : (
+                        <span className="text-yellow-200">
+                          {locale === "de" ? "Onboarding unvollständig" : "Onboarding incomplete"}
+                        </span>
+                      )}
                     </div>
 
                     <button
@@ -300,6 +323,14 @@ export default function PayoutModal({
                       {stripeAccountId ? t.openOnboarding : t.connect}
                     </button>
                   </div>
+
+                  {connected && !onboardingOk ? (
+                    <div className="rounded-xl border border-yellow-500/30 bg-yellow-500/10 p-3 text-[12px] text-yellow-100/90">
+                      {locale === "de"
+                        ? "Dein Stripe Express Onboarding ist noch nicht fertig. Bitte Onboarding öffnen und alle Schritte abschließen, damit Bank-Auszahlungen möglich sind."
+                        : "Your Stripe Express onboarding isn’t completed yet. Open onboarding and finish all steps to enable bank payouts."}
+                    </div>
+                  ) : null}
 
                   {stripeAccountId ? (
                     <div className="text-[12px] text-white/55">

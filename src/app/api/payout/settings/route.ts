@@ -18,12 +18,22 @@ export async function GET() {
       select: {
         payoutMethod: true,
         stripeAccountId: true,
+        stripeDetailsSubmitted: true,
+        stripePayoutsEnabled: true,
+        stripeChargesEnabled: true,
+        stripeOnboardingLastAt: true,
       },
     });
 
     return NextResponse.json({
       method: "STRIPE_CONNECT",
-      stripe: { accountId: u?.stripeAccountId ?? null },
+      stripe: {
+        accountId: u?.stripeAccountId ?? null,
+        detailsSubmitted: u?.stripeDetailsSubmitted ?? false,
+        payoutsEnabled: u?.stripePayoutsEnabled ?? false,
+        chargesEnabled: u?.stripeChargesEnabled ?? false,
+        onboardingLastAt: u?.stripeOnboardingLastAt ?? null,
+      },
     });
   } catch (e) {
     console.error("GET /api/payout/settings error:", e);

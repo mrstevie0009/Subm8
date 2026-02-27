@@ -126,6 +126,10 @@ model User {
   stripeConnectAccountId String? // nur für Dommes (Creator)
   stripeAccountId        String?         @unique
   payoutRequests         PayoutRequest[]
+  stripeDetailsSubmitted Boolean         @default(false)
+  stripePayoutsEnabled   Boolean         @default(false)
+  stripeChargesEnabled   Boolean         @default(false)
+  stripeOnboardingLastAt DateTime?
 
   emailVerificationCodes EmailVerificationCode[]
 
@@ -629,6 +633,18 @@ model Payment {
 enum FeePayer {
   USER
   PLATFORM
+}
+
+model StripeEvent {
+  id        String   @id // evt_...
+  type      String
+  livemode  Boolean  @default(false)
+  account   String? // Connected Account ID (event.account) falls vorhanden
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([type])
+  @@index([account])
 }
 
 model PayoutRequest {

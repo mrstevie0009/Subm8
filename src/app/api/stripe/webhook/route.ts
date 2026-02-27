@@ -172,6 +172,26 @@ export async function POST(req: Request) {
         return NextResponse.json({ ok: true });
       }
 
+      case "account.updated": {
+        // This event can be emitted for connected accounts (if your webhook is configured accordingly).
+        const acct = event.data.object as Stripe.Account;
+
+        const stripeAccountId = acct.id;
+
+        // Update cached onboarding flags for the user owning this connected account
+        await prisma.user.updateMany({
+          where: { stripeAccountId },
+          data: {
+            stripeDetailsSubmitted: Boolean(acct.details_submitted),
+            stripePayoutsEnabled: Boolean(acct.payouts_enabled),
+            stripeChargesEnabled: Boolean(acct.charges_enabled),
+            stripeOnboardingLastAt: new Date(),
+          },
+        });
+
+        return NextResponse.json({ ok: true });
+      }
+
       /**
        * ===========================
        *  EXISTING TIP PAYMENTS
