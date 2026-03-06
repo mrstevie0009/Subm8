@@ -32,7 +32,6 @@ export default function ChatThreadPage() {
       try {
         const res = await fetch(`/api/chat/meta/${id}`, { 
           cache: 'no-store',
-          // ✅ Priorisieren für schnelleren Fetch
           priority: 'high' as RequestPriority,
         });
         
@@ -53,12 +52,10 @@ export default function ChatThreadPage() {
     return () => { cancelled = true; };
   }, [id]);
 
-  // ✅ Optimistic skeleton - zeigt sofort UI
   if (!meta) {
     return <ClientThread />;
   }
 
-  // ✅ Error states
   if (!meta.ok) {
     const msg =
       status === 401 ? 'Not authenticated' :
