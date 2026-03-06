@@ -1,13 +1,13 @@
-// src/components/GroupThread.tsx
+// src/components/ClientThread.tsx
 'use client';
 
 import * as React from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import Image from 'next/image';
-import ChatHeader from '@/components/ChatHeaderGroup';
-import ChatComposer from '@/components/ChatGroupComposer';
-import type { ReplyTargetLite } from '@/components/ChatGroupComposer';
+import ChatHeader from '@/components/chat/ChatHeader';
+import ChatComposer from '@/components/chat/ChatComposer';
+import type { ReplyTargetLite } from '@/components/chat/ChatComposer';
 import TipModal from '@/components/TipModal';
 import TipRequestAcceptModal from '@/components/TipRequestAcceptModal';
 import OwnershipRequestAcceptModal from '@/components/OwnershipRequestAcceptModal';
@@ -27,23 +27,14 @@ type DbRole = 'DOMME' | 'SUBMISSIVE';
 type UiMessage = ChatMessage & {
   mediaUrl?: string;
   mediaType?: string;
+  optimistic?: boolean;
+  pending?: boolean;
+  failed?: boolean;
 };
 
-type MetaOk = {
-  ok: true;
-  id: string;
-  type: 'DM' | 'GROUP';
-  member: true;
-  role?: 'ADMIN' | 'MEMBER';
-  title: string | null;
-  memberCount?: number;
-  avatarUrl?: string | null;
-};
-type MetaErr = { ok: false; type: 'DM' | 'GROUP'; member: false; error: string };
-
-type Meta = MetaOk | MetaErr;
-
-const isMetaOk = (m: Meta | null): m is MetaOk => !!m && m.ok === true;
+type Meta =
+  | { ok:true; id:string; type:'DM'|'GROUP'; member:true; role?: 'ADMIN'|'MEMBER'; title:string|null }
+  | { ok:false; type:'DM'|'GROUP'; member:false; error:string };
 
 function extractError(x: unknown): string | null {
   if (x && typeof x === 'object' && 'error' in x) {
@@ -51,6 +42,10 @@ function extractError(x: unknown): string | null {
     return typeof v === 'string' ? v : null;
   }
   return null;
+}
+
+function isOptimistic(m: UiMessage): m is UiMessage & { optimistic: true } {
+  return m.optimistic === true;
 }
 
 function useChatMetaBaseUrl(id: string) {
@@ -65,7 +60,6 @@ function useChatMetaBaseUrl(id: string) {
         setMetaErr(null);
         const r = await fetch(`/api/chat/meta/${id}`, { cache: 'no-store' });
         const j = (await r.json()) as Meta;
-        setMeta(j);
         if (cancelled) return;
         setMeta(j);
         if (!r.ok) {
@@ -86,7 +80,7 @@ function useChatMetaBaseUrl(id: string) {
     return kind === 'group' ? `/api/chat/group/${id}` : `/api/chat/${id}`;
   }, [kind, id]);
 
-  return { kind, baseUrl, meta, metaErr, setMeta };
+  return { kind, baseUrl, meta, metaErr };
 }
 
 /* ========= (1) STABIL: shallowEqualMsg + stableMergeMessages im Modul-Scope ========= */
@@ -134,7 +128,6 @@ function prependUnique(prev: UiMessage[], incoming: UiMessage[]) {
 }
 
 const AVATAR_PH = '/images/avatar-placeholder.png';
-const safeAvatar = (s?: string | null) => (s && s.trim().length ? s : AVATAR_PH);
 
 /* ------------ Envelope helpers ------------ */
 const TIPREQ_PREFIX = 'TIPREQ::';
@@ -458,15 +451,7 @@ function AudioBubble({
   return (
     <div className="flex items-center gap-3 w-full max-w-full">
       <div className="relative shrink-0 w-10 h-10 rounded-full overflow-hidden border border-white/10">
-        <Image
-            src={safeAvatar(avatarUrl)}
-            alt=""
-            fill
-            sizes="40px"
-            className="object-cover"
-            priority={false}
-            unoptimized
-        />
+        <Image src={avatarUrl ?? AVATAR_PH} alt="" fill sizes="40px" className="object-cover" priority={false} />
       </div>
 
       <div className={`flex items-center gap-3 rounded-2xl px-3 py-2 ${bubbleBase} w-0 flex-1 min-w-0`}>
@@ -1077,43 +1062,6 @@ function TypingDots({ mine = false }: { mine?: boolean }) {
   );
 }
 
-function ChatRow({
-  mine,
-  avatarUrl,
-  name,
-  handle,
-  children,
-}: {
-  mine: boolean;
-  avatarUrl?: string | null;
-  name?: string | null;
-  handle?: string | null;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className={`flex items-start gap-2 ${mine ? 'justify-end' : 'justify-start'}`}>
-      {/* Avatar */}
-      <div className={`relative w-8 h-8 rounded-full overflow-hidden border border-white/12 shrink-0 ${mine ? 'order-2' : ''}`}>
-        <Image
-            src={safeAvatar(avatarUrl)}
-            alt=""
-            fill
-            sizes="32px"
-            className="object-cover"
-            unoptimized
-        />
-      </div>
-
-      {/* Inhalt */}
-      <div className={`min-w-0 ${mine ? 'order-1 items-end text-right' : ''}`}>
-        <div className={`text-[11px] text-white/60 mb-1 ${mine ? 'opacity-80' : ''}`}>
-          {name || 'User'}{handle ? ` · @${handle}` : ''}
-        </div>
-        {children}
-      </div>
-    </div>
-  );
-}
 
 /* ------------ Long-Press + ContextMenu helper ------------ */
 function useLongPress(
@@ -1232,7 +1180,7 @@ function ActionsPopover({ state, onClose, onReply, onReact }: {
           ))}
           <button
             type="button"
-            className="ml-1 px-2 py-1 text-sm rounded-lg border border-white/15 hover:bg-white/10"
+            className="ml-1 px-2 py-1 text-sm rounded-lg border border-white/15 hover:bg-white/10 navigator.vibrate?.(10)"
             onClick={() => setShowPicker(true)}
             aria-label={t('actions.moreEmojis')}
             title={t('actions.moreEmojis')}
@@ -1398,28 +1346,13 @@ export default function ChatThreadPage() {
   const t = useTranslations('chat.chatThread');
   const tVerify = useTranslations('verify');
   const { id } = useParams<{ id: string }>();
-  const { kind, baseUrl, meta, setMeta } = useChatMetaBaseUrl(String(id));
+  const { kind, baseUrl, meta } = useChatMetaBaseUrl(String(id));
   const searchParams = useSearchParams();
   const locale = useLocale();
   const router = useRouter();
   const { data: session } = useSession();
   const ageOk = !!session?.user?.ageVerified;
   const [replyTarget, setReplyTarget] = React.useState<ReplyTargetLite | null>(null);
-
-  type GroupAvatarUpdatedDetail = {
-    conversationId: string | number;
-    url?: string | null;
-    };
-
-  React.useEffect(() => {
-    const onUpd = (ev: Event) => {
-        const { conversationId, url } = (ev as CustomEvent<GroupAvatarUpdatedDetail>).detail ?? {};
-        if (String(conversationId) !== String(id) || !url) return;
-        setMeta((m) => (isMetaOk(m) ? { ...m, avatarUrl: url ?? undefined } : m));
-    };
-    window.addEventListener('chat:group-avatar-updated', onUpd as EventListener);
-    return () => window.removeEventListener('chat:group-avatar-updated', onUpd as EventListener);
-    }, [id, setMeta]);
 
   const startAgeVerification = React.useCallback(async () => {
     try {
@@ -1444,10 +1377,6 @@ export default function ChatThreadPage() {
   const [meRole, setMeRole] = React.useState<'domme' | 'submissive' | null>(null);
   const [meAvatarUrl, setMeAvatarUrl] = React.useState<string | null>(null);
 
-  // 🟣 NEW: Gruppen-Member Metadaten (Map nach id)
-  type MemberMeta = { id: string; handle?: string | null; displayName?: string | null; avatarUrl?: string | null };
-  const [memberById, setMemberById] = React.useState<Record<string, MemberMeta>>({});
-
   const [other, setOther] = React.useState<{
     id: string;
     username: string;
@@ -1469,14 +1398,11 @@ export default function ChatThreadPage() {
 
   const [otherTyping, setOtherTyping] = React.useState(false);
 
-
   const [olderCursor, setOlderCursor] = React.useState<string | null>(null);
   const [loadingOlder, setLoadingOlder] = React.useState(false);
   const [hasMoreOlder, setHasMoreOlder] = React.useState(true);
 
   const [newestCursor, setNewestCursor] = React.useState<string | null>(null);
-
-  const [groupMemberCount, setGroupMemberCount] = React.useState<number | undefined>(undefined);
 
   const [tipOpen, setTipOpen] = React.useState(false);
   const [accept, setAccept] = React.useState<{
@@ -1512,36 +1438,6 @@ export default function ChatThreadPage() {
     }
     }, [id, kind, other]);
 
-    const [stickBottom, setStickBottom] = React.useState(true);
-    const scrollToBottom = React.useCallback((behavior: ScrollBehavior = 'auto') => {
-      const el = scrollerRef.current;
-      if (!el) return;
-      el.scrollTo({ top: el.scrollHeight, behavior });
-    }, []);
-
-    const loadNewerSince = React.useCallback(async () => {
-    if (!baseUrl || !newestCursor) return;
-    try {
-      const r = await fetch(`${baseUrl}?since=${encodeURIComponent(newestCursor)}&take=50`, { cache: 'no-store' });
-      const j: ThreadResponse = await r.json();
-      if (!j.ok) throw new Error(j.error || 'poll failed');
-
-      const mapped: UiMessage[] = (j as ThreadOk).messages.map((m) => ({
-        id: m.id, convoId: String(id), senderId: m.authorId,
-        text: m.text ?? (m.mediaUrl ? '' : ''), createdAt: m.at, seen: m.read,
-        mediaUrl: m.mediaUrl ?? undefined, mediaType: m.mediaType ?? undefined,
-      }));
-      if (!mapped.length) return;
-
-      setMessages(prev => appendUnique(prev, mapped));
-
-      const last = mapped[mapped.length - 1];
-      setNewestCursor(`${new Date(last.createdAt).getTime()}_${last.id}`);
-
-      if (stickBottom) scrollToBottom('smooth');
-    } catch {}
-  }, [baseUrl, id, newestCursor, stickBottom, scrollToBottom]);
-
   const didMarkReadRef = React.useRef(false);
   React.useEffect(() => {
     if (didMarkReadRef.current || !baseUrl) return;
@@ -1558,13 +1454,6 @@ export default function ChatThreadPage() {
   const [ownToAccept, setOwnToAccept] = React.useState<OwnershipReqPayload | null>(null);
 
   const mapRole = React.useCallback((r: DbRole): 'domme' | 'submissive' => (r === 'DOMME' ? 'domme' : 'submissive'), []);
-
-  // 🟣 NEW: Sender-Meta für Gruppen/DM
-  const getSenderMeta = React.useCallback((uid: string) => {
-    if (uid === meId) return { displayName: t('you'), handle: null as string | null, avatarUrl: meAvatarUrl };
-    const m = memberById[uid];
-    return m ?? { displayName: 'User', handle: null, avatarUrl: AVATAR_PH };
-  }, [meId, meAvatarUrl, memberById, t]);
 
   /* ========= (3) Anti-Race: letzte Request-ID merken ========= */
   const latestReqRef = React.useRef(0);
@@ -1605,44 +1494,6 @@ export default function ChatThreadPage() {
       });
       setViewerHasBlocked(json.viewerHasBlocked ?? false);
       setIsBlockedByOther(json.isBlockedByOther ?? false);
-
-      // Wenn Group: Mitglieder aus der Antwort zählen und für den Header merken
-    if (kind === 'group') {
-        const maybeGroup = (json as Record<string, unknown>)?.['group'];
-        let cnt: number | undefined = undefined;
-        if (maybeGroup && typeof maybeGroup === 'object') {
-            const members = (maybeGroup as { members?: unknown }).members;
-            if (Array.isArray(members)) cnt = members.length;
-        }
-         setGroupMemberCount(cnt);
-
-        // 🟣 NEW: Member-Map idempotent befüllen
-        const rawMembers = (maybeGroup as { members?: unknown }).members;
-        const members = Array.isArray(rawMembers) ? (rawMembers as MemberMeta[]) : [];
-        if (members.length) {
-          setMemberById(prev => {
-            const next = { ...prev };
-            for (const m of members) {
-              if (!m?.id) continue;
-              const prevM = next[m.id];
-              if (
-                !prevM ||
-                prevM.displayName !== (m.displayName ?? null) ||
-                prevM.handle !== (m.handle ?? null) ||
-                prevM.avatarUrl !== (m.avatarUrl ?? null)
-              ) {
-                next[m.id] = {
-                  id: m.id,
-                  handle: m.handle ?? null,
-                  displayName: m.displayName ?? null,
-                  avatarUrl: m.avatarUrl ?? null,
-                };
-              }
-            }
-            return next;
-          });
-        }
-        }
 
       const disabled = (json.viewerHasBlocked ?? false) || (json.isBlockedByOther ?? false);
 
@@ -1738,45 +1589,6 @@ export default function ChatThreadPage() {
       });
       setViewerHasBlocked(json.viewerHasBlocked ?? false);
       setIsBlockedByOther(json.isBlockedByOther ?? false);
-
-      // Wenn Group: schnellen Count aus der Fast-Antwort übernehmen
-    if (kind === 'group') {
-        const maybeGroup = (json as Record<string, unknown>)?.['group'];
-        let cnt: number | undefined = undefined;
-        if (maybeGroup && typeof maybeGroup === 'object') {
-            const members = (maybeGroup as { members?: unknown }).members;
-            if (Array.isArray(members)) cnt = members.length;
-        }
-         setGroupMemberCount(cnt);
-
-        // 🟣 NEW: Member-Map idempotent befüllen (Fast-Paint)
-        const rawMembers = (maybeGroup as { members?: unknown }).members;
-        const members = Array.isArray(rawMembers) ? (rawMembers as MemberMeta[]) : [];
-        if (members.length) {
-          setMemberById(prev => {
-            const next = { ...prev };
-            for (const m of members) {
-              if (!m?.id) continue;
-              const prevM = next[m.id];
-              if (
-                !prevM ||
-                prevM.displayName !== (m.displayName ?? null) ||
-                prevM.handle !== (m.handle ?? null) ||
-                prevM.avatarUrl !== (m.avatarUrl ?? null)
-              ) {
-                next[m.id] = {
-                  id: m.id,
-                  handle: m.handle ?? null,
-                  displayName: m.displayName ?? null,
-                  avatarUrl: m.avatarUrl ?? null,
-                };
-              }
-            }
-            return next;
-          });
-        }
-        }
-
       if (kind === 'dm') {
         setOther(prev => {
             const o = (json as ThreadOk).other;
@@ -1824,8 +1636,7 @@ export default function ChatThreadPage() {
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load');
     } finally {
-      if (myReq === latestReqRef.current) setLoading(false); // ← UI sofort „da“
-      // Danach still den „vollen“ Load fürs Read-Mark + ggf. mehr Messages
+      if (myReq === latestReqRef.current) setLoading(false);
       void load();
     }
   }, [id, baseUrl, kind, load, mapRole]);
@@ -1858,13 +1669,44 @@ export default function ChatThreadPage() {
     }
     }, [id, kind, other]);
 
+  const [stickBottom, setStickBottom] = React.useState(true);
+  const scrollToBottom = React.useCallback((behavior: ScrollBehavior = 'auto') => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior });
+  }, []);
+    
+  const loadNewerSince = React.useCallback(async () => {
+    if (!baseUrl || !newestCursor) return;
+    try {
+      const r = await fetch(`${baseUrl}?since=${encodeURIComponent(newestCursor)}&take=50`, { cache: 'no-store' });
+      const j: ThreadResponse = await r.json();
+      if (!j.ok) throw new Error(j.error || 'poll failed');
+
+      const mapped: UiMessage[] = (j as ThreadOk).messages.map((m) => ({
+        id: m.id, convoId: String(id), senderId: m.authorId,
+        text: m.text ?? (m.mediaUrl ? '' : ''), createdAt: m.at, seen: m.read,
+        mediaUrl: m.mediaUrl ?? undefined, mediaType: m.mediaType ?? undefined,
+      }));
+      if (!mapped.length) return;
+
+      setMessages(prev => appendUnique(prev, mapped));
+
+      const last = mapped[mapped.length - 1];
+      setNewestCursor(`${new Date(last.createdAt).getTime()}_${last.id}`);
+
+      if (stickBottom) scrollToBottom('smooth');
+    } catch {}
+  }, [baseUrl, id, newestCursor, stickBottom, scrollToBottom]);
+
   /* ========= (4) Polling stabil halten + Visibility beachten ========= */
   React.useEffect(() => {
     if (!baseUrl) return; 
     let cancelled = false;
     (async () => {
-      if (!cancelled) await loadFastFirstPaint(); 
+      if (!cancelled) await loadFastFirstPaint(); // macht initial latest=1 und setzt newestCursor
     })();
+    // ▼▼▼ NEU: Polling nur "since"
     const tick = () => { if (!document.hidden) void loadNewerSince(); };
     const tmr = setInterval(tick, 4000);
     return () => {
@@ -1903,58 +1745,99 @@ export default function ChatThreadPage() {
 
   const sendMessage = React.useCallback(
     async ({ text, file }: { text: string; file?: File }) => {
-      if (viewerHasBlocked || isBlockedByOther || !baseUrl) return;
+      if (viewerHasBlocked || isBlockedByOther || !baseUrl || !meId) return;
 
-      // Netzwerk
-      if (file) {
-        // 1) Presign für chat-media holen
-        const pre = await fetch(`/api/upload-urls?kind=chat-media`, {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ files: [{ name: file.name, type: file.type || 'application/octet-stream' }] }),
-        });
-        if (!pre.ok) throw new Error('Failed to presign upload URL');
-        const pj = await pre.json();
-        const item = pj?.items?.[0];
-        if (!item?.uploadUrl || !item?.publicUrl) throw new Error('Invalid presign response');
+      const trimmedText = text.trim();
+      if (!trimmedText && !file) return;
 
-        // 2) Direkt in R2 hochladen
-        const put = await fetch(item.uploadUrl, {
-          method: 'PUT',
-          headers: { 'content-type': file.type || 'application/octet-stream' },
-          body: file,
-        });
-        if (!put.ok) throw new Error('Upload to R2 failed');
+      // ✅ Optimistische Nachricht erstellen
+      const optimisticId = `opt-${Date.now()}-${Math.random()}`;
+      const optimisticMsg: UiMessage = {
+        id: optimisticId,
+        convoId: String(id),
+        senderId: meId,
+        text: trimmedText,
+        createdAt: new Date().toISOString(),
+        seen: false,
+        mediaUrl: file ? URL.createObjectURL(file) : undefined,
+        mediaType: file?.type,
+        optimistic: true,
+        pending: true,
+      };
 
-        // 3) Chat-Message als JSON mit mediaUrl + mediaType anlegen
-        await fetch(`${baseUrl}`, { 
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({
-            text,
-            mediaUrl: item.publicUrl,
-            mediaType: file.type || 'application/octet-stream',
-          }),
-        });
-      } else {
-        await fetch(`${baseUrl}`, {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ text }),
-        });
-      }
+      // ✅ Sofort zur UI hinzufügen
+      setMessages(prev => [...prev, optimisticMsg]);
 
-      // 1x laden
-      await load();
-
-      // nach DOM-Commit + evtl. Bildlayout nochmal sicher nach unten
+      // Scroll to bottom
       requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          scrollToBottom('smooth');
-        });
+        scrollToBottom('smooth');
       });
+
+      try {
+        // Netzwerk-Request
+        if (file) {
+          const pre = await fetch(`/api/upload-urls?kind=chat-media`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ files: [{ name: file.name, type: file.type || 'application/octet-stream' }] }),
+          });
+          if (!pre.ok) throw new Error('Failed to presign');
+          const pj = await pre.json();
+          const item = pj?.items?.[0];
+          if (!item?.uploadUrl || !item?.publicUrl) throw new Error('Invalid presign');
+
+          const put = await fetch(item.uploadUrl, {
+            method: 'PUT',
+            headers: { 'content-type': file.type || 'application/octet-stream' },
+            body: file,
+          });
+          if (!put.ok) throw new Error('Upload failed');
+
+          await fetch(`${baseUrl}`, { 
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({
+              text: trimmedText,
+              mediaUrl: item.publicUrl,
+              mediaType: file.type || 'application/octet-stream',
+            }),
+          });
+        } else {
+          await fetch(`${baseUrl}`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ text: trimmedText }),
+          });
+        }
+
+        // ✅ Erfolg: Als gesendet markieren
+        setMessages(prev =>
+          prev.map(m =>
+            m.id === optimisticId
+              ? { ...m, pending: false }
+              : m
+          )
+        );
+
+        // Echte Nachricht vom Server holen
+        await load();
+
+        // ✅ Optimistische Nachricht entfernen (Ersetzung durch echte)
+        setMessages(prev => prev.filter(m => m.id !== optimisticId));
+
+      } catch (err) {
+        // ✅ Fehler: Als fehlgeschlagen markieren
+        console.error('Failed to send message:', err);
+        setMessages(prev =>
+          prev.map(m =>
+            m.id === optimisticId
+              ? { ...m, pending: false, failed: true }
+              : m
+          )
+        );
+      }
     },
-    [baseUrl, load, viewerHasBlocked, isBlockedByOther, scrollToBottom]
+    [baseUrl, load, viewerHasBlocked, isBlockedByOther, scrollToBottom, meId, id]
   );
 
   const raf = () => new Promise<void>(r => requestAnimationFrame(() => r()));
@@ -2184,34 +2067,6 @@ export default function ChatThreadPage() {
     const mine = meId ? m.senderId === meId : false;
     React.useDebugValue(rxKey);
 
-    // 🟣 NEW: Sender-Meta + Wrapper für Gruppenlayout
-    const sender = getSenderMeta(m.senderId);
-
-    function Wrap({ children }: { children: React.ReactNode; rx?: Record<string, { count: number; by: Set<string> }> }) {
-      if (kind === 'group') {
-        return (
-          <ChatRow
-            mine={mine}
-            avatarUrl={mine ? meAvatarUrl : sender.avatarUrl}
-            name={mine ? t('you') : (sender.displayName || 'User')}
-            handle={mine ? null : (sender.handle || null)}
-          >
-            {children}
-          </ChatRow>
-        );
-      }
-      // DM: Original-Layout
-      return (
-        <div className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
-          {children}
-        </div>
-      );
-    }
-
-    function BubbleContainer({ children }: { children: React.ReactNode }) {
-      return <div className="relative max-w-[75%] w-fit pb-5">{children}</div>;
-    }
-
     const longPress = useLongPress(
       (e) => openActionsAt(e, m.id, mine),
       { delay: 420 }
@@ -2260,8 +2115,8 @@ export default function ChatThreadPage() {
         : 'bg-white/[.07] border-white/10';
       const reactions = reactionsByMsg.get(m.id);
       return (
-        <Wrap rx={reactions}>
-            <BubbleContainer>
+        <div className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
+          <div className="relative max-w-[75%] w-fit pb-5">
             <div
               className={`inline-block rounded-2xl px-3 py-2 border break-words ${bubbleCls}`}
               title={new Date(m.createdAt).toLocaleString()}
@@ -2284,8 +2139,8 @@ export default function ChatThreadPage() {
               </div>
             </div>
             <ReactionsCorner mine={mine} summary={reactions} />
-          </BubbleContainer>
-        </Wrap>
+          </div>
+        </div>
       );
     }
 
@@ -2525,35 +2380,33 @@ export default function ChatThreadPage() {
     if (m.mediaUrl && (isImage(m.mediaUrl, m.mediaType) || isVideo(m.mediaUrl, m.mediaType))) {
       const reactions = reactionsByMsg.get(m.id);
       return (
-        <Wrap rx={reactions}>
-          <BubbleContainer>
-            <div className="relative inline-block" {...longPress}>
-              {!ageOk ? (
-                <ChatBlurredMediaGate
-                  mediaUrl={isImage(m.mediaUrl, m.mediaType) ? m.mediaUrl : undefined}
-                  onStartVeriff={startAgeVerification}
-                  title={tVerify('modal.title')}
-                  subtitle={tVerify('modal.message')}
-                  cta={tVerify('modal.confirm')}
-                />
-              ) : isVideo(m.mediaUrl, m.mediaType) ? (
-                <video
-                  src={m.mediaUrl}
-                  controls
-                  playsInline
-                  className="block max-w-[75vw] md:max-w-[560px] h-auto max-h-[60vh] rounded-xl border border-white/10 object-contain"
-                />
-              ) : (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={m.mediaUrl}
-                  alt=""
-                  loading="lazy"
-                  decoding="async"
-                  className="block max-w-[75vw] md:max-w-[560px] h-auto max-h-[60vh] rounded-xl border border-white/10 object-contain"
-                />
-              )}
-            </div>
+        <div className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
+          <div className="relative inline-block pb-5" {...longPress}>
+            {!ageOk ? (
+              <ChatBlurredMediaGate
+                mediaUrl={isImage(m.mediaUrl, m.mediaType) ? m.mediaUrl : undefined}
+                onStartVeriff={startAgeVerification}
+                title={tVerify('modal.title')}
+                subtitle={tVerify('modal.message')}
+                cta={tVerify('modal.confirm')}
+              />
+            ) : isVideo(m.mediaUrl, m.mediaType) ? (
+              <video
+                src={m.mediaUrl}
+                controls
+                playsInline
+                className="block max-w-[75vw] md:max-w-[560px] h-auto max-h-[60vh] rounded-xl border border-white/10 object-contain"
+              />
+            ) : (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={m.mediaUrl}
+                alt=""
+                loading="lazy"
+                decoding="async"
+                className="block max-w-[75vw] md:max-w-[560px] h-auto max-h-[60vh] rounded-xl border border-white/10 object-contain"
+              />
+            )}
 
             {m.text && (
               <div className={`mt-1 text-[13px] ${mine ? 'text-white/90' : 'text-white/80'}`}>
@@ -2566,37 +2419,33 @@ export default function ChatThreadPage() {
             </div>
 
             <ReactionsCorner mine={mine} summary={reactions} />
-          </BubbleContainer>
-        </Wrap>
+          </div>
+        </div>
       );
     }
 
     /* ---------------- AUDIO ---------------- */
     if (m.mediaUrl && isAudio(m.mediaUrl, m.mediaType)) {
-        const reactions = reactionsByMsg.get(m.id);
-        const sender = getSenderMeta(m.senderId);
+      const reactions = reactionsByMsg.get(m.id);
+      return (
+        <div className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
+          <div className="relative inline-block pb-5 w-full max-w-[75vw] md:max-w-[560px]" {...longPress}>
+            <AudioBubble src={m.mediaUrl} mine={mine} avatarUrl={mine ? meAvatarUrl : other?.avatarUrl} />
+            {m.text && (
+              <div className={`mt-1 ${mine ? 'text-white' : 'text-white/90'}`}>
+                <RichText text={m.text} locale={locale} validateMentions variant={mine ? 'chat' : 'default'} />
+              </div>
+            )}
 
-        return (
-            <Wrap rx={reactions}>
-            <div className="relative inline-block pb-5 w-full max-w-[75vw] md:max-w-[560px]" {...longPress}>
-                <AudioBubble
-                src={m.mediaUrl}
-                mine={mine}
-                avatarUrl={mine ? meAvatarUrl : sender.avatarUrl}
-                />
-                {m.text && (
-                <div className={`mt-1 ${mine ? 'text-white' : 'text-white/90'}`}>
-                    <RichText text={m.text} locale={locale} validateMentions variant={mine ? 'chat' : 'default'} />
-                </div>
-                )}
-                <div className="text-[11px] mt-1 text-white/60 text-right">
-                {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </div>
-                <ReactionsCorner mine={mine} summary={reactions} />
+            <div className="text-[11px] mt-1 text-white/60 text-right">
+              {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </div>
-            </Wrap>
-        );
-        }
+
+            <ReactionsCorner mine={mine} summary={reactions} />
+          </div>
+        </div>
+      );
+    }
 
     /* ---------------- INVITE LINK PREVIEW ---------------- */
     const inv = parseInviteLink(m.text);
@@ -2673,13 +2522,13 @@ export default function ChatThreadPage() {
     }
 
     /* ---------------- TEXT ---------------- */
-     const mineBubble = mine
+    const mineBubble = mine
       ? 'bg-[var(--purple)]/90 border-[var(--purple)]/40 text-white'
       : 'bg-white/[.07] border-white/10';
     const reactions = reactionsByMsg.get(m.id);
     return (
-      <Wrap rx={reactions}>
-        <BubbleContainer>
+      <div className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
+        <div className="relative max-w-[75%] w-fit pb-5">
           <div
             className={`inline-block rounded-2xl px-3 py-2 border break-words ${mineBubble}`}
             title={new Date(m.createdAt).toLocaleString()}
@@ -2698,13 +2547,28 @@ export default function ChatThreadPage() {
                 variant={mine ? 'chat' : 'default'}
               />
             )}
-            <div className={`text-[11px] mt-1 opacity-80 ${mine ? 'text-white/80' : 'text-white/70'}`}>
+            {/* ✅ ERSETZE DIESE ZEILE: */}
+            <div className={`text-[11px] mt-1 opacity-80 flex items-center gap-1 ${mine ? 'text-white/80' : 'text-white/70'}`}>
               {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              
+              {/* ✅ NEU: Status-Indikatoren */}
+              {mine && isOptimistic(m) && m.pending && (
+                <span className="text-white/50" title="Wird gesendet...">⏳</span>
+              )}
+              {mine && isOptimistic(m) && m.failed && (
+                <span className="text-red-400" title="Senden fehlgeschlagen">❌</span>
+              )}
+              {mine && isOptimistic(m) && !m.pending && !m.failed && (
+                <span className="text-white/70" title="Gesendet">✓</span>
+              )}
+              {mine && !isOptimistic(m) && (
+                <span className="text-white/70" title="Zugestellt">✓✓</span>
+              )}
             </div>
           </div>
           <ReactionsCorner mine={mine} summary={reactions} />
-        </BubbleContainer>
-      </Wrap>
+        </div>
+      </div>
     );
   },(prev, next) => {
       return prev.m === next.m && prev.rxKey === next.rxKey;
@@ -2713,9 +2577,6 @@ export default function ChatThreadPage() {
   return (
     <>
       <ChatHeader
-        mode={kind === 'group' ? 'group' : 'dm'}
-        conversationId={String(id)} 
-        groupAvatarUrl={isMetaOk(meta) ? (meta.avatarUrl ?? null) : null}
         other={kind === 'dm'
             ? (other ?? placeholderOther)
             : {
@@ -2732,11 +2593,6 @@ export default function ChatThreadPage() {
         viewerHasBlocked={viewerHasBlocked}
         isBlockedByOther={isBlockedByOther}
         loading={loading || (kind === 'dm' && !other)}
-        
-        title={meta?.ok ? (meta.title ?? 'Group') : undefined}
-        memberCount={(meta && meta.ok && typeof meta.memberCount === 'number')
-        ? meta.memberCount
-        : groupMemberCount}
         />
 
       <main
@@ -2795,53 +2651,61 @@ export default function ChatThreadPage() {
 
       {/* Composer */}
       <ChatComposer
-        mode="group"
-        onTypingPing={async (active) => {
-          if (!baseUrl) return;
-          try {
-            await fetch(`${baseUrl}`, {
-              method: 'POST',
-              headers: { 'content-type': 'application/json' },
-              body: JSON.stringify({ typing: !!active }),
-            });
-          } catch {}
-        }}
-        loading={!composerReady}    
-        viewerRole={meRole ?? 'submissive'}
-        disabled={disabled || !composerReady}
-        disabledNotice={disabled ? disabledNotice : (!composerReady ? t('loading') : undefined)}
-        selfUserId={meId ?? ''}
-        targetHandle={kind === 'dm' ? (other?.username ?? undefined) : undefined}
-        onSend={async (text) => {
-          if (!composerReady) return;
-          await pinAndSend(text);          // Promise an den Composer zurückgeben
-        }}
-        onTip={() => composerReady ? setTipOpen(true) : undefined}
-        onUpload={(file, caption) => composerReady ? sendMessage({ text: caption || '', file }) : undefined}
-        replyTo={replyTarget}
-        onCancelReply={() => setReplyTarget(null)}
-        onCreateReply={async (p) => {
-          if (!composerReady) return;
-          setStickBottom(true);
-          await new Promise<void>(r => requestAnimationFrame(() => requestAnimationFrame(() => r())));
-          scrollToBottom('auto');
-          await sendMessage({ text: `${REPLY_PREFIX}${JSON.stringify({ to: p.to, text: p.text })}` });
-          setReplyTarget(null);
-        }}
-        onCreateTipRequest={async (p) => {
-          if (!composerReady) return;
-          const { amountCents, currency = 'EUR', note } = p;
-          const payload = { amountCents, currency, note: note?.trim() || undefined };
-          await sendMessage({ text: `${TIPREQ_PREFIX}${JSON.stringify(payload)}` });
-        }}
+      // mode kannst du gleich drin lassen, dazu gleich mehr
+      mode="dm"
+      onTypingPing={async (active) => {
+        if (!baseUrl) return;
+        try {
+          await fetch(`${baseUrl}`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ typing: !!active }),
+          });
+        } catch {}
+      }}
+      viewerRole={meRole ?? 'submissive'}
+      disabled={disabled || !composerReady}
+      disabledNotice={disabled ? disabledNotice : (!composerReady ? t('loading') : undefined)}
+      selfUserId={meId ?? ''}
 
-        onCreateAutoDrainRequest={async (p) => {
-          if (!composerReady) return;
-          const { amountCents, currency = 'EUR', cadence } = p;
-          const payload = { amountCents, currency, cadence };
-          await sendMessage({ text: `${ADREQ_PREFIX}${JSON.stringify(payload)}` });
-        }}
-      />
+      // ⬇️ HIER: immer ein string, nie undefined
+      targetHandle={kind === 'dm' ? (other?.username ?? '') : ''}
+
+      onSend={async (text) => {
+        if (!composerReady) return;
+        await pinAndSend(text);
+      }}
+      onTip={() => (composerReady ? setTipOpen(true) : undefined)}
+      onUpload={(file, caption) =>
+        composerReady ? sendMessage({ text: caption || '', file }) : undefined
+      }
+      replyTo={replyTarget}
+      onCancelReply={() => setReplyTarget(null)}
+      onCreateReply={async (p) => {
+        if (!composerReady) return;
+        setStickBottom(true);
+        await new Promise<void>((r) =>
+          requestAnimationFrame(() => requestAnimationFrame(() => r())),
+        );
+        scrollToBottom('auto');
+        await sendMessage({
+          text: `${REPLY_PREFIX}${JSON.stringify({ to: p.to, text: p.text })}`,
+        });
+        setReplyTarget(null);
+      }}
+      onCreateTipRequest={async (p) => {
+        if (!composerReady) return;
+        const { amountCents, currency = 'EUR', note } = p;
+        const payload = { amountCents, currency, note: note?.trim() || undefined };
+        await sendMessage({ text: `${TIPREQ_PREFIX}${JSON.stringify(payload)}` });
+      }}
+      onCreateAutoDrainRequest={async (p) => {
+        if (!composerReady) return;
+        const { amountCents, currency = 'EUR', cadence } = p;
+        const payload = { amountCents, currency, cadence };
+        await sendMessage({ text: `${ADREQ_PREFIX}${JSON.stringify(payload)}` });
+      }}
+    />
 
       {/* Modals */}
       {kind === 'dm' && other && (

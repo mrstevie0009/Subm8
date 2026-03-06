@@ -648,7 +648,11 @@ function ChatRow({
   return (
   <div
     ref={rowRef}
-    className="relative rounded-app border border-sub bg-card hover:bg-white/5 cursor-pointer overflow-hidden"
+      className={`relative rounded-app border cursor-pointer overflow-hidden ${
+        c.unread > 0 
+          ? 'border-[var(--purple)]/30 bg-white/[.04]' 
+          : 'border-sub bg-card hover:bg-white/5'
+      }`}
     role="link"
     tabIndex={0}
     onClick={openChat}
@@ -684,6 +688,11 @@ function ChatRow({
     onPointerLeave={handlePointerLeave}
     onContextMenu={handleContextMenu}
   >
+    {/* ✨ Unread Indicator - Links */}
+    {c.unread > 0 && (
+      <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-gradient-to-b from-[var(--purple)] to-[var(--purple)]/60 rounded-l-app" />
+    )}
+
     {/* 🔹 Grauer transparenter Balken NUR über der Card */}
     {isHighlighted && (
       <div className="pointer-events-none absolute inset-0 bg-white/15" />
@@ -691,13 +700,15 @@ function ChatRow({
 
     {/* Inhalt der Row */}
     <div className="relative grid grid-cols-[3.2em_1fr_auto] items-center gap-3 p-3">
-      {/* Avatar-Spalte */}
-      <div className="shrink-0 w-[3.2em] flex flex-col items-center">
+      {/* Avatar-Spalte mit Ring & Badge */}
+      <div className="shrink-0 w-[3.2em] flex flex-col items-center relative">
         {isDM(c) ? (
           <Link
             href={profileHref!}
             prefetch={false}
-            className="size-[3.2em] rounded-full overflow-hidden grid place-items-center bg-white/10 relative"
+            className={`size-[3.2em] rounded-full overflow-hidden grid place-items-center bg-white/10 relative ${
+              c.unread > 0 ? 'ring-2 ring-[var(--purple)]/40' : ''
+            }`}
             onClick={(e) => e.stopPropagation()}
           >
             <Image
@@ -710,7 +721,9 @@ function ChatRow({
           </Link>
         ) : (
           <span
-            className="size-[3.2em] rounded-xl overflow-hidden grid place-items-center bg-white/10 relative"
+            className={`size-[3.2em] rounded-xl overflow-hidden grid place-items-center bg-white/10 relative ${
+              c.unread > 0 ? 'ring-2 ring-[var(--purple)]/40' : ''
+            }`}
             title="Group"
           >
             <Image
@@ -729,7 +742,9 @@ function ChatRow({
         {/* 1. Zeile: Name + Badges */}
         <div className="flex items-center gap-2 min-w-0">
           <div className="shrink-0 flex items-center gap-1">
-            <span className="font-medium truncate max-w-[52vw] md:max-w-none">
+            <span className={`truncate max-w-[52vw] md:max-w-none ${
+              c.unread > 0 ? 'font-semibold text-white' : 'font-medium text-white/90'
+            }`}>
               {isDM(c) ? c.other.displayName : c.title || 'Group'}
             </span>
 
@@ -752,10 +767,12 @@ function ChatRow({
           </div>
         </div>
 
-        {/* 2. Zeile: Nachrichtenvorschau – volle Breite, auf Mobile darf sie umbrechen */}
-        <div className="mt-0.5 flex items-center gap-1 text-[12px] sm:text-[13px] md:text-[14px] text-white/85 min-w-0">
+        {/* 2. Zeile: Nachrichtenvorschau – immer genau eine Zeile mit Ellipsis */}
+        <div className={`mt-0.5 flex items-center gap-1 text-[12px] sm:text-[13px] md:text-[14px] min-w-0 overflow-hidden ${
+          c.unread > 0 ? 'text-white/90 font-medium' : 'text-white/70'
+        }`}>
           {isDM(c) ? (
-            <span className="opacity-70 shrink-0">{actorNameDM}:</span>
+            <span className={c.unread > 0 ? 'opacity-80 shrink-0' : 'opacity-70 shrink-0'}>{actorNameDM}:</span>
           ) : (
             <span className="shrink-0 opacity-80" aria-hidden>
               ↳
@@ -774,8 +791,7 @@ function ChatRow({
             </span>
           )}
 
-          {/* Auf Mobile darf der Text umbrechen, auf Desktop wird er per Ellipsis abgeschnitten */}
-          <span className="break-words md:truncate">
+          <span className="block min-w-0 flex-1 truncate">
             {snippet.text && snippet.text.trim().length > 0 ? snippet.text : '…'}
           </span>
         </div>
@@ -801,14 +817,18 @@ function ChatRow({
 
       {/* Rechte Spalte: Zeit + Unread-Badge */}
       <div className="flex flex-col items-end gap-1">
-        <span className="text-[11px] text-muted whitespace-nowrap">
+        <span className={`text-[11px] whitespace-nowrap tabular-nums ${
+          c.unread > 0 ? 'text-[var(--purple)] font-semibold' : 'text-muted'
+        }`}>
           {timeAgoShort(c.lastMessageAt)}
         </span>
-        {c.unread ? (
-          <span className="px-2 py-[2px] rounded-full text-[11px] bg-[var(--purple)]/20 text-[var(--purple)]">
-            {c.unread}
+        {c.unread > 0 && (
+          <span className="px-2 py-[2px] rounded-full text-[11px] font-bold
+                          bg-[var(--purple)]/25 text-[var(--purple)]
+                          shadow-sm shadow-[var(--purple)]/30">
+            {c.unread > 99 ? '99+' : c.unread}
           </span>
-        ) : null}
+        )}
       </div>
     </div>
 

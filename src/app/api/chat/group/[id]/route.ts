@@ -9,11 +9,23 @@ export const dynamic = 'force-dynamic';
 /* ------------ Upload Guards & Limits (gleich wie DM) ------------ */
 const MAX_UPLOAD_MB = Number(process.env.CHAT_UPLOAD_MAX_MB || '100');
 const MAX_TEXT = 4000;
-const MAX_ENVELOPE_TEXT = 16000; // falls du später Envelopes auch in Gruppen nutzt
-const ENVELOPE_RE = /^(REPLY|TIPREQ|TIPPAID|ADREQ|ADACC|OWNREQ|OWNACC)::/;
+const MAX_ENVELOPE_TEXT = 16000;
+const ENVELOPE_RE = /^(REPLY|TIPREQ|TIPPAID|ADREQ|ADACC|OWNREQ|OWNACC|REACT)::/;
 
 function isAllowedMime(type: string) {
   return /^image\//.test(type) || /^video\//.test(type) || /^audio\//.test(type);
+}
+
+/* ---- Cursor Helpers (wie DM) ---- */
+function encodeCursor(d: Date, id: string) {
+  return `${d.getTime()}_${id}`;
+}
+function decodeCursor(s: string | null) {
+  if (!s) return null;
+  const [ms, id] = s.split('_');
+  const t = Number(ms);
+  if (!Number.isFinite(t) || !id) return null;
+  return { at: new Date(t), id };
 }
 
 /* ------------------------------- GET -------------------------------- */
@@ -26,44 +38,55 @@ export async function GET(
     const me = await getCurrentUser();
     if (!me) return Response.json({ ok: false, error: 'Not authenticated' }, { status: 401 });
 
-    // ⬇️ Profil für Avatar & Rolle
-    const meProfile = await prisma.user.findUnique({
-      where: { id: me.id },
-      select: { avatarUrl: true, role: true },
-    });
-    const meAvatarUrl =
-      meProfile?.avatarUrl && meProfile.avatarUrl.trim()
-        ? meProfile.avatarUrl
-        : null;
-
     const url = new URL(req.url);
-    const fast = url.searchParams.get('fast') === '1';
-    const take = Number(url.searchParams.get('take') || (fast ? '30' : '200'));
+    const latestParam = url.searchParams.get('latest') === '1';
+    const beforeParam = decodeCursor(url.searchParams.get('before'));
+    const sinceParam = decodeCursor(url.searchParams.get('since'));
+    const take = Math.min(
+      Math.max(Number(url.searchParams.get('take') || (latestParam ? 30 : 200)), 1),
+      100,
+    );
 
-    const convo = await prisma.conversation.findUnique({
-      where: { id },
-      select: {
-        id: true,
-        type: true,
-        title: true,
-        avatarUrl: true,
-        members: {
-          select: {
-            userId: true,
-            role: true,
-            user: {
-              select: {
-                id: true,
-                handle: true,
-                displayName: true,
-                avatarUrl: true,
-                role: true,
+    // ✅ PARALLEL: Profil + Conversation + Typing laden
+    const [meProfile, convo, typingRows] = await Promise.all([
+      prisma.user.findUnique({
+        where: { id: me.id },
+        select: { avatarUrl: true, role: true },
+      }),
+      prisma.conversation.findUnique({
+        where: { id },
+        select: {
+          id: true,
+          type: true,
+          title: true,
+          avatarUrl: true,
+          members: {
+            select: {
+              userId: true,
+              role: true,
+              user: {
+                select: {
+                  id: true,
+                  handle: true,
+                  displayName: true,
+                  avatarUrl: true,
+                  role: true,
+                },
               },
             },
           },
         },
-      },
-    });
+      }),
+      // Typing parallel laden
+      prisma.conversationTypingState.findMany({
+        where: { 
+          conversationId: id, 
+          updatedAt: { gt: new Date(Date.now() - 8000) } 
+        },
+        select: { userId: true },
+      }),
+    ]);
+
     if (!convo) return Response.json({ ok: false, error: 'Not found' }, { status: 404 });
     if (convo.type !== ConversationType.GROUP) {
       return Response.json({ ok: false, error: 'NOT_A_GROUP' }, { status: 400 });
@@ -71,6 +94,11 @@ export async function GET(
 
     const isMember = convo.members.some((m) => m.userId === me.id);
     if (!isMember) return Response.json({ ok: false, error: 'Forbidden' }, { status: 403 });
+
+    const meAvatarUrl =
+      meProfile?.avatarUrl && meProfile.avatarUrl.trim()
+        ? meProfile.avatarUrl
+        : null;
 
     const baseSelect = {
       id: true,
@@ -81,18 +109,97 @@ export async function GET(
       mediaType: true,
     } as const;
 
-    const msgs = await prisma.message.findMany({
-      where: { conversationId: id },
-      orderBy: { createdAt: 'asc' },
-      take,
-      select: baseSelect,
-    });
+    const baseWhere = { conversationId: id } as const;
 
-    // Typing innerhalb der letzten 8s
-    const typingRows = await prisma.conversationTypingState.findMany({
-      where: { conversationId: id, updatedAt: { gt: new Date(Date.now() - 8000) } },
-      select: { userId: true },
-    });
+    // ✅ Cursor-basierte Pagination (wie DM)
+    type MessageRow = {
+      id: string;
+      createdAt: Date;
+      authorId: string;
+      text: string | null;
+      mediaUrl: string | null;
+      mediaType: string | null;
+    };
+
+    let messagesDb: MessageRow[] = [];
+
+    if (latestParam) {
+      const rows = await prisma.message.findMany({
+        where: baseWhere,
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        take,
+        select: baseSelect,
+      });
+      messagesDb = rows.reverse();
+    } else if (beforeParam) {
+      const rows = await prisma.message.findMany({
+        where: {
+          ...baseWhere,
+          OR: [
+            { createdAt: { lt: beforeParam.at } },
+            { createdAt: beforeParam.at, id: { lt: beforeParam.id } },
+          ],
+        },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        take,
+        select: baseSelect,
+      });
+      messagesDb = rows.reverse();
+    } else if (sinceParam) {
+      messagesDb = await prisma.message.findMany({
+        where: {
+          ...baseWhere,
+          OR: [
+            { createdAt: { gt: sinceParam.at } },
+            { createdAt: sinceParam.at, id: { gt: sinceParam.id } },
+          ],
+        },
+        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+        take,
+        select: baseSelect,
+      });
+    } else {
+      const rows = await prisma.message.findMany({
+        where: baseWhere,
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        take,
+        select: baseSelect,
+      });
+      messagesDb = rows.reverse();
+    }
+
+    // ✅ Cursors berechnen
+    let olderCursor: string | null = null;
+    if (messagesDb.length && (latestParam || beforeParam || (!latestParam && !beforeParam && !sinceParam))) {
+      const first = messagesDb[0];
+      const older = await prisma.message.findFirst({
+        where: {
+          ...baseWhere,
+          OR: [
+            { createdAt: { lt: first.createdAt } },
+            { createdAt: first.createdAt, id: { lt: first.id } },
+          ],
+        },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        select: { id: true, createdAt: true },
+      });
+      olderCursor = older ? encodeCursor(older.createdAt, older.id) : null;
+    }
+
+    const mapped = messagesDb.map((m) => ({
+      id: m.id,
+      at: m.createdAt.toISOString(),
+      authorId: m.authorId,
+      text: m.text,
+      mediaUrl: m.mediaUrl,
+      mediaType: m.mediaType,
+      read: m.authorId === me.id,
+    }));
+
+    const newestCursor =
+      mapped.length
+        ? encodeCursor(new Date(mapped[mapped.length - 1].at), mapped[mapped.length - 1].id)
+        : null;
 
     return Response.json({
       ok: true,
@@ -117,16 +224,12 @@ export async function GET(
         })),
       },
       typingUserIds: typingRows.map((r) => r.userId),
-      messages: msgs.map((m) => ({
-        id: m.id,
-        at: m.createdAt.toISOString(),
-        authorId: m.authorId,
-        text: m.text,
-        mediaUrl: m.mediaUrl,
-        mediaType: m.mediaType,
-        read: m.authorId === me.id,
-      })),
+      messages: mapped,
       pageSize: take,
+      cursors: {
+        older: (latestParam || beforeParam) ? olderCursor : (sinceParam ? null : olderCursor),
+        newest: newestCursor,
+      },
     });
   } catch (e) {
     console.error('GET /api/chat/group/[id] failed:', e);
@@ -144,20 +247,29 @@ export async function POST(
     const me = await getCurrentUser();
     if (!me) return Response.json({ ok: false, error: 'Not authenticated' }, { status: 401 });
 
+    // ✅ Minimal select
     const convo = await prisma.conversation.findUnique({
       where: { id },
-      select: { id: true, type: true, members: { select: { userId: true } } },
+      select: { 
+        type: true, 
+        members: { 
+          where: { userId: me.id },
+          select: { userId: true } 
+        } 
+      },
     });
+
     if (!convo) return Response.json({ ok: false, error: 'Not found' }, { status: 404 });
     if (convo.type !== ConversationType.GROUP) {
       return Response.json({ ok: false, error: 'NOT_A_GROUP' }, { status: 400 });
     }
-    const isMember = convo.members.some((m) => m.userId === me.id);
-    if (!isMember) return Response.json({ ok: false, error: 'Forbidden' }, { status: 403 });
+    if (!convo.members.length) {
+      return Response.json({ ok: false, error: 'Forbidden' }, { status: 403 });
+    }
 
     const ct = req.headers.get('content-type') || '';
 
-    /* ---------- A) multipart/form-data: Server-seitiger Upload nach R2 ---------- */
+    /* ---------- A) multipart/form-data: Server-seitiger Upload ---------- */
     if (ct.includes('multipart/form-data')) {
       const form = await req.formData();
 
@@ -193,9 +305,9 @@ export async function POST(
         const isVideo = /^video\//.test(type);
         const isAudio = /^audio\//.test(type);
         const cacheControl =
-          isVideo ? 'public, max-age=604800' : // 7 Tage
-          isAudio ? 'public, max-age=2592000' : // 30 Tage
-                    'public, max-age=31536000, immutable'; // 1 Jahr
+          isVideo ? 'public, max-age=604800' :
+          isAudio ? 'public, max-age=2592000' :
+                    'public, max-age=31536000, immutable';
 
         const { publicUrl } = await storage.put({
           key,
@@ -232,10 +344,11 @@ export async function POST(
         },
       });
 
-      await prisma.conversation.update({
+      // ✅ Fire-and-forget update
+      prisma.conversation.update({
         where: { id },
         data: { lastMessageId: created.id, lastMessageAt: created.createdAt },
-      });
+      }).catch((err) => console.error('Failed to update lastMessage:', err));
 
       return Response.json({
         ok: true,
@@ -250,23 +363,23 @@ export async function POST(
       });
     }
 
-    /* ---------- B) JSON: presigned Upload ---------- */
+    /* ---------- B) JSON: presigned Upload / typing ---------- */
     const body = (await req.json().catch(() => null)) as
       | { text?: string; typing?: boolean; mediaUrl?: string; mediaType?: string }
       | null;
 
-    // Typing Ping für Gruppen
+    // ✅ Typing Ping (optimiert)
     if (body && typeof body.typing === 'boolean') {
       if (body.typing) {
-        await prisma.conversationTypingState.upsert({
+        prisma.conversationTypingState.upsert({
           where: { conversationId_userId: { conversationId: id, userId: me.id } },
           update: { updatedAt: new Date() },
           create: { conversationId: id, userId: me.id, updatedAt: new Date() },
-        });
+        }).catch(() => {});
       } else {
-        await prisma.conversationTypingState.deleteMany({
+        prisma.conversationTypingState.deleteMany({
           where: { conversationId: id, userId: me.id },
-        });
+        }).catch(() => {});
       }
       return Response.json({ ok: true });
     }
@@ -310,10 +423,16 @@ export async function POST(
       },
     });
 
-    await prisma.conversation.update({
+    // ✅ Fire-and-forget update
+    prisma.conversation.update({
       where: { id },
       data: { lastMessageId: msg.id, lastMessageAt: msg.createdAt },
-    });
+    }).catch((err) => console.error('Failed to update lastMessage:', err));
+
+    // ✅ Typing state clearen (fire-and-forget)
+    prisma.conversationTypingState.deleteMany({
+      where: { conversationId: id, userId: me.id },
+    }).catch(() => {});
 
     return Response.json({
       ok: true,

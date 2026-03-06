@@ -2,7 +2,7 @@
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/currentUser';
 import { notFound } from 'next/navigation';
-import CommunityMembersClient from '@/components/CommunityMembersClient';
+import CommunityMembersClient from '@/components/community/CommunityMembersClient';
 import BackButton from '@/components/BackButton';
 
 function encodeCursor(d: Date, userId: string) {

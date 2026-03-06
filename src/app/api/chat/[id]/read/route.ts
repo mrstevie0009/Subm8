@@ -18,19 +18,22 @@ export async function POST(
       );
     }
 
-    // sicherstellen, dass ich Teilnehmer bin
+    // ✅ Minimal select - nur was nötig ist
     const convo = await prisma.conversation.findUnique({
       where: { id },
-      select: { id: true, dommeId: true, subId: true },
+      select: { dommeId: true, subId: true },
     });
+    
     if (!convo) {
       return Response.json(
         { ok: false, error: 'Not found' },
         { status: 404 },
       );
     }
+    
     const iAmDomme = convo.dommeId === me.id;
     const iAmSub = convo.subId === me.id;
+    
     if (!iAmDomme && !iAmSub) {
       return Response.json(
         { ok: false, error: 'Forbidden' },
@@ -38,12 +41,13 @@ export async function POST(
       );
     }
 
-    // Zähler auf 0 setzen (Quelle der Wahrheit für /api/chat)
-    await prisma.conversation.update({
+    // ✅ Fire-and-forget update (nicht auf Response warten)
+    prisma.conversation.update({
       where: { id },
       data: iAmDomme ? { unreadForDomme: 0 } : { unreadForSub: 0 },
-    });
+    }).catch((err) => console.error('Failed to mark as read:', err));
 
+    // ✅ Sofort Response (ohne auf DB-Update zu warten)
     return Response.json(
       { ok: true },
       { headers: { 'cache-control': 'private, no-store' } },

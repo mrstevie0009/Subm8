@@ -19,19 +19,28 @@ export async function GET(
     );
   }
 
-  // Minimaler Fetch (keine großen Includes)
-  const convo = await prisma.conversation.findUnique({
-    where: { id },
-    select: {
-      id: true,
-      type: true,
-      dommeId: true,
-      subId: true,
-      title: true,
-      avatarUrl: true,
-      _count: { select: { members: true } },
-    },
-  });
+  // ✅ PARALLEL: Conversation + Membership in einem Zug
+  const [convo, membership] = await Promise.all([
+    prisma.conversation.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        type: true,
+        dommeId: true,
+        subId: true,
+        title: true,
+        avatarUrl: true,
+        _count: { select: { members: true } },
+      },
+    }),
+    // Membership direkt parallel laden (null wenn DM)
+    prisma.conversationMember.findUnique({
+      where: {
+        conversationId_userId: { conversationId: id, userId: me.id },
+      },
+      select: { role: true },
+    }).catch(() => null), // Falls nicht existiert (z.B. bei DM)
+  ]);
 
   if (!convo) {
     return Response.json(
@@ -46,15 +55,9 @@ export async function GET(
   if (convo.type === $Enums.ConversationType.DM) {
     member = convo.dommeId === me.id || convo.subId === me.id;
   } else {
-    // GROUP → Mitgliedschaft schlank prüfen
-    const m = await prisma.conversationMember.findUnique({
-      where: {
-        conversationId_userId: { conversationId: id, userId: me.id },
-      },
-      select: { role: true },
-    });
-    member = !!m;
-    role = m?.role;
+    // GROUP → Membership wurde bereits parallel geladen
+    member = !!membership;
+    role = membership?.role;
   }
 
   const payload = {

@@ -3,13 +3,13 @@ import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/currentUser';
 import { notFound } from 'next/navigation';
 
-import CommunityJoinButton from '@/components/CommunityJoinButton';
-import CommunityComposer from '@/components/CommunityComposer';
+import CommunityJoinButton from '@/components/community/CommunityJoinButton';
+import CommunityComposer from '@/components/community/CommunityComposer';
 import BackButton from '@/components/BackButton';
-import CommunityCompactHeader from '@/components/CommunityCompactHeader';
-import CommunityFeedClient from '@/components/CommunityFeedClient';
-import CommunityShareButton from '@/components/CommunityShareButton';
-import CommunityInviteButton from '@/components/CommunityInviteButton';
+import CommunityCompactHeader from '@/components/community/CommunityCompactHeader';
+import CommunityFeedClient from '@/components/community/CommunityFeedClient';
+import CommunityShareButton from '@/components/community/CommunityShareButton';
+import CommunityInviteButton from '@/components/community/CommunityInviteButton';
 import type { FeedPost as PostCardFeedPost } from '@/components/PostCard';
 
 // i18n: manuelles Laden

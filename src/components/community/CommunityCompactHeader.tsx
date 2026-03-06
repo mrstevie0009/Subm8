@@ -2,7 +2,7 @@
 'use client';
 
 import * as React from 'react';
-import CommunityJoinButton from '@/components/CommunityJoinButton';
+import CommunityJoinButton from '@/components/community/CommunityJoinButton';
 import BackButton from '@/components/BackButton';
 
 type Props = {

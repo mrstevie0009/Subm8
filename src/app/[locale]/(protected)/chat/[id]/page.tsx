@@ -3,8 +3,8 @@
 
 import * as React from 'react';
 import { useParams } from 'next/navigation';
-import ClientThread from '@/components/ClientThread';
-import GroupThread from '@/components/GroupThread';
+import ClientThread from '@/components/chat/ClientThread';
+import GroupThread from '@/components/chat/GroupThread';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,34 +27,44 @@ export default function ChatThreadPage() {
   React.useEffect(() => {
     if (!id) return;
     let cancelled = false;
+    
     (async () => {
       try {
-        const res = await fetch(`/api/chat/meta/${id}`, { cache: 'no-store' });
+        const res = await fetch(`/api/chat/meta/${id}`, { 
+          cache: 'no-store',
+          // ✅ Priorisieren für schnelleren Fetch
+          priority: 'high' as RequestPriority,
+        });
+        
         const j = (await res.json()) as Meta;
         if (cancelled) return;
+        
         setStatus(res.status);
         setMeta(j);
-      } catch {
+      } catch (err) {
         if (!cancelled) {
+          console.error('Meta fetch failed:', err);
           setStatus(500);
           setMeta({ ok: false, error: 'Network error' });
         }
       }
     })();
+    
     return () => { cancelled = true; };
   }, [id]);
 
+  // ✅ Optimistic skeleton - zeigt sofort UI
   if (!meta) {
-    // nichts anzeigen: der Child-Thread rendert sein eigenes Skeleton
-    return <GroupThread />;
+    return <ClientThread />;
   }
 
+  // ✅ Error states
   if (!meta.ok) {
-    // 401: nicht eingeloggt, 403: kein Mitglied der Gruppe/DM
     const msg =
       status === 401 ? 'Not authenticated' :
       status === 403 ? 'You do not have access to this conversation.' :
       meta.error || 'Unknown error';
+    
     return (
       <main className="flex items-center justify-center min-h-[60vh] text-white/70">
         {msg}
@@ -62,6 +72,6 @@ export default function ChatThreadPage() {
     );
   }
 
-  // Umschalten nach deiner Meta-Form (DM vs GROUP)
+  // ✅ Render correct thread type
   return meta.type === 'GROUP' ? <GroupThread /> : <ClientThread />;
 }

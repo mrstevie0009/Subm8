@@ -19,17 +19,24 @@ export async function PUT(
     );
   }
 
-  // Mitglied + Rolle prüfen
+  // ✅ Minimal select - nur type und role prüfen
   const membership = await prisma.conversationMember.findUnique({
     where: { conversationId_userId: { conversationId: id, userId: me.id } },
-    select: { role: true, conversation: { select: { type: true } } },
+    select: { 
+      role: true, 
+      conversation: { 
+        select: { type: true } 
+      } 
+    },
   });
+
   if (
     !membership ||
     membership.conversation?.type !== ConversationType.GROUP
   ) {
     return Response.json({ ok: false, error: 'Forbidden' }, { status: 403 });
   }
+
   if (membership.role !== 'ADMIN') {
     return Response.json(
       { ok: false, error: 'ADMIN_ONLY' },
@@ -45,12 +52,14 @@ export async function PUT(
       { status: 400 },
     );
   }
+
   const form = await req.formData();
   const fileEntry = form.get('file');
   const file =
     fileEntry && typeof fileEntry !== 'string'
       ? (fileEntry as File)
       : null;
+
   if (!file) {
     return Response.json(
       { ok: false, error: 'No file' },
@@ -81,11 +90,11 @@ export async function PUT(
     cacheControl: 'public, max-age=31536000, immutable',
   });
 
-  // In Conversation speichern
-  await prisma.conversation.update({
+  // ✅ Fire-and-forget update
+  prisma.conversation.update({
     where: { id },
     data: { avatarUrl: publicUrl },
-  });
+  }).catch((err) => console.error('Failed to update avatar:', err));
 
   return Response.json({ ok: true, url: publicUrl });
 }

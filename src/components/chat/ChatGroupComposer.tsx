@@ -1,8 +1,8 @@
-// src/components/ChatComposer.tsx
+// src/components/ChatGroupComposer.tsx
 'use client';
 
 import * as React from 'react';
-import { createPortal, flushSync } from 'react-dom';
+import { createPortal } from 'react-dom';
 import { useTranslations } from 'next-intl';
 import MentionSuggestChat from '@/components/MentionSuggestChat';
 import TipRequestCreateModal from '@/components/TipRequestCreateModal';
@@ -20,10 +20,6 @@ import { useKeyboardInset } from '@/hooks/useKeyboardInset';
 
 // 🆕 Reply envelope prefix (client-only)
 const REPLY_PREFIX = 'REPLY::';
-const awaitMaybe = (v: unknown) => Promise.resolve(v);
-const nextFrame = () => new Promise<void>((resolve) => {
-  requestAnimationFrame(() => resolve());
-});
 
 function formatTime(secs: number) {
   const s = Math.max(0, Math.floor(secs));
@@ -44,14 +40,19 @@ export type ReplyTargetLite = {
 };
 
 type Props = {
-   mode?: 'dm' | 'group';
   disabled?: boolean;
   disabledNotice?: string;
   viewerRole: RoleLike;
   selfUserId: string;
-  targetHandle: string;
+
+  // ⬇️ optional für Groups
+  targetHandle?: string;
+
   onSend: (text: string) => Promise<void> | void;
-  onTip: () => void;
+
+  // ⬇️ optional für Groups
+  onTip?: () => void;
+
   onUpload?: (file: File, caption?: string) => Promise<void> | void;
   onCreateTipRequest?: (payload: TipRequestPayload) => Promise<void> | void;
   onCreateAutoDrainRequest?: (payload: AutoDrainRequestPayload) => Promise<void> | void;
@@ -63,7 +64,8 @@ type Props = {
   onCreateReply?: (p: { to: string; text: string }) => Promise<void> | void;
   onCreateReaction?: (p: { to: string; emoji: string; op?: 'add' | 'remove' }) => void;
 
-  loading?: boolean;
+  // ⬇️ neu
+  mode?: 'dm' | 'group';
 };
 
 /** Robustere Erkennung für Safari / iOS etc. */
@@ -97,7 +99,6 @@ function SendIcon({ size = 22 }: { size?: number }) {
     </svg>
   );
 }
-
 
 function TipIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
@@ -248,7 +249,6 @@ function VerifyPrompt({
   );
 }
 
-
 /* ---------------- GIF Picker (Tenor) ---------------- */
 const TENOR_KEY = process.env.NEXT_PUBLIC_TENOR_API_KEY ?? 'LIVDSRZULELA';
 const TENOR_BASE = 'https://g.tenor.com/v1';
@@ -378,14 +378,20 @@ function GifPickerModal({
 }
 
 /* ------------------ Composer ------------------ */
-export default function ChatComposer({
+export default function ChatGroupComposer({
   disabled,
   disabledNotice,
   viewerRole,
   selfUserId,
+
+  // optional in Groups
   targetHandle,
+
   onSend,
+
+  // optional in Groups
   onTip,
+
   onUpload,
   onCreateTipRequest,
   onCreateAutoDrainRequest,
@@ -395,7 +401,6 @@ export default function ChatComposer({
   replyTo,
   onCancelReply,
   onCreateReply,
-  loading = false,
 }: Props) {
   const t = useTranslations('chat.chatComposer');
   const tVerify = useTranslations('verify');
@@ -403,16 +408,10 @@ export default function ChatComposer({
   const router = useRouter();
   const { data: session } = useSession();
   const ageOk = !!session?.user?.ageVerified;
-  // Busy-State während Upload/Send
-  const [sending, setSending] = React.useState(false);
-  // Einheitlicher Disable-Flag für die UI
-  const uiDisabled = !!disabled || loading || sending;
-  // Ref, um ESLint-Deps sauber zu halten (siehe submit)
-  const sendingRef = React.useRef(false);
-  React.useEffect(() => { sendingRef.current = sending; }, [sending]);
 
   const [verifyOpen, setVerifyOpen] = React.useState(false);
   useKeyboardInset();
+
   const startAgeVerification = React.useCallback(async () => {
     try {
       // Nach Abschluss des Flows zurück an die aktuelle URL (Chat-Seite)
@@ -436,7 +435,6 @@ export default function ChatComposer({
       toast.error(tVerify('errors.start'), tVerify('errors.title'));
     }
   }, [locale, router, session, tVerify]);
-
 
   const [text, setText] = React.useState('');
   const taRef = React.useRef<HTMLTextAreaElement | null>(null);
@@ -462,9 +460,9 @@ export default function ChatComposer({
 
   const roleNorm = String(viewerRole ?? '').toLowerCase();
   const isSub =
-  roleNorm === 'submissive' ||
-  roleNorm === 'sub' ||
-  roleNorm === 's';
+    roleNorm === 'submissive' ||
+    roleNorm === 'sub' ||
+    roleNorm === 's';
 
   // Plus-Menu (nur für Dommes)
   const plusBtnRef = React.useRef<HTMLButtonElement | null>(null);
@@ -484,7 +482,7 @@ export default function ChatComposer({
   const [adReqOpen, setAdReqOpen] = React.useState(false);
 
   /* -------- Voice recording (press & hold) -------- */
-   const [recording, setRecording] = React.useState(false);
+  const [recording, setRecording] = React.useState(false);
   const [recordSecs, setRecordSecs] = React.useState(0);
   const [recError, setRecError] = React.useState<string | null>(null);
 
@@ -507,12 +505,12 @@ export default function ChatComposer({
   const typingTimerRef = React.useRef<number | null>(null);
 
   const startTyping = React.useCallback(() => {
-    if (uiDisabled || typingActiveRef.current) return;
+    if (disabled || typingActiveRef.current) return;
     typingActiveRef.current = true;
     onTypingPing?.(true);
     if (typingTimerRef.current) window.clearInterval(typingTimerRef.current);
     typingTimerRef.current = window.setInterval(() => onTypingPing?.(true), 3000);
-  }, [uiDisabled, onTypingPing]);
+  }, [disabled, onTypingPing]);
 
   const stopTyping = React.useCallback(() => {
     if (!typingActiveRef.current) return;
@@ -584,7 +582,7 @@ export default function ChatComposer({
   };
 
   async function startRecording() {
-    if (uiDisabled) return;
+    if (disabled) return;
     setRecError(null);
 
     if (!canRecord()) {
@@ -642,7 +640,7 @@ export default function ChatComposer({
     const file = new File([audioBlobRef.current], `voice_${Date.now()}.${ext}`, {
       type: audioBlobRef.current.type || 'audio/webm',
     });
-    await awaitMaybe(onUpload(file));
+    await onUpload(file);
     resetPreview();
   }
 
@@ -679,26 +677,24 @@ export default function ChatComposer({
   }
 
   const submit = React.useCallback(async () => {
-    if (uiDisabled || sendingRef.current) return;
+    if (disabled) return;
     const tMsg = text.trim();
 
     // ------- Dateien zuerst senden -------
     if ((mediaPreviews.length > 0 || gifPreviews.length > 0) && onUpload) {
-      flushSync(() => setSending(true)); // Paint erzwingen
-      await nextFrame();                 // <-- garantiert sichtbares Paint
       try {
         const all = [...mediaPreviews, ...gifPreviews];
         for (let i = 0; i < all.length; i++) {
           const { file } = all[i];
           const cap = i === 0 ? (tMsg || undefined) : undefined;
-          await awaitMaybe(onUpload(file, cap)); // <-- wirklich warten
+          await onUpload(file, cap);
         }
         clearAllPreviews();
         setText('');
         stopTyping();
         requestAnimationFrame(() => autosize());
-      } finally {
-        setSending(false);
+      } catch (err) {
+        console.error('Upload failed:', err);
       }
       return;
     }
@@ -708,37 +704,33 @@ export default function ChatComposer({
 
     // ------- Reply -------
     if (replyTo) {
-      flushSync(() => setSending(true));
-      await nextFrame(); // <--
       try {
         if (onCreateReply) {
-          await awaitMaybe(onCreateReply({ to: replyTo.id, text: tMsg }));
+          await onCreateReply({ to: replyTo.id, text: tMsg });
         } else {
-          await awaitMaybe(onSend(`${REPLY_PREFIX}${JSON.stringify({ to: replyTo.id, text: tMsg })}`));
+          await onSend(`${REPLY_PREFIX}${JSON.stringify({ to: replyTo.id, text: tMsg })}`);
         }
         setText('');
         stopTyping();
         requestAnimationFrame(() => autosize());
         onCancelReply?.();
-      } finally {
-        setSending(false);
+      } catch (err) {
+        console.error('Reply failed:', err);
       }
       return;
     }
 
     // ------- Plain Text -------
-    flushSync(() => setSending(true));
-    await nextFrame();
     try {
-      await awaitMaybe(onSend(tMsg));
+      await onSend(tMsg);
       setText('');
       stopTyping();
       requestAnimationFrame(() => autosize());
-    } finally {
-      setSending(false);
+    } catch (err) {
+      console.error('Send failed:', err);
     }
   }, [
-    uiDisabled,
+    disabled,
     text,
     onUpload,
     mediaPreviews,
@@ -766,7 +758,7 @@ export default function ChatComposer({
         transform: 'translateY(calc(-1 * var(--kb, 0px)))',
       }}
     >
-      {(disabled || loading) && ( // CHANGED
+      {disabled && (
         <div className="mb-2 text-center text-[13px] text-white/80">
           {disabledNotice ?? t('disabled.default')}
         </div>
@@ -826,25 +818,7 @@ export default function ChatComposer({
         </div>
       )}
 
-      {loading && ( // NEW
-        <div className="mb-2 space-y-2">
-          <div className="h-6 rounded-lg bg-white/10 animate-pulse" />
-          <div className="h-6 w-2/3 rounded-lg bg-white/10 animate-pulse" />
-        </div>
-      )}
-      {sending && (
-        <div className="mx-auto mb-2 max-w-[760px]">
-          <div className="flex items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-[13px]">
-            <UploadIcon />
-            <span>{t('status.sending') /* z.B. "Anhänge werden gesendet …" */}</span>
-          </div>
-          <div className="mt-2 h-1 overflow-hidden rounded bg-white/10">
-            <div className="h-full w-1/3 animate-pulse bg-[var(--purple)]" />
-          </div>
-        </div>
-      )}
-
-      <div className={`rounded-3xl border border-white/10 bg-white/[.06] shadow-[0_2px_16px_rgba(0,0,0,.25)] px-3 py-2 ${sending ? 'pointer-events-none' : ''}`}>
+      <div className="rounded-3xl border border-white/10 bg-white/[.06] shadow-[0_2px_16px_rgba(0,0,0,.25)] px-3 py-2">
         {/* VORSCHAUEN: Medien & GIFs als Grid */}
         {(mediaPreviews.length > 0 || gifPreviews.length > 0) && (
           <div className="mb-2 pl-2">
@@ -865,46 +839,33 @@ export default function ChatComposer({
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={url} alt="" className="h-24 w-full rounded-lg border border-white/10 object-cover" />
                     )}
-                    {/* Entfernen nur, wenn nicht gerade gesendet wird */}
-                    {!sending && (
-                      <button
-                        type="button"
-                        onClick={() => { /* remove logic unverändert */ 
-                          if (idx < mediaPreviews.length) {
-                            const i = idx;
-                            setMediaPreviews((arr) => {
-                              const next = [...arr];
-                              revoke(next[i]?.url);
-                              next.splice(i, 1);
-                              return next;
-                            });
-                          } else {
-                            const i = idx - mediaPreviews.length;
-                            setGifPreviews((arr) => {
-                              const next = [...arr];
-                              revoke(next[i]?.url);
-                              next.splice(i, 1);
-                              return next;
-                            });
-                          }
-                          if (!text.trim() && (mediaPreviews.length + gifPreviews.length - 1) === 0) stopTyping();
-                        }}
-                        className="absolute -right-2 -top-2 h-7 w-7 grid place-items-center rounded-full bg-black/70 border border-white/20 hover:bg-black/85"
-                        title={t('actions.remove')}
-                      >
-                        ✕
-                      </button>
-                    )}
-
-                    {/* Busy-Overlay während Upload */}
-                    {sending && (
-                      <div className="absolute inset-0 grid place-items-center rounded-lg bg-black/60">
-                        <div className="flex flex-col items-center gap-2 text-[13px]">
-                          <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                          <span className="text-white/90">{t('status.sending')}</span>
-                        </div>
-                      </div>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (idx < mediaPreviews.length) {
+                          const i = idx;
+                          setMediaPreviews((arr) => {
+                            const next = [...arr];
+                            revoke(next[i]?.url);
+                            next.splice(i, 1);
+                            return next;
+                          });
+                        } else {
+                          const i = idx - mediaPreviews.length;
+                          setGifPreviews((arr) => {
+                            const next = [...arr];
+                            revoke(next[i]?.url);
+                            next.splice(i, 1);
+                            return next;
+                          });
+                        }
+                        if (!text.trim() && (mediaPreviews.length + gifPreviews.length - 1) === 0) stopTyping();
+                      }}
+                      className="absolute -right-2 -top-2 h-7 w-7 grid place-items-center rounded-full bg-black/70 border border-white/20 hover:bg-black/85"
+                      title={t('actions.remove')}
+                    >
+                      ✕
+                    </button>
                   </div>
                 );
               })}
@@ -919,7 +880,7 @@ export default function ChatComposer({
               ref={taRef}
               rows={1}
               value={text}
-              disabled={uiDisabled} // CHANGED
+              disabled={disabled}
               onChange={(e) => {
                 const v = e.target.value;
                 setText(v);
@@ -937,7 +898,7 @@ export default function ChatComposer({
               onBlur={() => {
                 if (!hasAnyAttach && !text.trim()) stopTyping();
               }}
-              placeholder={uiDisabled ? t('placeholders.closed') : t('placeholders.message')} // CHANGED
+              placeholder={disabled ? t('placeholders.closed') : t('placeholders.message')}
               className="w-full resize-none bg-transparent outline-none placeholder:text-muted
                         text-[14px] leading-5 pl-2 pr-0 pt-1 pb-1 rounded-2xl no-scrollbar break-anywhere"
               style={{ minHeight: 40, maxHeight, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}
@@ -951,10 +912,10 @@ export default function ChatComposer({
                 aria-label={t('actions.upload')}
                 title={t('actions.upload')}
                 onClick={(e) => {
-                  if (uiDisabled) { e.preventDefault(); return; }
+                  if (disabled) { e.preventDefault(); return; }
                   if (!ageOk) {
-                    e.preventDefault();      // verhindert das Öffnen des Dateidialogs
-                    setVerifyOpen(true);     // öffnet das Veriff-Prompt
+                    e.preventDefault();
+                    setVerifyOpen(true);
                   }
                 }}
               >
@@ -963,7 +924,7 @@ export default function ChatComposer({
                   className="hidden"
                   accept="image/*,video/*"
                   multiple
-                  disabled={uiDisabled}
+                  disabled={disabled}
                   onChange={(e) => {
                     const all = Array.from(e.target.files || []);
                     const files = all.filter((f) => isImageFile(f) || isVideoFile(f));
@@ -980,12 +941,11 @@ export default function ChatComposer({
                 <PhotoIcon />
               </label>
 
-
               {/* GIF Button */}
               <button
                 type="button"
                 onClick={() => setGifOpen(true)}
-                disabled={uiDisabled} // CHANGED
+                disabled={disabled}
                 className={`${circle} border border-white/12 bg-transparent hover:bg-white/10 disabled:opacity-50`}
                 style={{ width: toolSize, height: toolSize }}
                 aria-label={t('actions.gif')}
@@ -994,16 +954,16 @@ export default function ChatComposer({
                 <GifIcon size={22} />
               </button>
 
-              {/* Sub: Tip Button / Domme: Plus-Menü */}
-              {isSub ? (
+              {/* Sub: Tip Button / Domme: Plus-Menü (nur in DMs) */}
+              {isSub && onTip ? (
                 <button
                   type="button"
                   onClick={() => {
-                    if (uiDisabled) return; // NEW
+                    if (disabled) return;
                     if (!ageOk) { setVerifyOpen(true); return; }
                     onTip();
                   }}
-                  disabled={uiDisabled} // CHANGED
+                  disabled={disabled}
                   className={`${circle} border border-white/12 bg-transparent hover:bg-white/10 disabled:opacity-50`}
                   style={{ width: toolSize, height: toolSize }}
                   aria-label={t('actions.tip')}
@@ -1011,17 +971,19 @@ export default function ChatComposer({
                 >
                   <TipIcon className="w-[30px] h-[30px]" />
                 </button>
-              ) : (
+              ) : null}
+
+              {!isSub && (
                 <>
                   <button
                     ref={plusBtnRef}
                     type="button"
                     onClick={() => {
-                      if (uiDisabled) return; // NEW
+                      if (disabled) return;
                       if (!ageOk) { setVerifyOpen(true); return; }
                       openMenu();
                     }}
-                    disabled={uiDisabled} // CHANGED
+                    disabled={disabled}
                     className={`${circle} border border-white/12 bg-transparent hover:bg-white/10 disabled:opacity-50`}
                     style={{ width: toolSize, height: toolSize }}
                     aria-label={t('actions.openActions')}
@@ -1030,35 +992,28 @@ export default function ChatComposer({
                     <PlusIcon />
                   </button>
 
-                  {menuOpen && anchorRect && !loading && (
+                  {menuOpen && anchorRect && (
                     <ActionMenu anchorRect={anchorRect} onClose={() => setMenuOpen(false)}>
                       <button
                         type="button"
                         className="w-full text-left px-3 py-2 rounded-lg hover:bg-white/10"
-                        onClick={() => {
-                          setMenuOpen(false);
-                          setTipReqOpen(true);
-                        }}
+                        onClick={() => { setMenuOpen(false); setTipReqOpen(true); }}
                       >
                         {t('menu.tipRequest')}
                       </button>
                       <button
                         type="button"
                         className="w-full text-left px-3 py-2 rounded-lg hover:bg-white/10"
-                        onClick={() => {
-                          setMenuOpen(false);
-                          setAdReqOpen(true);
-                        }}
+                        onClick={() => { setMenuOpen(false); setAdReqOpen(true); }}
                       >
                         {t('menu.autodrainRequest')}
                       </button>
                       <button
                         type="button"
                         className="w-full text-left px-3 py-2 rounded-lg hover:bg-white/10"
-                        onClick={() => {
-                          setMenuOpen(false);
-                          setOwnReqOpen(true);
-                        }}
+                        onClick={() => { setMenuOpen(false); setOwnReqOpen(true); }}
+                        disabled={!targetHandle}
+                        title={!targetHandle ? 'Requires target handle' : undefined}
                       >
                         {t('menu.ownershipRequest')}
                       </button>
@@ -1072,7 +1027,7 @@ export default function ChatComposer({
           {/* Mic */}
           <button
             type="button"
-            disabled={uiDisabled} // CHANGED
+            disabled={disabled}
             className={`${circle} border border-white/12 bg-transparent hover:bg-white/10 disabled:opacity-50`}
             style={{ width: sendSize, height: sendSize }}
             aria-label={t('actions.voice.holdAria')}
@@ -1096,34 +1051,19 @@ export default function ChatComposer({
           <button
             type="button"
             onClick={() => void submit()}
-            disabled={uiDisabled || (!text.trim() && !hasAnyAttach && !replyTo)}
-            aria-disabled={uiDisabled}
-            aria-busy={sending}
-            title={
-              sending
-                ? t('status.sending')
-                : uiDisabled
-                ? t('status.disabled')
-                : t('actions.send')
-            }
+            disabled={disabled || (!text.trim() && !hasAnyAttach && !replyTo)}
             className={`${circle} bg-[var(--purple)] text-white
-                        ${uiDisabled ? 'opacity-40 grayscale cursor-not-allowed' : 'hover:opacity-95'}`}
+                        ${disabled ? 'opacity-40 grayscale cursor-not-allowed' : 'hover:opacity-95'}`}
             style={{ width: sendSize, height: sendSize }}
             aria-label={t('actions.sendMessageAria')}
           >
-            {sending ? (
-              <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-            ) : uiDisabled ? (
-              <LockIcon />
-            ) : (
-              <SendIcon />
-            )}
+            <SendIcon />
           </button>
         </div>
       </div>
 
       {/* Voice preview bar */}
-      {!loading && audioPreviewUrl && (
+      {audioPreviewUrl && (
         <div className="mx-auto mt-2 max-w-[760px] rounded-2xl border border-white/12 bg-white/[.06] px-3 py-2">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
             {/* Play/Pause Button */}
@@ -1208,97 +1148,77 @@ export default function ChatComposer({
           </div>
         </div>
       )}
-      {!loading && ( // NEW
-        <>
-          <MentionSuggestChat
-            anchorRef={suggestAnchorRef as React.RefObject<HTMLElement>}
-            value={text}
-            onChange={setText}
-            limit={8}
-          />
 
-          <TipRequestCreateModal
-            open={tipReqOpen}
-            onClose={() => setTipReqOpen(false)}
-            onCreate={(payload) => {
-              setTipReqOpen(false);
-              if (onCreateTipRequest) {
-                onCreateTipRequest(payload);
-                return;
-              }
-              const currency = payload.currency ?? 'EUR';
-              const amountStr = new Intl.NumberFormat(undefined, { style: 'currency', currency }).format(
-                payload.amountCents / 100,
-              );
-              const msg = `🧾 ${t('protocol.tipRequestLabel')}: ${amountStr}${payload.note ? `\n${payload.note}` : ''}`;
-              onSend(msg);
-            }}
-          />
+      <MentionSuggestChat
+        anchorRef={suggestAnchorRef as React.RefObject<HTMLElement>}
+        value={text}
+        onChange={setText}
+        limit={8}
+      />
 
-          <OwnershipRequestCreateModal
-            open={ownReqOpen}
-            onClose={() => setOwnReqOpen(false)}
-            userId={selfUserId}
-            handle={targetHandle}
-            onCreate={(payload: OwnReqPayload) => {
-              setOwnReqOpen(false);
-              onSend(`OWNREQ::${JSON.stringify(payload)}`);
-            }}
-          />
+      {/* Modals: auch im GroupChat rendern */}
+      <TipRequestCreateModal
+        open={tipReqOpen}
+        onClose={() => setTipReqOpen(false)}
+        onCreate={(payload) => {
+          setTipReqOpen(false);
+          if (onCreateTipRequest) {
+            onCreateTipRequest(payload);
+            return;
+          }
+          const currency = payload.currency ?? 'EUR';
+          const amountStr = new Intl.NumberFormat(undefined, { style: 'currency', currency }).format(
+            payload.amountCents / 100,
+          );
+          const msg = `🧾 ${t('protocol.tipRequestLabel')}: ${amountStr}${payload.note ? `\n${payload.note}` : ''}`;
+          onSend(msg);
+        }}
+      />
 
-          <AutoDrainRequestCreateModal
-            open={adReqOpen}
-            onClose={() => setAdReqOpen(false)}
-            onCreate={(payload: ADReqPayload) => {
-              setAdReqOpen(false);
-              if (onCreateAutoDrainRequest) {
-                onCreateAutoDrainRequest(payload);
-                return;
-              }
-              const currency = payload.currency ?? 'EUR';
-              const data = { ...payload, currency };
-              onSend(`ADREQ::${JSON.stringify(data)}`);
-            }}
-          />
-
-          <VerifyPrompt
-            open={verifyOpen}
-            onClose={() => setVerifyOpen(false)}
-            onStart={startAgeVerification}
-            title={tVerify('modal.title')}
-            message={tVerify('modal.message')}
-            confirmLabel={tVerify('modal.confirm')}
-            cancelLabel={tVerify('modal.cancel')}
-          />
-
-
-          <GifPickerModal
-            open={gifOpen}
-            onClose={() => setGifOpen(false)}
-            onPick={(url) => void pickGifByUrl(url)}
-          />
-      </>
+      {!!targetHandle && (
+        <OwnershipRequestCreateModal
+          open={ownReqOpen}
+          onClose={() => setOwnReqOpen(false)}
+          userId={selfUserId}
+          handle={targetHandle}
+          onCreate={(payload: OwnReqPayload) => {
+            setOwnReqOpen(false);
+            onSend(`OWNREQ::${JSON.stringify(payload)}`);
+          }}
+        />
       )}
+
+      <AutoDrainRequestCreateModal
+        open={adReqOpen}
+        onClose={() => setAdReqOpen(false)}
+        onCreate={(payload: ADReqPayload) => {
+          setAdReqOpen(false);
+          if (onCreateAutoDrainRequest) {
+            onCreateAutoDrainRequest(payload);
+            return;
+          }
+          const currency = payload.currency ?? 'EUR';
+          const data = { ...payload, currency };
+          onSend(`ADREQ::${JSON.stringify(data)}`);
+        }}
+      />
+
+      <VerifyPrompt
+        open={verifyOpen}
+        onClose={() => setVerifyOpen(false)}
+        onStart={startAgeVerification}
+        title={tVerify('modal.title')}
+        message={tVerify('modal.message')}
+        confirmLabel={tVerify('modal.confirm')}
+        cancelLabel={tVerify('modal.cancel')}
+      />
+
+      <GifPickerModal
+        open={gifOpen}
+        onClose={() => setGifOpen(false)}
+        onPick={(url) => void pickGifByUrl(url)}
+      />
     </div>
-  );
-}
-
-function LockIcon({ size = 18 }: { size?: number }) {
-  return (
-    <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden fill="none" stroke="currentColor" strokeWidth="2">
-      <rect x="4" y="10" width="16" height="10" rx="2" />
-      <path d="M8 10V7a4 4 0 0 1 8 0v3" />
-    </svg>
-  );
-}
-
-function UploadIcon({ size = 16 }: { size?: number }) {
-  return (
-    <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-      <path d="M7 10l5-5 5 5" />
-      <path d="M12 15V5" />
-    </svg>
   );
 }
 
@@ -1309,7 +1229,7 @@ function PhotoIcon({ size = 22 }: { size?: number }) {
       width={size}
       height={size}
       aria-hidden
-      fill="currentColor"  // statt style="fill:#FFFFFF"
+      fill="currentColor"
     >
       <path d="M 13 12 C 9.686 12 7 14.686 7 18 L 7 54 C 7 57.314 9.686 60 13 60 L 59 60 C 62.314 60 65 57.314 65 54 L 65 18 C 65 14.686 62.314 12 59 12 L 13 12 z M 16 20 L 56 20 C 56.552 20 57 20.448 57 21 L 57 44.505859 L 49.166016 37.304688 C 47.102016 35.407688 43.926187 35.412453 41.867188 37.314453 L 32.861328 45.630859 L 27.927734 41.412109 C 25.906734 39.683109 22.927109 39.689781 20.912109 41.425781 L 15 46.519531 L 15 21 C 15 20.448 15.448 20 16 20 z M 27 24 C 24.791 24 23 25.791 23 28 C 23 30.209 24.791 32 27 32 C 29.209 32 31 30.209 31 28 C 31 25.791 29.209 24 27 24 z"></path>
     </svg>
@@ -1323,6 +1243,7 @@ function PlusIcon() {
     </svg>
   );
 }
+
 function MicIcon({ size = 18 }: { size?: number }) {
   return (
     <svg
@@ -1344,6 +1265,7 @@ function MicWavesIcon() {
     </svg>
   );
 }
+
 function GifIcon({ size = 22 }: { size?: number }) {
   return (
     <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden>
@@ -1361,6 +1283,7 @@ function GifIcon({ size = 22 }: { size?: number }) {
     </svg>
   );
 }
+
 function PlayIcon({ size = 18 }: { size?: number }) {
   return (
     <svg
@@ -1374,6 +1297,7 @@ function PlayIcon({ size = 18 }: { size?: number }) {
     </svg>
   );
 }
+
 function PauseIcon({ size = 18 }: { size?: number }) {
   return (
     <svg

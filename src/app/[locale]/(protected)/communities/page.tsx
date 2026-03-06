@@ -4,7 +4,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
-import CommunityJoinButton from '@/components/CommunityJoinButton';
+import CommunityJoinButton from '@/components/community/CommunityJoinButton';
 import CreateCommunityButton from '@/components/CreateCommunityButton';
 import { toast } from '@/lib/toast';
 import { createPortal } from 'react-dom';
