@@ -1,8 +1,9 @@
+//src/components/settings/SettingsOverlayMount.tsx
 'use client';
 
 import * as React from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
-import SettingsDrawer from '@/components/SettingsDrawer';
+import SettingsDrawer from '@/components/settings/SettingsDrawer';
 
 export default function SettingsOverlayMount() {
   const searchParams = useSearchParams();
@@ -10,7 +11,6 @@ export default function SettingsOverlayMount() {
   const router = useRouter();
 
   const open = React.useMemo(() => {
-    // akzeptiert ?settings, ?settings=1, ?settings=true etc.
     const v = searchParams.get('settings');
     return v === '' || v === '1' || v === 'true';
   }, [searchParams]);
@@ -23,8 +23,6 @@ export default function SettingsOverlayMount() {
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
   }, [pathname, router, searchParams]);
 
-  // Mounten nur, wenn nötig – SettingsDrawer portaliert ohnehin in document.body
-  if (!open) return null;
-
+  // IMMER mounten (Drawer zeigt sich nur wenn open=true)
   return <SettingsDrawer open={open} onClose={handleClose} />;
 }

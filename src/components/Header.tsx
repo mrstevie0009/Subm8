@@ -500,6 +500,15 @@ export default function Header({ locale }: { locale: string }) {
           ref={settingsRef}
           type="button"
           onClick={openSettings}
+          onMouseEnter={() => {
+            //Prefetch beim Hover (nur wenn eingeloggt)
+            if (session?.user) {
+              fetch('/api/me/basic', { cache: 'no-store' }).catch(() => {});
+              fetch('/api/me/stats', { cache: 'no-store' }).catch(() => {});
+              fetch('/api/suggestions', { cache: 'no-store' }).catch(() => {});
+              fetch('/api/account-links', { cache: 'no-store' }).catch(() => {});
+            }
+          }}
           className="justify-self-start p-2 rounded hover:bg-white/5 shrink-0 relative inline-grid place-items-center cursor-pointer"
           aria-label="Settings"
           style={{ width: 'var(--icon-size)', height: 'var(--icon-size)' }}

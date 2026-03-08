@@ -84,9 +84,10 @@ export default function SettingsDrawer({ open, onClose }: Props) {
   }, [pathname, search]);
 
   const [meBasic, setMeBasic] = React.useState<MeBasic | null>(null);
+  const meBasicLoadedRef = React.useRef(false); 
 
   React.useEffect(() => {
-    if (!open || !isAuth) return;
+    if (!open || !isAuth || meBasicLoadedRef.current) return; 
     let cancelled = false;
     (async () => {
       try {
@@ -94,7 +95,10 @@ export default function SettingsDrawer({ open, onClose }: Props) {
         if (!res.ok) return;
         const json = (await res.json()) as { ok?: boolean; me?: MeBasic };
         if (!json?.ok || !json?.me) return;
-        if (!cancelled) setMeBasic(json.me);
+        if (!cancelled) {
+          setMeBasic(json.me);
+          meBasicLoadedRef.current = true;
+        }
       } catch {}
     })();
     return () => {
@@ -128,9 +132,10 @@ export default function SettingsDrawer({ open, onClose }: Props) {
   const [statsError, setStatsError] = React.useState<string | null>(null);
   const premiumUntil = meBasic?.premiumUntil ?? u.premiumUntil ?? null;
   const isFirstAdopter = (meBasic?.isFirstAdopter ?? u.isFirstAdopter) ? true : false;
+  const statsLoadedRef = React.useRef(false); 
 
   React.useEffect(() => {
-    if (!open || !isAuth) return;
+    if (!open || !isAuth || statsLoadedRef.current) return; // ✅ Skip wenn schon geladen
     let cancelled = false;
     (async () => {
       try {
@@ -143,6 +148,7 @@ export default function SettingsDrawer({ open, onClose }: Props) {
         if (!cancelled) {
           setFollowers(Number(json.followers ?? 0));
           setFollowing(Number(json.following ?? 0));
+          statsLoadedRef.current = true; // ✅ Markieren als geladen
         }
       } catch {
         if (!cancelled) setStatsError(t('statsError'));
@@ -174,8 +180,11 @@ export default function SettingsDrawer({ open, onClose }: Props) {
     }
   }, [t]);
 
+  const suggestionsLoadedRef = React.useRef(false);
+
   React.useEffect(() => {
-    if (!open) return;
+    if (!open || suggestionsLoadedRef.current) return;
+    suggestionsLoadedRef.current = true;
     void loadSuggestions();
   }, [open, loadSuggestions]);
 
@@ -222,8 +231,12 @@ export default function SettingsDrawer({ open, onClose }: Props) {
     }
   }, [isAuth]);
 
+  const accountsLoadedRef = React.useRef(false);
+
   React.useEffect(() => {
-    if (open && isAuth) void loadAccounts();
+    if (!open || !isAuth || accountsLoadedRef.current) return;
+    accountsLoadedRef.current = true;
+    void loadAccounts();
   }, [open, isAuth, loadAccounts]);
 
   async function switchTo(userId: string) {
@@ -249,7 +262,7 @@ export default function SettingsDrawer({ open, onClose }: Props) {
     [isAuth, handle, locale, callbackUrl]
   );
 
-  if (!mounted || !open) return null;
+  if (!mounted) return null;
 
   const overlayStyle: React.CSSProperties = {
     position: 'fixed',
@@ -257,7 +270,10 @@ export default function SettingsDrawer({ open, onClose }: Props) {
     zIndex: 2147483600,
     backgroundColor: 'rgba(0,0,0,0.60)',
     backdropFilter: 'blur(6px)',
-    WebkitBackdropFilter: 'blur(6px)'
+    WebkitBackdropFilter: 'blur(6px)',
+    opacity: show ? 1 : 0,
+    pointerEvents: open ? 'auto' : 'none',
+    transition: 'opacity 200ms ease'
   };
 
   const panelStyle: React.CSSProperties = {
@@ -301,11 +317,13 @@ async function smartSignOut() {
     <div
       style={overlayStyle}
       onMouseDown={(e) => {
+        if (!open) return; // Ignore clicks when hidden
         if (e.target === e.currentTarget) onClose();
       }}
       role="dialog"
       aria-modal="true"
       aria-label={t('aria')}
+      aria-hidden={!open}
     >
       <aside style={panelStyle} onMouseDown={(e) => e.stopPropagation()}>
         {/* Header */}

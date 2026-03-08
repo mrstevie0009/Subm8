@@ -69,6 +69,5 @@ export default function ChatThreadPage() {
     );
   }
 
-  // ✅ Render correct thread type
   return meta.type === 'GROUP' ? <GroupThread /> : <ClientThread />;
 }

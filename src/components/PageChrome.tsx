@@ -5,7 +5,7 @@ import * as React from 'react';
 import { usePathname } from 'next/navigation';
 import Header from '@/components/Header';
 import BottomNav from '@/components/BottomNav';
-import SettingsDrawerMount from '@/components/SettingsDrawerMount';
+import SettingsDrawerMount from '@/components/settings/SettingsDrawerMount';
 import ComposePostOverlayMount from '@/components/ComposePostOverlayMount';
 import ToastHost from '@/components/ToastHost';
 

@@ -199,7 +199,8 @@ export default async function HomePage({
   const baseUrl = getBaseUrl();
 
   // Cookies forwarden, damit /api/feed die Session/Viewer korrekt sieht
-  const cookieHeader = cookies().toString();
+  const cookieStore = await cookies();
+  const cookieHeader = cookieStore.toString();
 
   let initialItems: FeedPost[] = [];
   try {
