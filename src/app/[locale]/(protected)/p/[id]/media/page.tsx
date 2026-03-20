@@ -347,6 +347,8 @@ export default function PostMediaPage() {
           scrollBehavior: 'smooth',
           touchAction: 'pan-y',
         }}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
       >
         {items.map((m, i) => {
           const isGif = m.kind === 'gif';
@@ -364,41 +366,50 @@ export default function PostMediaPage() {
                 scrollSnapAlign: 'center',
               }}
             >
-              {/* Tap Area */}
-              <div 
-                className="media-viewer-tap-area absolute inset-0 z-10"
-                onTouchStart={handleTouchStart}
-                onTouchEnd={handleTouchEnd}
-              />
-
               {/* Media Container */}
-              <div className="flex-1 flex items-center justify-center relative z-0">
+              <div className="flex-1 flex items-center justify-center relative">
                 {!isVideoLike && !imageLoaded.has(i) && (
                   <div className="media-skeleton absolute inset-0 m-4 rounded-xl" />
                 )}
 
                 {isVideoLike ? (
-                  <VideoPlayer
-                    src={m.url}
-                    className="max-h-[calc(100svh-140px)] max-w-[100vw] w-auto h-auto relative z-20"
-                    autoPlay={isCurrentItem}
-                    muted
-                    loop
-                    showScrubber={uiVisible}
-                    rightTag={isGif ? 'GIF' : undefined}
-                    clickToToggle={false}
-                  />
+                  <div 
+                    className="relative"
+                    onClick={(e) => {
+                      // Nur wenn nicht auf Video-Controls geklickt
+                      const target = e.target as HTMLElement;
+                      if (!target.closest('video, button')) {
+                        setUiVisible(v => !v);
+                      }
+                    }}
+                  >
+                    <VideoPlayer
+                      src={m.url}
+                      className="max-h-[calc(100svh-140px)] max-w-[100vw] w-auto h-auto"
+                      autoPlay={isCurrentItem}
+                      muted
+                      loop
+                      showScrubber={uiVisible}
+                      rightTag={isGif ? 'GIF' : undefined}
+                      clickToToggle={false}
+                    />
+                  </div>
                 ) : (
-                  <Image
-                    src={m.url}
-                    alt={m.alt ?? ''}
-                    width={1920}
-                    height={1080}
-                    className="max-h-[calc(100svh-140px)] max-w-[100vw] w-auto h-auto object-contain select-none"
-                    unoptimized
-                    priority={i === startIdx}
-                    onLoad={() => setImageLoaded(prev => new Set(prev).add(i))}
-                  />
+                  <div
+                    className="relative cursor-pointer"
+                    onClick={() => setUiVisible(v => !v)}
+                  >
+                    <Image
+                      src={m.url}
+                      alt={m.alt ?? ''}
+                      width={1920}
+                      height={1080}
+                      className="max-h-[calc(100svh-140px)] max-w-[100vw] w-auto h-auto object-contain select-none pointer-events-none"
+                      unoptimized
+                      priority={i === startIdx}
+                      onLoad={() => setImageLoaded(prev => new Set(prev).add(i))}
+                    />
+                  </div>
                 )}
               </div>
 
