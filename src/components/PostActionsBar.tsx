@@ -63,11 +63,13 @@ export default function PostActionsBar({
   stats,
   viewer,
   onCommentClick,
+  transparentOnHide = false,
 }: {
   postId: string;
   stats?: { likes?: number; comments?: number; reposts?: number };
   viewer?: { liked?: boolean; bookmarked?: boolean; reposted?: boolean };
   onCommentClick?: () => void;
+  transparentOnHide?: boolean;
 }) {
   const tPost = useTranslations('post');
   const { locale } = useParams() as { locale: string };
@@ -346,7 +348,7 @@ export default function PostActionsBar({
 
   // ---------------- Render ----------------
   return (
-    <div className="fixed inset-x-0 bottom-0 z-50 bg-black/80 backdrop-blur-md border-t border-white/10">
+    <div className={`fixed inset-x-0 bottom-0 z-50 transition-all duration-300 ${transparentOnHide ? 'bg-transparent border-transparent' : 'bg-black/80 backdrop-blur-md border-t border-white/10'}`}>
       <div className="max-w-2xl mx-auto px-3">
 
         <div className="flex items-center justify-between gap-3 py-2" onClick={(e) => e.stopPropagation()}>

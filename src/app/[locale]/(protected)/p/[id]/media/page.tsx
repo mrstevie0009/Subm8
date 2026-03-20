@@ -1,4 +1,3 @@
-//src/app/[locale]/(protected)/p/[id]/media/page.tsx
 'use client';
 
 import * as React from 'react';
@@ -7,11 +6,11 @@ import { useTranslations } from 'next-intl';
 import { useSession } from 'next-auth/react';
 import VideoPlayer from '@/components/VideoPlayer';
 import { toast } from '@/lib/toast';
-import PostDetailHeader from '@/components/PostDetailHeader';
+import MediaDetailHeader from '@/components/MediaDetailHeader';
 import Image from 'next/image';
 import PostActionsBar from '@/components/PostActionsBar';
 
-// ——— Helpers (wie in PostCard.tsx) ———
+// ——— Helpers ———
 type ContentMedia = { url: string; alt?: string | null; kind?: 'image' | 'video' | 'gif' };
 
 function isVideoUrl(url?: string | null): boolean {
@@ -59,7 +58,6 @@ function normalizeMediaFields(src: MediaContainer): ContentMedia[] {
   return out.filter(m => (seen.has(m.url) ? false : (seen.add(m.url), true)));
 }
 
-// ——— kleine Type-Guards ———
 function isObj(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null;
 }
@@ -93,7 +91,7 @@ function pickPreviewPayload(input: unknown): MediaContainer {
   return isObj(input) ? (input as MediaContainer) : {};
 }
 
-// ——— Gate für Unverified ———
+// ——— Gate ———
 function BlurredGate({ onStartVeriff }: { onStartVeriff: () => void | Promise<void> }) {
   const tVerify = useTranslations('verify');
   return (
@@ -126,11 +124,15 @@ export default function PostMediaPage() {
   const [snapStats, setSnapStats] = React.useState<{ likes?: number; comments?: number; reposts?: number }>();
   const [snapViewer, setSnapViewer] = React.useState<{ liked?: boolean; bookmarked?: boolean; reposted?: boolean }>();
   const [uiVisible, setUiVisible] = React.useState(true);
+  const [currentIndex, setCurrentIndex] = React.useState(startIdx);
 
   const [items, setItems] = React.useState<ContentMedia[] | null>(null);
   const containerRef = React.useRef<HTMLDivElement>(null);
+  const observerRef = React.useRef<IntersectionObserver | null>(null);
+  const touchStartY = React.useRef<number>(0);
+  const isScrolling = React.useRef(false);
 
-  // Snapshot für Actions übernehmen
+  // Snapshot laden
   React.useEffect(() => {
     try {
       const raw = sessionStorage.getItem(`ps:snap:${id}`);
@@ -145,7 +147,7 @@ export default function PostMediaPage() {
     } catch {}
   }, [id]);
 
-  // Prefill aus sessionStorage (Liste der Medien)
+  // Medien aus sessionStorage laden
   React.useEffect(() => {
     try {
       const raw = sessionStorage.getItem(`pm:${id}`);
@@ -157,7 +159,7 @@ export default function PostMediaPage() {
     } catch {}
   }, [id]);
 
-  // Medien ggf. nachladen
+  // Fallback: API fetch
   React.useEffect(() => {
     if (Array.isArray(items) && items.length > 0) return;
 
@@ -172,7 +174,7 @@ export default function PostMediaPage() {
         if (!cancelled) {
           if (!Array.isArray(media) || media.length === 0) {
             setItems([]);
-            toast.error('Keine Medien im Post gefunden (API-Antwort ohne media-Felder).', 'Keine Medien');
+            toast.error('Keine Medien im Post gefunden.', 'Keine Medien');
             return;
           }
           setItems(media);
@@ -185,20 +187,83 @@ export default function PostMediaPage() {
       }
     })();
     return () => { cancelled = true; };
-    // bewusst KEIN `items` in deps
   }, [id, items]);
 
-  // Zum i-ten Element scrollen
+  // Intersection Observer für aktuellen Index
   React.useEffect(() => {
-    if (!items || items.length <= 1 || !containerRef.current) return;
-    const idx = Math.min(Math.max(0, startIdx), Math.max(0, items.length - 1));
-    const el = containerRef.current.children[idx] as HTMLElement | undefined;
-    el?.scrollIntoView({ block: 'center', behavior: 'smooth' });
-  }, [items, startIdx]);
+    if (!items || items.length === 0 || !containerRef.current) return;
+
+    const options = {
+      root: containerRef.current,
+      threshold: 0.5,
+    };
+
+    observerRef.current = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          const idx = parseInt(entry.target.getAttribute('data-index') || '0', 10);
+          setCurrentIndex(idx);
+        }
+      });
+    }, options);
+
+    const figures = containerRef.current.querySelectorAll('[data-index]');
+    figures.forEach((fig) => observerRef.current?.observe(fig));
+
+    return () => {
+      observerRef.current?.disconnect();
+    };
+  }, [items]);
+
+  // Touch-Gesten für Swipe
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartY.current = e.touches[0].clientY;
+    isScrolling.current = false;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!touchStartY.current) return;
+    const deltaY = e.touches[0].clientY - touchStartY.current;
+    if (Math.abs(deltaY) > 10) {
+      isScrolling.current = true;
+    }
+  };
+
+  const handleTouchEnd = () => {
+    touchStartY.current = 0;
+    isScrolling.current = false;
+  };
+
+  // Keyboard Navigation
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!items || items.length === 0) return;
+
+      if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+        e.preventDefault();
+        const nextIdx = Math.min(currentIndex + 1, items.length - 1);
+        scrollToIndex(nextIdx);
+      } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+        e.preventDefault();
+        const prevIdx = Math.max(currentIndex - 1, 0);
+        scrollToIndex(prevIdx);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [items, currentIndex]);
+
+  const scrollToIndex = (idx: number) => {
+    if (!containerRef.current) return;
+    const figures = containerRef.current.querySelectorAll('[data-index]');
+    const target = figures[idx] as HTMLElement | undefined;
+    target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  };
 
   const startAgeVerification = React.useCallback(async () => {
     try {
-      const back = `/${locale}/p/${id}/media?i=${startIdx}`;
+      const back = `/${locale}/p/${id}/media?i=${currentIndex}`;
       if (!session) {
         router.push(`/${locale}/signin?callbackUrl=${encodeURIComponent(back)}`);
         return;
@@ -211,9 +276,9 @@ export default function PostMediaPage() {
     } catch {
       toast.error('Die Verifikation konnte nicht gestartet werden.', 'Fehler');
     }
-  }, [id, locale, router, session, startIdx]);
+  }, [id, locale, router, session, currentIndex]);
 
-  // —— Content-Block vorbereiten —— //
+  // Content
   let content: React.ReactNode;
 
   if (!ageOk) {
@@ -230,74 +295,40 @@ export default function PostMediaPage() {
         Keine Medien gefunden.
       </div>
     );
-  } else if (items.length === 1) {
-    // Single Viewer – ein Medium, so groß wie möglich
-    const m = items[0];
-    const isGif = m.kind === 'gif';
-    const isVideoLike = m.kind === 'video' || isGif;
-
-    content = (
-      <div className="flex-1 overflow-hidden bg-black">
-        <figure
-          className="relative grid place-items-center"
-          style={{ minHeight: 'calc(100svh - 48px - 64px)' }} // 48 Header, ~64 Actionsbar
-          onClick={() => setUiVisible(v => !v)}
-        >
-          {isVideoLike ? (
-            <VideoPlayer
-              src={m.url}
-              className="max-h-[calc(100svh-48px-64px)] max-w-[100vw] w-auto h-auto"
-              autoPlay
-              muted
-              loop
-              showScrubber={uiVisible}
-              rightTag={isGif ? 'GIF' : undefined}
-              clickToToggle
-            />
-          ) : (
-            <Image
-              src={m.url}
-              alt={m.alt ?? ''}
-              width={1920}
-              height={1080}
-              className="max-h-[calc(100svh-48px-64px)] max-w-[100vw] w-auto h-auto object-contain select-none"
-              unoptimized
-              priority
-            />
-          )}
-
-          {/* Lesbarkeits-Overlays für Header/Bar */}
-          <div className={`pointer-events-none absolute top-0 inset-x-0 h-24 bg-gradient-to-b from-black/70 to-transparent transition-opacity ${uiVisible ? 'opacity-100' : 'opacity-0'}`} />
-          <div className={`pointer-events-none absolute bottom-0 inset-x-0 h-28 bg-gradient-to-t from-black/70 to-transparent transition-opacity ${uiVisible ? 'opacity-100' : 'opacity-0'}`} />
-        </figure>
-      </div>
-    );
   } else {
-    // Multi Viewer – Snap-Scroll
     content = (
       <div
         ref={containerRef}
         className="flex-1 overflow-y-auto snap-y snap-mandatory bg-black"
-        style={{ WebkitOverflowScrolling: 'touch', overscrollBehaviorY: 'contain' }}
+        style={{ 
+          WebkitOverflowScrolling: 'touch', 
+          overscrollBehaviorY: 'contain',
+          scrollBehavior: 'smooth'
+        }}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
       >
-        <div className="h-12" aria-hidden /> {/* Abstand unter Header */}
-
         {items.map((m, i) => {
           const isGif = m.kind === 'gif';
           const isVideoLike = m.kind === 'video' || isGif;
 
           return (
             <figure
-              key={m.url}
-              className="relative snap-start md:snap-center grid place-items-center"
-              style={{ minHeight: 'calc(100svh - 48px - 64px)', scrollSnapStop: 'always' }}
+              key={`${m.url}-${i}`}
+              data-index={i}
+              className="relative snap-center snap-always grid place-items-center"
+              style={{ 
+                minHeight: '100svh',
+                scrollSnapStop: 'always'
+              }}
               onClick={() => setUiVisible(v => !v)}
             >
               {isVideoLike ? (
                 <VideoPlayer
                   src={m.url}
-                  className="max-h-[calc(100svh-48px-64px)] max-w-[100vw] w-auto h-auto"
-                  autoPlay
+                  className="max-h-[100svh] max-w-[100vw] w-auto h-auto"
+                  autoPlay={i === currentIndex}
                   muted
                   loop
                   showScrubber={uiVisible}
@@ -310,20 +341,24 @@ export default function PostMediaPage() {
                   alt={m.alt ?? ''}
                   width={1920}
                   height={1080}
-                  className="max-h-[calc(100svh-48px-64px)] max-w-[100vw] w-auto h-auto object-contain select-none"
+                  className="max-h-[100svh] max-w-[100vw] w-auto h-auto object-contain select-none"
                   unoptimized
+                  priority={i === startIdx}
                 />
               )}
 
-              {/* Index-Pill */}
-              <div className={`absolute right-3 top-3 z-20 transition-opacity ${uiVisible ? 'opacity-95' : 'opacity-0 pointer-events-none'}`}>
-                <span className="rounded-full bg-black/65 border border-white/15 px-2 py-1 text-xs">
-                  {i + 1}/{items.length}
-                </span>
-              </div>
+              {/* Index Pill */}
+              {items.length > 1 && (
+                <div className={`absolute right-4 top-20 z-20 transition-opacity duration-300 ${uiVisible ? 'opacity-95' : 'opacity-0 pointer-events-none'}`}>
+                  <span className="rounded-full bg-black/70 border border-white/20 px-3 py-1.5 text-sm font-medium backdrop-blur-sm">
+                    {i + 1}/{items.length}
+                  </span>
+                </div>
+              )}
 
-              <div className={`pointer-events-none absolute top-0 inset-x-0 h-24 bg-gradient-to-b from-black/70 to-transparent transition-opacity ${uiVisible ? 'opacity-100' : 'opacity-0'}`} />
-              <div className={`pointer-events-none absolute bottom-0 inset-x-0 h-28 bg-gradient-to-t from-black/70 to-transparent transition-opacity ${uiVisible ? 'opacity-100' : 'opacity-0'}`} />
+              {/* Gradients */}
+              <div className={`pointer-events-none absolute top-0 inset-x-0 h-32 bg-gradient-to-b from-black/80 to-transparent transition-opacity duration-300 ${uiVisible ? 'opacity-100' : 'opacity-0'}`} />
+              <div className={`pointer-events-none absolute bottom-0 inset-x-0 h-32 bg-gradient-to-t from-black/80 to-transparent transition-opacity duration-300 ${uiVisible ? 'opacity-100' : 'opacity-0'}`} />
             </figure>
           );
         })}
@@ -332,21 +367,21 @@ export default function PostMediaPage() {
   }
 
   return (
-    <div className="min-h-[100svh] bg-black text-white flex flex-col">
-      {/* Header wie auf der normalen Post-Detail-Seite, gleiche Breite */}
-      <PostDetailHeader fixed />
+    <div className="min-h-[100svh] bg-black text-white flex flex-col overflow-hidden">
+      <MediaDetailHeader fixed transparentOnHide={!uiVisible} />
 
-      {/* Inhalt unter den festen Header schieben (≈48px) */}
-      <div className="flex-1 flex flex-col pt-12">
+      <div className="flex-1 flex flex-col overflow-hidden">
         {content}
-
-        {/* Eine globale Actions-Bar, zentriert, gleiche Breite wie sonst */}
-        <PostActionsBar
-          postId={id}
-          stats={snapStats}
-          viewer={snapViewer}
-          onCommentClick={() => router.push(`/${locale}/p/${id}`)}
-        />
+        
+        {ageOk && items && items.length > 0 && (
+          <PostActionsBar
+            postId={id}
+            stats={snapStats}
+            viewer={snapViewer}
+            onCommentClick={() => router.push(`/${locale}/p/${id}`)}
+            transparentOnHide={!uiVisible}
+          />
+        )}
       </div>
     </div>
   );
