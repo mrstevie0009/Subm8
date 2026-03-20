@@ -5,6 +5,7 @@ import * as React from 'react';
 import { useSearchParams } from 'next/navigation';
 import PostCard from '@/components/PostCard';
 import type { FeedPost } from '@/components/PostCard';
+import { AnimatePresence } from 'framer-motion';
 
 // Lottie (dynamisch, um SSR-Probleme zu vermeiden)
 import dynamic from 'next/dynamic';
@@ -311,6 +312,7 @@ export default function HomeFeedClient({ initialItems }: Props) {
   const [loadingNew, setLoadingNew] = React.useState(false);
   const [atTop, setAtTop] = React.useState(true);
   const [items, setItems] = React.useState<FeedPost[]>(() => dedupeById(initialItems));
+  const [optimisticPosts, setOptimisticPosts] = React.useState<FeedPost[]>([]);
   const [firstLoading, setFirstLoading] = React.useState(items.length === 0);
   const [feedReady, setFeedReady] = React.useState(items.length > 0);
   
@@ -570,6 +572,24 @@ export default function HomeFeedClient({ initialItems }: Props) {
     return () => window.removeEventListener('home:refresh', handler as EventListener);
   }, [handleClickNew]);
 
+  // Optimistic Post Creation
+  React.useEffect(() => {
+    const handleOptimistic = (ev: Event) => {
+      const ce = ev as CustomEvent<{ post: FeedPost; tempId: string }>;
+      if (!ce.detail) return;
+      
+      setOptimisticPosts(prev => [ce.detail.post, ...prev]);
+      
+      // Remove after successful creation
+      setTimeout(() => {
+        setOptimisticPosts(prev => prev.filter(p => p.id !== ce.detail.tempId));
+      }, 500);
+    };
+
+    window.addEventListener('post:optimistic', handleOptimistic);
+    return () => window.removeEventListener('post:optimistic', handleOptimistic);
+  }, []);
+
   return (
     <>
       {/* Top-Sentinel fürs „am Anfang“-Erkennen */}
@@ -628,7 +648,14 @@ export default function HomeFeedClient({ initialItems }: Props) {
         {firstLoading ? (
           <FeedSkeleton />
         ) : (
-          items.map((post) => <PostCard key={post.id} post={post} />)
+          <AnimatePresence mode="popLayout">
+            {optimisticPosts.map((post) => (
+              <PostCard key={post.id} post={post} />
+            ))}
+            {items.map((post) => (
+              <PostCard key={post.id} post={post} />
+            ))}
+          </AnimatePresence>
         )}
 
         {/* Bottom-Sentinel + hübscher Mini-Skeleton statt nur Spinner */}

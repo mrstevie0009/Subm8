@@ -3,6 +3,7 @@
 'use client';
 
 import * as React from 'react';
+import { saveDraft, loadDraft, clearDraft } from '@/lib/drafts';
 import { createPortal } from 'react-dom';
 import Image from 'next/image';
 import { createPost } from '@/app/actions/posts';
@@ -247,13 +248,55 @@ export default function ComposePostModal({ open, onClose }: Props) {
   React.useEffect(() => setMounted(true), []);
 
   const [text, setText] = React.useState('');
+  const [charCount, setCharCount] = React.useState(0);
+  const MAX_CHARS = 4000;
 
   // Refs müssen vor return existieren
   const textareaRef = React.useRef<HTMLTextAreaElement | HTMLInputElement>(null);
   const anchorRef = React.useRef<HTMLElement | null>(null);
+  const fileInputRef = React.useRef<HTMLInputElement | null>(null);
+  const dropZoneRef = React.useRef<HTMLDivElement | null>(null);
 
   // NEU: mehrere Medien
   const [media, setMedia] = React.useState<LocalMedia[]>([]);
+  const [isDragging, setIsDragging] = React.useState(false);
+  const [uploadProgress, setUploadProgress] = React.useState<number | null>(null);
+
+  // Draft System: Auto-save
+  React.useEffect(() => {
+    if (!text && media.length === 0) return;
+    const timer = setTimeout(() => {
+      saveDraft({
+        text,
+        mediaFiles: media.map(m => ({ name: m.file.name, size: m.file.size, type: m.file.type })),
+        savedAt: Date.now(),
+      });
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [text, media]);
+
+  // Draft System: Load on mount
+  React.useEffect(() => {
+    if (!open) return;
+    const draft = loadDraft();
+    if (draft && !text && media.length === 0) {
+      setText(draft.text);
+      // Media können wir nicht wiederherstellen (File objects), nur Text
+    }
+  }, [open, text, media.length]);
+
+  // Auto-resize Textarea
+  React.useEffect(() => {
+    const ta = textareaRef.current;
+    if (!ta || !(ta instanceof HTMLTextAreaElement)) return;
+    ta.style.height = 'auto';
+    ta.style.height = `${ta.scrollHeight}px`;
+  }, [text]);
+
+  // Character count
+  React.useEffect(() => {
+    setCharCount(text.length);
+  }, [text]);
 
   React.useEffect(() => {
     // Kein revoke hier nötig: wir räumen beim Entfernen einzelner Medien auf.
@@ -263,7 +306,7 @@ export default function ComposePostModal({ open, onClose }: Props) {
     };
   }, []);
 
-  const onPickMedia = (files?: FileList | null, input?: HTMLInputElement | null) => {
+  const onPickMedia = React.useCallback((files?: FileList | null, input?: HTMLInputElement | null) => {
     if (!files || files.length === 0) return;
 
     const pickedAll = Array.from(files);
@@ -302,7 +345,6 @@ export default function ComposePostModal({ open, onClose }: Props) {
         }
       }
     } else {
-      // Noch keine Medien: entweder nur 1 Video ODER nur Bilder (nicht mischen)
       const hasVideo = pickedAll.some(isVideoFile);
       const hasImage = pickedAll.some(isImageFile);
 
@@ -320,8 +362,7 @@ export default function ComposePostModal({ open, onClose }: Props) {
       } else {
         const imageFiles = pickedAll.filter(isImageFile);
         if (imageFiles.length === 0) {
-          // nichts erkannt (z.B. exotischer Typ) → ruhig ein Toast?
-          // toasts.push({ msg: 'Dieser Dateityp wird nicht unterstützt.' });
+          // nichts erkannt
         } else {
           const remaining = MEDIA_MAX - next.length;
           if (remaining <= 0) {
@@ -342,11 +383,69 @@ export default function ComposePostModal({ open, onClose }: Props) {
 
     if (next !== current) setMedia(next);
     for (const tmsg of toasts) toast.error(tmsg.msg);
-  };
+  }, [media, tt]);
 
+  // Drag & Drop Support
+  const handleDragEnter = React.useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
+      setIsDragging(true);
+    }
+  }, []);
 
+  const handleDragLeave = React.useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const target = e.currentTarget as HTMLElement;
+    if (!target.contains(e.relatedTarget as Node)) {
+      setIsDragging(false);
+    }
+  }, []);
 
+  const handleDragOver = React.useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
 
+  const handleDrop = React.useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    
+    const dt = e.dataTransfer;
+    if (dt.files && dt.files.length > 0) {
+      onPickMedia(dt.files);
+    }
+  }, [onPickMedia]);
+
+  // Paste Support
+  React.useEffect(() => {
+    const handlePaste = (e: ClipboardEvent) => {
+      if (!open) return;
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      const files: File[] = [];
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item.kind === 'file') {
+          const file = item.getAsFile();
+          if (file) files.push(file);
+        }
+      }
+
+      if (files.length > 0) {
+        e.preventDefault();
+        const dt = new DataTransfer();
+        files.forEach(f => dt.items.add(f));
+        onPickMedia(dt.files);
+      }
+    };
+
+    window.addEventListener('paste', handlePaste);
+    return () => window.removeEventListener('paste', handlePaste);
+  }, [open, onPickMedia]);
 
   const removeMedia = (id: string) => {
     setMedia((prev) => {
@@ -610,10 +709,11 @@ export default function ComposePostModal({ open, onClose }: Props) {
 
         {/* Form als Column-Layout, Body scrollt */}
         <form
-          onSubmit={async (e) => {           //  ⬅️ hier async ergänzen
+          onSubmit={async (e) => {
             e.preventDefault();
             const form = e.currentTarget as HTMLFormElement;
             const fd = new FormData(form);
+            clearDraft();
 
             // --- (A) Return-Ziel setzen, damit das Modal nicht erneut öffnet ---
             if (!fd.get('returnTo')) {
@@ -629,24 +729,40 @@ export default function ComposePostModal({ open, onClose }: Props) {
 
             let uploadedUrls: string[] = [];
             if (toDirect.length) {
+              setUploadProgress(0);
+              
               const r = await fetch('/api/upload-urls', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ files: toDirect.map(m => ({ name: m.file.name, type: m.file.type })) }),
               });
+
               if (!r.ok) {
                 toast.error(tt('upload.presignFailed'));
+                setUploadProgress(null);
                 return;
               }
+              
               const { items } = (await r.json()) as { items: { uploadUrl: string; publicUrl: string }[] };
 
-              const results = await Promise.allSettled(items.map((it, i) =>
-                fetch(it.uploadUrl, {
+              // Upload files with progress tracking
+              const uploadPromises = items.map(async (it, i) => {
+                const progress = Math.round(((i) / items.length) * 100);
+                setUploadProgress(progress);
+                
+                const result = await fetch(it.uploadUrl, {
                   method: 'PUT',
                   body: toDirect[i]!.file,
                   headers: { 'Content-Type': toDirect[i]!.file.type || 'application/octet-stream' },
-                })
-              ));
+                });
+                
+                const newProgress = Math.round(((i + 1) / items.length) * 100);
+                setUploadProgress(newProgress);
+                
+                return result;
+              });
+
+              const results = await Promise.allSettled(uploadPromises);
 
               const okIdx = results
                 .map((r, i) => (r.status === 'fulfilled' && r.value.ok ? i : -1))
@@ -657,34 +773,55 @@ export default function ComposePostModal({ open, onClose }: Props) {
               if (okIdx.length !== items.length) {
                 toast.error(tt('upload.someFailed'));
               }
+              
+              setUploadProgress(null);
             }
-
             fd.delete('media');
             for (const m of media) {
               if (toDirect.includes(m)) continue;
               fd.append('media', m.file);
             }
             for (const url of uploadedUrls) fd.append('uploadedUrl', url);
-
             startTransition(() => {
               // ts-expect-error — Client Action, React übergibt FormData
               void createPost(fd);
             });
-
             justSubmittedRef.current = true;
-            try {
-              for (const m of media) if (m.preview?.startsWith('blob:')) URL.revokeObjectURL(m.preview);
-            } catch {}
             setMedia([]);
             setText('');
+            setUploadProgress(null);
             toast.posted(tt('post.published'));
             onClose();
+            try {
+              for (const m of media) if (m.preview?.startsWith('blob:')) URL.revokeObjectURL(m.preview);
+            } catch (err) {
+              console.error('[ComposePostModal] submit err:', err);
+              toast.error(tt('post.failedTitle'));
+              setUploadProgress(null);
+            }
           }}
           className="flex min-h-0 flex-col"
         >
 
           {/* BODY (scrollbar) */}
-          <div className="px-4 pt-4 pb-3 grid gap-3 flex-1 min-h-0 overflow-y-auto">
+          <div 
+            ref={dropZoneRef}
+            className={`px-4 pt-4 pb-3 grid gap-3 flex-1 min-h-0 overflow-y-auto ${isDragging ? 'bg-[var(--purple)]/10 border-2 border-dashed border-[var(--purple)]' : ''}`}
+            onDragEnter={handleDragEnter}
+            onDragLeave={handleDragLeave}
+            onDragOver={handleDragOver}
+            onDrop={handleDrop}
+          >
+            {/* Drag & Drop Overlay */}
+            {isDragging && (
+              <div className="absolute inset-0 z-50 grid place-items-center bg-black/60 backdrop-blur-sm pointer-events-none">
+                <div className="text-center">
+                  <div className="text-4xl mb-2">📎</div>
+                  <div className="text-lg font-semibold text-[var(--purple)]">Drop files here</div>
+                </div>
+              </div>
+            )}
+
             {/* Anchor für MentionSuggest */}
             <div ref={anchorRef as React.RefObject<HTMLDivElement>} className="relative">
               <textarea
@@ -692,11 +829,20 @@ export default function ComposePostModal({ open, onClose }: Props) {
                 name="text"
                 rows={3}
                 placeholder={t('fields.textPlaceholder')}
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-[var(--purple)]/40"
-                maxLength={4000}
+                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-[var(--purple)]/40 resize-none overflow-hidden"
+                maxLength={MAX_CHARS}
                 value={text}
                 onChange={(e) => setText(e.target.value)}
+                style={{ minHeight: '80px', maxHeight: '400px' }}
               />
+              
+              {/* Character Counter */}
+              <div className="absolute bottom-2 right-2 text-xs tabular-nums pointer-events-none">
+                <span className={charCount > MAX_CHARS * 0.9 ? 'text-red-400' : 'text-white/60'}>
+                  {charCount}/{MAX_CHARS}
+                </span>
+              </div>
+
               <MentionSuggest anchorRef={anchorRef as React.RefObject<HTMLElement>} value={text} onChange={setText} limit={8} />
             </div>
 
@@ -712,6 +858,22 @@ export default function ComposePostModal({ open, onClose }: Props) {
 
           {/* FOOTER bleibt sichtbar (Body scrollt) */}
           <div className="px-4 py-3 border-t border-white/10 bg-[#0b0b0b]">
+            {/* Upload Progress Bar */}
+            {uploadProgress !== null && (
+              <div className="mb-3">
+                <div className="flex items-center justify-between text-xs text-white/70 mb-1">
+                  <span>Uploading...</span>
+                  <span>{Math.round(uploadProgress)}%</span>
+                </div>
+                <div className="h-1 bg-white/10 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-[var(--purple)] transition-all duration-300"
+                    style={{ width: `${uploadProgress}%` }}
+                  />
+                </div>
+              </div>
+            )}
+
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
                 {/* Medienauswahl */}
@@ -722,7 +884,8 @@ export default function ComposePostModal({ open, onClose }: Props) {
                   aria-disabled={limitReached}
                 >
                   <input
-                    key={media.length}                // <— remount nach jedem Add/Remove
+                    ref={fileInputRef}
+                    key={media.length}
                     type="file"
                     accept="image/*,video/*"
                     multiple={!hasVideo}

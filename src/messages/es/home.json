@@ -1,21 +1,21 @@
 {
   "bookmarksPage": {
     "ariaBack": "Volver al feed",
-    "emptyDesc": "Guarda publicaciones para acceder a ellas aquí en cualquier momento.",
+    "emptyDesc": "Guarda publicaciones para acceder a ellas en cualquier momento.",
     "emptyTitle": "Aún no hay marcadores",
-    "guestDesc": "Añade marcadores a las publicaciones para encontrarlas rápido más tarde.",
+    "guestDesc": "Añade marcadores a las publicaciones para encontrarlas rápidamente más tarde.",
     "guestTitle": "Guardar publicaciones para después",
     "title": "Marcadores"
   },
   "feedFilter": {
     "apply": "Aplicar",
     "following": "Siguiendo",
-    "newPosts": "Publicaciones más recientes",
+    "newPosts": "Últimas publicaciones",
     "onlyDommes": "Solo Dommes",
     "onlySubs": "Solo Subs",
     "reset": "Restablecer",
-    "title": "Filtra tu feed",
-    "toggleAria": "Filtro del feed",
+    "title": "Filtrar tu feed",
+    "toggleAria": "Filtro de feed",
     "topPosts": "Publicaciones destacadas"
   },
   "toast": {
@@ -24,31 +24,31 @@
       "sent": "Comentario enviado"
     },
     "community": {
-      "createFailedTitle": "Error al crear",
+      "createFailedTitle": "Error en la creación",
       "created": "Comunidad creada"
     },
     "generic": {
-      "tryAgain": "Inténtalo de nuevo más tarde"
+      "tryAgain": "Por favor, inténtalo de nuevo más tarde"
     },
     "media": {
-      "maxReached": "Se alcanzó el máximo de {max} archivos por publicación",
-      "onlyRemaining": "Solo se permiten {remaining} {remaining, plural, one {archivo} other {archivos}} más (máx. {max}).",
-      "alreadyVideo": "Ya hay un video seleccionado. Elimínalo primero para elegir nuevos archivos.",
-      "noVideoWhenImages": "No puedes añadir un video si ya hay imágenes seleccionadas.",
-      "videosIgnored": "Se ignoraron los videos. Elige 1 video o hasta 4 imágenes.",
-      "mixedNotAllowed": "Elige un solo video O imágenes — no se permite mezclar.",
-      "onlyOneVideo": "Solo se permite 1 video por publicación."
+      "maxReached": "Máximo de {max} archivos por publicación alcanzado",
+      "onlyRemaining": "Solo {remaining} {remaining, plural, one {elemento} other {elementos}} más permitidos (máx {max})",
+      "alreadyVideo": "Ya hay un video seleccionado. Elimínalo primero para elegir nuevos archivos",
+      "noVideoWhenImages": "No puedes añadir un video cuando ya hay imágenes seleccionadas",
+      "videosIgnored": "Los videos fueron ignorados. O 1 video o hasta 4 imágenes",
+      "mixedNotAllowed": "Por favor, elige un video O imágenes — no se permite mezclar",
+      "onlyOneVideo": "Solo se permite 1 video por publicación"
     },
     "gif": {
-      "noGifWhenVideo": "No puedes añadir un GIF si hay un video seleccionado."
+      "noGifWhenVideo": "No puedes añadir un GIF cuando hay un video seleccionado"
     },
     "upload": {
-      "presignFailed": "No se pudieron obtener las URLs de subida.",
-      "someFailed": "Algunos archivos multimedia no se pudieron subir."
+      "presignFailed": "No se pudieron obtener las URLs de carga",
+      "someFailed": "Algunos archivos multimedia no se pudieron cargar"
     },
     "post": {
       "failedTitle": "Error al publicar",
-      "published": "Publicación publicada"
+      "published": "Publicación creada"
     }
   }
 }

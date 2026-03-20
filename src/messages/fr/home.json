@@ -1,26 +1,26 @@
 {
   "bookmarksPage": {
-    "ariaBack": "Retour au fil",
-    "emptyDesc": "Enregistrez des publications pour y accéder ici à tout moment.",
-    "emptyTitle": "Aucun favori pour le moment",
+    "ariaBack": "Retour au flux",
+    "emptyDesc": "Enregistrez des publications pour y accéder à tout moment.",
+    "emptyTitle": "Pas encore de favoris",
     "guestDesc": "Ajoutez des favoris aux publications pour les retrouver rapidement plus tard.",
-    "guestTitle": "Enregistrer pour plus tard",
+    "guestTitle": "Enregistrer des publications pour plus tard",
     "title": "Favoris"
   },
   "feedFilter": {
     "apply": "Appliquer",
     "following": "Abonnements",
-    "newPosts": "Publications récentes",
+    "newPosts": "Dernières publications",
     "onlyDommes": "Dommes uniquement",
     "onlySubs": "Subs uniquement",
     "reset": "Réinitialiser",
-    "title": "Filtrer votre fil",
-    "toggleAria": "Filtre du fil",
+    "title": "Filtrer votre flux",
+    "toggleAria": "Filtre du flux",
     "topPosts": "Publications populaires"
   },
   "toast": {
     "comment": {
-      "failedTitle": "Échec de l’envoi",
+      "failedTitle": "Échec de l'envoi",
       "sent": "Commentaire envoyé"
     },
     "community": {
@@ -28,27 +28,27 @@
       "created": "Communauté créée"
     },
     "generic": {
-      "tryAgain": "Réessayez plus tard"
+      "tryAgain": "Veuillez réessayer plus tard"
     },
     "media": {
-      "maxReached": "Nombre max de {max} médias par publication atteint",
-      "onlyRemaining": "Seulement {remaining} {remaining, plural, one {média} other {médias}} supplémentaires autorisé(s) (max {max}).",
-      "alreadyVideo": "Une vidéo est déjà sélectionnée. Supprime-la d’abord pour choisir de nouveaux médias.",
-      "noVideoWhenImages": "Vous ne pouvez pas ajouter une vidéo si des images sont déjà sélectionnées.",
-      "videosIgnored": "Les vidéos ont été ignorées. Soit 1 vidéo, soit jusqu’à 4 images.",
-      "mixedNotAllowed": "Choisissez soit une vidéo, soit des images — le mélange n’est pas autorisé.",
-      "onlyOneVideo": "Une seule vidéo par publication est autorisée."
+      "maxReached": "Maximum de {max} médias par publication atteint",
+      "onlyRemaining": "Plus que {remaining} {remaining, plural, one {élément} other {éléments}} autorisés (max {max})",
+      "alreadyVideo": "Une vidéo est déjà sélectionnée. Supprimez-la d'abord pour choisir de nouveaux médias",
+      "noVideoWhenImages": "Vous ne pouvez pas ajouter une vidéo lorsque des images sont déjà sélectionnées",
+      "videosIgnored": "Les vidéos ont été ignorées. Soit 1 vidéo soit jusqu'à 4 images",
+      "mixedNotAllowed": "Veuillez choisir soit une vidéo SOIT des images — le mélange n'est pas autorisé",
+      "onlyOneVideo": "Une seule vidéo par publication est autorisée"
     },
     "gif": {
-      "noGifWhenVideo": "Vous ne pouvez pas ajouter un GIF lorsqu’une vidéo est sélectionnée."
+      "noGifWhenVideo": "Vous ne pouvez pas ajouter un GIF lorsqu'une vidéo est sélectionnée"
     },
     "upload": {
-      "presignFailed": "Impossible de récupérer les URL de téléversement.",
-      "someFailed": "Certains fichiers médias n’ont pas pu être téléversés."
+      "presignFailed": "Impossible de récupérer les URLs de téléchargement",
+      "someFailed": "Certains fichiers multimédias n'ont pas pu être téléchargés"
     },
     "post": {
       "failedTitle": "Échec de la publication",
-      "published": "Publication publiée"
+      "published": "Publication créée"
     }
   }
 }

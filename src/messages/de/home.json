@@ -1,54 +1,54 @@
 {
   "bookmarksPage": {
     "ariaBack": "Zurück zum Feed",
-    "emptyDesc": "Speichere Beiträge, um sie hier jederzeit wieder aufzurufen.",
+    "emptyDesc": "Speichere Posts, um jederzeit darauf zugreifen zu können.",
     "emptyTitle": "Noch keine Lesezeichen",
-    "guestDesc": "Füge Beiträgen Lesezeichen hinzu, damit du sie später schnell wiederfindest.",
-    "guestTitle": "Beiträge für später speichern",
+    "guestDesc": "Füge Lesezeichen zu Posts hinzu, um sie später schnell zu finden.",
+    "guestTitle": "Posts für später speichern",
     "title": "Lesezeichen"
   },
   "feedFilter": {
-    "apply": "Übernehmen",
+    "apply": "Anwenden",
     "following": "Gefolgte",
     "newPosts": "Neueste Beiträge",
     "onlyDommes": "Nur Dommes",
     "onlySubs": "Nur Subs",
     "reset": "Zurücksetzen",
-    "title": "Deinen Feed filtern",
+    "title": "Feed filtern",
     "toggleAria": "Feed-Filter",
     "topPosts": "Top-Beiträge"
   },
   "toast": {
     "comment": {
       "failedTitle": "Senden fehlgeschlagen",
-      "sent": "Kommentar wurde gesendet"
+      "sent": "Kommentar gesendet"
     },
     "community": {
-      "createFailedTitle": "Erstellen fehlgeschlagen",
+      "createFailedTitle": "Erstellung fehlgeschlagen",
       "created": "Community erstellt"
     },
     "generic": {
       "tryAgain": "Bitte später erneut versuchen"
     },
     "media": {
-      "maxReached": "Max. {max} Medien pro Post erreicht",
-      "onlyRemaining": "Nur {remaining} weitere {remaining, plural, one {Medium} other {Medien}} möglich (max. {max}).",
-      "alreadyVideo": "Es ist bereits ein Video ausgewählt. Entferne es zuerst, um neue Medien zu wählen.",
-      "noVideoWhenImages": "Du kannst kein Video hinzufügen, wenn bereits Bilder gewählt sind.",
-      "videosIgnored": "Videos wurden ignoriert. Entweder 1 Video oder bis zu 4 Bilder.",
-      "mixedNotAllowed": "Bitte wähle nur ein Video ODER nur Bilder – Mischen ist nicht erlaubt.",
-      "onlyOneVideo": "Nur 1 Video pro Post erlaubt."
+      "maxReached": "Maximum von {max} Medien pro Post erreicht",
+      "onlyRemaining": "Nur noch {remaining} {remaining, plural, one {Element} other {Elemente}} erlaubt (max {max})",
+      "alreadyVideo": "Ein Video ist bereits ausgewählt. Entferne es zuerst, um neue Medien auszuwählen",
+      "noVideoWhenImages": "Du kannst kein Video hinzufügen, wenn bereits Bilder ausgewählt sind",
+      "videosIgnored": "Videos wurden ignoriert. Entweder 1 Video oder bis zu 4 Bilder",
+      "mixedNotAllowed": "Bitte wähle entweder ein Video ODER Bilder — Mischen ist nicht erlaubt",
+      "onlyOneVideo": "Nur 1 Video pro Post erlaubt"
     },
     "gif": {
-      "noGifWhenVideo": "Du kannst kein GIF hinzufügen, wenn ein Video gewählt ist."
+      "noGifWhenVideo": "Du kannst kein GIF hinzufügen, wenn ein Video ausgewählt ist"
     },
     "upload": {
-      "presignFailed": "Konnte Upload-URLs nicht holen.",
-      "someFailed": "Einige Mediendateien konnten nicht hochgeladen werden."
+      "presignFailed": "Upload-URLs konnten nicht abgerufen werden",
+      "someFailed": "Einige Mediendateien konnten nicht hochgeladen werden"
     },
     "post": {
       "failedTitle": "Posten fehlgeschlagen",
-      "published": "Beitrag wurde veröffentlicht"
+      "published": "Post veröffentlicht"
     }
   }
 }

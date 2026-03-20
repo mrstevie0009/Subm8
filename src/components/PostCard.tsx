@@ -4,6 +4,7 @@
 import * as React from 'react';
 import { createPortal } from 'react-dom';
 import Image from 'next/image';
+import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useParams, useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
@@ -2056,8 +2057,12 @@ export default function PostCard({
   
   return (
     <>
-    <article
+    <motion.article
       ref={rootRef}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      transition={{ duration: 0.3, ease: 'easeOut' }}
       className="relative bg-card border border-sub rounded-app shadow-app p-3 md:p-5 cursor-pointer max-w-full overflow-x-hidden md:overflow-x-visible"
       onClick={goDetail}
       onKeyDown={onKeyActivate}
@@ -2306,7 +2311,7 @@ export default function PostCard({
           locale={locale}
         />
       )}
-    </article>
+    </motion.article>
 
     <ConfirmDialog
     open={confirmDeleteOpen}
