@@ -112,6 +112,15 @@ function BlurredGate({ onStartVeriff }: { onStartVeriff: () => void | Promise<vo
   );
 }
 
+// ——— Loading Skeleton ———
+function MediaSkeleton() {
+  return (
+    <div className="flex-1 grid place-items-center bg-black">
+      <div className="media-skeleton w-full max-w-2xl aspect-[4/3] rounded-xl" />
+    </div>
+  );
+}
+
 export default function PostMediaPage() {
   const router = useRouter();
   const params = useParams() as { locale: string; id: string };
@@ -125,12 +134,15 @@ export default function PostMediaPage() {
   const [snapViewer, setSnapViewer] = React.useState<{ liked?: boolean; bookmarked?: boolean; reposted?: boolean }>();
   const [uiVisible, setUiVisible] = React.useState(true);
   const [currentIndex, setCurrentIndex] = React.useState(startIdx);
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [imageLoaded, setImageLoaded] = React.useState<Set<number>>(new Set());
 
   const [items, setItems] = React.useState<ContentMedia[] | null>(null);
   const containerRef = React.useRef<HTMLDivElement>(null);
   const observerRef = React.useRef<IntersectionObserver | null>(null);
   const touchStartY = React.useRef<number>(0);
-  const isScrolling = React.useRef(false);
+  const touchStartTime = React.useRef<number>(0);
+  const lastTapTime = React.useRef<number>(0);
 
   // Snapshot laden
   React.useEffect(() => {
@@ -155,6 +167,7 @@ export default function PostMediaPage() {
       const parsed = JSON.parse(raw) as { v?: number; at?: number; items?: ContentMedia[] };
       if (parsed && Array.isArray(parsed.items) && parsed.items.length > 0) {
         setItems(parsed.items);
+        setIsLoading(false);
       }
     } catch {}
   }, [id]);
@@ -174,14 +187,17 @@ export default function PostMediaPage() {
         if (!cancelled) {
           if (!Array.isArray(media) || media.length === 0) {
             setItems([]);
+            setIsLoading(false);
             toast.error('Keine Medien im Post gefunden.', 'Keine Medien');
             return;
           }
           setItems(media);
+          setIsLoading(false);
         }
       } catch {
         if (!cancelled) {
           setItems([]);
+          setIsLoading(false);
           toast.error('Konnte Medien nicht laden.', 'Fehler');
         }
       }
@@ -189,7 +205,7 @@ export default function PostMediaPage() {
     return () => { cancelled = true; };
   }, [id, items]);
 
-  // Intersection Observer für aktuellen Index
+  // Intersection Observer
   React.useEffect(() => {
     if (!items || items.length === 0 || !containerRef.current) return;
 
@@ -215,23 +231,40 @@ export default function PostMediaPage() {
     };
   }, [items]);
 
-  // Touch-Gesten für Swipe
+  // Touch Gestures - Verbessert
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartY.current = e.touches[0].clientY;
-    isScrolling.current = false;
+    touchStartTime.current = Date.now();
   };
 
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (!touchStartY.current) return;
-    const deltaY = e.touches[0].clientY - touchStartY.current;
-    if (Math.abs(deltaY) > 10) {
-      isScrolling.current = true;
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    const touchEndY = e.changedTouches[0].clientY;
+    const deltaY = touchEndY - touchStartY.current;
+    const duration = Date.now() - touchStartTime.current;
+
+    // Swipe detection (schnelle Bewegung)
+    if (Math.abs(deltaY) > 50 && duration < 300) {
+      // Swipe erkannt - nicht UI togglen
+      return;
     }
-  };
 
-  const handleTouchEnd = () => {
+    // Tap detection (kurze Berührung, wenig Bewegung)
+    if (Math.abs(deltaY) < 10 && duration < 200) {
+      const now = Date.now();
+      const timeSinceLastTap = now - lastTapTime.current;
+      
+      // Double-tap detection (für Zoom verhindern)
+      if (timeSinceLastTap < 300) {
+        e.preventDefault();
+        return;
+      }
+      
+      lastTapTime.current = now;
+      setUiVisible(v => !v);
+    }
+
     touchStartY.current = 0;
-    isScrolling.current = false;
+    touchStartTime.current = 0;
   };
 
   // Keyboard Navigation
@@ -247,12 +280,14 @@ export default function PostMediaPage() {
         e.preventDefault();
         const prevIdx = Math.max(currentIndex - 1, 0);
         scrollToIndex(prevIdx);
+      } else if (e.key === 'Escape') {
+        router.back();
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [items, currentIndex]);
+  }, [items, currentIndex, router]);
 
   const scrollToIndex = (idx: number) => {
     if (!containerRef.current) return;
@@ -278,87 +313,109 @@ export default function PostMediaPage() {
     }
   }, [id, locale, router, session, currentIndex]);
 
+  // Auto-hide UI after 3 seconds
+  React.useEffect(() => {
+    if (!uiVisible) return;
+    const timer = setTimeout(() => setUiVisible(false), 3000);
+    return () => clearTimeout(timer);
+  }, [uiVisible, currentIndex]);
+
   // Content
   let content: React.ReactNode;
 
   if (!ageOk) {
     content = <BlurredGate onStartVeriff={startAgeVerification} />;
-  } else if (!items) {
+  } else if (isLoading) {
+    content = <MediaSkeleton />;
+  } else if (!items || items.length === 0) {
     content = (
       <div className="flex-1 grid place-items-center text-white/70 bg-black">
-        Lade Medien…
-      </div>
-    );
-  } else if (items.length === 0) {
-    content = (
-      <div className="flex-1 grid place-items-center text-white/70 bg-black">
-        Keine Medien gefunden.
+        <div className="text-center">
+          <div className="text-4xl mb-3">📷</div>
+          <div>Keine Medien gefunden</div>
+        </div>
       </div>
     );
   } else {
     content = (
       <div
         ref={containerRef}
-        className="flex-1 overflow-y-auto snap-y snap-mandatory bg-black"
+        className="media-viewer-container flex-1 overflow-y-auto snap-y snap-mandatory bg-black"
         style={{ 
           WebkitOverflowScrolling: 'touch', 
           overscrollBehaviorY: 'contain',
-          scrollBehavior: 'smooth'
+          scrollBehavior: 'smooth',
+          touchAction: 'pan-y',
         }}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
       >
         {items.map((m, i) => {
           const isGif = m.kind === 'gif';
           const isVideoLike = m.kind === 'video' || isGif;
+          const isCurrentItem = i === currentIndex;
 
           return (
             <figure
               key={`${m.url}-${i}`}
               data-index={i}
-              className="relative snap-center snap-always grid place-items-center"
+              className="media-viewer-item relative snap-center snap-always flex flex-col"
               style={{ 
                 minHeight: '100svh',
-                scrollSnapStop: 'always'
+                scrollSnapStop: 'always',
+                scrollSnapAlign: 'center',
               }}
-              onClick={() => setUiVisible(v => !v)}
             >
-              {isVideoLike ? (
-                <VideoPlayer
-                  src={m.url}
-                  className="max-h-[100svh] max-w-[100vw] w-auto h-auto"
-                  autoPlay={i === currentIndex}
-                  muted
-                  loop
-                  showScrubber={uiVisible}
-                  rightTag={isGif ? 'GIF' : undefined}
-                  clickToToggle
-                />
-              ) : (
-                <Image
-                  src={m.url}
-                  alt={m.alt ?? ''}
-                  width={1920}
-                  height={1080}
-                  className="max-h-[100svh] max-w-[100vw] w-auto h-auto object-contain select-none"
-                  unoptimized
-                  priority={i === startIdx}
-                />
-              )}
+              {/* Tap Area */}
+              <div 
+                className="media-viewer-tap-area absolute inset-0 z-10"
+                onTouchStart={handleTouchStart}
+                onTouchEnd={handleTouchEnd}
+              />
+
+              {/* Media Container */}
+              <div className="flex-1 flex items-center justify-center relative z-0">
+                {!isVideoLike && !imageLoaded.has(i) && (
+                  <div className="media-skeleton absolute inset-0 m-4 rounded-xl" />
+                )}
+
+                {isVideoLike ? (
+                  <VideoPlayer
+                    src={m.url}
+                    className="max-h-[calc(100svh-140px)] max-w-[100vw] w-auto h-auto relative z-20"
+                    autoPlay={isCurrentItem}
+                    muted
+                    loop
+                    showScrubber={uiVisible}
+                    rightTag={isGif ? 'GIF' : undefined}
+                    clickToToggle={false}
+                  />
+                ) : (
+                  <Image
+                    src={m.url}
+                    alt={m.alt ?? ''}
+                    width={1920}
+                    height={1080}
+                    className="max-h-[calc(100svh-140px)] max-w-[100vw] w-auto h-auto object-contain select-none"
+                    unoptimized
+                    priority={i === startIdx}
+                    onLoad={() => setImageLoaded(prev => new Set(prev).add(i))}
+                  />
+                )}
+              </div>
 
               {/* Index Pill */}
               {items.length > 1 && (
-                <div className={`absolute right-4 top-20 z-20 transition-opacity duration-300 ${uiVisible ? 'opacity-95' : 'opacity-0 pointer-events-none'}`}>
-                  <span className="rounded-full bg-black/70 border border-white/20 px-3 py-1.5 text-sm font-medium backdrop-blur-sm">
-                    {i + 1}/{items.length}
+                <div className={`media-ui-fade absolute right-4 top-20 z-20 ${uiVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+                  <span className="inline-flex items-center gap-2 rounded-full bg-black/70 border border-white/20 px-3 py-1.5 text-sm font-medium backdrop-blur-sm">
+                    <span className="text-white/90">{i + 1}</span>
+                    <span className="text-white/40">/</span>
+                    <span className="text-white/60">{items.length}</span>
                   </span>
                 </div>
               )}
 
               {/* Gradients */}
-              <div className={`pointer-events-none absolute top-0 inset-x-0 h-32 bg-gradient-to-b from-black/80 to-transparent transition-opacity duration-300 ${uiVisible ? 'opacity-100' : 'opacity-0'}`} />
-              <div className={`pointer-events-none absolute bottom-0 inset-x-0 h-32 bg-gradient-to-t from-black/80 to-transparent transition-opacity duration-300 ${uiVisible ? 'opacity-100' : 'opacity-0'}`} />
+              <div className={`media-ui-fade pointer-events-none absolute top-0 inset-x-0 h-32 bg-gradient-to-b from-black/80 to-transparent ${uiVisible ? 'opacity-100' : 'opacity-0'}`} />
+              <div className={`media-ui-fade pointer-events-none absolute bottom-0 inset-x-0 h-32 bg-gradient-to-t from-black/80 to-transparent ${uiVisible ? 'opacity-100' : 'opacity-0'}`} />
             </figure>
           );
         })}
