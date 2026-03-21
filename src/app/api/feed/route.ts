@@ -91,6 +91,10 @@ export async function GET(req: Request) {
   const limitRaw = Number(searchParams.get('limit'));
   const limit = Number.isFinite(limitRaw) && limitRaw > 0 && limitRaw <= 50 ? limitRaw : 20;
 
+  const withMedia =
+    searchParams.get('withMedia') === '1' ||
+    searchParams.get('withMedia') === 'true';
+
   // Bestehend (Polling nach oben)
   const sinceISO = searchParams.get('since');
   const onlyCount = searchParams.get('onlyCount') === '1';
@@ -237,12 +241,34 @@ export async function GET(req: Request) {
       ? [{ Like: { _count: 'desc' as const } }, { createdAt: 'desc' as const }]
       : [{ createdAt: 'desc' as const }];
 
+      const withMediaWhere = withMedia
+    ? {
+        OR: [
+          { mediaUrl: { not: null } },
+          { uploaded: { some: {} } },
+
+          // Repost: Original-Post hat Medien
+          {
+            repostOf: {
+              is: {
+                OR: [
+                  { mediaUrl: { not: null } },
+                  { uploaded: { some: {} } },
+                ],
+              },
+            },
+          },
+        ],
+      }
+    : {};
+
   const posts = await prisma.post.findMany({
     where: {
       ...(sinceDate ? { createdAt: { gt: sinceDate } } : {}),
-      ...(beforeDate ? { createdAt: { lt: beforeDate } } : {}), // NEU: nach unten paginieren
+      ...(beforeDate ? { createdAt: { lt: beforeDate } } : {}),
       ...(following ? { authorId: { in: Array.from(followingUserIds) } } : {}),
       ...kinkWhere,
+      ...withMediaWhere,
     },
     orderBy,
     include: {

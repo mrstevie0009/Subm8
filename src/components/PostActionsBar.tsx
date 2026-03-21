@@ -1,4 +1,4 @@
-//src/components/PostActionsBar.tsx
+//src/components/PostActionBar.tsx
 'use client';
 
 import * as React from 'react';
@@ -8,21 +8,22 @@ import { likePostAction, unlikePostAction } from '@/app/actions/likes';
 import { toast } from '@/lib/toast';
 import { useParams } from 'next/navigation';
 
-/* ── Icons (gleich wie in PostCard) ─────────────────────────────────── */
 function HeartIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full">
+    <svg viewBox="0 0 24 24" fill="currentColor" className="h-full w-full">
       <path d="M20.8 8.8a5.5 5.5 0 0 0-9.4-3.9l-.9.9-.9-.9a5.5 5.5 0 0 0-7.8 7.8L10.5 21l8.7-7.4.9-.9a5.5 5.5 0 0 0 0-3.9z" />
     </svg>
   );
 }
+
 function CommentIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="currentColor" className="w-full h-full">
+    <svg viewBox="0 0 24 24" fill="currentColor" className="h-full w-full">
       <path d="M4 7a5 5 0 0 1 5-5h6a5 5 0 0 1 5 5v4a5 5 0 0 1-5 5H11l-4 3v-3H9a5 5 0 0 1-5-5V7Z" />
     </svg>
   );
 }
+
 function RepostIconFilled(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 512 512" fill="currentColor" aria-hidden {...props}>
@@ -30,6 +31,7 @@ function RepostIconFilled(props: React.SVGProps<SVGSVGElement>) {
     </svg>
   );
 }
+
 function RepostIconOutline(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 512 512" fill="currentColor" aria-hidden {...props}>
@@ -37,6 +39,7 @@ function RepostIconOutline(props: React.SVGProps<SVGSVGElement>) {
     </svg>
   );
 }
+
 function ShareIcon({ size = 22 }: { size?: number }) {
   return (
     <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden fill="none" stroke="currentColor" strokeWidth="2">
@@ -47,7 +50,6 @@ function ShareIcon({ size = 22 }: { size?: number }) {
   );
 }
 
-/* ── kleine Helfer wie in PostCard ─────────────────────────────────── */
 function usePulseFlag(ms = 650) {
   const [flag, setFlag] = React.useState(false);
   const fire = React.useCallback(() => {
@@ -57,63 +59,66 @@ function usePulseFlag(ms = 650) {
   return [flag, fire] as const;
 }
 
-/* ── Komponente ────────────────────────────────────────────────────── */
 export default function PostActionsBar({
   postId,
   stats,
   viewer,
   onCommentClick,
-  transparentOnHide = false,
+  visible = true,
+  likeTrigger = 0,
 }: {
   postId: string;
   stats?: { likes?: number; comments?: number; reposts?: number };
   viewer?: { liked?: boolean; bookmarked?: boolean; reposted?: boolean };
   onCommentClick?: () => void;
-  transparentOnHide?: boolean;
+  visible?: boolean;
+  likeTrigger?: number;
 }) {
   const tPost = useTranslations('post');
   const { locale } = useParams() as { locale: string };
 
   const SNAP_KEY = React.useMemo(() => `ps:snap:${postId}`, [postId]);
 
-  // ---- State (identisch zu PostCard) --------------------------------
   const [likes, setLikes] = React.useState<number>(stats?.likes ?? 0);
   const [liked, setLiked] = React.useState<boolean>(!!viewer?.liked);
-
   const [comments, setComments] = React.useState<number>(stats?.comments ?? 0);
-
   const [reposts, setReposts] = React.useState<number>(stats?.reposts ?? 0);
   const [hasReposted, setHasReposted] = React.useState<boolean>(!!viewer?.reposted);
   const [reposting, setReposting] = React.useState(false);
   const [repostMenuOpen, setRepostMenuOpen] = React.useState(false);
-
   const [bookmarked, setBookmarked] = React.useState<boolean>(!!viewer?.bookmarked);
 
-  // Animations
   const [likePulse, fireLikePulse] = usePulseFlag();
   const [repostPulse, fireRepostPulse] = usePulseFlag();
   const [bookmarkPulse, fireBookmarkPulse] = usePulseFlag();
 
-  // ---------------- Hydration-Priorität ----------------
-  // 1) Props (stats/viewer)
-  // 2) sessionStorage Snapshot (ps:snap:<id>)
-  // 3) Fallback-Fetch /api/posts/:id/meta (nur wenn noch nicht hydriert)
   const hydratedRef = React.useRef(false);
 
-  // Wenn Props bereits echte Werte liefern, markieren & initialen Snapshot schreiben
+  React.useEffect(() => {
+    setLikes(stats?.likes ?? 0);
+    setLiked(!!viewer?.liked);
+    setComments(stats?.comments ?? 0);
+    setReposts(stats?.reposts ?? 0);
+    setHasReposted(!!viewer?.reposted);
+    setBookmarked(!!viewer?.bookmarked);
+    setRepostMenuOpen(false);
+    setReposting(false);
+    hydratedRef.current = false;
+  }, [postId, stats, viewer]);
+
   React.useEffect(() => {
     const hasPropsStats =
-      (typeof stats?.likes === 'number') ||
-      (typeof stats?.comments === 'number') ||
-      (typeof stats?.reposts === 'number');
+      typeof stats?.likes === 'number' ||
+      typeof stats?.comments === 'number' ||
+      typeof stats?.reposts === 'number';
+
     const hasPropsViewer =
-      (typeof viewer?.liked === 'boolean') ||
-      (typeof viewer?.bookmarked === 'boolean') ||
-      (typeof viewer?.reposted === 'boolean');
+      typeof viewer?.liked === 'boolean' ||
+      typeof viewer?.bookmarked === 'boolean' ||
+      typeof viewer?.reposted === 'boolean';
 
     if (hasPropsStats || hasPropsViewer) {
       hydratedRef.current = true;
-      // Initial gleich persistieren, damit die Media-Seite sofort lesen kann
       try {
         sessionStorage.setItem(
           SNAP_KEY,
@@ -130,31 +135,37 @@ export default function PostActionsBar({
     }
   }, [SNAP_KEY, stats, viewer]);
 
-  // Snapshot aus Session lesen, falls Props nichts geliefert haben
   React.useEffect(() => {
     if (hydratedRef.current) return;
     try {
       const raw = sessionStorage.getItem(SNAP_KEY);
-      if (raw) {
-        const s = JSON.parse(raw) as {
-          likes?: number; comments?: number; reposts?: number;
-          liked?: boolean; hasReposted?: boolean; bookmarked?: boolean;
-        };
-        if (typeof s.likes === 'number') setLikes(s.likes);
-        if (typeof s.comments === 'number') setComments(s.comments);
-        if (typeof s.reposts === 'number') setReposts(s.reposts);
-        if (typeof s.liked === 'boolean') setLiked(s.liked);
-        if (typeof s.hasReposted === 'boolean') setHasReposted(s.hasReposted);
-        if (typeof s.bookmarked === 'boolean') setBookmarked(s.bookmarked);
-        hydratedRef.current = true;
-      }
+      if (!raw) return;
+
+      const s = JSON.parse(raw) as {
+        likes?: number;
+        comments?: number;
+        reposts?: number;
+        liked?: boolean;
+        hasReposted?: boolean;
+        bookmarked?: boolean;
+      };
+
+      if (typeof s.likes === 'number') setLikes(s.likes);
+      if (typeof s.comments === 'number') setComments(s.comments);
+      if (typeof s.reposts === 'number') setReposts(s.reposts);
+      if (typeof s.liked === 'boolean') setLiked(s.liked);
+      if (typeof s.hasReposted === 'boolean') setHasReposted(s.hasReposted);
+      if (typeof s.bookmarked === 'boolean') setBookmarked(s.bookmarked);
+
+      hydratedRef.current = true;
     } catch {}
   }, [SNAP_KEY]);
 
-  // Fallback-Fetch nur, wenn weder Props noch Session hydriert haben
   React.useEffect(() => {
     if (hydratedRef.current) return;
+
     let aborted = false;
+
     (async () => {
       try {
         const res = await fetch(`/api/posts/${postId}/meta`, { cache: 'no-store' });
@@ -163,26 +174,32 @@ export default function PostActionsBar({
         if (aborted || !j) return;
 
         if (j.stats) {
-          if (typeof j.stats.likes === 'number')    setLikes(j.stats.likes);
+          if (typeof j.stats.likes === 'number') setLikes(j.stats.likes);
           if (typeof j.stats.comments === 'number') setComments(j.stats.comments);
-          if (typeof j.stats.reposts === 'number')  setReposts(j.stats.reposts);
+          if (typeof j.stats.reposts === 'number') setReposts(j.stats.reposts);
         }
+
         if (j.viewer) {
-          if (typeof j.viewer.liked === 'boolean')      setLiked(j.viewer.liked);
-          if (typeof j.viewer.reposted === 'boolean')   setHasReposted(j.viewer.reposted);
+          if (typeof j.viewer.liked === 'boolean') setLiked(j.viewer.liked);
+          if (typeof j.viewer.reposted === 'boolean') setHasReposted(j.viewer.reposted);
           if (typeof j.viewer.bookmarked === 'boolean') setBookmarked(j.viewer.bookmarked);
         }
+
         hydratedRef.current = true;
       } catch {}
     })();
-    return () => { aborted = true; };
+
+    return () => {
+      aborted = true;
+    };
   }, [postId]);
 
-  // ---------------- Snapshot-Persist (debounced) ----------------
   const saveSnapshot = React.useCallback(() => {
     try {
-      const snap = { likes, liked, comments, reposts, hasReposted, bookmarked };
-      sessionStorage.setItem(SNAP_KEY, JSON.stringify(snap));
+      sessionStorage.setItem(
+        SNAP_KEY,
+        JSON.stringify({ likes, liked, comments, reposts, hasReposted, bookmarked })
+      );
     } catch {}
   }, [SNAP_KEY, likes, liked, comments, reposts, hasReposted, bookmarked]);
 
@@ -191,38 +208,30 @@ export default function PostActionsBar({
     return () => window.clearTimeout(id);
   }, [saveSnapshot]);
 
-  // ---------------- Globale Event-Syncs ----------------
   React.useEffect(() => {
     const onLike = (ev: Event) => {
       const ce = ev as CustomEvent<{ contentId: string; liked: boolean; delta: number; byViewer?: boolean }>;
       if (ce?.detail?.contentId !== postId) return;
+
       if (ce.detail.byViewer) {
         setLiked(!!ce.detail.liked);
         return;
       }
+
       setLikes((n) => Math.max(0, n + (ce.detail.delta ?? 0)));
     };
+
     window.addEventListener('post:likeToggle', onLike as EventListener);
     return () => window.removeEventListener('post:likeToggle', onLike as EventListener);
   }, [postId]);
 
   React.useEffect(() => {
     const onComment = (ev: Event) => {
-      const ce = ev as CustomEvent<{ contentId: string; delta: number; byViewer?: boolean }>;
+      const ce = ev as CustomEvent<{ contentId: string; delta: number }>;
       if (ce?.detail?.contentId !== postId) return;
       setComments((n) => Math.max(0, n + (ce.detail.delta ?? 0)));
     };
-    window.addEventListener('post:commentDelta', onComment as EventListener);
-    return () => window.removeEventListener('post:commentDelta', onComment as EventListener);
-  }, [postId]);
 
-  React.useEffect(() => {
-    const onComment = (ev: Event) => {
-      const ce = ev as CustomEvent<{ contentId: string; delta: number; byViewer?: boolean }>;
-      if (ce?.detail?.contentId !== postId) return;
-      // Zähler IMMER anpassen (auch wenn byViewer), kein "aktiv"-State mehr
-      setComments((n) => Math.max(0, n + (ce.detail.delta ?? 0)));
-    };
     window.addEventListener('post:commentDelta', onComment as EventListener);
     return () => window.removeEventListener('post:commentDelta', onComment as EventListener);
   }, [postId]);
@@ -234,35 +243,110 @@ export default function PostActionsBar({
       setBookmarked(ce.detail.value);
       fireBookmarkPulse();
     };
+
     window.addEventListener('bookmark:toggled', onBm as EventListener);
     return () => window.removeEventListener('bookmark:toggled', onBm as EventListener);
   }, [postId, fireBookmarkPulse]);
 
-  // ---------------- Actions ----------------
   const [pendingLike, startLikeTransition] = React.useTransition();
+  const lastHandledLikeTriggerRef = React.useRef(0);
+
+  React.useEffect(() => {
+    lastHandledLikeTriggerRef.current = 0;
+  }, [postId]);
+
+  const applyLikeState = React.useCallback(
+    (willLike: boolean) => {
+      startLikeTransition(() => {
+        setLiked(willLike);
+        setLikes((n) => Math.max(0, n + (willLike ? 1 : -1)));
+      });
+
+      fireLikePulse();
+
+      try {
+        window.dispatchEvent(
+          new CustomEvent('post:likeToggle', {
+            detail: {
+              contentId: postId,
+              liked: willLike,
+              delta: willLike ? +1 : -1,
+              byViewer: true,
+            },
+          })
+        );
+      } catch {}
+    },
+    [postId, fireLikePulse]
+  );
+
+  const submitLikeToServer = React.useCallback(
+    async (willLike: boolean) => {
+      try {
+        const fd = new FormData();
+        fd.set('postId', postId);
+
+        if (willLike) {
+          await likePostAction(fd);
+        } else {
+          await unlikePostAction(fd);
+        }
+      } catch {
+        startLikeTransition(() => {
+          setLiked(!willLike);
+          setLikes((n) => Math.max(0, n + (willLike ? -1 : +1)));
+        });
+
+        try {
+          window.dispatchEvent(
+            new CustomEvent('post:likeToggle', {
+              detail: {
+                contentId: postId,
+                liked: !willLike,
+                delta: willLike ? -1 : +1,
+                byViewer: true,
+              },
+            })
+          );
+        } catch {}
+
+        toast.error(willLike ? tPost('likeFailed') : tPost('unlikeFailed'));
+      }
+    },
+    [postId, tPost]
+  );
+
+  const toggleLike = React.useCallback(
+    (forceLike?: boolean) => {
+      if (pendingLike) return;
+
+      const willLike = typeof forceLike === 'boolean' ? forceLike : !liked;
+      if (willLike === liked) return;
+
+      applyLikeState(willLike);
+      void submitLikeToServer(willLike);
+    },
+    [pendingLike, liked, applyLikeState, submitLikeToServer]
+  );
+
+  React.useEffect(() => {
+    if (!likeTrigger) return;
+    if (likeTrigger === lastHandledLikeTriggerRef.current) return;
+
+    lastHandledLikeTriggerRef.current = likeTrigger;
+
+    if (!liked) {
+      toggleLike(true);
+    }
+  }, [likeTrigger, liked, toggleLike]);
 
   function LikeForm() {
-    const action = liked ? unlikePostAction : likePostAction;
-
     return (
       <form
         data-no-nav
-        action={action}
-        onSubmit={() => {
-          const willLike = !liked;
-          startLikeTransition(() => {
-            setLiked((v) => !v);
-            setLikes((n) => (liked ? Math.max(0, n - 1) : n + 1));
-          });
-          fireLikePulse();
-          try {
-            window.dispatchEvent(
-              new CustomEvent('post:likeToggle', {
-                detail: { contentId: postId, liked: willLike, delta: willLike ? +1 : -1, byViewer: true },
-              })
-            );
-          } catch {}
-          // Snapshot wird vom Effect gespeichert
+        onSubmit={(e) => {
+          e.preventDefault();
+          toggleLike();
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -270,13 +354,23 @@ export default function PostActionsBar({
         <button
           type="submit"
           disabled={pendingLike}
-          className={`actify like ${liked ? 'is-active' : ''} ${likePulse ? 'do-pop' : ''} group flex items-center gap-2 rounded px-2 py-1 hover:bg-white/5 disabled:opacity-50`}
+          className={`actify like ${liked ? 'is-active' : ''} ${likePulse ? 'do-pop' : ''} inline-flex items-center gap-2 rounded-xl px-2.5 py-2 hover:bg-white/5 disabled:opacity-50`}
           aria-pressed={liked || undefined}
         >
-          <span className="inline-grid place-items-center" style={{ width: 'clamp(18px,1.8vw,26px)', height: 'clamp(18px,1.8vw,26px)', color: liked ? 'var(--purple)' : 'rgba(255,255,255,.95)' }} aria-hidden>
+          <span
+            className="inline-grid place-items-center"
+            style={{
+              width: '22px',
+              height: '22px',
+              color: liked ? 'var(--purple)' : 'rgba(255,255,255,.95)',
+            }}
+            aria-hidden
+          >
             <HeartIcon />
           </span>
-          <span className="text-sm" style={{ color: liked ? 'var(--purple)' : 'var(--muted)' }}>{likes}</span>
+          <span className="text-sm" style={{ color: liked ? 'var(--purple)' : 'var(--muted)' }}>
+            {likes}
+          </span>
           <span className="sr-only">{liked ? tPost('unlike') : tPost('like')}</span>
         </button>
       </form>
@@ -294,38 +388,45 @@ export default function PostActionsBar({
             onCommentClick();
           } else {
             const url = `/${locale}/p/${postId}`;
-            try { window.location.assign(url); } catch {}
+            try {
+              window.location.assign(url);
+            } catch {}
           }
         }}
-        className="flex items-center gap-2 px-2 py-1 text-sm hover:underline"
+        className="inline-flex items-center gap-2 rounded-xl px-2.5 py-2 hover:bg-white/5"
         aria-label={tPost('comment')}
       >
-        <span
-          className="inline-grid place-items-center"
-          style={{ width: 'clamp(18px,1.8vw,26px)', height: 'clamp(18px,1.8vw,26px)' }}
-          aria-hidden
-        >
+        <span className="inline-grid place-items-center h-[22px] w-[22px]" aria-hidden>
           <CommentIcon />
         </span>
-        <span className="text-sm">{comments}</span>
+        <span className="text-sm text-white/85">{comments}</span>
       </button>
     );
   }
 
-  const btnRepostRef = React.useRef<HTMLButtonElement>(null);
   async function doRepost() {
     if (reposting) return;
+
     setRepostMenuOpen(false);
     setReposting(true);
     setReposts((n) => n + 1);
     setHasReposted(true);
     fireRepostPulse();
+
     try {
       const resp = await fetch(`/api/posts/${postId}/repost`, { method: 'POST' });
       const j = await resp.json().catch(() => null);
-      if (!resp.ok || !j?.ok) throw new Error(j?.error || `HTTP ${resp.status}`);
+
+      if (!resp.ok || !j?.ok) {
+        throw new Error(j?.error || `HTTP ${resp.status}`);
+      }
+
       try {
-        window.dispatchEvent(new CustomEvent('post:repostDelta', { detail: { contentId: postId, delta: +1, byViewer: true } }));
+        window.dispatchEvent(
+          new CustomEvent('post:repostDelta', {
+            detail: { contentId: postId, delta: +1, byViewer: true },
+          })
+        );
       } catch {}
     } catch {
       setReposts((n) => Math.max(0, n - 1));
@@ -333,12 +434,14 @@ export default function PostActionsBar({
       toast.error(tPost('repostFailed') as string);
     } finally {
       setReposting(false);
-      // Snapshot speichert der Effect
     }
   }
 
-  // ---------------- Share ----------------
-  const shareUrl = typeof window !== 'undefined' ? `${window.location.origin}/${locale}/p/${postId}` : `/${locale}/p/${postId}`;
+  const shareUrl =
+    typeof window !== 'undefined'
+      ? `${window.location.origin}/${locale}/p/${postId}`
+      : `/${locale}/p/${postId}`;
+
   const copyLink = async () => {
     try {
       await navigator.clipboard.writeText(shareUrl);
@@ -346,44 +449,55 @@ export default function PostActionsBar({
     } catch {}
   };
 
-  // ---------------- Render ----------------
   return (
-    <div className={`fixed inset-x-0 bottom-0 z-50 transition-all duration-300 ${transparentOnHide ? 'bg-transparent border-transparent' : 'bg-black/80 backdrop-blur-md border-t border-white/10'}`}>
-      <div className="max-w-2xl mx-auto px-3">
+    <div
+      className={[
+        'fixed inset-x-0 bottom-0 z-[60] transition-all duration-300',
+        visible ? 'opacity-100 translate-y-0' : 'pointer-events-none opacity-0 translate-y-3',
+      ].join(' ')}
+    >
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/90 via-black/55 to-transparent" />
 
-        <div className="flex items-center justify-between gap-3 py-2" onClick={(e) => e.stopPropagation()}>
-          {/* Comment */}
+      <div className="relative mx-auto w-full max-w-5xl px-4 pb-[calc(env(safe-area-inset-bottom)+12px)] sm:px-6">
+        <div
+          className="mx-auto flex items-center justify-between gap-2 px-0 py-0"
+          onClick={(e) => e.stopPropagation()}
+        >
           <CommentButton />
 
-          {/* Repost (mit Popover) */}
           <div className="relative" data-no-nav>
             <button
-              ref={btnRepostRef}
               type="button"
-              className={`actify repost ${hasReposted ? 'is-active' : ''} ${repostPulse ? 'do-pop' : ''} group flex items-center gap-2 rounded px-2 py-1 hover:bg-white/5 disabled:opacity-50`}
+              className={`actify repost ${hasReposted ? 'is-active' : ''} ${repostPulse ? 'do-pop' : ''} inline-flex items-center gap-2 rounded-xl px-2.5 py-2 hover:bg-white/5 disabled:opacity-50`}
               onClick={() => setRepostMenuOpen((v) => !v)}
               disabled={reposting}
               aria-expanded={repostMenuOpen || undefined}
             >
               <span
-                className="inline-grid place-items-center"
-                style={{ width: 'clamp(18px,1.8vw,26px)', height: 'clamp(18px,1.8vw,26px)', color: hasReposted ? 'var(--purple)' : 'rgba(255,255,255,.95)' }}
+                className="inline-grid place-items-center h-[22px] w-[22px]"
+                style={{ color: hasReposted ? 'var(--purple)' : 'rgba(255,255,255,.95)' }}
                 aria-hidden
               >
-                {hasReposted ? <RepostIconFilled className="w-full h-full" /> : <RepostIconOutline className="w-full h-full" />}
+                {hasReposted ? (
+                  <RepostIconFilled className="h-full w-full" />
+                ) : (
+                  <RepostIconOutline className="h-full w-full" />
+                )}
               </span>
-              <span className="text-sm" style={{ color: hasReposted ? 'var(--purple)' : 'var(--muted)' }}>{reposts}</span>
+              <span className="text-sm" style={{ color: hasReposted ? 'var(--purple)' : 'var(--muted)' }}>
+                {reposts}
+              </span>
               <span className="sr-only">{tPost('repost')}</span>
             </button>
 
-            {repostMenuOpen && (
+            {repostMenuOpen ? (
               <div
-                className="absolute left-0 bottom-full mb-2 z-50 w-40 rounded-lg border border-white/10 bg-black/80 backdrop-blur p-1 shadow-lg"
+                className="absolute bottom-full left-0 z-50 mb-2 w-40 rounded-xl border border-white/10 bg-black/85 p-1 backdrop-blur-xl shadow-xl"
                 onMouseDown={(e) => e.stopPropagation()}
               >
                 <button
                   type="button"
-                  className="w-full text-left px-3 py-2 rounded hover:bg-white/10 disabled:opacity-50"
+                  className="w-full rounded-lg px-3 py-2 text-left hover:bg-white/10 disabled:opacity-50"
                   disabled={reposting}
                   onClick={() => void doRepost()}
                 >
@@ -391,27 +505,28 @@ export default function PostActionsBar({
                 </button>
                 <button
                   type="button"
-                  className="w-full text-left px-3 py-2 rounded hover:bg-white/10"
+                  className="w-full rounded-lg px-3 py-2 text-left hover:bg-white/10"
                   onClick={() => {
                     setRepostMenuOpen(false);
                     fireRepostPulse();
-                    toast.show({ title: tPost('quotePost'), message: tPost('comingSoon') as string });
+                    toast.show({
+                      title: tPost('quotePost'),
+                      message: tPost('comingSoon') as string,
+                    });
                   }}
                 >
                   {tPost('quotePost')}
                 </button>
               </div>
-            )}
+            ) : null}
           </div>
 
-          {/* Like */}
           <LikeForm />
 
-          {/* rechts: Bookmark + Share */}
-          <div className="ml-auto flex items-center gap-3">
+          <div className="ml-auto flex items-center gap-1">
             <div
               data-no-nav
-              className={`actify bookmark ${bookmarked ? 'is-active' : ''} ${bookmarkPulse ? 'do-pop' : ''}`}
+              className={`actify bookmark ${bookmarked ? 'is-active' : ''} ${bookmarkPulse ? 'do-pop' : ''} rounded-xl`}
               title={bookmarked ? 'Bookmarked' : undefined}
             >
               <BookmarkButton postId={postId} initiallyBookmarked={bookmarked} />
@@ -420,43 +535,81 @@ export default function PostActionsBar({
             <button
               type="button"
               onClick={copyLink}
-              className="actify group flex items-center gap-2 rounded px-2 py-1 hover:bg-white/5"
+              className="actify inline-flex items-center gap-2 rounded-xl px-2.5 py-2 hover:bg-white/5"
               data-no-nav
             >
-              <span className="inline-grid place-items-center" style={{ width: 'clamp(18px,1.8vw,26px)', height: 'clamp(18px,1.8vw,26px)', color: 'rgba(255,255,255,.95)' }} aria-hidden>
+              <span
+                className="inline-grid place-items-center h-[22px] w-[22px]"
+                style={{ color: 'rgba(255,255,255,.95)' }}
+                aria-hidden
+              >
                 <ShareIcon />
               </span>
               <span className="sr-only">{tPost('share.copy')}</span>
             </button>
           </div>
         </div>
-
-        {/* Safe-Area für iOS */}
-        <div className="pb-[env(safe-area-inset-bottom)]" />
       </div>
 
-      {/* Globale Actify-Styles */}
       <style jsx global>{`
-        .actify { position: relative; border-radius: 10px; transition: transform 120ms ease, opacity 220ms ease; }
-        @keyframes actify-pop { 0%{transform:scale(1)} 40%{transform:scale(1.08)} 100%{transform:scale(1)} }
+        .actify {
+          position: relative;
+          border-radius: 12px;
+          transition: transform 120ms ease, opacity 220ms ease;
+        }
+
+        @keyframes actify-pop {
+          0% {
+            transform: scale(1);
+          }
+          40% {
+            transform: scale(1.08);
+          }
+          100% {
+            transform: scale(1);
+          }
+        }
+
         @keyframes actify-burst {
-          0% { opacity:.9; transform:translate(-50%,-50%) scale(.6) rotate(0deg); }
-          70% { opacity:.7; }
-          100% { opacity:0; transform:translate(-50%,-50%) scale(1.25) rotate(25deg); }
+          0% {
+            opacity: 0.9;
+            transform: translate(-50%, -50%) scale(0.6) rotate(0deg);
+          }
+          70% {
+            opacity: 0.7;
+          }
+          100% {
+            opacity: 0;
+            transform: translate(-50%, -50%) scale(1.25) rotate(25deg);
+          }
         }
-        .actify.do-pop { animation: actify-pop 380ms ease; }
+
+        .actify.do-pop {
+          animation: actify-pop 380ms ease;
+        }
+
         .actify.do-pop::after {
-          content:''; position:absolute; left:50%; top:50%; width:140%; height:140%; pointer-events:none;
+          content: '';
+          position: absolute;
+          left: 50%;
+          top: 50%;
+          width: 140%;
+          height: 140%;
+          pointer-events: none;
           background:
-            radial-gradient(circle at 50% 0%, rgba(255,255,255,.9) 0 3px, transparent 4px) 50% 10%/8px 8px no-repeat,
-            radial-gradient(circle at 0% 50%, rgba(255,255,255,.9) 0 3px, transparent 4px) 10% 50%/8px 8px no-repeat,
-            radial-gradient(circle at 100% 50%, rgba(255,255,255,.9) 0 3px, transparent 4px) 90% 50%/8px 8px no-repeat,
-            radial-gradient(circle at 50% 100%, rgba(255,255,255,.9) 0 3px, transparent 4px) 50% 90%/8px 8px no-repeat;
-          animation: actify-burst 450ms ease forwards; z-index:0;
+            radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.9) 0 3px, transparent 4px) 50% 10%/8px 8px no-repeat,
+            radial-gradient(circle at 0% 50%, rgba(255, 255, 255, 0.9) 0 3px, transparent 4px) 10% 50%/8px 8px no-repeat,
+            radial-gradient(circle at 100% 50%, rgba(255, 255, 255, 0.9) 0 3px, transparent 4px) 90% 50%/8px 8px no-repeat,
+            radial-gradient(circle at 50% 100%, rgba(255, 255, 255, 0.9) 0 3px, transparent 4px) 50% 90%/8px 8px no-repeat;
+          animation: actify-burst 450ms ease forwards;
+          z-index: 0;
         }
-        .actify > * { position: relative; z-index: 1; }
+
+        .actify > * {
+          position: relative;
+          z-index: 1;
+        }
       `}</style>
     </div>
   );
 }
-

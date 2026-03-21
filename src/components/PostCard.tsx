@@ -259,70 +259,6 @@ function normalizeMediaFields(src: MediaContainer): ContentMedia[] {
   return out.filter(m => (seen.has(m.url) ? false : (seen.add(m.url), true)));
 }
 
-
-
-/** Einzelnes Medium (Bild/GIF/Video) */
-function SingleMedia({
-  m,
-  priority = false,
-  onOpen,
-  index = 0,
-}: {
-  m: ContentMedia;
-  priority?: boolean;
-  onOpen?: (startIndex: number) => void;
-  index?: number;
-}) {
-  const alt = m.alt ?? '';
-  const open = () => onOpen?.(index);
-  
-  if (m.kind === 'video') {
-    const stop = (e: React.SyntheticEvent) => { e.stopPropagation(); };
-    return (
-      <figure
-        className="mt-2 sm:mt-3 overflow-hidden rounded-xl border border-white/10 bg-black/20"
-        data-no-nav
-        onClick={stop}
-        onDoubleClick={stop}
-        onPointerDownCapture={stop}
-        onKeyDownCapture={(e) => {
-          if ((e as React.KeyboardEvent).key === ' ' || (e as React.KeyboardEvent).key === 'Enter') {
-            e.stopPropagation();
-          }
-        }}
-      >
-        <VideoPlayer src={m.url} className="w-full h-auto max-h-[58vh] sm:max-h-[70vh]" onActivate={() => onOpen?.(index)}/>
-      </figure>
-    );
-  }
-
-  const ImgTag = (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={m.url}
-      alt={alt}
-      loading={priority ? 'eager' : 'lazy'}
-      decoding="async"
-      className="block mx-auto h-auto w-full max-w-full max-h-[58vh] sm:max-h-[70vh] object-contain"
-    />
-  );
-
-  return (
-    <figure
-      className="mt-2 sm:mt-3 overflow-hidden rounded-xl border border-white/10 bg-black/20"
-      role={onOpen ? 'button' : undefined}
-      tabIndex={onOpen ? 0 : -1}
-      data-no-nav
-      onClick={open}
-      onKeyDown={(e) => {
-        if ((e.key === 'Enter' || e.key === ' ') && onOpen) { e.preventDefault(); open(); }
-      }}
-    >
-      {ImgTag}
-    </figure>
-  );
-}
-
 function useBodyLock(lock: boolean) {
   React.useEffect(() => {
     if (!lock) return;
@@ -343,251 +279,302 @@ function useBodyLock(lock: boolean) {
   }, [lock]);
 }
 
-/** Mosaik-Layout für reine Bilder (≤4) */
-function MediaMosaic({ items, onOpen }: { items: ContentMedia[]; onOpen?: (i:number)=>void }) {
-  if (!Array.isArray(items) || items.length === 0) return null;
-  const images = items.filter((m) => m.kind !== 'video');
-  if (images.length !== items.length || items.length > 4) return null;
-
-  if (items.length === 1) return <SingleMedia m={items[0]} priority onOpen={onOpen} index={0} />;
-
-  const cell = (m: ContentMedia, i: number) => (
-    <button
-      key={m.url}
-      type="button"
-      className="relative bg-black/20 w-full h-full"
-      onClick={(e) => { e.stopPropagation(); onOpen?.(i); }}
-      data-no-nav
+function MediaStackIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width={size}
+      height={size}
+      aria-hidden
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
     >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={m.url} alt={m.alt ?? ''} className="w-full h-full object-cover" />
-    </button>
-  );
-
-  if (items.length === 2) {
-    return (
-      <div className="mt-2 sm:mt-3 w-full grid grid-cols-2 gap-1 rounded-xl overflow-hidden border border-white/10 h-[48vh] sm:h-80">
-        {items.map((m, i) => cell(m, i))}
-      </div>
-    );
-  }
-
-  if (items.length === 3) {
-    const [a, b, c] = items;
-    return (
-      <div className="mt-2 sm:mt-3 grid grid-cols-2 gap-1 rounded-xl overflow-hidden border border-white/10">
-        <div className="relative col-span-1 row-span-2 bg-black/20 max-h-[56vh] sm:max-h-[70vh]">
-          {cell(a, 0)}
-        </div>
-        <div className="relative h-36 sm:h-40">{cell(b, 1)}</div>
-        <div className="relative h-36 sm:h-40">{cell(c, 2)}</div>
-      </div>
-    );
-  }
-
-  // 4 Items
-  return (
-    <div className="mt-3 grid grid-cols-2 gap-1 rounded-xl overflow-hidden border border-white/10">
-      {items.map((m, i) => (
-        <div key={m.url} className="relative bg-black/20 h-44 sm:h-56">
-          {cell(m, i)}
-        </div>
-      ))}
-    </div>
+      <rect x="5" y="5" width="12" height="14" rx="2" />
+      <path d="M9 3h8a2 2 0 0 1 2 2v10" />
+    </svg>
   );
 }
 
-/** Overlay-Grid 2x2 mit +N für >4 reine Bilder */
-function MediaMosaicOverflow({ items, onOpen }: { items: ContentMedia[]; onOpen?: (i:number)=>void }) {
-  if (!Array.isArray(items) || items.length === 0) return null;
-  const imageIndices = items.reduce<number[]>(
-    (acc, m, idx) => (m.kind !== 'video' ? (acc.push(idx), acc) : acc),
-    []
-  );
-  if (imageIndices.length !== items.length || imageIndices.length <= 4) return null;
-
-  const first4 = imageIndices.slice(0, 4);
-  const more = imageIndices.length - 4;
-
-  return (
-    <div className="mt-3 grid grid-cols-2 gap-1 rounded-xl overflow-hidden border border-white/10">
-      {first4.map((origIdx, i) => {
-        const m = items[origIdx];
-        return (
-          <button
-            key={m.url}
-            type="button"
-            className="relative bg-black/20 w-full h-44 sm:h-56"
-            onClick={(e) => { e.stopPropagation(); onOpen?.(origIdx); }}
-            data-no-nav
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={m.url} alt={m.alt ?? ''} className="w-full h-full object-cover" />
-            {i === 3 && more > 0 && (
-              <div className="absolute inset-0 bg-black/60 grid place-items-center text-white text-xl font-semibold">
-                +{more}
-              </div>
-            )}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-function MediaCarousel({ items, onOpen }: { items: ContentMedia[]; onOpen?: (i:number)=>void }) {
-  // Hooks must always run:
+function FeedMediaCarousel({
+  items,
+  onOpen,
+  onDoubleTap,
+}: {
+  items: ContentMedia[];
+  onOpen?: (i: number) => void;
+  onDoubleTap?: (x: number, y: number) => void;
+}) {
   const scrollerRef = React.useRef<HTMLDivElement>(null);
   const [idx, setIdx] = React.useState(0);
 
+  const wheelLockRef = React.useRef(false);
   const draggingRef = React.useRef(false);
   const startXRef = React.useRef(0);
   const startScrollRef = React.useRef(0);
   const deltaRef = React.useRef(0);
   const clickGuardRef = React.useRef(false);
+  const tapStartXRef = React.useRef(0);
+  const tapStartYRef = React.useRef(0);
+  const tapIndexRef = React.useRef<number | null>(null);
+  const lastTapTimeRef = React.useRef<number | null>(null);
+  const lastTapXRef = React.useRef<number>(0);
+  const lastTapYRef = React.useRef<number>(0);
+  const pendingSingleTapRef = React.useRef<number | null>(null);
 
-  // Derived booleans AFTER hooks:
-  const hasVideo = React.useMemo(() => items?.some((m) => m.kind === 'video'), [items]);
-  const shouldRender = Array.isArray(items) && items.length > 0 && (hasVideo || items.length > 1);
-  
+  const itemCount = items.length;
 
   const snapTo = React.useCallback((targetIndex: number) => {
     const el = scrollerRef.current;
     if (!el) return;
     const w = el.clientWidth || 1;
-    const x = Math.max(0, Math.min(items.length - 1, targetIndex)) * w;
-    el.scrollTo({ left: x, behavior: 'smooth' });
-  }, [items.length]);
+    const clamped = Math.max(0, Math.min(itemCount - 1, targetIndex));
+    el.scrollTo({ left: clamped * w, behavior: 'smooth' });
+  }, [itemCount]);
 
   const onScroll = React.useCallback(() => {
     const el = scrollerRef.current;
     if (!el) return;
     const w = el.clientWidth || 1;
-    const i = Math.round(el.scrollLeft / w);
-    if (i !== idx) setIdx(Math.max(0, Math.min(items.length - 1, i)));
-  }, [idx, items.length]);
+    const nextIdx = Math.round(el.scrollLeft / w);
+    setIdx(Math.max(0, Math.min(itemCount - 1, nextIdx)));
+  }, [itemCount]);
 
-  const onPointerDown = (e: React.PointerEvent) => {
+  React.useEffect(() => {
+    return () => {
+      if (pendingSingleTapRef.current) window.clearTimeout(pendingSingleTapRef.current);
+    };
+  }, []);
+
+  const onPointerDown = (e: React.PointerEvent, index: number) => {
     const el = scrollerRef.current;
     if (!el) return;
     if (e.button !== 0 && e.pointerType !== 'touch') return;
+
     draggingRef.current = true;
     clickGuardRef.current = false;
-    el.setPointerCapture(e.pointerId);
+
     startXRef.current = e.clientX;
     startScrollRef.current = el.scrollLeft;
     deltaRef.current = 0;
+
+    tapStartXRef.current = e.clientX;
+    tapStartYRef.current = e.clientY;
+    tapIndexRef.current = index;
   };
 
   const onPointerMove = (e: React.PointerEvent) => {
     if (!draggingRef.current) return;
     const el = scrollerRef.current;
     if (!el) return;
-    e.preventDefault();
+
     const dx = e.clientX - startXRef.current;
     deltaRef.current = dx;
-    if (Math.abs(dx) > 6) clickGuardRef.current = true;
-    el.scrollLeft = startScrollRef.current - dx;
+
+    if (Math.abs(dx) > 6) {
+      clickGuardRef.current = true;
+      el.scrollLeft = startScrollRef.current - dx;
+    }
   };
 
-  const onPointerUp = () => {
+  const onPointerUp = (e: React.PointerEvent) => {
     if (!draggingRef.current) return;
     draggingRef.current = false;
+
     const el = scrollerRef.current;
-    if (!el) return;
+    if (!el) {
+      clickGuardRef.current = false;
+      deltaRef.current = 0;
+      tapIndexRef.current = null;
+      return;
+    }
+
+    const movedX = Math.abs(e.clientX - tapStartXRef.current);
+    const movedY = Math.abs(e.clientY - tapStartYRef.current);
+    const wasTap = movedX < 6 && movedY < 6;
+
+    if (wasTap && tapIndexRef.current != null) {
+      const tappedIdx = tapIndexRef.current;
+      tapIndexRef.current = null;
+      deltaRef.current = 0;
+      clickGuardRef.current = false;
+
+      const now = Date.now();
+      const last = lastTapTimeRef.current;
+      const lastX = lastTapXRef.current;
+      const lastY = lastTapYRef.current;
+
+      if (
+        last !== null &&
+        now - last < 400 &&
+        Math.abs(e.clientX - lastX) < 40 &&
+        Math.abs(e.clientY - lastY) < 40
+      ) {
+        // Doppel-Tap erkannt — pending single-tap abbrechen + double-tap feuern
+        lastTapTimeRef.current = null;
+        if (pendingSingleTapRef.current) {
+          window.clearTimeout(pendingSingleTapRef.current);
+          pendingSingleTapRef.current = null;
+        }
+        onDoubleTap?.(e.clientX, e.clientY);
+        return;
+      }
+
+      // Erster Tap — verzögert ausführen, damit Doppel-Tap ihn abbrechen kann
+      lastTapTimeRef.current = now;
+      lastTapXRef.current = e.clientX;
+      lastTapYRef.current = e.clientY;
+
+      pendingSingleTapRef.current = window.setTimeout(() => {
+        pendingSingleTapRef.current = null;
+        lastTapTimeRef.current = null;
+        onOpen?.(tappedIdx);
+      }, 400);
+
+      return;
+    }
+
     const w = el.clientWidth || 1;
     const curr = el.scrollLeft / w;
     const vel = -deltaRef.current;
-    const threshold = 0.18;
     let target = Math.round(curr);
     if (Math.abs(vel) > 20) {
       target = vel > 0 ? Math.ceil(curr) : Math.floor(curr);
-    } else {
-      const frac = curr - Math.floor(curr);
-      if (frac > (1 - threshold)) target = Math.ceil(curr);
-      else if (frac < threshold)  target = Math.floor(curr);
-      else target = Math.round(curr);
     }
     snapTo(target);
+    clickGuardRef.current = false;
+    deltaRef.current = 0;
+    tapIndexRef.current = null;
   };
 
-  const go = (i: number) => snapTo(i);
-
-  const onKey = (e: React.KeyboardEvent) => {
-    if (e.key === 'ArrowLeft') { e.preventDefault(); snapTo(idx - 1); }
-    if (e.key === 'ArrowRight') { e.preventDefault(); snapTo(idx + 1); }
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      snapTo(idx - 1);
+    }
+    if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      snapTo(idx + 1);
+    }
   };
 
-  if (!shouldRender) return null;
+  const onWheel = React.useCallback((e: React.WheelEvent<HTMLDivElement>) => {
+    if (itemCount <= 1) return;
+
+    const dominantDelta =
+      Math.abs(e.deltaY) > Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
+
+    if (Math.abs(dominantDelta) < 24) return;
+    e.stopPropagation();
+
+    if (wheelLockRef.current) return;
+    wheelLockRef.current = true;
+
+    if (dominantDelta > 0) {
+      snapTo(idx + 1);
+    } else {
+      snapTo(idx - 1);
+    }
+
+    window.setTimeout(() => {
+      wheelLockRef.current = false;
+    }, 320);
+  }, [idx, itemCount, snapTo]);
+
+  if (!Array.isArray(items) || items.length === 0) return null;
 
   return (
-    <figure className="mt-2 sm:mt-3 overflow-hidden rounded-xl border border-white/10 bg-black/20" data-no-nav>
+    <figure
+      className="mt-2 sm:mt-3 overflow-hidden rounded-2xl border border-white/10 bg-black/30"
+      data-no-nav
+      onClick={(e) => e.stopPropagation()} // ⬅️ Wichtig: Verhindert PostCard Navigation
+    >
       <div className="relative">
         <div
           ref={scrollerRef}
-          className="flex no-scrollbar snap-x snap-mandatory gap-0 p-0 overflow-x-auto"
-          style={{ scrollBehavior: 'smooth', touchAction: 'pan-y' }}
+          className="flex overflow-x-auto overflow-y-hidden no-scrollbar snap-x snap-mandatory"
+          style={{
+            scrollBehavior: 'smooth',
+            touchAction: 'pan-x',
+            overscrollBehaviorX: 'contain',
+            overscrollBehaviorY: 'none',
+            WebkitOverflowScrolling: 'touch',
+            userSelect: 'none',         
+            WebkitUserSelect: 'none',
+          }}
           onScroll={onScroll}
-          onPointerDown={onPointerDown}
-          onPointerMove={onPointerMove}
-          onPointerUp={onPointerUp}
-          onPointerCancel={onPointerUp}
-          onKeyDown={onKey}
+          onWheel={onWheel}
+          onKeyDown={onKeyDown}
           tabIndex={0}
-          aria-label="Media carousel"
+          aria-label="Post media carousel"
         >
           {items.map((m, i) => {
-            const handleClickImage = (e: React.MouseEvent) => {
-              if (clickGuardRef.current) { e.stopPropagation(); return; }
-              onOpen?.(i);
-            };
+            const isVideoLike = m.kind === 'video' || m.kind === 'gif';
+
             return (
-              <div key={m.url} className="relative shrink-0 basis-full snap-center px-2">
-                {m.kind === 'video' ? (
-                  // ✅ wrap VideoPlayer to stop propagation (no onClick prop on VideoPlayer)
-                  <div onClick={(e) => e.stopPropagation()}>
-                    <VideoPlayer src={m.url} className="w-full h-auto max-h-[58vh] sm:max-h-[70vh]" />
-                  </div>
-                ) : (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={m.url}
-                    alt={m.alt ?? ''}
-                    className="block w-full h-auto object-contain max-h-[58vh] sm:max-h-[70vh] cursor-zoom-in"
-                    onClick={handleClickImage}
-                    draggable={false}
-                  />
-                )}
-                <div className="absolute left-3 bottom-2 rounded-full bg-black/60 text-xs px-2 py-1">
-                  {i + 1}/{items.length}
+              <div
+                key={`${m.url}-${i}`}
+                className="relative shrink-0 basis-full snap-center overflow-hidden bg-black"
+              >
+                <div
+                  className="relative flex h-[min(72vh,560px)] w-full items-center justify-center overflow-hidden bg-black cursor-pointer"
+                  data-no-nav
+                  style={{ userSelect: 'none', WebkitUserSelect: 'none' }}
+                  onPointerDown={(e) => onPointerDown(e, i)}
+                  onPointerMove={onPointerMove}
+                  onPointerUp={onPointerUp}
+                  onPointerCancel={onPointerUp}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {isVideoLike ? (
+                    <div className="h-full w-full relative">
+                      <VideoPlayer
+                        src={m.url}
+                        className="h-full w-full"
+                        onActivate={() => {
+                          if (onOpen) onOpen(i);
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={m.url}
+                      alt={m.alt ?? ''}
+                      loading="lazy"
+                      decoding="async"
+                      draggable={false}
+                      className="block h-full w-full object-contain pointer-events-none"
+                    />
+                  )}
                 </div>
               </div>
             );
           })}
         </div>
 
-        {items.length > 1 && (
-          <div className="absolute inset-x-0 bottom-2 flex items-center justify-center gap-1.5 pointer-events-none">
-            {items.map((_, i) => (
-              <button
-                key={i}
-                type="button"
-                aria-label={`Go to slide ${i + 1}`}
-                className="pointer-events-auto rounded-full"
-                style={{
-                  width: i === idx ? 10 : 6,
-                  height: i === idx ? 10 : 6,
-                  background: i === idx ? 'white' : 'rgba(255,255,255,.55)',
-                  opacity: i === idx ? 0.95 : 0.75,
-                  transition: 'all 160ms ease',
-                  outline: 'none',
-                  border: 'none',
-                }}
-                onClick={(e) => { e.stopPropagation(); go(i); }}
-              />
-            ))}
-          </div>
-        )}
+        {itemCount > 1 ? (
+          <>
+            <div className="pointer-events-none absolute inset-x-0 bottom-3 flex items-center justify-center gap-1.5">
+              {items.map((_, i) => (
+                <span
+                  key={i}
+                  className={[
+                    'block rounded-full transition-all duration-200',
+                    i === idx ? 'h-2 w-5 bg-white' : 'h-2 w-2 bg-white/45',
+                  ].join(' ')}
+                />
+              ))}
+            </div>
+
+            <div className="pointer-events-none absolute bottom-3 left-3">
+              <div className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-black/60 px-2.5 py-1 text-xs text-white/90 backdrop-blur">
+                <MediaStackIcon size={14} />
+                <span>{idx + 1}/{itemCount}</span>
+              </div>
+            </div>
+          </>
+        ) : null}
       </div>
     </figure>
   );
@@ -1093,6 +1080,9 @@ export default function PostCard({
   const [quoteOpen, setQuoteOpen] = React.useState(false);
   const [moreOpen, setMoreOpen] = React.useState(false);
 
+  const [heartBurst, setHeartBurst] = React.useState<{ id: number; x: number; y: number } | null>(null);
+  const heartBurstTimerRef = React.useRef<number | null>(null);
+
   const rootRef   = React.useRef<HTMLElement | null>(null);
   const moreRef   = React.useRef<HTMLDivElement | null>(null);
   const shareRef  = React.useRef<HTMLDivElement | null>(null);
@@ -1116,6 +1106,12 @@ export default function PostCard({
     bookmarked,
   });
 
+  React.useEffect(() => {
+    return () => {
+      if (heartBurstTimerRef.current) window.clearTimeout(heartBurstTimerRef.current);
+    };
+  }, []);
+
   // bei jeder Änderung von Likes/Comments/... Snapshot im ref aktualisieren
   React.useEffect(() => {
     interactionSnapshotRef.current = {
@@ -1131,9 +1127,9 @@ export default function PostCard({
   const saveInteractionSnapshot = React.useCallback(() => {
     try {
       const snap = interactionSnapshotRef.current;
-      sessionStorage.setItem(`ps:snap:${post.id}`, JSON.stringify(snap));
+      sessionStorage.setItem(`ps:snap:${c.id}`, JSON.stringify(snap));
     } catch {}
-  }, [post.id]);
+  }, [c.id]);
 
  // beim Mount lokales Flag lesen (persistiert über Navigations)
  React.useEffect(() => {
@@ -1275,6 +1271,34 @@ export default function PostCard({
     } catch {}
   }, [buildFeedQuery]);
 
+  const fireHeartBurst = React.useCallback((x: number, y: number) => {
+    if (heartBurstTimerRef.current) window.clearTimeout(heartBurstTimerRef.current);
+    setHeartBurst({ id: Date.now(), x, y });
+    heartBurstTimerRef.current = window.setTimeout(() => setHeartBurst(null), 900);
+  }, []);
+
+  const triggerDoubleLike = React.useCallback((x: number, y: number) => {
+    fireHeartBurst(x, y);
+    if (liked) return; // already liked — just show heart, don't toggle off
+    fireLikePulse();
+    startLikeTransition(() => setLiked(true));
+    try {
+      window.dispatchEvent(new CustomEvent('post:likeToggle', {
+        detail: { contentId: c.id, liked: true, delta: +1, byViewer: true },
+      }));
+    } catch {}
+    const fd = new FormData();
+    fd.set('postId', c.id);
+    void likePostAction(fd).catch(() => {
+      startLikeTransition(() => setLiked(false));
+      try {
+        window.dispatchEvent(new CustomEvent('post:likeToggle', {
+          detail: { contentId: c.id, liked: false, delta: -1, byViewer: true },
+        }));
+      } catch {}
+    });
+  }, [liked, fireHeartBurst, fireLikePulse, c.id]);
+
   const goDetail = React.useCallback(
   (e: React.MouseEvent) => {
     const target = e.target as HTMLElement | null;
@@ -1287,25 +1311,28 @@ export default function PostCard({
   [locale, post.id, saveFeedReturnPoint, saveInteractionSnapshot, router]
 );
 
-  const openMediaPage = (start: number) => {
-    // 1) Interaktions-Snapshot sichern
-    saveInteractionSnapshot();     // ⬅️ NEU
+  const mediaItems = React.useMemo(() => normalizeMediaFields(c) ?? [], [c]);
 
-    // 2) komplette Media-Liste vorm Navigieren speichern (deins)
+  const openMediaPage = React.useCallback((start: number) => {
+    saveInteractionSnapshot();
+
     try {
       const key = `pm:${post.id}`;
       const payload = {
         v: 1,
         at: Date.now(),
-        items: mediaItems.map(m => ({ url: m.url, alt: m.alt ?? null, kind: m.kind })),
+        items: mediaItems.map((m) => ({
+          url: m.url,
+          alt: m.alt ?? null,
+          kind: m.kind,
+        })),
       };
       sessionStorage.setItem(key, JSON.stringify(payload));
     } catch {}
 
-    // 3) Feed-Returnpoint + Navigation
     saveFeedReturnPoint();
     router.push(`/${locale}/p/${post.id}/media?i=${start}`);
-  };
+  }, [locale, mediaItems, post.id, router, saveFeedReturnPoint, saveInteractionSnapshot]);
 
   const onKeyActivate = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') {
@@ -1470,37 +1497,74 @@ export default function PostCard({
 
   /* ---------- Actions ---------- */
   function LikeForm() {
-    const action = liked ? unlikePostAction : likePostAction;
     const disabled = blockedByEither || pendingLike;
+
+    const submitLikeToServer = async (willLike: boolean) => {
+      try {
+        const fd = new FormData();
+        fd.set('postId', c.id);
+
+        if (willLike) {
+          await likePostAction(fd);
+        } else {
+          await unlikePostAction(fd);
+        }
+      } catch {
+        startLikeTransition(() => {
+          setLiked(!willLike);
+        });
+
+        try {
+          window.dispatchEvent(
+            new CustomEvent('post:likeToggle', {
+              detail: {
+                contentId: c.id,
+                liked: !willLike,
+                delta: willLike ? -1 : +1,
+                byViewer: true,
+              },
+            })
+          );
+        } catch {}
+
+        toast.error(willLike ? tPost('likeFailed') : tPost('unlikeFailed'));
+      }
+    };
+
+    const toggleLike = () => {
+      if (disabled) return;
+
+      const willLike = !liked;
+
+      startLikeTransition(() => {
+        setLiked(willLike);
+      });
+
+      fireLikePulse();
+
+      try {
+        window.dispatchEvent(
+          new CustomEvent('post:likeToggle', {
+            detail: {
+              contentId: c.id,
+              liked: willLike,
+              delta: willLike ? +1 : -1,
+              byViewer: true,
+            },
+          })
+        );
+      } catch {}
+
+      void submitLikeToServer(willLike);
+    };
+
     return (
       <form
         data-no-nav
-        action={action}
         onClick={(e) => e.stopPropagation()}
         onSubmit={(e) => {
-          if (blockedByEither) return;
           e.preventDefault();
-
-          const willLike = !liked;
-
-          startLikeTransition(() => {
-            // lokale Optik, falls das Event mal „schluckt“
-            setLiked(willLike);
-          });
-
-          saveInteractionSnapshot();
-          fireLikePulse();
-
-          try {
-            window.dispatchEvent(new CustomEvent('post:likeToggle', {
-              detail: {
-                contentId: c.id,
-                liked: willLike,
-                delta: willLike ? +1 : -1,
-                byViewer: true,
-              },
-            }));
-          } catch {}
+          toggleLike();
         }}
       >
         <input type="hidden" name="postId" value={c.id} />
@@ -1991,8 +2055,6 @@ export default function PostCard({
     );
   };
 
-  const mediaItems = React.useMemo(() => normalizeMediaFields(c) ?? [], [c]);
-
   if (deleted) return null;
   
   function QuoteBox() {
@@ -2041,13 +2103,14 @@ export default function PostCard({
             </div>
             <div className="mt-1 text-[0.95rem] whitespace-pre-wrap break-words">{q.text}</div>
 
-            {qMedia.length === 1 && <SingleMedia m={qMedia[0]} />}
-            {qMedia.length > 1 && (
-              <>
-                <MediaMosaic items={qMedia} />
-                <MediaMosaicOverflow items={qMedia} />
-                <MediaCarousel items={qMedia} />
-              </>
+            {qMedia.length > 0 && (
+              <FeedMediaCarousel
+                items={qMedia}
+                onOpen={(i) => {
+                  saveFeedReturnPoint();
+                  router.push(`/${locale}/p/${q.id}/media?i=${i}`);
+                }}
+              />
             )}
           </div>
         </div>
@@ -2196,17 +2259,15 @@ export default function PostCard({
 
         {/* Medien – volle Breite NUR wenn vorhanden */}
         {mediaItems.length > 0 && (
-          <div className="col-span-2">
+          <div className="col-span-2" data-no-nav>
             {!ageOk ? (
               <BlurredMediaGate items={mediaItems} onStartVeriff={startAgeVerification} />
-            ) : mediaItems.length === 1 ? (
-              <SingleMedia m={mediaItems[0]} priority onOpen={openMediaPage} index={0} />
             ) : (
-              <>
-                <MediaMosaic items={mediaItems} onOpen={openMediaPage} />
-                <MediaMosaicOverflow items={mediaItems} onOpen={openMediaPage} />
-                <MediaCarousel items={mediaItems} onOpen={openMediaPage} />
-              </>
+              <FeedMediaCarousel
+                items={mediaItems}
+                onOpen={openMediaPage}
+                onDoubleTap={triggerDoubleLike}
+              />
             )}
           </div>
         )}
@@ -2313,6 +2374,19 @@ export default function PostCard({
       )}
     </motion.article>
 
+    {heartBurst && (
+      <div className="pointer-events-none fixed z-[9999]"
+        style={{ left: heartBurst.x, top: heartBurst.y, transform: 'translate(-50%, -50%)' }}>
+        <div className="postcard-like-heart">
+          <svg viewBox="0 0 32 32" fill="currentColor" aria-hidden
+            className="block h-16 w-16 sm:h-20 sm:w-20"
+            style={{ overflow: 'visible', filter: 'drop-shadow(0 10px 24px rgba(0,0,0,.35))' }}>
+            <path d="M23.6 3.2c-2.8 0-5.1 1.3-6.6 3.3-1.5-2-3.8-3.3-6.6-3.3C5.7 3.2 2 6.8 2 11.4c0 9 12.6 16.2 14.2 17.1a1.6 1.6 0 0 0 1.6 0C19.4 27.6 32 20.4 32 11.4c0-4.6-3.7-8.2-8.4-8.2Z" />
+          </svg>
+        </div>
+      </div>
+    )}
+
     <ConfirmDialog
     open={confirmDeleteOpen}
     onClose={() => setConfirmDeleteOpen(false)}
@@ -2377,6 +2451,19 @@ export default function PostCard({
       }
       /* sorgt dafür, dass Inhalt über dem ::after sitzt */
       .actify > * { position: relative; z-index: 1; }
+
+      @keyframes postcardLikeHeartFloat {
+        0%   { opacity: 0; transform: translate3d(0, 14px, 0) scale(0.45); }
+        18%  { opacity: 1; transform: translate3d(0, 0, 0) scale(1.08); }
+        30%  { opacity: 1; transform: translate3d(0, -4px, 0) scale(0.96); }
+        48%  { opacity: 1; transform: translate3d(0, -10px, 0) scale(1); }
+        100% { opacity: 0; transform: translate3d(0, -54px, 0) scale(0.92); }
+      }
+      .postcard-like-heart {
+        color: var(--purple);
+        animation: postcardLikeHeartFloat 900ms cubic-bezier(.22,.8,.24,1) forwards;
+        will-change: transform, opacity;
+      }
     `}</style>
   </>
 );
