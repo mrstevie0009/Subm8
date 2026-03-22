@@ -321,6 +321,7 @@ function FeedMediaCarousel({
   const lastTapXRef = React.useRef<number>(0);
   const lastTapYRef = React.useRef<number>(0);
   const pendingSingleTapRef = React.useRef<number | null>(null);
+  const directionLockedRef = React.useRef<'horizontal' | 'vertical' | null>(null);
 
   const itemCount = items.length;
 
@@ -353,6 +354,7 @@ function FeedMediaCarousel({
 
     draggingRef.current = true;
     clickGuardRef.current = false;
+    directionLockedRef.current = null; // ← reset
 
     startXRef.current = e.clientX;
     startScrollRef.current = el.scrollLeft;
@@ -369,8 +371,19 @@ function FeedMediaCarousel({
     if (!el) return;
 
     const dx = e.clientX - startXRef.current;
-    deltaRef.current = dx;
+    const dy = e.clientY - (tapStartYRef.current ?? 0);
 
+    // Richtung noch nicht festgelegt — warten bis klare Bewegung
+    if (!directionLockedRef.current) {
+      if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+      directionLockedRef.current = Math.abs(dx) > Math.abs(dy) ? 'horizontal' : 'vertical';
+    }
+
+    // Vertikale Bewegung → nicht anfassen, Browser scrollt
+    if (directionLockedRef.current === 'vertical') return;
+
+    // Horizontale Bewegung → Carousel übernimmt
+    deltaRef.current = dx;
     if (Math.abs(dx) > 6) {
       clickGuardRef.current = true;
       el.scrollLeft = startScrollRef.current - dx;
@@ -445,6 +458,7 @@ function FeedMediaCarousel({
     clickGuardRef.current = false;
     deltaRef.current = 0;
     tapIndexRef.current = null;
+    directionLockedRef.current = null;
   };
 
   const onKeyDown = (e: React.KeyboardEvent) => {
@@ -461,16 +475,18 @@ function FeedMediaCarousel({
   const onWheel = React.useCallback((e: React.WheelEvent<HTMLDivElement>) => {
     if (itemCount <= 1) return;
 
-    const dominantDelta =
-      Math.abs(e.deltaY) > Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
+    const absX = Math.abs(e.deltaX);
+    const absY = Math.abs(e.deltaY);
 
-    if (Math.abs(dominantDelta) < 24) return;
+    if (absX <= absY) return; // vertikales Scrollen → nicht anfassen
+    if (absX < 24) return;
+
     e.stopPropagation();
 
     if (wheelLockRef.current) return;
     wheelLockRef.current = true;
 
-    if (dominantDelta > 0) {
+    if (e.deltaX > 0) {
       snapTo(idx + 1);
     } else {
       snapTo(idx - 1);
@@ -485,7 +501,7 @@ function FeedMediaCarousel({
 
   return (
     <figure
-      className="mt-2 sm:mt-3 overflow-hidden rounded-2xl border border-white/10 bg-black/30"
+      className="mt-2 sm:mt-3 overflow-hidden rounded-2xl border border-white/10 bg-black/30 group"
       data-no-nav
       onClick={(e) => e.stopPropagation()} // ⬅️ Wichtig: Verhindert PostCard Navigation
     >
@@ -495,11 +511,10 @@ function FeedMediaCarousel({
           className="flex overflow-x-auto overflow-y-hidden no-scrollbar snap-x snap-mandatory"
           style={{
             scrollBehavior: 'smooth',
-            touchAction: 'pan-x',
+            touchAction: 'pan-y pinch-zoom',
             overscrollBehaviorX: 'contain',
-            overscrollBehaviorY: 'none',
             WebkitOverflowScrolling: 'touch',
-            userSelect: 'none',         
+            userSelect: 'none',
             WebkitUserSelect: 'none',
           }}
           onScroll={onScroll}
@@ -555,6 +570,7 @@ function FeedMediaCarousel({
 
         {itemCount > 1 ? (
           <>
+            {/* Dots */}
             <div className="pointer-events-none absolute inset-x-0 bottom-3 flex items-center justify-center gap-1.5">
               {items.map((_, i) => (
                 <span
@@ -567,12 +583,39 @@ function FeedMediaCarousel({
               ))}
             </div>
 
+            {/* Counter */}
             <div className="pointer-events-none absolute bottom-3 left-3">
               <div className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-black/60 px-2.5 py-1 text-xs text-white/90 backdrop-blur">
                 <MediaStackIcon size={14} />
                 <span>{idx + 1}/{itemCount}</span>
               </div>
             </div>
+
+            {/* Desktop Pfeil-Buttons */}
+            {idx > 0 && (
+              <button
+                type="button"
+                aria-label="Vorheriges Bild"
+                onClick={(e) => { e.stopPropagation(); snapTo(idx - 1); }}
+                className="hidden sm:flex absolute left-2 top-1/2 -translate-y-1/2 z-20 items-center justify-center w-8 h-8 rounded-full bg-black/60 border border-white/10 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/80"
+              >
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M15 18l-6-6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+            )}
+            {idx < itemCount - 1 && (
+              <button
+                type="button"
+                aria-label="Nächstes Bild"
+                onClick={(e) => { e.stopPropagation(); snapTo(idx + 1); }}
+                className="hidden sm:flex absolute right-2 top-1/2 -translate-y-1/2 z-20 items-center justify-center w-8 h-8 rounded-full bg-black/60 border border-white/10 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/80"
+              >
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M9 18l6-6-6-6" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+            )}
           </>
         ) : null}
       </div>
@@ -2203,12 +2246,12 @@ export default function PostCard({
 
         {/* Name/Handle/Meta + Text (rechte Spalte) */}
         <div className="col-start-2 row-start-1 min-w-0">
-          <div className="flex items-center flex-wrap">
+          <div className="flex items-center flex-wrap gap-x-1.5">
             <div data-no-nav onClick={(e) => e.stopPropagation()}>
               <div className="flex items-center gap-1">
                   <ProfileLink
                     handle={c.author.handle}
-                    className="font-semibold text-[0.95rem] md:text-[1rem] hover:underline"
+                    className="font-semibold text-[0.95rem] md:text-[1rem] hover:underline leading-none"
                   >
                     {c.author.displayName}
                   </ProfileLink>
@@ -2225,11 +2268,10 @@ export default function PostCard({
                 </div>
               </div>
 
-            <span aria-hidden style={{ display: 'inline-block', width: 8 }} />
             <div data-no-nav onClick={(e) => e.stopPropagation()}>
               <ProfileLink
                 handle={c.author.handle}
-                className="text-muted truncate text-xs md:text-[11px] hover:underline"
+                className="text-muted truncate text-xs md:text-[11px] hover:underline leading-none"
               >
                 @{c.author.handle}
               </ProfileLink>
@@ -2240,9 +2282,7 @@ export default function PostCard({
               blockedByAuthor={!!initialBlockedByAuthor}
               tPost={tPost}
             />
-            <span className="text-muted mx-2 text-xs md:text-[13px]" aria-hidden>
-              ·
-            </span>
+            <span className="text-muted mx-1 text-xs md:text-[13px]" aria-hidden>·</span>
             <time
               className="text-muted whitespace-nowrap text-xs md:text-[13px]"
               dateTime={c.createdAt}
