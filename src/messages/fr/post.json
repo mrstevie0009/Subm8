@@ -1,5 +1,9 @@
 {
   "post": {
+    "expand": {
+    "more": "Lire plus",
+    "less": "Afficher moins"
+  },
     "time": {
       "now": "maintenant",
       "m": "{count} min",

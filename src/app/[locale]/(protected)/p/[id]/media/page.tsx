@@ -223,6 +223,7 @@ function BottomPostPanel({
   expanded: boolean;
   onExpand: () => void;
 }) {
+  const tPost = useTranslations('post');
   if (!post) return null;
 
   const text = post.text?.trim() ?? '';
@@ -255,7 +256,7 @@ function BottomPostPanel({
               }}
               className="mt-1 text-sm font-medium text-white/75 hover:text-white"
             >
-              mehr lesen
+              {tPost('expand.more')}
             </button>
           ) : null}
         </div>

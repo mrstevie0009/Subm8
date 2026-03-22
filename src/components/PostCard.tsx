@@ -323,6 +323,10 @@ function FeedMediaCarousel({
   const pendingSingleTapRef = React.useRef<number | null>(null);
   const directionLockedRef = React.useRef<'horizontal' | 'vertical' | null>(null);
 
+  const isTouchDevice =
+  typeof window !== 'undefined' &&
+  window.matchMedia('(pointer: coarse)').matches;
+
   const itemCount = items.length;
 
   const snapTo = React.useCallback((targetIndex: number) => {
@@ -511,7 +515,7 @@ function FeedMediaCarousel({
           className="flex overflow-x-auto overflow-y-hidden no-scrollbar snap-x snap-mandatory"
           style={{
             scrollBehavior: 'smooth',
-            touchAction: 'pan-y pinch-zoom',
+            touchAction: 'auto',
             overscrollBehaviorX: 'contain',
             WebkitOverflowScrolling: 'touch',
             userSelect: 'none',
@@ -535,10 +539,10 @@ function FeedMediaCarousel({
                   className="relative flex h-[min(72vh,560px)] w-full items-center justify-center overflow-hidden bg-black cursor-pointer"
                   data-no-nav
                   style={{ userSelect: 'none', WebkitUserSelect: 'none' }}
-                  onPointerDown={(e) => onPointerDown(e, i)}
-                  onPointerMove={onPointerMove}
-                  onPointerUp={onPointerUp}
-                  onPointerCancel={onPointerUp}
+                  onPointerDown={isTouchDevice ? undefined : (e) => onPointerDown(e, i)}
+                  onPointerMove={isTouchDevice ? undefined : onPointerMove}
+                  onPointerUp={isTouchDevice ? undefined : onPointerUp}
+                  onPointerCancel={isTouchDevice ? undefined : onPointerUp}
                   onClick={(e) => e.stopPropagation()}
                 >
                   {isVideoLike ? (
@@ -1085,6 +1089,117 @@ function ConfirmDialog({
       </div>
     </div>,
     document.body
+  );
+}
+
+function ExpandableRichText({
+  text,
+  locale,
+  tPost,
+  lines = 5,
+}: {
+  text: string;
+  locale: string;
+  tPost: ReturnType<typeof useTranslations>;
+  lines?: number;
+}) {
+  const [expanded, setExpanded] = React.useState(false);
+  const [canExpand, setCanExpand] = React.useState(false);
+  const contentRef = React.useRef<HTMLDivElement | null>(null);
+
+  React.useLayoutEffect(() => {
+    const el = contentRef.current;
+    if (!el) return;
+
+    const measure = () => {
+      if (!el) return;
+
+      const prevWebkitLineClamp = el.style.webkitLineClamp;
+      const prevOverflow = el.style.overflow;
+      const prevDisplay = el.style.display;
+      const prevWebkitBoxOrient = el.style.webkitBoxOrient;
+
+      if (!expanded) {
+        el.style.display = '-webkit-box';
+        el.style.webkitBoxOrient = 'vertical';
+        el.style.webkitLineClamp = String(lines);
+        el.style.overflow = 'hidden';
+      } else {
+        el.style.display = 'block';
+        el.style.webkitBoxOrient = '';
+        el.style.webkitLineClamp = '';
+        el.style.overflow = 'visible';
+      }
+
+      const isOverflowing = el.scrollHeight > el.clientHeight + 1;
+      setCanExpand(isOverflowing || expanded);
+
+      // styles sauber zurücksetzen; Render übernimmt die finalen styles
+      el.style.webkitLineClamp = prevWebkitLineClamp;
+      el.style.overflow = prevOverflow;
+      el.style.display = prevDisplay;
+      el.style.webkitBoxOrient = prevWebkitBoxOrient;
+    };
+
+    measure();
+
+    const ro = new ResizeObserver(() => measure());
+    ro.observe(el);
+
+    window.addEventListener('resize', measure);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', measure);
+    };
+  }, [text, locale, expanded, lines]);
+
+  return (
+    <div className="min-w-0">
+      <div
+        ref={contentRef}
+        className="min-w-0 whitespace-pre-wrap break-words"
+        style={
+          expanded
+            ? undefined
+            : {
+                display: '-webkit-box',
+                WebkitLineClamp: lines,
+                WebkitBoxOrient: 'vertical',
+                overflow: 'hidden',
+              }
+        }
+      >
+        <RichText text={text} locale={locale} validateMentions />
+      </div>
+
+      {canExpand && !expanded && (
+        <button
+          type="button"
+          data-no-nav
+          onClick={(e) => {
+            e.stopPropagation();
+            setExpanded(true);
+          }}
+          className="mt-1 inline-flex text-sm font-medium text-[var(--purple)] hover:underline"
+        >
+          {tPost('expand.more')}
+        </button>
+      )}
+
+      {canExpand && expanded && (
+        <button
+          type="button"
+          data-no-nav
+          onClick={(e) => {
+            e.stopPropagation();
+            setExpanded(false);
+          }}
+          className="mt-2 inline-flex text-sm font-medium text-white/70 hover:text-white hover:underline"
+        >
+          {tPost('expand.less')}
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -2293,7 +2408,12 @@ export default function PostCard({
           </div>
 
           <div className="mt-0.5 leading-snug">
-            <RichText text={c.text} locale={locale} validateMentions />
+            <ExpandableRichText
+              text={c.text}
+              locale={locale}
+              tPost={tPost}
+              lines={5}
+            />
           </div>
         </div>
 
