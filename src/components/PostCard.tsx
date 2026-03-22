@@ -514,7 +514,7 @@ function FeedMediaCarousel({
           ref={scrollerRef}
           className="flex overflow-x-auto overflow-y-hidden no-scrollbar snap-x snap-mandatory"
           style={{
-            scrollBehavior: 'smooth',
+            scrollBehavior: 'auto',
             touchAction: 'auto',
             overscrollBehaviorX: 'contain',
             WebkitOverflowScrolling: 'touch',
@@ -534,6 +534,7 @@ function FeedMediaCarousel({
               <div
                 key={`${m.url}-${i}`}
                 className="relative shrink-0 basis-full snap-center overflow-hidden bg-black"
+                style={{ scrollSnapStop: 'always' }}
               >
                 <div
                   className="relative flex h-[min(72vh,560px)] w-full items-center justify-center overflow-hidden bg-black cursor-pointer"
