@@ -249,7 +249,7 @@ export default function ComposePostModal({ open, onClose }: Props) {
 
   const [text, setText] = React.useState('');
   const [charCount, setCharCount] = React.useState(0);
-  const MAX_CHARS = 4000;
+  const MAX_CHARS = 400;
 
   // Refs müssen vor return existieren
   const textareaRef = React.useRef<HTMLTextAreaElement | HTMLInputElement>(null);
