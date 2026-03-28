@@ -18,14 +18,8 @@ const toDbRole = (r: DbRole | string): DbRole =>
 const AVATAR_PH = '/images/avatar-placeholder.png';
 
 /* ---------------- GIF Picker (Tenor) ---------------- */
-const TENOR_BASE = '/api/gif/search';
-
-
-const ALLOWED_GIF_HOSTS = [
-  'media.tenor.com', 'c.tenor.com', 'media1.tenor.com',
-  'media2.tenor.com', 'media3.tenor.com', 'g.tenor.com',
-  'i.giphy.com', 'media.giphy.com',
-];
+const TENOR_KEY = process.env.NEXT_PUBLIC_TENOR_API_KEY ?? 'LIVDSRZULELA'; // Demo-Key
+const TENOR_BASE = 'https://g.tenor.com/v1';
 
 type TenorMedia = {
   gif?: { url?: string };
@@ -61,11 +55,10 @@ function GifPickerModal({
       setErr(null);
       setLoading(true);
       try {
-        // ✅ Eigener Proxy statt direktem Tenor-Call
         const endpoint =
           query && query.trim()
-            ? `${TENOR_BASE}?q=${encodeURIComponent(query)}&limit=24`
-            : `${TENOR_BASE}?limit=24`;
+            ? `${TENOR_BASE}/search?q=${encodeURIComponent(query)}&key=${TENOR_KEY}&limit=24&media_filter=minimal`
+            : `${TENOR_BASE}/trending?key=${TENOR_KEY}&limit=24&media_filter=minimal`;
         const r = await fetch(endpoint);
         const j = (await r.json()) as TenorResp;
         const list =
@@ -502,26 +495,9 @@ function Composer({
   }
 
   async function onPickGifByUrl(url: string) {
-    // Host-Validierung vor dem Fetch
-    try {
-      const u = new URL(url);
-      if (!ALLOWED_GIF_HOSTS.includes(u.hostname)) {
-        setGifOpen(false);
-        return;
-      }
-    } catch {
-      setGifOpen(false);
-      return;
-    }
-
     try {
       const r = await fetch(url, { mode: 'cors' });
       const blob = await r.blob();
-      // ✅ Nur image/* akzeptieren
-      if (!blob.type.startsWith('image/')) {
-        setGifOpen(false);
-        return;
-      }
       const file = new File([blob], `gif_${Date.now()}.gif`, { type: blob.type || 'image/gif' });
       onPick(file);
       setGifOpen(false);
