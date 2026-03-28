@@ -90,14 +90,36 @@ export async function POST(req: Request) {
     if (count >= 2) return json({ ok: false, error: 'LIMIT_REACHED' }, 409);
 
     const ident = String(identifier).trim().toLowerCase().replace(/^@/, '');
+
+    // Brute-Force-Schutz: gleicher Guard wie beim Login
+    const { isBlocked, recordFailure, recordSuccess } = await import('@/lib/bruteforce');
+    const { getClientIp } = await import('@/lib/ip');
+    const ip = await getClientIp();
+
+    const block = await isBlocked(ip, ident);
+    if (!block.ok) {
+      return json({ ok: false, error: 'RATE_LIMITED', code: 'RATE_LIMITED' }, 429);
+    }
+
     const candidate = await prisma.user.findFirst({
       where: { OR: [{ email: ident }, { handle: { equals: ident, mode: 'insensitive' } }] },
       select: { id: true, passwordHash: true },
     });
-    if (!candidate?.passwordHash) return json({ ok: false, error: 'INVALID' }, 401);
+
+    // Immer recordFailure wenn kein User oder falsches Passwort
+    if (!candidate?.passwordHash) {
+      void recordFailure(ip, ident).catch(() => {});
+      return json({ ok: false, error: 'INVALID' }, 401);
+    }
 
     const ok = await verifyPassword(password, candidate.passwordHash);
-    if (!ok) return json({ ok: false, error: 'INVALID' }, 401);
+    if (!ok) {
+      void recordFailure(ip, ident).catch(() => {});
+      return json({ ok: false, error: 'INVALID' }, 401);
+    }
+
+    // Erfolg: Counter zurücksetzen
+    void recordSuccess(ip, ident).catch(() => {});
 
     if (candidate.id === session.user.id) return NextResponse.json({ ok: true });
 

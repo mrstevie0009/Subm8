@@ -77,6 +77,8 @@ async function requireUser() {
    Server Actions (TOTP)
 ========================= */
 
+const TOTP_SETUP_TTL_MS = 10 * 60 * 1000; // 10 Minuten
+
 async function startTotpSetupAction() {
   'use server';
   const { user } = await requireUser();
@@ -85,9 +87,13 @@ async function startTotpSetupAction() {
 
   const secret = authenticator.generateSecret();
 
+  // Expiry als ISO-String im Secret enkodieren: "SECRET|EXPIRY_TS"
+  const expiresAt = Date.now() + TOTP_SETUP_TTL_MS;
+  const secretWithExpiry = `${secret}|${expiresAt}`;
+
   await prisma.user.update({
     where: { id: user.id },
-    data: { twoFactorTempSecret: secret },
+    data: { twoFactorTempSecret: secretWithExpiry },
   });
 
   revalidatePath('/[locale]/security', 'page');
@@ -101,14 +107,29 @@ async function verifyTotpAction(formData: FormData) {
   if (!user.twoFactorTempSecret) throw new Error('no_totp_setup');
   if (!token || !/^\d{6}$/.test(token)) throw new Error('invalid_code');
 
-  const ok = authenticator.check(token, user.twoFactorTempSecret);
+  // Secret und Expiry trennen
+  const parts = user.twoFactorTempSecret.split('|');
+  const secret = parts[0];
+  const expiresAt = parts[1] ? parseInt(parts[1], 10) : null;
+
+  // Expiry prüfen
+  if (!expiresAt || Date.now() > expiresAt) {
+    // Abgelaufenes Secret aufräumen
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { twoFactorTempSecret: null },
+    });
+    throw new Error('totp_setup_expired');
+  }
+
+  const ok = authenticator.check(token, secret);
   if (!ok) throw new Error('invalid_code');
 
   await prisma.user.update({
     where: { id: user.id },
     data: {
       twoFactorEnabled: true,
-      twoFactorSecret: user.twoFactorTempSecret,
+      twoFactorSecret: secret,   // nur den Secret-Teil speichern, ohne Expiry
       twoFactorTempSecret: null,
       twoFactorType: 'TOTP',
     },
@@ -164,13 +185,16 @@ async function startSmsSetupAction() {
 
   if (!user.phone) throw new Error('no_phone');
 
-  const code = String(Math.floor(100000 + Math.random() * 900000));
+  const { make6DigitCode, hashCode } = await import('@/lib/emailVerify');
+
+  const code = make6DigitCode();
+  const codeHash = hashCode(code);    
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
   await prisma.smsCode.deleteMany({ where: { userId: user.id, purpose: '2FA_SETUP' } });
 
   await prisma.smsCode.create({
-    data: { userId: user.id, code, purpose: '2FA_SETUP', expiresAt },
+    data: { userId: user.id, code: codeHash, purpose: '2FA_SETUP', expiresAt },
   });
 
   await sendSms({ to: user.phone, body: `Dein Subm8-Code: ${code} (10 Minuten gültig)` });
@@ -185,6 +209,9 @@ async function verifySmsSetupAction(formData: FormData) {
 
   if (!/^\d{6}$/.test(code)) throw new Error('invalid_code');
 
+  const { hashCode } = await import('@/lib/emailVerify');
+  const MAX_SMS_ATTEMPTS = 5;
+
   const entry = await prisma.smsCode.findFirst({
     where: { userId: user.id, purpose: '2FA_SETUP' },
     orderBy: { expiresAt: 'desc' },
@@ -192,8 +219,23 @@ async function verifySmsSetupAction(formData: FormData) {
 
   if (!entry || entry.expiresAt < new Date()) throw new Error('expired');
 
-  if (entry.code !== code) {
-    await prisma.smsCode.update({ where: { id: entry.id }, data: { attempts: { increment: 1 } } });
+  // Attempt-Limit
+  if (entry.attempts >= MAX_SMS_ATTEMPTS) {
+    await prisma.smsCode.delete({ where: { id: entry.id } });
+    throw new Error('too_many_attempts');
+  }
+
+  // Hash-Vergleich
+  if (entry.code !== hashCode(code)) {
+    const newAttempts = entry.attempts + 1;
+    if (newAttempts >= MAX_SMS_ATTEMPTS) {
+      await prisma.smsCode.delete({ where: { id: entry.id } });
+    } else {
+      await prisma.smsCode.update({
+        where: { id: entry.id },
+        data: { attempts: { increment: 1 } },
+      });
+    }
     throw new Error('wrong_code');
   }
 
@@ -315,9 +357,10 @@ export default async function SecurityPage({ params }: { params: Promise<Params>
   // QR
   let qrDataUrl: string | null = null;
   if (user.twoFactorTempSecret && user.email) {
+    const rawSecret = user.twoFactorTempSecret.split('|')[0];
     const issuer = encodeURIComponent(process.env.NEXT_PUBLIC_APP_NAME ?? 'Subm8');
     const label = encodeURIComponent(user.email);
-    const otpauth = `otpauth://totp/${issuer}:${label}?secret=${user.twoFactorTempSecret}&issuer=${issuer}`;
+    const otpauth = `otpauth://totp/${issuer}:${label}?secret=${rawSecret}&issuer=${issuer}`;
     qrDataUrl = await QRCode.toDataURL(otpauth);
   }
 

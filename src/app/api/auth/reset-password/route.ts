@@ -26,6 +26,7 @@ export async function POST(req: Request) {
       data: { passwordHash: pwHash },
     }),
     prisma.passwordResetToken.delete({ where: { token } }),
+    prisma.session.deleteMany({ where: { userId: entry.userId } }),
   ]);
 
   return NextResponse.json({ ok: true });

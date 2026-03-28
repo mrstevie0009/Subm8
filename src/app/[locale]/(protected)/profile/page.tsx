@@ -117,12 +117,18 @@ async function updateProfileAction(formData: FormData) {
     throw new Error('Land muss ISO-2 sein (z. B. DE, AT, US).');
   }
 
-  // Uniqueness
   const handleClash = await prisma.user.findFirst({
     where: { handle: handleRaw, NOT: { id: user.id } },
     select: { id: true },
   });
   if (handleClash) throw new Error('Handle ist bereits vergeben.');
+
+  // Aktuelle E-Mail lesen um Änderung zu erkennen
+  const currentUser = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { email: true },
+  });
+  const emailChanged = email !== null && email !== currentUser?.email;
 
   if (email) {
     const emailClash = await prisma.user.findFirst({
@@ -132,7 +138,6 @@ async function updateProfileAction(formData: FormData) {
     if (emailClash) throw new Error('E-Mail ist bereits vergeben.');
   }
 
-  // Update-Daten dynamisch nur mit vorhandenen Spalten
   const data: {
     handle: string;
     email: string | null;
@@ -149,6 +154,29 @@ async function updateProfileAction(formData: FormData) {
     where: { id: user.id },
     data,
   });
+
+  // Bei E-Mail-Änderung: aktuelle Session-Token aus Cookie lesen,
+  // dann alle ANDEREN Sessions löschen (aktuelle behalten)
+  if (emailChanged) {
+    const jar = await cookies();
+    const currentToken =
+      jar.get('next-auth.session-token')?.value ||
+      jar.get('__Secure-next-auth.session-token')?.value ||
+      jar.get('sessionToken')?.value ||
+      null;
+
+    if (currentToken) {
+      await prisma.session.deleteMany({
+        where: {
+          userId: user.id,
+          sessionToken: { not: currentToken },
+        },
+      });
+    } else {
+      // Fallback: alle Sessions löschen wenn wir den Token nicht kennen
+      await prisma.session.deleteMany({ where: { userId: user.id } });
+    }
+  }
 
   revalidatePath('/[locale]/profile', 'page');
 }

@@ -1,7 +1,9 @@
-//src/app/api/2fa/sms/verify/route.ts
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/currentUser';
+import { hashCode } from '@/lib/emailVerify';
+
+const MAX_SMS_ATTEMPTS = 5;
 
 export async function POST(req: Request) {
   const me = await getCurrentUser().catch(() => null);
@@ -21,11 +23,27 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Expired/invalid' }, { status: 400 });
   }
 
-  if (entry.code !== String(code)) {
-    await prisma.smsCode.update({
-      where: { id: entry.id },
-      data: { attempts: { increment: 1 } },
-    });
+  //Attempt-Limit prüfen bevor Vergleich
+  if (entry.attempts >= MAX_SMS_ATTEMPTS) {
+    await prisma.smsCode.delete({ where: { id: entry.id } });
+    return NextResponse.json(
+      { error: 'Too many attempts. Request a new code.', code: 'TOO_MANY_ATTEMPTS' },
+      { status: 429 }
+    );
+  }
+
+  //Hash-Vergleich statt Klartext
+  if (entry.code !== hashCode(String(code))) {
+    const newAttempts = entry.attempts + 1;
+    if (newAttempts >= MAX_SMS_ATTEMPTS) {
+      // Code sofort löschen nach letztem Fehlversuch
+      await prisma.smsCode.delete({ where: { id: entry.id } });
+    } else {
+      await prisma.smsCode.update({
+        where: { id: entry.id },
+        data: { attempts: { increment: 1 } },
+      });
+    }
     return NextResponse.json({ error: 'Wrong code' }, { status: 400 });
   }
 
