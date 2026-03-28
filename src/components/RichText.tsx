@@ -21,13 +21,20 @@ type Props = {
 // Grund-Patterns
 const MENTION = /@[a-z0-9_]{1,20}\b/gi;
 const HASHTAG = /#[\p{L}\p{N}_]{1,50}\b/giu;
+// Nur https?:// – keine javascript:, data:, vbscript: URIs möglich
+const SAFE_URL = /https?:\/\/[^\s<>"'()[\]{}]+/gi;
 
-// Tokenizer, der Mentions/Hashtags isoliert
-const TOKEN = new RegExp(`(${MENTION.source})|(${HASHTAG.source})`, 'giu');
+// Tokenizer, der Mentions/Hashtags/URLs isoliert
+const TOKEN = new RegExp(
+  `(${MENTION.source})|(${HASHTAG.source})|(${SAFE_URL.source})`,
+  'giu'
+);
 
 // Für typsichere Einzelprüfung (kein .test auf /g-Regex)
 const IS_MENTION = new RegExp(`^${MENTION.source}$`, 'iu');
 const IS_HASHTAG = new RegExp(`^${HASHTAG.source}$`, 'iu');
+// Doppelt absichern: auch beim Rendern nur https?:// zulassen
+const IS_SAFE_URL = /^https?:\/\//i;
 
 export default function RichText({
   text,
@@ -40,12 +47,10 @@ export default function RichText({
   // Link-Styles: nur im Chat anders
   const linkCls =
     variant === 'chat'
-      ? // auf lila Bubble: sehr hohe Lesbarkeit
-        'text-purple-800 underline decoration-purple-800 hover:decoration-purple font-semibold'
-      : // global: lila wie gehabt
-        'text-[var(--purple)] hover:underline font-medium';
+      ? 'text-purple-800 underline decoration-purple-800 hover:decoration-purple font-semibold'
+      : 'text-[var(--purple)] hover:underline font-medium';
 
-  // Hilfs-Handler: verhindert, dass z. B. Cards den Klick „schlucken”
+  // Hilfs-Handler: verhindert, dass z. B. Cards den Klick „schlucken"
   const stop = (e: React.SyntheticEvent) => {
     e.stopPropagation();
   };
@@ -55,7 +60,7 @@ export default function RichText({
       {parts.map((part, i) => {
         // @mention
         if (IS_MENTION.test(part)) {
-          const handle = part.slice(1).toLowerCase(); // ohne '@'
+          const handle = part.slice(1).toLowerCase();
           return (
             <Link
               key={`m-${i}-${handle}`}
@@ -75,7 +80,7 @@ export default function RichText({
 
         // #hashtag
         if (IS_HASHTAG.test(part)) {
-          const tag = part.slice(1); // ohne '#'
+          const tag = part.slice(1);
           return (
             <Link
               key={`h-${i}-${tag}`}
@@ -90,6 +95,25 @@ export default function RichText({
             >
               {part}
             </Link>
+          );
+        }
+
+        // URL
+        if (IS_SAFE_URL.test(part)) {
+          const href = part.replace(/[.,!?)]+$/, '');
+          return (
+            <a
+              key={`u-${i}`}
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer nofollow"
+              className={linkCls}
+              onClick={stop}
+              onMouseDown={stop}
+              onTouchStart={stop}
+            >
+              {href}
+            </a>
           );
         }
 

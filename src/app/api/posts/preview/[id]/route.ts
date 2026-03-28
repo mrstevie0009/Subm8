@@ -16,7 +16,13 @@ export async function GET(_: Request, ctx: { params: Promise<{ id: string }> }) 
         text: true,
         mediaUrl: true,
         mediaAlt: true,
-        uploaded: true, // ⬅️ NEU: uploaded media
+        uploaded: {
+          select: {
+            url: true,
+            alt: true,
+            type: true,
+          },
+        },
         createdAt: true,
         author: { select: { handle: true, displayName: true, avatarUrl: true } },
       },
@@ -31,7 +37,7 @@ export async function GET(_: Request, ctx: { params: Promise<{ id: string }> }) 
         createdAt: p.createdAt.toISOString(),
         mediaUrl: p.mediaUrl ?? null,
         mediaAlt: p.mediaAlt ?? null,
-        uploaded: p.uploaded ?? [], // ⬅️ NEU: Array von uploaded media
+        uploaded: p.uploaded ?? [],
         author: {
           handle: p.author.handle,
           displayName: p.author.displayName || p.author.handle,

@@ -24,11 +24,22 @@ function getSigningKey(secretKey: string, date: string, region: string, service:
 }
 
 // Baut eine presigned PUT-URL für R2/S3 (path-style: endpoint/bucket/key)
+const ALLOWED_UPLOAD_TYPES = new Set([
+  'image/jpeg', 'image/png', 'image/webp', 'image/gif',
+  'video/mp4', 'video/webm', 'video/ogg', 'video/quicktime', 'video/x-matroska',
+  'audio/webm', 'audio/ogg', 'audio/mp4', 'audio/mpeg',
+]);
+
 export async function presignPut(
   kind: 'post-media' | 'avatars' | 'banners' | 'offers' | 'profile' | 'chat-media',
   filename: string,
   contentType: string
 ) {
+  // ✅ MIME-Type validieren bevor Presigned URL ausgestellt wird
+  if (!ALLOWED_UPLOAD_TYPES.has(contentType)) {
+    throw new Error(`Upload MIME type not allowed: ${contentType}`);
+  }
+
   const bucket = process.env.S3_BUCKET!;
   const endpoint = (process.env.S3_ENDPOINT || '').replace(/\/$/, '');
   const region = process.env.S3_REGION || 'auto';
@@ -41,7 +52,11 @@ export async function presignPut(
   }
 
   const key = buildKey(kind, filename);
-  const ct = contentType || 'application/octet-stream';
+  const ct = contentType;
+
+  if (!bucket || !endpoint || !accessKeyId || !secretKey) {
+    throw new Error('Missing S3/R2 env vars for presignPut');
+  }
 
   const now = new Date();
   const amzDate = now.toISOString().replace(/[:-]|\.\d{3}/g, ''); // YYYYMMDDTHHMMSSZ

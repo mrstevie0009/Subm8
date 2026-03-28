@@ -15,8 +15,14 @@ type Props = { open: boolean; onClose: () => void };
 type MediaKind = 'image' | 'video';
 
 /* ---------------- GIF Picker (Tenor) ---------------- */
-const TENOR_KEY = process.env.NEXT_PUBLIC_TENOR_API_KEY ?? 'LIVDSRZULELA';
-const TENOR_BASE = 'https://g.tenor.com/v1';
+const TENOR_BASE = '/api/gif/search';
+
+// Allowlist für erlaubte GIF-Hosts
+const ALLOWED_GIF_HOSTS = [
+  'media.tenor.com', 'c.tenor.com', 'media1.tenor.com',
+  'media2.tenor.com', 'media3.tenor.com', 'g.tenor.com',
+  'i.giphy.com', 'media.giphy.com',
+];
 const MEDIA_MAX = 4;
 const atLimit = (n: number) => n >= MEDIA_MAX;
 
@@ -77,10 +83,11 @@ function GifPickerModal({
       setErr(null);
       setLoading(true);
       try {
+        // ✅ Eigener Proxy statt direktem Tenor-Call mit API-Key
         const endpoint =
           query && query.trim()
-            ? `${TENOR_BASE}/search?q=${encodeURIComponent(query)}&key=${TENOR_KEY}&limit=24&media_filter=minimal`
-            : `${TENOR_BASE}/trending?key=${TENOR_KEY}&limit=24&media_filter=minimal`;
+            ? `${TENOR_BASE}?q=${encodeURIComponent(query)}&limit=24`
+            : `${TENOR_BASE}?limit=24`;
 
         const r = await fetch(endpoint);
         const j = (await r.json()) as TenorResp;
@@ -474,16 +481,36 @@ export default function ComposePostModal({ open, onClose }: Props) {
       setGifOpen(false);
       return;
     }
+
+    // ✅ Host-Validierung vor dem Fetch
+    try {
+      const u = new URL(url);
+      if (!ALLOWED_GIF_HOSTS.includes(u.hostname)) {
+        setGifErr(t('states.gifLoadError'));
+        return;
+      }
+    } catch {
+      setGifErr(t('states.gifLoadError'));
+      return;
+    }
+
     try {
       setGifErr(null);
       const r = await fetch(url, { mode: 'cors' });
       const blob = await r.blob();
+
+      // ✅ Nur image/* akzeptieren
+      if (!blob.type.startsWith('image/')) {
+        setGifErr(t('states.gifLoadError'));
+        return;
+      }
+
       const type = blob.type || 'image/gif';
       const file = new File([blob], `gif_${Date.now()}.gif`, { type });
       const local = URL.createObjectURL(blob);
 
       setMedia((prev) => {
-        if (atLimit(prev.length)) return prev; // Race-Schutz
+        if (atLimit(prev.length)) return prev;
         return [...prev, { id: crypto.randomUUID(), file, preview: local, kind: 'image' }];
       });
       setGifOpen(false);

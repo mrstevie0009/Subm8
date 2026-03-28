@@ -1,8 +1,6 @@
 // src/app/api/communities/preview/[slug]/route.ts
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from '@/lib/prisma';
 
 type CommunityPreview = {
   slug: string;
