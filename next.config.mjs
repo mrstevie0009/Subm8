@@ -76,6 +76,7 @@ const cspHeader = [
     'https://media3.tenor.com',
     'https://i.giphy.com',
     'https://media.giphy.com',
+    'https://g.tenor.com',
     isDev ? 'ws://localhost:* http://localhost:3000 http://localhost:3001' : '',
   ].filter(Boolean).join(' '),
 
