@@ -10,6 +10,9 @@ import { loadStripe } from '@stripe/stripe-js';
 import type { Stripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js';
 
+import { useStepUp } from "@/hooks/useStepUp";
+import { StepUpDialog } from "@/components/StepUpDialog";
+
 type Props = {
   open: boolean;
   onClose: () => void;
@@ -193,51 +196,59 @@ function PaymentMethodsModal({
 }) {
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
-
   const [clientSecret, setClientSecret] = React.useState<string | null>(null);
   const [peKey, setPeKey] = React.useState(0);
-
   const [methods, setMethods] = React.useState<SavedMethod[]>([]);
   const [defaultId, setDefaultId] = React.useState<string | null>(null);
+
+  const stepUp = useStepUp();
+  const [stepUpOpen, setStepUpOpen] = React.useState(false);
+  const [stepUpLabel, setStepUpLabel] = React.useState("");
+  const pendingActionRef = React.useRef<(() => void) | null>(null);
 
   const loadMethods = React.useCallback(async () => {
     const res = await fetch('/api/payments/methods/list', { method: 'GET' });
     const j: unknown = await res.json().catch(() => null);
-
-    if (!res.ok) {
-      const err = getUpdateError(j) ?? t('methods.errors.loadFailed');
-      throw new Error(err);
-    }
-
+    if (!res.ok) throw new Error(getUpdateError(j) ?? t('methods.errors.loadFailed'));
     if (!isMethodsListOk(j)) throw new Error(t('methods.errors.invalidResponse'));
     setMethods(j.methods);
     setDefaultId(j.defaultPaymentMethodId);
-  }, [t]); // t ist die einzige externe Referenz hier
+  }, [t]);
 
   React.useEffect(() => {
     if (!open) return;
-
     setError(null);
     setClientSecret(null);
     setMethods([]);
     setDefaultId(null);
-
     setLoading(true);
     loadMethods()
       .catch((e) => setError(e instanceof Error ? e.message : t('methods.errors.loadFailed')))
       .finally(() => setLoading(false));
   }, [open, loadMethods, t]);
 
-  async function startSetupIntent() {
+  function withStepUp(label: string, action: () => void) {
+    if (stepUp.isVerified) { action(); return; }
+    setStepUpLabel(label);
+    pendingActionRef.current = action;
+    setStepUpOpen(true);
+  }
+
+  function startSetupIntent() {
+    withStepUp(t('methods.actions.addCard'), () => void doStartSetupIntent());
+  }
+
+  async function doStartSetupIntent() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/payments/methods/setup-intent', { method: 'POST' });
+      const res = await fetch('/api/payments/methods/setup-intent', {
+        method: 'POST',
+        headers: stepUp.stepUpHeaders(),
+      });
       const j: unknown = await res.json().catch(() => null);
-
       if (!res.ok) throw new Error(getSetupIntentError(j) || t('methods.errors.startSetupFailed'));
       if (!isSetupIntentOk(j)) throw new Error(t('methods.errors.invalidResponse'));
-
       setClientSecret(j.clientSecret);
       setPeKey((k) => k + 1);
     } catch (e) {
@@ -247,20 +258,22 @@ function PaymentMethodsModal({
     }
   }
 
-  async function setDefault(paymentMethodId: string) {
+  function setDefault(paymentMethodId: string) {
+    withStepUp(t('methods.actions.setDefault'), () => void doSetDefault(paymentMethodId));
+  }
+
+  async function doSetDefault(paymentMethodId: string) {
     setLoading(true);
     setError(null);
     try {
       const res = await fetch('/api/payments/methods/update', {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
+        headers: { 'content-type': 'application/json', ...stepUp.stepUpHeaders() },
         body: JSON.stringify({ action: 'set_default', paymentMethodId }),
       });
       const j: unknown = await res.json().catch(() => null);
-
       if (!res.ok) throw new Error(getUpdateError(j) || t('methods.errors.setDefaultFailed'));
       if (!isUpdateOk(j)) throw new Error(t('methods.errors.invalidResponse'));
-
       await loadMethods();
       onChanged();
     } catch (e) {
@@ -270,20 +283,22 @@ function PaymentMethodsModal({
     }
   }
 
-  async function detach(paymentMethodId: string) {
+  function detach(paymentMethodId: string) {
+    withStepUp(t('methods.actions.remove'), () => void doDetach(paymentMethodId));
+  }
+
+  async function doDetach(paymentMethodId: string) {
     setLoading(true);
     setError(null);
     try {
       const res = await fetch('/api/payments/methods/update', {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
+        headers: { 'content-type': 'application/json', ...stepUp.stepUpHeaders() },
         body: JSON.stringify({ action: 'detach', paymentMethodId }),
       });
       const j: unknown = await res.json().catch(() => null);
-
       if (!res.ok) throw new Error(getUpdateError(j) || t('methods.errors.removeFailed'));
       if (!isUpdateOk(j)) throw new Error(t('methods.errors.invalidResponse'));
-
       await loadMethods();
       onChanged();
     } catch (e) {
@@ -296,155 +311,131 @@ function PaymentMethodsModal({
   const mounted = useMounted();
   if (!open || !mounted) return null;
 
-  const elementsOptions =
-    clientSecret
-      ? {
-          clientSecret,
-          appearance: {
-            theme: 'night' as const,
-            variables: {
-              colorPrimary: '#8b5cf6',
-              borderRadius: '12px',
-              fontFamily: 'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial',
-            },
+  const elementsOptions = clientSecret
+    ? {
+        clientSecret,
+        appearance: {
+          theme: 'night' as const,
+          variables: {
+            colorPrimary: '#8b5cf6',
+            borderRadius: '12px',
+            fontFamily: 'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial',
           },
-        }
-      : undefined;
+        },
+      }
+    : undefined;
 
-  return createPortal(
-    <div
-      className="fixed inset-0 z-[2147483603] grid place-items-center bg-black/60 backdrop-blur-sm overscroll-contain p-3 sm:p-0"
-      onClick={onClose}
-    >
-      <div
-        className={[
-          "relative w-full sm:w-[min(720px,94vw)] max-w-[720px]",
-          "max-h-[calc(100dvh-24px)] sm:max-h-[85vh]",
-          "rounded-2xl overflow-hidden border border-white/10 bg-[#0b0b0d] flex flex-col",
-        ].join(" ")}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="relative px-5 py-4 border-b border-white/10">
+  return (
+    <>
+      {createPortal(
+        <div
+          className="fixed inset-0 z-[2147483603] grid place-items-center bg-black/60 backdrop-blur-sm overscroll-contain p-3 sm:p-0"
+          onClick={onClose}
+        >
           <div
-            className="absolute inset-0 -z-10"
-            style={{
-              background: 'radial-gradient(1200px 220px at 50% 0%, rgba(139,92,246,.30), rgba(139,92,246,0))',
-            }}
-          />
-          <div className="flex items-center gap-2">
-            <div className="font-semibold text-[16px]">{t('methods.title')}</div>
-            <div className="ml-auto flex items-center gap-2">
-              <button
-                type="button"
-                onClick={onClose}
-                className="inline-grid place-items-center w-9 h-9 rounded-full hover:bg-white/10"
-                aria-label="Close"
-              >
-                <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" strokeWidth="2" fill="none">
-                  <path d="M6 6l12 12M18 6L6 18" />
-                </svg>
-              </button>
-            </div>
-          </div>
-          <div className="mt-1 text-[12px] text-white/65">{t('methods.subtitle')}</div>
-        </div>
-
-        <div className="px-5 py-5 overflow-y-auto overscroll-contain [ -webkit-overflow-scrolling:touch ]">
-          {error && (
-            <div className="mb-3 text-[13px] text-red-300 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">
-              {error}
-            </div>
-          )}
-
-          <div className="rounded-xl border border-white/10 bg-white/[.03] p-3">
-            <div className="flex items-center justify-between">
-              <div className="text-[13px] text-white/80">{t('methods.savedCards')}</div>
-              <button
-                type="button"
-                onClick={startSetupIntent}
-                disabled={loading || !STRIPE_PK}
-                className="px-3 py-1.5 rounded-lg border border-white/15 hover:bg-white/10 text-[13px] disabled:opacity-60"
-                title={!STRIPE_PK ? 'Missing NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY' : undefined}
-              >
-                {t('methods.actions.addCard')}
-              </button>
-            </div>
-
-            <div className="mt-3 space-y-2">
-              {loading && methods.length === 0 ? (
-                <div className="text-[13px] text-white/60">{t('methods.loading')}</div>
-              ) : methods.length === 0 ? (
-                <div className="text-[13px] text-white/60">{t('methods.empty')}</div>
-              ) : (
-                methods.map((m) => {
-                  const isDef = defaultId === m.id;
-                  return (
-                    <div
-                      key={m.id}
-                      className="flex items-center justify-between gap-2 rounded-lg border border-white/10 bg-black/30 px-3 py-2"
-                    >
-                      <div className="min-w-0">
-                        <div className="text-[13px] text-white/85 truncate">
-                          {m.brand.toUpperCase()} •••• {m.last4}
-                        </div>
-                        <div className="text-[12px] text-white/55">
-                          Exp {String(m.expMonth).padStart(2, '0')}/{String(m.expYear).slice(-2)}
-                          {isDef ? <span className="ml-2 text-[11px] text-[var(--purple)]">{t('methods.default')}</span> : null}
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        {!isDef && (
-                          <button
-                            type="button"
-                            onClick={() => setDefault(m.id)}
-                            disabled={loading}
-                            className="px-2.5 py-1.5 rounded-lg border border-white/15 hover:bg-white/10 text-[12px] disabled:opacity-60"
-                          >
-                            {t('methods.actions.setDefault')}
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => detach(m.id)}
-                          disabled={loading}
-                          className="px-2.5 py-1.5 rounded-lg border border-white/15 hover:bg-white/10 text-[12px] disabled:opacity-60"
-                        >
-                          {t('methods.actions.remove')}
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </div>
-
-          {clientSecret && elementsOptions ? (
-            <div className="mt-4 rounded-xl border border-white/10 bg-white/[.03] p-3">
-              <div className="text-[13px] text-white/80">Neue Karte speichern</div>
-              <div className="mt-3 rounded-xl border border-white/10 bg-black/30 p-3">
-                <Elements stripe={stripePromise} options={elementsOptions}>
-                  <SetupIntentForm
-                    t={t}
-                    peKey={peKey}
-                    onDone={async () => {
-                      setPeKey((k) => k + 1);
-                      setClientSecret(null);
-                      await loadMethods();
-                      onChanged();
-                    }}
-                    onError={(msg) => setError(msg)}
-                  />
-                </Elements>
+            className={[
+              "relative w-full sm:w-[min(720px,94vw)] max-w-[720px]",
+              "max-h-[calc(100dvh-24px)] sm:max-h-[85vh]",
+              "rounded-2xl overflow-hidden border border-white/10 bg-[#0b0b0d] flex flex-col",
+            ].join(" ")}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="relative px-5 py-4 border-b border-white/10">
+              <div className="absolute inset-0 -z-10" style={{ background: 'radial-gradient(1200px 220px at 50% 0%, rgba(139,92,246,.30), rgba(139,92,246,0))' }} />
+              <div className="flex items-center gap-2">
+                <div className="font-semibold text-[16px]">{t('methods.title')}</div>
+                <div className="ml-auto flex items-center gap-2">
+                  <button type="button" onClick={onClose} className="inline-grid place-items-center w-9 h-9 rounded-full hover:bg-white/10" aria-label="Close">
+                    <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" strokeWidth="2" fill="none"><path d="M6 6l12 12M18 6L6 18" /></svg>
+                  </button>
+                </div>
               </div>
-              <div className="mt-2 text-[12px] text-white/55">{t('methods.securityNote')}</div>
+              <div className="mt-1 text-[12px] text-white/65">{t('methods.subtitle')}</div>
             </div>
-          ) : null}
-        </div>
-      </div>
-    </div>,
-    document.body
+
+            <div className="px-5 py-5 overflow-y-auto overscroll-contain [ -webkit-overflow-scrolling:touch ]">
+              {error && <div className="mb-3 text-[13px] text-red-300 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">{error}</div>}
+
+              <div className="rounded-xl border border-white/10 bg-white/[.03] p-3">
+                <div className="flex items-center justify-between">
+                  <div className="text-[13px] text-white/80">{t('methods.savedCards')}</div>
+                  <button type="button" onClick={startSetupIntent} disabled={loading || !STRIPE_PK} className="px-3 py-1.5 rounded-lg border border-white/15 hover:bg-white/10 text-[13px] disabled:opacity-60">
+                    {t('methods.actions.addCard')}
+                  </button>
+                </div>
+                <div className="mt-3 space-y-2">
+                  {loading && methods.length === 0 ? (
+                    <div className="text-[13px] text-white/60">{t('methods.loading')}</div>
+                  ) : methods.length === 0 ? (
+                    <div className="text-[13px] text-white/60">{t('methods.empty')}</div>
+                  ) : (
+                    methods.map((m) => {
+                      const isDef = defaultId === m.id;
+                      return (
+                        <div key={m.id} className="flex items-center justify-between gap-2 rounded-lg border border-white/10 bg-black/30 px-3 py-2">
+                          <div className="min-w-0">
+                            <div className="text-[13px] text-white/85 truncate">{m.brand.toUpperCase()} •••• {m.last4}</div>
+                            <div className="text-[12px] text-white/55">
+                              Exp {String(m.expMonth).padStart(2, '0')}/{String(m.expYear).slice(-2)}
+                              {isDef ? <span className="ml-2 text-[11px] text-[var(--purple)]">{t('methods.default')}</span> : null}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {!isDef && (
+                              <button type="button" onClick={() => setDefault(m.id)} disabled={loading} className="px-2.5 py-1.5 rounded-lg border border-white/15 hover:bg-white/10 text-[12px] disabled:opacity-60">
+                                {t('methods.actions.setDefault')}
+                              </button>
+                            )}
+                            <button type="button" onClick={() => detach(m.id)} disabled={loading} className="px-2.5 py-1.5 rounded-lg border border-white/15 hover:bg-white/10 text-[12px] disabled:opacity-60">
+                              {t('methods.actions.remove')}
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+
+              {clientSecret && elementsOptions ? (
+                <div className="mt-4 rounded-xl border border-white/10 bg-white/[.03] p-3">
+                  <div className="text-[13px] text-white/80">{t('stripe.newCardTitle')}</div>
+                  <div className="mt-3 rounded-xl border border-white/10 bg-black/30 p-3">
+                    <Elements stripe={stripePromise} options={elementsOptions}>
+                      <SetupIntentForm
+                        t={t}
+                        peKey={peKey}
+                        stepUpHeaders={stepUp.stepUpHeaders}
+                        onDone={async () => {
+                          setPeKey((k) => k + 1);
+                          setClientSecret(null);
+                          await loadMethods();
+                          onChanged();
+                        }}
+                        onError={(msg) => setError(msg)}
+                      />
+                    </Elements>
+                  </div>
+                  <div className="mt-2 text-[12px] text-white/55">{t('methods.securityNote')}</div>
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+      <StepUpDialog
+        open={stepUpOpen}
+        onClose={() => setStepUpOpen(false)}
+        onVerified={() => {
+          setStepUpOpen(false);
+          pendingActionRef.current?.();
+          pendingActionRef.current = null;
+        }}
+        actionLabel={stepUpLabel}
+        verify={stepUp.verify}
+      />
+    </>
   );
 }
 
@@ -453,11 +444,13 @@ function SetupIntentForm({
   onError,
   t,
   peKey,
+  stepUpHeaders,
 }: {
   onDone: () => void;
   onError: (msg: string) => void;
   t: ReturnType<typeof useTranslations>;
   peKey: number;
+  stepUpHeaders: () => Record<string, string>;
 }) {
   const stripe = useStripe();
   const elements = useElements();
@@ -470,9 +463,7 @@ function SetupIntentForm({
     try {
       setSaving(true);
       onError('');
-
       if (!stripe || !elements) throw new Error(t('stripe.errors.notReady'));
-
       const { error, setupIntent } = await stripe.confirmSetup({
         elements,
         redirect: 'if_required',
@@ -486,30 +477,21 @@ function SetupIntentForm({
           },
         },
       });
-
       if (error) throw new Error(error.message || t('methods.errors.saveFailed'));
       if (setupIntent?.status !== 'succeeded' && setupIntent?.status !== 'processing') {
         throw new Error(t('methods.errors.setupNotCompleted'));
       }
-
       const setDefaultRes = await fetch('/api/payments/methods/update', {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ 
-          action: 'set_default_from_setup', 
-          setupIntentId: setupIntent.id,
-          billingEmail: billEmail.trim() || undefined 
-        }),
+        headers: { 'content-type': 'application/json', ...stepUpHeaders() },
+        body: JSON.stringify({ action: 'set_default_from_setup', setupIntentId: setupIntent.id, billingEmail: billEmail.trim() || undefined }),
       });
-
       const setDefaultJ: unknown = await setDefaultRes.json().catch(() => null);
       if (!setDefaultRes.ok) {
         const err = typeof setDefaultJ === 'object' && setDefaultJ && 'error' in setDefaultJ && typeof setDefaultJ.error === 'string'
-          ? setDefaultJ.error
-          : 'Failed to set default payment method';
+          ? setDefaultJ.error : 'Failed to set default payment method';
         throw new Error(err);
       }
-
       await sleep(300);
       onDone();
     } catch (e) {
@@ -522,35 +504,17 @@ function SetupIntentForm({
   return (
     <div>
       <div className="grid gap-2 mb-3">
-        <input
-          value={billName}
-          onChange={(e) => setBillName(e.target.value)}
-          placeholder="Name"
-          className="w-full rounded-lg bg-black/30 border border-white/10 px-3 py-2 outline-none"
-        />
-        <input
-          value={billEmail}
-          onChange={(e) => setBillEmail(e.target.value)}
-          placeholder="E-Mail"
-          className="w-full rounded-lg bg-black/30 border border-white/10 px-3 py-2 outline-none"
-        />
-        <input
-          value={billPhone}
-          onChange={(e) => setBillPhone(e.target.value)}
-          placeholder="Telefon"
-          className="w-full rounded-lg bg-black/30 border border-white/10 px-3 py-2 outline-none"
-        />
+        <input value={billName} onChange={(e) => setBillName(e.target.value)} placeholder="Name" className="w-full rounded-lg bg-black/30 border border-white/10 px-3 py-2 outline-none" />
+        <input value={billEmail} onChange={(e) => setBillEmail(e.target.value)} placeholder="E-Mail" className="w-full rounded-lg bg-black/30 border border-white/10 px-3 py-2 outline-none" />
+        <input value={billPhone} onChange={(e) => setBillPhone(e.target.value)} placeholder="Telefon" className="w-full rounded-lg bg-black/30 border border-white/10 px-3 py-2 outline-none" />
       </div>
-
       <PaymentElement key={`setup-pe-${peKey}`} options={{ layout: 'tabs' }} />
       <div className="mt-4 flex items-center justify-end">
         <button
           type="button"
           onClick={handleSave}
           disabled={saving || !stripe || !elements}
-          className={`relative px-4 py-2 rounded-lg text-white transition ${
-            !saving && stripe && elements ? 'bg-[var(--purple)] hover:opacity-95' : 'bg-white/10 opacity-60 cursor-not-allowed'
-          }`}
+          className={`relative px-4 py-2 rounded-lg text-white transition ${!saving && stripe && elements ? 'bg-[var(--purple)] hover:opacity-95' : 'bg-white/10 opacity-60 cursor-not-allowed'}`}
         >
           {saving ? t('methods.actions.saving') : t('methods.actions.saveCard')}
         </button>
@@ -682,10 +646,10 @@ function StripePayStep({
               onClick={() => void onRemoveSaved()}
               disabled={sending}
               className="px-3 py-1.5 rounded-lg border border-white/15 hover:bg-white/10 text-[13px] disabled:opacity-60"
-              title="Gespeicherte Karte entfernen"
-            >
-              Remove
-            </button>
+              title={t('stripe.savedCardNote')}
+              >
+                {t('methods.actions.remove')}
+              </button>
           ) : null}
 
           <button
@@ -723,8 +687,8 @@ function StripePayStep({
       </div>
       <div className="mt-2 text-[12px] text-white/55">
         {savedSummary.hasDefault
-          ? "Du hast bereits eine gespeicherte Karte."
-          : "Die Karte wird nach erfolgreicher Zahlung automatisch gespeichert."}
+          ? t('stripe.savedCardNote')
+          : t('stripe.newCardNote')}
       </div>
 
       <div className="mt-4 flex items-center justify-end gap-2">
@@ -774,6 +738,7 @@ export default function TipModal({
   const [success, setSuccess] = React.useState<null | { paymentId: string; totalCents: number; currency: string }>(null);
   const [closingSoon, setClosingSoon] = React.useState(false);
   const closeTimerRef = React.useRef<number | null>(null);
+  
 
   React.useEffect(() => {
     return () => {
@@ -785,6 +750,33 @@ export default function TipModal({
 
   const [savedCount, setSavedCount] = React.useState(0);
   const [hasDefaultSaved, setHasDefaultSaved] = React.useState(false);
+  const stepUpForRemove = useStepUp();
+  const [stepUpRemoveOpen, setStepUpRemoveOpen] = React.useState(false);
+  const pendingRemoveRef = React.useRef<(() => Promise<void>) | null>(null);
+
+  async function doRemoveSaved() {
+    setSending(true);
+    setError(null);
+    try {
+      const listRes = await fetch('/api/payments/methods/list', { method: 'GET' });
+      const listJ: unknown = await listRes.json().catch(() => null);
+      if (!listRes.ok || !isMethodsListOk(listJ)) throw new Error("Failed to load saved cards");
+      const defaultId = listJ.defaultPaymentMethodId;
+      if (!defaultId) throw new Error("No default card to remove");
+      const res = await fetch('/api/payments/methods/update', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', ...stepUpForRemove.stepUpHeaders() },
+        body: JSON.stringify({ action: 'detach', paymentMethodId: defaultId }),
+      });
+      const j: unknown = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(getUpdateError(j) || 'Failed to remove');
+      await refreshSavedSummary();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to remove');
+    } finally {
+      setSending(false);
+    }
+  }
 
   async function refreshSavedSummary() {
     try {
@@ -1111,32 +1103,9 @@ export default function TipModal({
                     onPaid={(r) => handlePaidFinal(r)}
                     savedSummary={{ count: savedCount, hasDefault: hasDefaultSaved }}
                     onRemoveSaved={async () => {
-                      setSending(true);
-                      setError(null);
-                      try {
-                        // 1) default id holen
-                        const listRes = await fetch('/api/payments/methods/list', { method: 'GET' });
-                        const listJ: unknown = await listRes.json().catch(() => null);
-                        if (!listRes.ok || !isMethodsListOk(listJ)) throw new Error("Failed to load saved cards");
-
-                        const defaultId = listJ.defaultPaymentMethodId;
-                        if (!defaultId) throw new Error("No default card to remove");
-
-                        // 2) detach default
-                        const res = await fetch('/api/payments/methods/update', {
-                          method: 'POST',
-                          headers: { 'content-type': 'application/json' },
-                          body: JSON.stringify({ action: 'detach', paymentMethodId: defaultId }),
-                        });
-                        const j: unknown = await res.json().catch(() => null);
-                        if (!res.ok) throw new Error(getUpdateError(j) || 'Failed to remove');
-
-                        await refreshSavedSummary();
-                      } catch (e) {
-                        setError(e instanceof Error ? e.message : 'Failed to remove');
-                      } finally {
-                        setSending(false);
-                      }
+                      if (stepUpForRemove.isVerified) { await doRemoveSaved(); return; }
+                      pendingRemoveRef.current = doRemoveSaved;
+                      setStepUpRemoveOpen(true);
                     }}
                   />
                 </Elements>
@@ -1192,7 +1161,7 @@ export default function TipModal({
                 </p>
 
                 <div className="mt-3 text-[12px] text-white/55">
-                  Closing…
+                  {t('success.closing')}
                 </div>
               </div>
             </div>
@@ -1273,9 +1242,19 @@ export default function TipModal({
           `}</style>
         </div>
       </div>
+    <StepUpDialog
+        open={stepUpRemoveOpen}
+        onClose={() => setStepUpRemoveOpen(false)}
+        onVerified={() => {
+          setStepUpRemoveOpen(false);
+          pendingRemoveRef.current?.().catch(() => {});
+          pendingRemoveRef.current = null;
+        }}
+        actionLabel={t('methods.actions.removeCard')}
+        verify={stepUpForRemove.verify}
+      />
     </>
   );
-
   return createPortal(modalUi, document.body);
 }
 

@@ -1,274 +1,175 @@
 {
+  "stepUp": {
+    "title": "Security Confirmation",
+    "subtitle": "Confirm your password to perform \"{action}\".",
+    "passwordLabel": "Password",
+    "actions": { "cancel": "Cancel", "confirm": "Confirm", "confirming": "Checking…", "closeAria": "Close" },
+    "validHint": "Valid for 5 minutes after confirmation",
+    "errors": {
+      "noPassword": "Your account is linked with Google only. Please set a password in your settings first.",
+      "rateLimited": "Too many attempts. Please wait a few minutes.",
+      "wrongPassword": "Incorrect password. Please try again.",
+      "generic": "Verification failed."
+    }
+  },
   "autoDrain": {
-    "actions": {
-      "cancel": "Cancel",
-      "create": "Create request"
-    },
-    "amount": {
-      "label": "Amount per charge",
-      "placeholder": "50"
-    },
-    "recurrence": {
-      "label": "Recurrence",
-      "options": {
-        "daily": "Daily",
-        "monthly": "Monthly",
-        "weekly": "Weekly"
-      }
-    },
+    "actions": { "cancel": "Cancel", "create": "Create request" },
+    "amount": { "label": "Amount per charge", "placeholder": "50" },
+    "recurrence": { "label": "Recurrence", "options": { "daily": "Daily", "monthly": "Monthly", "weekly": "Weekly" } },
     "subtitle": "Set amount and recurrence.",
-    "title": "Create autodrain request"
+    "title": "Create AutoDrain request"
   },
   "autoDrainAcceptModal": {
-    "cancelAnytime": "You can cancel AutoDrain anytime in your Payments.",
-    "acknowledge": "I understand that gifts are voluntary and final. No services are promised.",
-    "actions": {
-      "cancel": "Cancel",
-      "closeAria": "Close",
-      "enable": "Enable autodrain",
-      "enabling": "Enabling…",
-      "back": "Back"
-    },
-    "cadence": {
-      "daily": "daily",
-      "monthly": "monthly",
-      "weekly": "weekly"
-    },
-    "charge": {
-      "label": "Charge amount",
-      "recurringNote": "Recurring charge until canceled."
-    },
-    "disclaimer": "Gifts are voluntary and not payment for services. Gifts are final (no refunds, unless required by law).",
-    "errors": {
-      "generic": "Something went wrong"
-    },
-    "header": {
-      "title": "Enable autodrain",
-      "to": "for {name}"
-    },
+    "cancelAnytime": "You can cancel AutoDrain at any time in your payments.",
+    "acknowledge": "I understand that gifts are voluntary and final. No services are implied.",
+    "actions": { "cancel": "Cancel", "closeAria": "Close", "enable": "Enable AutoDrain", "enabling": "Enabling…", "back": "Back", "cards": "Cards" },
+    "cadence": { "daily": "daily", "monthly": "monthly", "weekly": "weekly" },
+    "charge": { "label": "Charge amount", "recurringNote": "Recurring charge until cancelled." },
+    "disclaimer": "Gifts are voluntary and not payment for services. Gifts are final (no refunds unless required by law).",
+    "errors": { "generic": "Something went wrong" },
+    "header": { "title": "Enable AutoDrain", "to": "for {name}" },
+    "breakdown": { "amountTo": "Amount to {name}", "fee": "Platform fee (10%)", "youPay": "You pay" },
+    "success": { "title": "Activated!", "enabled": "AutoDrain has been activated.", "closing": "Closing…" },
     "stripe": {
       "enterCard": "Choose payment method",
       "secureHint": "Your payment details are securely processed by Stripe.",
       "savedCardsSummary": "{count} saved card(s)",
       "savedCardsHint": "You can set a default card.",
       "defaultSet": "Default set",
-      "tipSaveCard": "You can save your card to pay faster."
+      "tipSaveCard": "Optional: Save your card for future charges.",
+      "savedCardNote": "You already have a saved card.",
+      "newCardNote": "The card will be saved automatically after successful activation."
     }
   },
   "paymentsPage": {
     "ariaBack": "Back to feed",
     "autodrain": {
-      "cadence": {
-        "daily": "Daily",
-        "monthly": "Monthly",
-        "weekly": "Weekly"
-      },
-      "cancel": "End",
-      "incoming": {
-        "title": "Incoming autodrain"
-      },
+      "cadence": { "daily": "Daily", "monthly": "Monthly", "weekly": "Weekly" },
+      "cancel": "Cancel",
+      "incoming": { "title": "Incoming AutoDrain" },
       "none": "No active subscriptions.",
-      "outgoing": {
-        "title": "Enabled by you"
-      },
-      "th": {
-        "amount": "Amount",
-        "avatar": "Avatar",
-        "cadence": "Cadence",
-        "domme": "Domme",
-        "next": "Next charge",
-        "sub": "Sub"
-      },
-      "title": "Active autodrain"
+      "outgoing": { "title": "Activated by you" },
+      "th": { "amount": "Amount", "avatar": "Avatar", "cadence": "Cadence", "domme": "Domme", "next": "Next charge", "sub": "Sub" },
+      "title": "Active AutoDrain"
     },
     "avatarAlt": "{name} avatar",
-    "balance": {
-      "export": "CSV export",
-      "title": "Current balance:"
-    },
-    "guestNote": "Please sign in to see your payment history.",
+    "balance": { "export": "CSV export", "title": "Current balance:" },
+    "guestNote": "Please sign in to view your payment history.",
     "payments": {
       "amountPrefixReceived": "Received: {amount}",
       "amountPrefixSent": "Sent: {amount}",
-      "received": {
-        "empty": "No incoming payments.",
-        "title": "Received"
-      },
-      "sent": {
-        "empty": "No outgoing payments.",
-        "title": "You sent"
-      },
-      "status": {
-        "canceled": "Canceled",
-        "created": "Created",
-        "failed": "Failed",
-        "processing": "Processing",
-        "succeeded": "Succeeded"
-      },
-      "th": {
-        "amount": "Amount",
-        "avatar": "Avatar",
-        "date": "Date",
-        "status": "Status",
-        "username": "Username",
-        "what": "Purpose"
-      },
-      "what": {
-        "tip": "Tip"
-      }
+      "received": { "empty": "No payments received.", "title": "Received" },
+      "sent": { "empty": "No outgoing payments.", "title": "You sent" },
+      "status": { "canceled": "Canceled", "created": "Created", "failed": "Failed", "processing": "Processing", "succeeded": "Succeeded" },
+      "th": { "amount": "Amount", "avatar": "Avatar", "date": "Date", "status": "Status", "username": "Username", "what": "Description" },
+      "what": { "tip": "Tip" }
     },
     "payoutBtn": "Payout",
     "payoutTooltip": "Request payout (coming soon)",
-    "title": "Payments & history"
+    "title": "Payments & History"
+  },
+  "payoutModal": {
+    "title": "Payout",
+    "subtitle": "Payouts currently run exclusively via Stripe Connect.",
+    "amount": "Available",
+    "ready": "Ready for payout.",
+    "min10": "Minimum: €10",
+    "note": "Note: Payouts require completed Stripe Express onboarding.",
+    "connect": "Connect Stripe",
+    "openOnboarding": "Open onboarding",
+    "request": "Request payout",
+    "requesting": "Processing…",
+    "back": "Back",
+    "closeAria": "Close",
+    "stripeCard": {
+      "intro": "Connect your Stripe Express account. Then you can request payouts.",
+      "status": "Status",
+      "notConnected": "Not connected",
+      "ready": "Ready",
+      "incomplete": "Onboarding incomplete",
+      "incompleteHint": "Your Stripe Express onboarding isn't completed yet. Open onboarding and finish all steps to enable bank payouts.",
+      "accountLabel": "Stripe Account"
+    },
+    "success": "✓ Payout requested",
+    "errors": {
+      "minAmount": "Minimum €10. Available: {amount}",
+      "onboardingFailed": "Stripe onboarding failed",
+      "payoutFailed": "Payout failed"
+    },
+    "transferOnly": {
+      "title": "Stripe payouts not enabled",
+      "body": "You can still proceed by transferring funds to your Stripe balance only. A bank payout will happen only after you enable payouts.",
+      "cancel": "Cancel",
+      "proceed": "Proceed: Stripe balance only",
+      "payoutsNotEnabled": "Bank payouts are not enabled on your Stripe account."
+    }
   },
   "tipModal": {
-    "ack": {
-      "checkbox": "I understand that gifts are voluntary and final."
-    },
-    "actions": {
-      "cancel": "Cancel",
-      "done": "Done",
-      "sendGift": "Send gift",
-      "sending": "Sending…",
-      "back": "Back",
-      "continueToPay": "Continue to payment",
-      "payNow": "Pay now"
-    },
-    "amount": {
-      "label": "Amount for the creator",
-      "placeholder": "50"
-    },
-    "aria": {
-      "close": "Close"
-    },
-    "breakdown": {
-      "amountToCreator": "Amount (goes to creator)",
-      "platformFeeTop": "Platform fee (10% on top)",
-      "youPay": "You pay"
-    },
+    "ack": { "checkbox": "I understand that gifts are voluntary and final." },
+    "actions": { "cancel": "Cancel", "done": "Done", "sendGift": "Send gift", "sending": "Sending…", "back": "Back", "continueToPay": "Continue to payment", "payNow": "Pay now" },
+    "amount": { "label": "Amount for the creator", "placeholder": "50" },
+    "aria": { "close": "Close" },
+    "breakdown": { "amountToCreator": "Amount (goes to creator)", "platformFeeTop": "Platform fee (10% on top)", "youPay": "You pay" },
     "disclaimer": {
       "top": "Gifts are voluntary and not payment for services. Subm8 only facilitates the transfer.",
-      "legal": "By confirming, you send a voluntary gift. This is not a payment for services. Gifts are final (no refunds unless required by law)."
+      "legal": "By confirming you are sending a voluntary gift. This is not payment for services. Gifts are final (no refunds unless required by law)."
     },
-    "errors": {
-      "confirmFailed": "Confirmation failed",
-      "createFailed": "Payment could not be created",
-      "generic": "Something went wrong"
-    },
-    "header": {
-      "title": "Send a gift to {name}",
-      "subtitleFinal": "Gifts are voluntary and final."
-    },
-    "note": {
-      "label": "Note (optional)",
-      "placeholder": "Write something nice…"
-    },
-    "roles": {
-      "domme": "Domme",
-      "sub": "Sub"
-    },
-    "success": {
-      "title": "Gift sent!",
-      "youPaid": "You paid {amount}"
-    },
+    "errors": { "confirmFailed": "Confirmation failed", "confirmProcessingTimeout": "Payment is still being finalized… please try again shortly.", "createFailed": "Could not create payment", "generic": "Something went wrong" },
+    "header": { "title": "Send a gift to {name}", "subtitleFinal": "Gifts are voluntary and final." },
+    "note": { "label": "Note (optional)", "placeholder": "Write something nice…" },
+    "roles": { "domme": "Domme", "sub": "Sub" },
+    "success": { "title": "Gift sent!", "youPaid": "You paid {amount}", "closing": "Closing…" },
     "stripe": {
       "enterCard": "Enter card details",
       "secureHint": "Payment details are securely processed by Stripe.",
       "savedCardsSummary": "Saved cards: {count}",
-      "savedCardsHint": "You can select a saved method below or enter a new card.",
-      "defaultSet": "Default set",
-      "tipSaveCard": "Tip: Save your card once via “Payment methods” to pay faster next time.",
-      "errors": {
-        "notReady": "Stripe is not ready yet",
-        "canceled": "Payment canceled",
-        "paymentFailed": "Payment failed",
-        "missingPublishableKey": "Missing environment variable: NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY"
-      }
+      "savedCardsHint": "You can select a saved payment method below or enter a new card.",
+      "defaultSet": "Set as default",
+      "tipSaveCard": "Tip: Save your card once to pay faster next time.",
+      "newCardTitle": "Save new card",
+      "savedCardNote": "You already have a saved card.",
+      "newCardNote": "The card will be saved automatically after a successful payment.",
+      "errors": { "notReady": "Stripe is not ready yet", "canceled": "Payment canceled", "paymentFailed": "Payment failed", "missingPublishableKey": "Missing env variable: NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY" }
     },
     "methods": {
       "title": "Payment methods",
-      "subtitle": "Save a card once — then you can pay faster everywhere.",
+      "subtitle": "Save a card once – then pay faster everywhere.",
       "savedCards": "Saved cards",
-      "newCardTitle": "Save a new card",
-      "addNewTitle": "Save a new card",
+      "newCardTitle": "Save new card",
+      "addNewTitle": "Save new card",
       "loading": "Loading…",
       "empty": "No payment method saved yet.",
       "default": "Default",
       "exp": "Exp {month}/{year}",
-      "securityNote": "Your card is securely stored by Stripe. You can remove it anytime.",
-      "actions": {
-        "closeAria": "Close",
-        "manage": "Payment methods",
-        "manageTitle": "Manage saved cards",
-        "addCard": "+ Add card",
-        "setDefault": "Set default",
-        "remove": "Remove",
-        "saveCard": "Save card",
-        "saving": "Saving…"
-      },
-      "errors": {
-        "loadFailed": "Failed to load payment methods",
-        "startSetupFailed": "Failed to start setup",
-        "saveFailed": "Failed to save",
-        "setupNotCompleted": "Setup not completed",
-        "setDefaultFailed": "Failed to set default",
-        "removeFailed": "Failed to remove payment method",
-        "invalidResponse": "Invalid response"
-      }
+      "securityNote": "Your card is securely stored with Stripe. You can remove it at any time.",
+      "actions": { "closeAria": "Close", "manage": "Payment methods", "manageTitle": "Manage saved cards", "addCard": "+ Add card", "setDefault": "Set as default", "remove": "Remove", "removeCard": "Remove card", "saveCard": "Save card", "saving": "Saving…" },
+      "errors": { "loadFailed": "Could not load payment methods", "startSetupFailed": "Could not start setup", "saveFailed": "Saving failed", "setupNotCompleted": "Setup not completed", "setDefaultFailed": "Could not set default", "removeFailed": "Could not remove payment method", "invalidResponse": "Invalid server response" }
     }
   },
   "tipRequest": {
-    "actions": {
-      "cancel": "Cancel",
-      "create": "Create request"
-    },
-    "amount": {
-      "label": "Requested amount",
-      "placeholder": "50"
-    },
-    "note": {
-      "label": "Note (optional)",
-      "placeholder": "Add a short note…"
-    },
-    "subtitle": "Set the amount the Sub should pay.",
+    "actions": { "cancel": "Cancel", "create": "Create request" },
+    "amount": { "label": "Requested amount", "placeholder": "50" },
+    "note": { "label": "Note (optional)", "placeholder": "Add a short note…" },
+    "subtitle": "Set the amount the sub should pay.",
     "title": "Create tip request"
   },
   "tipRequestAcceptModal": {
-    "actions": {
-      "cancel": "Cancel",
-      "closeAria": "Close",
-      "processing": "Processing…",
-      "sendGiftAccept": "Send gift & accept ({total})",
-      "back": "Back",
-      "done": "Done",
-      "payNow": "Pay now"
-    },
+    "actions": { "cancel": "Cancel", "closeAria": "Close", "processing": "Processing…", "sendGiftAccept": "Send gift & accept ({total})", "back": "Back", "done": "Done", "payNow": "Pay now", "cards": "Cards" },
     "stripe": {
       "enterCard": "Enter card details",
-      "secureHint": "Payment details are securely processed by Stripe."
+      "secureHint": "Payment details are securely processed by Stripe.",
+      "savedCardsSummary": "Saved cards: {count}",
+      "defaultSet": "Default set",
+      "savedCardsHint": "You can select a saved method or enter a new card.",
+      "tipSaveCard": "Optional: Save your card for future payments.",
+      "savedCardNote": "You already have a saved card.",
+      "newCardNote": "The card will be saved automatically after successful activation."
     },
-    "success": {
-      "title": "Gift sent!",
-      "youPaid": "You paid {amount}"
-    },
-    "breakdown": {
-      "amount": "Amount",
-      "fee": "Platform fee ({pct}%)",
-      "youPay": "You pay"
-    },
-    "disclaimer": "By confirming you send a voluntary gift. This is not a payment for services. Gifts are final (no refunds, unless required by law).",
-    "errors": {
-      "confirm": "Confirmation failed",
-      "create": "Could not create payment",
-      "generic": "Something went wrong"
-    },
-    "header": {
-      "title": "Accept gift request",
-      "to": "to {name}"
-    },
-    "requested": {
-      "label": "Requested amount",
-      "note": "The creator sees this amount. A platform fee of {pct}% will be added to your payment."
-    }
+    "success": { "title": "Gift sent!", "youPaid": "You paid {amount}", "closing": "Closing…" },
+    "breakdown": { "amount": "Amount", "fee": "Platform fee ({pct}%)", "youPay": "You pay" },
+    "disclaimer": "By confirming you are sending a voluntary gift. This is not payment for services. Gifts are final (no refunds unless required by law).",
+    "errors": { "confirm": "Confirmation failed", "create": "Could not create payment", "generic": "Something went wrong" },
+    "header": { "title": "Accept gift request", "to": "to {name}" },
+    "requested": { "label": "Requested amount", "note": "The creator sees this amount. A platform fee of {pct}% will be added to your payment." }
   }
 }

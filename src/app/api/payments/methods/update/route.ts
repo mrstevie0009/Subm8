@@ -1,8 +1,8 @@
 // src/app/api/payments/methods/update/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUser } from "@/lib/currentUser";
 import Stripe from "stripe";
+import { requireStepUp } from "@/lib/stepup";
 
 export const runtime = "nodejs";
 
@@ -40,8 +40,10 @@ function isBody(x: unknown): x is Body {
 }
 
 export async function POST(req: NextRequest) {
-  const me = await getCurrentUser();
-  if (!me) return NextResponse.json({ ok: false, error: "Not signed in" }, { status: 401 });
+  const stepup = await requireStepUp(req);
+  if (!stepup.ok) return stepup.response;
+
+  const me = { id: stepup.userId };
 
   const raw: unknown = await req.json().catch(() => null);
   if (!isBody(raw)) {

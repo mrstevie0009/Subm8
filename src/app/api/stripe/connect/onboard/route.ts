@@ -2,7 +2,8 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUser } from "@/lib/currentUser";
+import { requireStepUp } from "@/lib/stepup";
+import { NextRequest } from "next/server";
 
 export const runtime = "nodejs";
 
@@ -10,10 +11,11 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {});
 
 export async function POST(req: Request) {
   try {
-    const me = await getCurrentUser().catch(() => null);
-    if (!me) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const stepup = await requireStepUp(req as NextRequest);
+    if (!stepup.ok) return stepup.response;
 
     const { origin, locale } = await req.json().catch(() => ({ origin: null, locale: "en" }));
+
     const baseUrl =
       typeof origin === "string" && origin.startsWith("http")
         ? origin
@@ -23,7 +25,7 @@ export async function POST(req: Request) {
 
     // ensure connect account exists
     const u = await prisma.user.findUnique({
-      where: { id: me.id },
+      where: { id: stepup.userId },
       select: { stripeAccountId: true, email: true },
     });
 
@@ -41,7 +43,7 @@ export async function POST(req: Request) {
 
       accountId = acct.id;
       await prisma.user.update({
-      where: { id: me.id },
+      where: { id: stepup.userId },
       data: {
         stripeAccountId: acct.id,
         stripeDetailsSubmitted: Boolean(acct.details_submitted),

@@ -8,6 +8,24 @@ export const runtime = "nodejs";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {});
 
+// ── In-Memory Rate-Limit: max 20 Requests pro userId+autoDrainId pro Minute ──
+const CONFIRM_RATE_WINDOW_MS = 60_000;
+const CONFIRM_RATE_MAX = 20;
+const confirmHits = new Map<string, number[]>();
+
+function isRateLimited(key: string): boolean {
+  const now = Date.now();
+  const hits = (confirmHits.get(key) ?? []).filter((t) => now - t < CONFIRM_RATE_WINDOW_MS);
+  hits.push(now);
+  confirmHits.set(key, hits);
+  if (Math.random() < 0.01) {
+    for (const [k, v] of confirmHits) {
+      if (v.every((t) => now - t > CONFIRM_RATE_WINDOW_MS)) confirmHits.delete(k);
+    }
+  }
+  return hits.length > CONFIRM_RATE_MAX;
+}
+
 type Body = { autoDrainId?: string };
 
 function readSaveForFutureFromMetadata(meta: Stripe.Metadata | null | undefined): boolean {
@@ -25,12 +43,10 @@ function getStringProp(o: Record<string, unknown>, key: string): string | null {
 }
 
 function extractPaymentMethodFromSubscription(sub: Stripe.Subscription): string | null {
-  // 1) subscription.default_payment_method (string | PaymentMethod | null)
   const dpm = sub.default_payment_method;
   if (typeof dpm === "string") return dpm;
   if (dpm && typeof dpm !== "string") return dpm.id ?? null;
 
-  // 2) pending_setup_intent.payment_method (setup_intent flow)
   const subU: unknown = sub;
   if (isRecord(subU)) {
     const psiU = subU["pending_setup_intent"];
@@ -41,7 +57,6 @@ function extractPaymentMethodFromSubscription(sub: Stripe.Subscription): string 
     }
   }
 
-  // 3) latest_invoice.payment_intent.payment_method (payment_intent flow)
   const li = sub.latest_invoice;
   if (li && typeof li !== "string") {
     const liU: unknown = li;
@@ -67,6 +82,14 @@ export async function POST(req: NextRequest) {
   const autoDrainId = String(body.autoDrainId || "");
   if (!autoDrainId) return NextResponse.json({ ok: false, error: "Missing autoDrainId" }, { status: 400 });
 
+  // ── Rate-Limit ──
+  if (isRateLimited(`${me.id}:${autoDrainId}`)) {
+    return NextResponse.json(
+      { ok: false, error: "Too many requests", code: "RATE_LIMITED" },
+      { status: 429 }
+    );
+  }
+
   const ad = await prisma.autoDrainSubscription.findUnique({
     where: { id: autoDrainId },
     select: { id: true, subId: true, stripeSubscriptionId: true, active: true, stripeCustomerId: true },
@@ -84,7 +107,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "Subscription not active yet", status: sub.status }, { status: 409 });
   }
 
-  // ✅ If user opted-in: enforce "default payment method" like TipModal confirm does.
   const wantsSave = readSaveForFutureFromMetadata(sub.metadata);
   if (wantsSave) {
     const pmId = extractPaymentMethodFromSubscription(sub);
@@ -94,12 +116,11 @@ export async function POST(req: NextRequest) {
       try {
         await stripe.customers.update(customerId, { invoice_settings: { default_payment_method: pmId } });
       } catch {
-        // ignore (do not block activation)
+        // ignore
       }
     }
   }
 
-  // DB active
   await prisma.autoDrainSubscription.update({
     where: { id: ad.id },
     data: { active: true, stripeStatus: sub.status },

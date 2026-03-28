@@ -132,6 +132,8 @@ model User {
   stripeOnboardingLastAt DateTime?
 
   emailVerificationCodes EmailVerificationCode[]
+  stepUpChallenges       StepUpChallenge[]
+  stepUpAttempts         StepUpAttempt[]
 
   @@index([verifiedByUserId])
   @@index([premiumUntil])
@@ -628,6 +630,27 @@ model Payment {
   @@index([payerId])
   @@index([payeeId])
   @@index([payoutRequestId])
+}
+
+model StepUpChallenge {
+  tokenHash  String    @id
+  userId     String
+  verifiedAt DateTime
+  usedAt     DateTime?
+  createdAt  DateTime  @default(now())
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model StepUpAttempt {
+  id        String   @id @default(cuid())
+  userId    String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
 }
 
 enum FeePayer {

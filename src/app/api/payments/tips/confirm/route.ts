@@ -8,6 +8,24 @@ export const runtime = "nodejs";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
+// ── In-Memory Rate-Limit: max 20 Requests pro userId+paymentId pro Minute ──
+const CONFIRM_RATE_WINDOW_MS = 60_000;
+const CONFIRM_RATE_MAX = 20;
+const confirmHits = new Map<string, number[]>();
+
+function isRateLimited(key: string): boolean {
+  const now = Date.now();
+  const hits = (confirmHits.get(key) ?? []).filter((t) => now - t < CONFIRM_RATE_WINDOW_MS);
+  hits.push(now);
+  confirmHits.set(key, hits);
+  if (Math.random() < 0.01) {
+    for (const [k, v] of confirmHits) {
+      if (v.every((t) => now - t > CONFIRM_RATE_WINDOW_MS)) confirmHits.delete(k);
+    }
+  }
+  return hits.length > CONFIRM_RATE_MAX;
+}
+
 type ConfirmBody = { paymentId?: string };
 
 const TOPUP_PCT = 0.10;
@@ -25,7 +43,6 @@ function parseMeta(input: unknown): TipPaymentMeta {
   return out;
 }
 
-// Base aus gross rekonstruieren (Fallback), sodass b + round(b*0.10) == gross
 function inferBaseFromGross(gross: number): number {
   const approx = Math.round(gross / (1 + TOPUP_PCT));
   const start = Math.max(0, approx - 5);
@@ -45,6 +62,14 @@ export async function POST(req: NextRequest) {
   const paymentId = String(body.paymentId || "");
   if (!paymentId) return NextResponse.json({ ok: false, error: "paymentId missing" }, { status: 400 });
 
+  // ── Rate-Limit ──
+  if (isRateLimited(`${me.id}:${paymentId}`)) {
+    return NextResponse.json(
+      { ok: false, error: "Too many requests", code: "RATE_LIMITED" },
+      { status: 429 }
+    );
+  }
+
   const payment = await prisma.payment.findUnique({ where: { id: paymentId } });
   if (!payment || payment.payerId !== me.id) {
     return NextResponse.json({ ok: false, error: "Payment not found" }, { status: 404 });
@@ -52,7 +77,6 @@ export async function POST(req: NextRequest) {
 
   const meta = parseMeta(payment.metadataJson);
 
-  // 1) Webhook hat finalisiert -> sofort ok
   if (payment.status === "SUCCEEDED") {
     const gross = payment.amountGrossCents;
     const base = meta.baseAmountCents ?? inferBaseFromGross(gross);
@@ -64,7 +88,6 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  // 2) Terminal states -> klarer Fehler
   if (payment.status === "FAILED") {
     return NextResponse.json({ ok: false, status: "FAILED", error: "Payment failed" }, { status: 400 });
   }
@@ -72,7 +95,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, status: "CANCELED", error: "Payment canceled" }, { status: 400 });
   }
 
-  // 3) Noch nicht finalisiert: EINMAL Stripe-Status prüfen (ohne selbst zu finalisieren)
   const paymentIntentId = payment.externalRef;
   if (!paymentIntentId) {
     return NextResponse.json({ ok: false, error: "Missing Stripe reference (externalRef)" }, { status: 400 });
@@ -80,12 +102,9 @@ export async function POST(req: NextRequest) {
 
   const pi = await stripe.paymentIntents.retrieve(paymentIntentId);
 
-  // OPTIONAL: wenn Karte gespeichert werden soll -> setze default payment method
   if (pi.status === "succeeded") {
     const pm = typeof pi.payment_method === "string" ? pi.payment_method : null;
     const customer = typeof pi.customer === "string" ? pi.customer : null;
-
-    // nur wenn im PI metadata flag gesetzt wurde
     const wantsSave = (pi.metadata?.saveForFuture ?? "0") === "1";
 
     if (wantsSave && pm && customer) {
@@ -94,12 +113,11 @@ export async function POST(req: NextRequest) {
           invoice_settings: { default_payment_method: pm },
         });
       } catch {
-        // ignore: nicht blockieren
+        // ignore
       }
     }
   }
 
-  // Stripe sagt "failed/canceled" -> DB nachziehen (nur Status) und Fehler zurück
   if (pi.status === "canceled") {
     await prisma.payment.update({ where: { id: payment.id }, data: { status: "CANCELED" } });
     return NextResponse.json({ ok: false, error: "Payment canceled" }, { status: 400 });
@@ -110,28 +128,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "Payment failed" }, { status: 400 });
   }
 
-  // Stripe sagt "succeeded", aber DB ist noch nicht SUCCEEDED:
-  // -> Webhook soll finalisieren. Wir setzen DB auf PROCESSING (falls nicht schon),
-  // -> UI soll kurz pollen.
   if (pi.status === "succeeded") {
     if (payment.status !== "PROCESSING") {
       await prisma.payment.update({ where: { id: payment.id }, data: { status: "PROCESSING" } });
     }
-    return NextResponse.json({
-      ok: false,
-      status: "PROCESSING",
-      error: "Finalizing on webhook",
-    });
+    return NextResponse.json({ ok: false, status: "PROCESSING", error: "Finalizing on webhook" });
   }
 
-  // Alles andere: in Arbeit (requires_action / processing / requires_confirmation etc.)
   if (payment.status !== "PROCESSING") {
     await prisma.payment.update({ where: { id: payment.id }, data: { status: "PROCESSING" } });
   }
 
-  return NextResponse.json({
-    ok: false,
-    status: pi.status,
-    error: "Payment not completed yet",
-  });
+  return NextResponse.json({ ok: false, status: pi.status, error: "Payment not completed yet" });
 }

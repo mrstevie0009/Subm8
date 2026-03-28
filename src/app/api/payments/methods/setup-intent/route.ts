@@ -1,8 +1,9 @@
 // src/app/api/payments/methods/setup-intent/route.ts
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUser } from "@/lib/currentUser";
 import Stripe from "stripe";
+import { requireStepUp } from "@/lib/stepup";
+import { NextRequest } from "next/server";
 
 export const runtime = "nodejs";
 
@@ -39,11 +40,12 @@ async function ensureStripeCustomer(me: MeCustomer): Promise<string> {
   return customer.id;
 }
 
-export async function POST() {
-  const me = await getCurrentUser();
-  if (!me) return NextResponse.json({ ok: false, error: "Not signed in" }, { status: 401 });
+export async function POST(req: NextRequest) {
 
-  const meDb = await loadMeCustomer(me.id);
+  const stepup = await requireStepUp(req);
+  if (!stepup.ok) return stepup.response;
+
+  const meDb = await loadMeCustomer(stepup.userId);
   const customerId = await ensureStripeCustomer(meDb);
 
   if (meDb.email) {
@@ -57,7 +59,7 @@ export async function POST() {
     allow_redirects: 'never',
   },
   usage: "off_session",
-  metadata: { userId: me.id, kind: "payment_method_setup" },
+  metadata: { userId: stepup.userId, kind: "payment_method_setup" },
 });
 
   if (!si.client_secret) {

@@ -10,6 +10,9 @@ import { loadStripe } from '@stripe/stripe-js';
 import type { Stripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js';
 
+import { useStepUp } from "@/hooks/useStepUp";
+import { StepUpDialog } from "@/components/StepUpDialog";
+
 export type AutoDrainCadence = 'DAILY' | 'WEEKLY' | 'MONTHLY';
 
 type Props = {
@@ -129,6 +132,11 @@ function PaymentMethodsModal({
   const [methods, setMethods] = React.useState<SavedMethod[]>([]);
   const [defaultId, setDefaultId] = React.useState<string | null>(null);
 
+  const stepUp = useStepUp();
+  const [stepUpOpen, setStepUpOpen] = React.useState(false);
+  const [stepUpLabel, setStepUpLabel] = React.useState("");
+  const pendingActionRef = React.useRef<(() => void) | null>(null);
+
   const loadMethods = React.useCallback(async () => {
     const res = await fetch('/api/payments/methods/list', { method: 'GET' });
     const j: unknown = await res.json().catch(() => null);
@@ -157,11 +165,32 @@ function PaymentMethodsModal({
       .finally(() => setLoading(false));
   }, [open, loadMethods, t]);
 
-  async function startSetupIntent() {
+  function withStepUp(label: string, action: () => void) {
+    if (stepUp.isVerified) {
+      action();
+      return;
+    }
+    setStepUpLabel(label);
+    pendingActionRef.current = action;
+    setStepUpOpen(true);
+  }
+
+  // FIX 1: startSetupIntent mit Step-up
+  function startSetupIntent() {
+    withStepUp(
+      t('methods.actions.addCard', { default: 'Karte hinzufügen' }),
+      () => void doStartSetupIntent()
+    );
+  }
+
+  async function doStartSetupIntent() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/payments/methods/setup-intent', { method: 'POST' });
+      const res = await fetch('/api/payments/methods/setup-intent', {
+        method: 'POST',
+        headers: stepUp.stepUpHeaders(),
+      });
       const j: unknown = await res.json().catch(() => null);
 
       if (!res.ok) throw new Error(getSetupIntentError(j) || t('methods.errors.startSetupFailed', { default: 'Setup fehlgeschlagen' }));
@@ -176,13 +205,24 @@ function PaymentMethodsModal({
     }
   }
 
-  async function setDefault(paymentMethodId: string) {
+  // FIX 2: setDefault mit Step-up
+  function setDefault(paymentMethodId: string) {
+    withStepUp(
+      t('methods.actions.setDefault', { default: 'Als Standard setzen' }),
+      () => void doSetDefault(paymentMethodId)
+    );
+  }
+
+  async function doSetDefault(paymentMethodId: string) {
     setLoading(true);
     setError(null);
     try {
       const res = await fetch('/api/payments/methods/update', {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
+        headers: {
+          'content-type': 'application/json',
+          ...stepUp.stepUpHeaders(),
+        },
         body: JSON.stringify({ action: 'set_default', paymentMethodId }),
       });
       const j: unknown = await res.json().catch(() => null);
@@ -199,13 +239,24 @@ function PaymentMethodsModal({
     }
   }
 
-  async function detach(paymentMethodId: string) {
+  // FIX 3: detach mit Step-up
+  function detach(paymentMethodId: string) {
+    withStepUp(
+      t('methods.actions.remove', { default: 'Karte entfernen' }),
+      () => void doDetach(paymentMethodId)
+    );
+  }
+
+  async function doDetach(paymentMethodId: string) {
     setLoading(true);
     setError(null);
     try {
       const res = await fetch('/api/payments/methods/update', {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
+        headers: {
+          'content-type': 'application/json',
+          ...stepUp.stepUpHeaders(),
+        },
         body: JSON.stringify({ action: 'detach', paymentMethodId }),
       });
       const j: unknown = await res.json().catch(() => null);
@@ -240,140 +291,159 @@ function PaymentMethodsModal({
         }
       : undefined;
 
-  return createPortal(
-    <div
-      className="fixed inset-0 z-[2147483603] grid place-items-center bg-black/60 backdrop-blur-sm overscroll-contain p-3 sm:p-0"
-      onClick={onClose}
-    >
-      <div
-        className={[
-          'relative w-full sm:w-[min(720px,94vw)] max-w-[720px]',
-          'max-h-[calc(100dvh-24px)] sm:max-h-[85vh]',
-          'rounded-2xl overflow-hidden border border-white/10 bg-[#0b0b0d] flex flex-col',
-        ].join(' ')}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="relative px-5 py-4 border-b border-white/10">
+  // FIX 4: Fragment statt direktes createPortal, StepUpDialog außerhalb des Portal-Divs
+  return (
+    <>
+      {createPortal(
+        <div
+          className="fixed inset-0 z-[2147483603] grid place-items-center bg-black/60 backdrop-blur-sm overscroll-contain p-3 sm:p-0"
+          onClick={onClose}
+        >
           <div
-            className="absolute inset-0 -z-10"
-            style={{
-              background: 'radial-gradient(1200px 220px at 50% 0%, rgba(139,92,246,.30), rgba(139,92,246,0))',
-            }}
-          />
-          <div className="flex items-center gap-2">
-            <div className="font-semibold text-[16px]">{t('methods.title', { default: 'Zahlungsmethoden' })}</div>
-            <div className="ml-auto flex items-center gap-2">
-              <button
-                type="button"
-                onClick={onClose}
-                className="inline-grid place-items-center w-9 h-9 rounded-full hover:bg-white/10"
-                aria-label="Close"
-              >
-                <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" strokeWidth="2" fill="none">
-                  <path d="M6 6l12 12M18 6L6 18" />
-                </svg>
-              </button>
-            </div>
-          </div>
-          <div className="mt-1 text-[12px] text-white/65">{t('methods.subtitle', { default: 'Karten verwalten und Standard setzen.' })}</div>
-        </div>
-
-        <div className="px-5 py-5 overflow-y-auto overscroll-contain [ -webkit-overflow-scrolling:touch ]">
-          {error && (
-            <div className="mb-3 text-[13px] text-red-300 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">
-              {error}
-            </div>
-          )}
-
-          <div className="rounded-xl border border-white/10 bg-white/[.03] p-3">
-            <div className="flex items-center justify-between">
-              <div className="text-[13px] text-white/80">{t('methods.savedCards', { default: 'Gespeicherte Karten' })}</div>
-              <button
-                type="button"
-                onClick={startSetupIntent}
-                disabled={loading || !STRIPE_PK}
-                className="px-3 py-1.5 rounded-lg border border-white/15 hover:bg-white/10 text-[13px] disabled:opacity-60"
-                title={!STRIPE_PK ? 'Missing NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY' : undefined}
-              >
-                {t('methods.actions.addCard', { default: 'Karte hinzufügen' })}
-              </button>
-            </div>
-
-            <div className="mt-3 space-y-2">
-              {loading && methods.length === 0 ? (
-                <div className="text-[13px] text-white/60">{t('methods.loading', { default: 'Lade…' })}</div>
-              ) : methods.length === 0 ? (
-                <div className="text-[13px] text-white/60">{t('methods.empty', { default: 'Keine Karten gespeichert.' })}</div>
-              ) : (
-                methods.map((m) => {
-                  const isDef = defaultId === m.id;
-                  return (
-                    <div
-                      key={m.id}
-                      className="flex items-center justify-between gap-2 rounded-lg border border-white/10 bg-black/30 px-3 py-2"
-                    >
-                      <div className="min-w-0">
-                        <div className="text-[13px] text-white/85 truncate">
-                          {m.brand.toUpperCase()} •••• {m.last4}
-                        </div>
-                        <div className="text-[12px] text-white/55">
-                          Exp {String(m.expMonth).padStart(2, '0')}/{String(m.expYear).slice(-2)}
-                          {isDef ? <span className="ml-2 text-[11px] text-[var(--purple)]">{t('methods.default', { default: 'Standard' })}</span> : null}
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        {!isDef && (
-                          <button
-                            type="button"
-                            onClick={() => setDefault(m.id)}
-                            disabled={loading}
-                            className="px-2.5 py-1.5 rounded-lg border border-white/15 hover:bg-white/10 text-[12px] disabled:opacity-60"
-                          >
-                            {t('methods.actions.setDefault', { default: 'Als Standard' })}
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => detach(m.id)}
-                          disabled={loading}
-                          className="px-2.5 py-1.5 rounded-lg border border-white/15 hover:bg-white/10 text-[12px] disabled:opacity-60"
-                        >
-                          {t('methods.actions.remove', { default: 'Entfernen' })}
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </div>
-
-          {clientSecret && elementsOptions ? (
-            <div className="mt-4 rounded-xl border border-white/10 bg-white/[.03] p-3">
-              <div className="text-[13px] text-white/80">{t('methods.addNewTitle', { default: 'Neue Karte speichern' })}</div>
-              <div className="mt-3 rounded-xl border border-white/10 bg-black/30 p-3">
-                <Elements stripe={stripePromise} options={elementsOptions}>
-                  <SetupIntentForm
-                    t={t}
-                    peKey={peKey}
-                    onDone={async () => {
-                      setPeKey((k) => k + 1);
-                      setClientSecret(null);
-                      await loadMethods();
-                      onChanged();
-                    }}
-                    onError={(msg) => setError(msg)}
-                  />
-                </Elements>
+            className={[
+              'relative w-full sm:w-[min(720px,94vw)] max-w-[720px]',
+              'max-h-[calc(100dvh-24px)] sm:max-h-[85vh]',
+              'rounded-2xl overflow-hidden border border-white/10 bg-[#0b0b0d] flex flex-col',
+            ].join(' ')}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="relative px-5 py-4 border-b border-white/10">
+              <div
+                className="absolute inset-0 -z-10"
+                style={{
+                  background: 'radial-gradient(1200px 220px at 50% 0%, rgba(139,92,246,.30), rgba(139,92,246,0))',
+                }}
+              />
+              <div className="flex items-center gap-2">
+                <div className="font-semibold text-[16px]">{t('methods.title', { default: 'Zahlungsmethoden' })}</div>
+                <div className="ml-auto flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="inline-grid place-items-center w-9 h-9 rounded-full hover:bg-white/10"
+                    aria-label="Close"
+                  >
+                    <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" strokeWidth="2" fill="none">
+                      <path d="M6 6l12 12M18 6L6 18" />
+                    </svg>
+                  </button>
+                </div>
               </div>
-              <div className="mt-2 text-[12px] text-white/55">{t('methods.securityNote', { default: 'Deine Zahlungsdaten werden sicher von Stripe verarbeitet.' })}</div>
+              <div className="mt-1 text-[12px] text-white/65">{t('methods.subtitle', { default: 'Karten verwalten und Standard setzen.' })}</div>
             </div>
-          ) : null}
-        </div>
-      </div>
-    </div>,
-    document.body
+
+            <div className="px-5 py-5 overflow-y-auto overscroll-contain [ -webkit-overflow-scrolling:touch ]">
+              {error && (
+                <div className="mb-3 text-[13px] text-red-300 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">
+                  {error}
+                </div>
+              )}
+
+              <div className="rounded-xl border border-white/10 bg-white/[.03] p-3">
+                <div className="flex items-center justify-between">
+                  <div className="text-[13px] text-white/80">{t('methods.savedCards', { default: 'Gespeicherte Karten' })}</div>
+                  <button
+                    type="button"
+                    onClick={startSetupIntent}
+                    disabled={loading || !STRIPE_PK}
+                    className="px-3 py-1.5 rounded-lg border border-white/15 hover:bg-white/10 text-[13px] disabled:opacity-60"
+                    title={!STRIPE_PK ? 'Missing NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY' : undefined}
+                  >
+                    {t('methods.actions.addCard', { default: 'Karte hinzufügen' })}
+                  </button>
+                </div>
+
+                <div className="mt-3 space-y-2">
+                  {loading && methods.length === 0 ? (
+                    <div className="text-[13px] text-white/60">{t('methods.loading', { default: 'Lade…' })}</div>
+                  ) : methods.length === 0 ? (
+                    <div className="text-[13px] text-white/60">{t('methods.empty', { default: 'Keine Karten gespeichert.' })}</div>
+                  ) : (
+                    methods.map((m) => {
+                      const isDef = defaultId === m.id;
+                      return (
+                        <div
+                          key={m.id}
+                          className="flex items-center justify-between gap-2 rounded-lg border border-white/10 bg-black/30 px-3 py-2"
+                        >
+                          <div className="min-w-0">
+                            <div className="text-[13px] text-white/85 truncate">
+                              {m.brand.toUpperCase()} •••• {m.last4}
+                            </div>
+                            <div className="text-[12px] text-white/55">
+                              Exp {String(m.expMonth).padStart(2, '0')}/{String(m.expYear).slice(-2)}
+                              {isDef ? <span className="ml-2 text-[11px] text-[var(--purple)]">{t('methods.default', { default: 'Standard' })}</span> : null}
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            {!isDef && (
+                              <button
+                                type="button"
+                                onClick={() => setDefault(m.id)}
+                                disabled={loading}
+                                className="px-2.5 py-1.5 rounded-lg border border-white/15 hover:bg-white/10 text-[12px] disabled:opacity-60"
+                              >
+                                {t('methods.actions.setDefault', { default: 'Als Standard' })}
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => detach(m.id)}
+                              disabled={loading}
+                              className="px-2.5 py-1.5 rounded-lg border border-white/15 hover:bg-white/10 text-[12px] disabled:opacity-60"
+                            >
+                              {t('methods.actions.remove', { default: 'Entfernen' })}
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+
+              {clientSecret && elementsOptions ? (
+                <div className="mt-4 rounded-xl border border-white/10 bg-white/[.03] p-3">
+                  <div className="text-[13px] text-white/80">{t('methods.addNewTitle', { default: 'Neue Karte speichern' })}</div>
+                  <div className="mt-3 rounded-xl border border-white/10 bg-black/30 p-3">
+                    <Elements stripe={stripePromise} options={elementsOptions}>
+                      <SetupIntentForm
+                        t={t}
+                        peKey={peKey}
+                        stepUpHeaders={stepUp.stepUpHeaders}
+                        onDone={async () => {
+                          setPeKey((k) => k + 1);
+                          setClientSecret(null);
+                          await loadMethods();
+                          onChanged();
+                        }}
+                        onError={(msg) => setError(msg)}
+                      />
+                    </Elements>
+                  </div>
+                  <div className="mt-2 text-[12px] text-white/55">{t('methods.securityNote', { default: 'Deine Zahlungsdaten werden sicher von Stripe verarbeitet.' })}</div>
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* FIX 4: StepUpDialog außerhalb des Portal-Divs, im Fragment */}
+      <StepUpDialog
+        open={stepUpOpen}
+        onClose={() => setStepUpOpen(false)}
+        onVerified={() => {
+          setStepUpOpen(false);
+          pendingActionRef.current?.();
+          pendingActionRef.current = null;
+        }}
+        actionLabel={stepUpLabel}
+        verify={stepUp.verify}
+      />
+    </>
   );
 }
 
@@ -382,11 +452,13 @@ function SetupIntentForm({
   onError,
   t,
   peKey,
+  stepUpHeaders,
 }: {
   onDone: () => void;
   onError: (msg: string) => void;
   t: ReturnType<typeof useTranslations>;
   peKey: number;
+  stepUpHeaders: () => Record<string, string>;
 }) {
   const stripe = useStripe();
   const elements = useElements();
@@ -424,7 +496,10 @@ function SetupIntentForm({
 
     const setDefaultRes = await fetch('/api/payments/methods/update', {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 
+        'content-type': 'application/json',
+        ...stepUpHeaders(),
+       },
       body: JSON.stringify({ 
         action: 'set_default_from_setup', 
         setupIntentId: setupIntent.id, 

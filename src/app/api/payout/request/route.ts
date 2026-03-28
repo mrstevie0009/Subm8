@@ -1,8 +1,9 @@
 // src/app/api/payout/request/route.ts
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUser } from "@/lib/currentUser";
 import Stripe from "stripe";
+import { requireStepUp } from "@/lib/stepup";
+import { NextRequest } from "next/server";
 
 export const runtime = "nodejs";
 
@@ -71,10 +72,10 @@ function isInsufficientFundsError(e: unknown): boolean {
 
 export async function POST(req: Request) {
   try {
-    const me = await getCurrentUser().catch(() => null);
-    if (!me) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const stepup = await requireStepUp(req as NextRequest);
+    if (!stepup.ok) return stepup.response;
 
-    const meId = me.id;
+    const meId = stepup.userId;
 
     // Parse optional body
     let stripeMode: StripePayoutMode = "AUTO_PAYOUT";
@@ -89,6 +90,56 @@ export async function POST(req: Request) {
       }
     } catch {
       // ignore
+    }
+
+    // ── Doppel-Payout-Guard: max 1 neuer Request pro 60s ──
+    if (!payoutId) {
+      const recentPayout = await prisma.payoutRequest.findFirst({
+        where: {
+          userId: meId,
+          createdAt: { gte: new Date(Date.now() - 60_000) },
+          status: { in: ["PROCESSING", "PAID"] },
+        },
+        select: { id: true, createdAt: true },
+      });
+
+      if (recentPayout) {
+        return NextResponse.json(
+          {
+            error: "Bitte warte kurz, bevor du eine weitere Auszahlung anforderst.",
+            code: "PAYOUT_TOO_FAST",
+            retryAfterSeconds: Math.ceil(
+              (60_000 - (Date.now() - recentPayout.createdAt.getTime())) / 1000
+            ),
+          },
+          { status: 429 }
+        );
+      }
+    }
+
+    // ── Doppel-Payout-Guard ──
+    if (!payoutId) {
+      const recentPayout = await prisma.payoutRequest.findFirst({
+        where: {
+          userId: meId,
+          createdAt: { gte: new Date(Date.now() - 60_000) },
+          status: { in: ["PROCESSING", "PAID"] },
+        },
+        select: { id: true, createdAt: true },
+      });
+
+      if (recentPayout) {
+        return NextResponse.json(
+          {
+            error: "Bitte warte kurz, bevor du eine weitere Auszahlung anforderst.",
+            code: "PAYOUT_TOO_FAST",
+            retryAfterSeconds: Math.ceil(
+              (60_000 - (Date.now() - recentPayout.createdAt.getTime())) / 1000
+            ),
+          },
+          { status: 429 }
+        );
+      }
     }
 
     // Load user settings (Stripe only)

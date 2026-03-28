@@ -1,189 +1,135 @@
 {
+  "stepUp": {
+    "title": "Sicherheitsbestätigung",
+    "subtitle": "Bestätige dein Passwort um \"{action}\" auszuführen.",
+    "passwordLabel": "Passwort",
+    "actions": { "cancel": "Abbrechen", "confirm": "Bestätigen", "confirming": "Prüfe…", "closeAria": "Schließen" },
+    "validHint": "Gültig für 5 Minuten nach Bestätigung",
+    "errors": {
+      "noPassword": "Dein Account ist nur mit Google verknüpft. Bitte setze zuerst ein Passwort in deinen Einstellungen.",
+      "rateLimited": "Zu viele Versuche. Bitte warte einige Minuten.",
+      "wrongPassword": "Passwort falsch. Bitte erneut versuchen.",
+      "generic": "Verifikation fehlgeschlagen."
+    }
+  },
   "autoDrain": {
-    "actions": {
-      "cancel": "Abbrechen",
-      "create": "Anfrage erstellen"
-    },
-    "amount": {
-      "label": "Betrag pro Abbuchung",
-      "placeholder": "50"
-    },
-    "recurrence": {
-      "label": "Wiederholung",
-      "options": {
-        "daily": "Täglich",
-        "monthly": "Monatlich",
-        "weekly": "Wöchentlich"
-      }
-    },
+    "actions": { "cancel": "Abbrechen", "create": "Anfrage erstellen" },
+    "amount": { "label": "Betrag pro Abbuchung", "placeholder": "50" },
+    "recurrence": { "label": "Wiederholung", "options": { "daily": "Täglich", "monthly": "Monatlich", "weekly": "Wöchentlich" } },
     "subtitle": "Betrag und Wiederholung festlegen.",
     "title": "Autodrain-Anfrage erstellen"
   },
   "autoDrainAcceptModal": {
     "cancelAnytime": "Du kannst AutoDrain jederzeit in deinen Zahlungen wieder beenden.",
     "acknowledge": "Ich verstehe, dass Geschenke freiwillig und endgültig sind. Es werden keine Leistungen zugesichert.",
-    "actions": {
-      "cancel": "Abbrechen",
-      "closeAria": "Schließen",
-      "enable": "Autodrain aktivieren",
-      "enabling": "Aktiviere…",
-      "back": "Zurück"
-    },
-    "cadence": {
-      "daily": "täglich",
-      "monthly": "monatlich",
-      "weekly": "wöchentlich"
-    },
-    "charge": {
-      "label": "Abbuchungsbetrag",
-      "recurringNote": "Wiederkehrende Abbuchung bis zur Kündigung."
-    },
+    "actions": { "cancel": "Abbrechen", "closeAria": "Schließen", "enable": "Autodrain aktivieren", "enabling": "Aktiviere…", "back": "Zurück", "cards": "Karten" },
+    "cadence": { "daily": "täglich", "monthly": "monatlich", "weekly": "wöchentlich" },
+    "charge": { "label": "Abbuchungsbetrag", "recurringNote": "Wiederkehrende Abbuchung bis zur Kündigung." },
     "disclaimer": "Geschenke sind freiwillig und keine Bezahlung für Leistungen. Geschenke sind endgültig (keine Rückerstattung, außer gesetzlich vorgeschrieben).",
-    "errors": {
-      "generic": "Etwas ist schiefgelaufen"
-    },
-    "header": {
-      "title": "Autodrain aktivieren",
-      "to": "für {name}"
-    },
+    "errors": { "generic": "Etwas ist schiefgelaufen" },
+    "header": { "title": "Autodrain aktivieren", "to": "für {name}" },
+    "breakdown": { "amountTo": "Betrag an {name}", "fee": "Plattform-Gebühr (10%)", "youPay": "Du zahlst" },
+    "success": { "title": "Aktiviert!", "enabled": "AutoDrain wurde aktiviert.", "closing": "Wird geschlossen…" },
     "stripe": {
       "enterCard": "Zahlungsmethode wählen",
       "secureHint": "Deine Zahlungsdaten werden sicher von Stripe verarbeitet.",
       "savedCardsSummary": "{count} gespeicherte Karte(n)",
       "savedCardsHint": "Du kannst eine Standardkarte festlegen.",
       "defaultSet": "Standard gesetzt",
-      "tipSaveCard": "Du kannst deine Karte speichern, um schneller zu zahlen."
+      "tipSaveCard": "Optional: Speichere die Karte für zukünftige Abbuchungen.",
+      "savedCardNote": "Du hast bereits eine gespeicherte Karte.",
+      "newCardNote": "Die Karte wird nach erfolgreicher Aktivierung automatisch gespeichert."
     }
   },
   "paymentsPage": {
     "ariaBack": "Zurück zum Feed",
     "autodrain": {
-      "cadence": {
-        "daily": "Täglich",
-        "monthly": "Monatlich",
-        "weekly": "Wöchentlich"
-      },
+      "cadence": { "daily": "Täglich", "monthly": "Monatlich", "weekly": "Wöchentlich" },
       "cancel": "Beenden",
-      "incoming": {
-        "title": "Eingehender Autodrain"
-      },
+      "incoming": { "title": "Eingehender Autodrain" },
       "none": "Keine aktiven Abos.",
-      "outgoing": {
-        "title": "Von dir aktiviert"
-      },
-      "th": {
-        "amount": "Betrag",
-        "avatar": "Avatar",
-        "cadence": "Rhythmus",
-        "domme": "Domme",
-        "next": "Nächste Abbuchung",
-        "sub": "Sub"
-      },
+      "outgoing": { "title": "Von dir aktiviert" },
+      "th": { "amount": "Betrag", "avatar": "Avatar", "cadence": "Rhythmus", "domme": "Domme", "next": "Nächste Abbuchung", "sub": "Sub" },
       "title": "Aktiver Autodrain"
     },
     "avatarAlt": "{name} Avatar",
-    "balance": {
-      "export": "CSV-Export",
-      "title": "Aktueller Kontostand:"
-    },
+    "balance": { "export": "CSV-Export", "title": "Aktueller Kontostand:" },
     "guestNote": "Bitte melde dich an, um deinen Zahlungsverlauf zu sehen.",
     "payments": {
       "amountPrefixReceived": "Eingegangen: {amount}",
       "amountPrefixSent": "Gesendet: {amount}",
-      "received": {
-        "empty": "Keine eingegangenen Zahlungen.",
-        "title": "Eingänge"
-      },
-      "sent": {
-        "empty": "Keine ausgehenden Zahlungen.",
-        "title": "Du hast gesendet"
-      },
-      "status": {
-        "canceled": "Storniert",
-        "created": "Erstellt",
-        "failed": "Fehlgeschlagen",
-        "processing": "In Bearbeitung",
-        "succeeded": "Erfolgreich"
-      },
-      "th": {
-        "amount": "Betrag",
-        "avatar": "Avatar",
-        "date": "Datum",
-        "status": "Status",
-        "username": "Nutzername",
-        "what": "Verwendungszweck"
-      },
-      "what": {
-        "tip": "Trinkgeld"
-      }
+      "received": { "empty": "Keine eingegangenen Zahlungen.", "title": "Eingänge" },
+      "sent": { "empty": "Keine ausgehenden Zahlungen.", "title": "Du hast gesendet" },
+      "status": { "canceled": "Storniert", "created": "Erstellt", "failed": "Fehlgeschlagen", "processing": "In Bearbeitung", "succeeded": "Erfolgreich" },
+      "th": { "amount": "Betrag", "avatar": "Avatar", "date": "Datum", "status": "Status", "username": "Nutzername", "what": "Verwendungszweck" },
+      "what": { "tip": "Trinkgeld" }
     },
     "payoutBtn": "Auszahlung",
     "payoutTooltip": "Auszahlung anfordern (bald verfügbar)",
     "title": "Zahlungen & Verlauf"
   },
-  "tipModal": {
-    "ack": {
-      "checkbox": "Ich verstehe, dass Geschenke freiwillig und endgültig sind."
+  "payoutModal": {
+    "title": "Auszahlung",
+    "subtitle": "Auszahlungen laufen aktuell ausschließlich über Stripe Connect.",
+    "amount": "Auszahlbar",
+    "ready": "Bereit zur Auszahlung.",
+    "min10": "Mindestbetrag: €10",
+    "note": "Hinweis: Payouts benötigen ein vollständig abgeschlossenes Stripe-Express-Onboarding.",
+    "connect": "Stripe verbinden",
+    "openOnboarding": "Onboarding öffnen",
+    "request": "Auszahlung anfordern",
+    "requesting": "Wird bearbeitet…",
+    "back": "Zurück",
+    "closeAria": "Schließen",
+    "stripeCard": {
+      "intro": "Verbinde dein Stripe Express Konto. Danach kannst du Auszahlungen anfordern.",
+      "status": "Status",
+      "notConnected": "Nicht verbunden",
+      "ready": "Bereit",
+      "incomplete": "Onboarding unvollständig",
+      "incompleteHint": "Dein Stripe Express Onboarding ist noch nicht fertig. Bitte Onboarding öffnen und alle Schritte abschließen, damit Bank-Auszahlungen möglich sind.",
+      "accountLabel": "Stripe Account"
     },
-    "actions": {
+    "success": "✓ Auszahlung angefordert",
+    "errors": {
+      "minAmount": "Mindestbetrag €10. Verfügbar: {amount}",
+      "onboardingFailed": "Stripe Onboarding fehlgeschlagen",
+      "payoutFailed": "Auszahlung fehlgeschlagen"
+    },
+    "transferOnly": {
+      "title": "Stripe-Auszahlung nicht aktiviert",
+      "body": "Du kannst trotzdem fortfahren, indem das Geld nur auf dein Stripe-Balance transferiert wird. Eine Banküberweisung passiert erst, wenn du Payouts aktivierst.",
       "cancel": "Abbrechen",
-      "done": "Fertig",
-      "sendGift": "Geschenk senden",
-      "sending": "Sende…",
-      "back": "Zurück",
-      "continueToPay": "Weiter zur Zahlung",
-      "payNow": "Jetzt zahlen"
-    },
-    "amount": {
-      "label": "Betrag für die Creatorin/den Creator",
-      "placeholder": "50"
-    },
-    "aria": {
-      "close": "Schließen"
-    },
-    "breakdown": {
-      "amountToCreator": "Betrag (geht an Creator:in)",
-      "platformFeeTop": "Plattformgebühr (10 % oben drauf)",
-      "youPay": "Du zahlst"
-    },
+      "proceed": "Trotzdem nur auf Stripe",
+      "payoutsNotEnabled": "Bank-Auszahlungen sind auf deinem Stripe-Konto nicht aktiviert."
+    }
+  },
+  "tipModal": {
+    "ack": { "checkbox": "Ich verstehe, dass Geschenke freiwillig und endgültig sind." },
+    "actions": { "cancel": "Abbrechen", "done": "Fertig", "sendGift": "Geschenk senden", "sending": "Sende…", "back": "Zurück", "continueToPay": "Weiter zur Zahlung", "payNow": "Jetzt zahlen" },
+    "amount": { "label": "Betrag für die Creatorin/den Creator", "placeholder": "50" },
+    "aria": { "close": "Schließen" },
+    "breakdown": { "amountToCreator": "Betrag (geht an Creator:in)", "platformFeeTop": "Plattformgebühr (10 % oben drauf)", "youPay": "Du zahlst" },
     "disclaimer": {
       "top": "Geschenke sind freiwillig und keine Bezahlung für Dienstleistungen. Subm8 vermittelt nur die Übertragung.",
       "legal": "Mit der Bestätigung sendest du ein freiwilliges Geschenk. Es handelt sich nicht um eine Bezahlung für Dienstleistungen. Geschenke sind endgültig (keine Rückerstattung, außer gesetzlich vorgeschrieben)."
     },
-    "errors": {
-      "confirmFailed": "Bestätigung fehlgeschlagen",
-      "createFailed": "Zahlung konnte nicht erstellt werden",
-      "generic": "Etwas ist schiefgelaufen"
-    },
-    "header": {
-      "title": "Sende ein Geschenk an {name}",
-      "subtitleFinal": "Geschenke sind freiwillig und endgültig."
-    },
-    "note": {
-      "label": "Notiz (optional)",
-      "placeholder": "Schreibe etwas Nettes…"
-    },
-    "roles": {
-      "domme": "Domme",
-      "sub": "Sub"
-    },
-    "success": {
-      "title": "Geschenk gesendet!",
-      "youPaid": "Du hast {amount} bezahlt"
-    },
+    "errors": { "confirmFailed": "Bestätigung fehlgeschlagen", "confirmProcessingTimeout": "Zahlung wird noch finalisiert… bitte kurz erneut versuchen.", "createFailed": "Zahlung konnte nicht erstellt werden", "generic": "Etwas ist schiefgelaufen" },
+    "header": { "title": "Sende ein Geschenk an {name}", "subtitleFinal": "Geschenke sind freiwillig und endgültig." },
+    "note": { "label": "Notiz (optional)", "placeholder": "Schreibe etwas Nettes…" },
+    "roles": { "domme": "Domme", "sub": "Sub" },
+    "success": { "title": "Geschenk gesendet!", "youPaid": "Du hast {amount} bezahlt", "closing": "Wird geschlossen…" },
     "stripe": {
       "enterCard": "Kartendaten eingeben",
       "secureHint": "Die Zahlungsdaten werden sicher von Stripe verarbeitet.",
       "savedCardsSummary": "Gespeicherte Karten: {count}",
       "savedCardsHint": "Du kannst unten eine gespeicherte Zahlungsmethode auswählen oder eine neue Karte eingeben.",
       "defaultSet": "Als Standard gesetzt",
-      "tipSaveCard": "Tipp: Speichere deine Karte einmal über „Zahlungsmethoden“, dann geht das hier künftig schneller.",
-      "errors": {
-        "notReady": "Stripe ist noch nicht bereit",
-        "canceled": "Zahlung abgebrochen",
-        "paymentFailed": "Zahlung fehlgeschlagen",
-        "missingPublishableKey": "Fehlende Umgebungsvariable: NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY"
-      }
+      "tipSaveCard": "Tipp: Du kannst deine Karte speichern, um schneller zu zahlen.",
+      "newCardTitle": "Neue Karte speichern",
+      "savedCardNote": "Du hast bereits eine gespeicherte Karte.",
+      "newCardNote": "Die Karte wird nach erfolgreicher Zahlung automatisch gespeichert.",
+      "errors": { "notReady": "Stripe ist noch nicht bereit", "canceled": "Zahlung abgebrochen", "paymentFailed": "Zahlung fehlgeschlagen", "missingPublishableKey": "Fehlende Umgebungsvariable: NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY" }
     },
     "methods": {
       "title": "Zahlungsmethoden",
@@ -196,79 +142,34 @@
       "default": "Standard",
       "exp": "Gültig bis {month}/{year}",
       "securityNote": "Deine Karte wird sicher bei Stripe gespeichert. Du kannst sie jederzeit entfernen.",
-      "actions": {
-        "closeAria": "Schließen",
-        "manage": "Zahlungsmethoden",
-        "manageTitle": "Gespeicherte Karten verwalten",
-        "addCard": "+ Karte hinzufügen",
-        "setDefault": "Als Standard",
-        "remove": "Entfernen",
-        "saveCard": "Karte speichern",
-        "saving": "Speichern…"
-      },
-      "errors": {
-        "loadFailed": "Zahlungsmethoden konnten nicht geladen werden",
-        "startSetupFailed": "Setup konnte nicht gestartet werden",
-        "saveFailed": "Speichern fehlgeschlagen",
-        "setupNotCompleted": "Setup nicht abgeschlossen",
-        "setDefaultFailed": "Standard konnte nicht gesetzt werden",
-        "removeFailed": "Zahlungsmethode konnte nicht entfernt werden",
-        "invalidResponse": "Ungültige Serverantwort"
-      }
+      "actions": { "closeAria": "Schließen", "manage": "Zahlungsmethoden", "manageTitle": "Gespeicherte Karten verwalten", "addCard": "+ Karte hinzufügen", "setDefault": "Als Standard", "remove": "Entfernen", "removeCard": "Karte entfernen", "saveCard": "Karte speichern", "saving": "Speichern…" },
+      "errors": { "loadFailed": "Zahlungsmethoden konnten nicht geladen werden", "startSetupFailed": "Setup konnte nicht gestartet werden", "saveFailed": "Speichern fehlgeschlagen", "setupNotCompleted": "Setup nicht abgeschlossen", "setDefaultFailed": "Standard konnte nicht gesetzt werden", "removeFailed": "Zahlungsmethode konnte nicht entfernt werden", "invalidResponse": "Ungültige Serverantwort" }
     }
   },
   "tipRequest": {
-    "actions": {
-      "cancel": "Abbrechen",
-      "create": "Anfrage erstellen"
-    },
-    "amount": {
-      "label": "Angeforderter Betrag",
-      "placeholder": "50"
-    },
-    "note": {
-      "label": "Notiz (optional)",
-      "placeholder": "Kurze Notiz hinzufügen…"
-    },
+    "actions": { "cancel": "Abbrechen", "create": "Anfrage erstellen" },
+    "amount": { "label": "Angeforderter Betrag", "placeholder": "50" },
+    "note": { "label": "Notiz (optional)", "placeholder": "Kurze Notiz hinzufügen…" },
     "subtitle": "Lege den Betrag fest, den der Sub zahlen soll.",
     "title": "Trinkgeld-Anfrage erstellen"
   },
   "tipRequestAcceptModal": {
-    "actions": {
-      "cancel": "Abbrechen",
-      "closeAria": "Schließen",
-      "processing": "Verarbeite…",
-      "sendGiftAccept": "Geschenk senden & annehmen ({total})",
-      "back": "Zurück",
-      "done": "Fertig",
-      "payNow": "Jetzt zahlen"
-    },
+    "actions": { "cancel": "Abbrechen", "closeAria": "Schließen", "processing": "Verarbeite…", "sendGiftAccept": "Geschenk senden & annehmen ({total})", "back": "Zurück", "done": "Fertig", "payNow": "Jetzt zahlen", "cards": "Karten" },
     "stripe": {
       "enterCard": "Kartendaten eingeben",
-      "secureHint": "Die Zahlungsdaten werden sicher von Stripe verarbeitet."
+      "secureHint": "Die Zahlungsdaten werden sicher von Stripe verarbeitet.",
+      "savedCardsSummary": "Gespeicherte Karten: {count}",
+      "defaultSet": "Standard gesetzt",
+      "savedCardsHint": "Du kannst im Stripe-Feld eine gespeicherte Methode auswählen oder eine neue eingeben.",
+      "tipSaveCard": "Optional: Speichere die Karte für zukünftige Zahlungen.",
+      "savedCardNote": "Du hast bereits eine gespeicherte Karte.",
+      "newCardNote": "Die Karte wird nach erfolgreicher Aktivierung automatisch gespeichert."
     },
-    "success": {
-      "title": "Geschenk gesendet!",
-      "youPaid": "Du hast {amount} bezahlt"
-    },
-    "breakdown": {
-      "amount": "Betrag",
-      "fee": "Plattformgebühr ({pct}%)",
-      "youPay": "Du zahlst"
-    },
+    "success": { "title": "Geschenk gesendet!", "youPaid": "Du hast {amount} bezahlt", "closing": "Wird geschlossen…" },
+    "breakdown": { "amount": "Betrag", "fee": "Plattformgebühr ({pct}%)", "youPay": "Du zahlst" },
     "disclaimer": "Mit der Bestätigung sendest du ein freiwilliges Geschenk. Dies ist keine Bezahlung für Leistungen. Geschenke sind endgültig (keine Rückerstattung, außer gesetzlich vorgeschrieben).",
-    "errors": {
-      "confirm": "Bestätigung fehlgeschlagen",
-      "create": "Zahlung konnte nicht erstellt werden",
-      "generic": "Etwas ist schiefgelaufen"
-    },
-    "header": {
-      "title": "Geschenkanfrage annehmen",
-      "to": "an {name}"
-    },
-    "requested": {
-      "label": "Angeforderter Betrag",
-      "note": "Die Creatorin/der Creator sieht diesen Betrag. Auf deinen Zahlbetrag wird eine Plattformgebühr von {pct}% aufgeschlagen."
-    }
+    "errors": { "confirm": "Bestätigung fehlgeschlagen", "create": "Zahlung konnte nicht erstellt werden", "generic": "Etwas ist schiefgelaufen" },
+    "header": { "title": "Geschenkanfrage annehmen", "to": "an {name}" },
+    "requested": { "label": "Angeforderter Betrag", "note": "Die Creatorin/der Creator sieht diesen Betrag. Auf deinen Zahlbetrag wird eine Plattformgebühr von {pct}% aufgeschlagen." }
   }
 }

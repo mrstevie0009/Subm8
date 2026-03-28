@@ -1,189 +1,135 @@
 {
+  "stepUp": {
+    "title": "Confirmación de seguridad",
+    "subtitle": "Confirma tu contraseña para realizar \"{action}\".",
+    "passwordLabel": "Contraseña",
+    "actions": { "cancel": "Cancelar", "confirm": "Confirmar", "confirming": "Verificando…", "closeAria": "Cerrar" },
+    "validHint": "Válido durante 5 minutos tras la confirmación",
+    "errors": {
+      "noPassword": "Tu cuenta solo está vinculada con Google. Por favor, establece una contraseña en tu configuración.",
+      "rateLimited": "Demasiados intentos. Por favor, espera unos minutos.",
+      "wrongPassword": "Contraseña incorrecta. Inténtalo de nuevo.",
+      "generic": "Verificación fallida."
+    }
+  },
   "autoDrain": {
-    "actions": {
-      "cancel": "Cancelar",
-      "create": "Crear solicitud"
-    },
-    "amount": {
-      "label": "Importe por cargo",
-      "placeholder": "50"
-    },
-    "recurrence": {
-      "label": "Repetición",
-      "options": {
-        "daily": "Diario",
-        "monthly": "Mensual",
-        "weekly": "Semanal"
-      }
-    },
-    "subtitle": "Define el importe y la repetición.",
-    "title": "Crear solicitud de Autodrain"
+    "actions": { "cancel": "Cancelar", "create": "Crear solicitud" },
+    "amount": { "label": "Importe por cargo", "placeholder": "50" },
+    "recurrence": { "label": "Recurrencia", "options": { "daily": "Diario", "monthly": "Mensual", "weekly": "Semanal" } },
+    "subtitle": "Establece el importe y la recurrencia.",
+    "title": "Crear solicitud de AutoDrain"
   },
   "autoDrainAcceptModal": {
-    "cancelAnytime": "Puedes cancelar AutoDrain en cualquier momento en tus Pagos.",
-    "acknowledge": "Entiendo que los regalos son voluntarios y definitivos. No se prometen prestaciones.",
-    "actions": {
-      "cancel": "Cancelar",
-      "closeAria": "Cerrar",
-      "enable": "Activar Autodrain",
-      "enabling": "Activando…",
-      "back": "Atrás"
-    },
-    "cadence": {
-      "daily": "diario",
-      "monthly": "mensual",
-      "weekly": "semanal"
-    },
-    "charge": {
-      "label": "Importe del cargo",
-      "recurringNote": "Cargo recurrente hasta la cancelación."
-    },
-    "disclaimer": "Los regalos son voluntarios y no un pago por servicios. Los regalos son definitivos (sin reembolso salvo obligación legal).",
-    "errors": {
-      "generic": "Algo salió mal"
-    },
-    "header": {
-      "title": "Activar Autodrain",
-      "to": "para {name}"
-    },
+    "cancelAnytime": "Puedes cancelar AutoDrain en cualquier momento en tus pagos.",
+    "acknowledge": "Entiendo que los regalos son voluntarios y definitivos. No se implican servicios.",
+    "actions": { "cancel": "Cancelar", "closeAria": "Cerrar", "enable": "Activar AutoDrain", "enabling": "Activando…", "back": "Atrás", "cards": "Tarjetas" },
+    "cadence": { "daily": "diario", "monthly": "mensual", "weekly": "semanal" },
+    "charge": { "label": "Importe del cargo", "recurringNote": "Cargo recurrente hasta la cancelación." },
+    "disclaimer": "Los regalos son voluntarios y no son pago por servicios. Los regalos son definitivos (sin reembolsos salvo exigencia legal).",
+    "errors": { "generic": "Algo salió mal" },
+    "header": { "title": "Activar AutoDrain", "to": "para {name}" },
+    "breakdown": { "amountTo": "Importe a {name}", "fee": "Comisión de plataforma (10%)", "youPay": "Pagas" },
+    "success": { "title": "¡Activado!", "enabled": "AutoDrain ha sido activado.", "closing": "Cerrando…" },
     "stripe": {
       "enterCard": "Elegir método de pago",
-      "secureHint": "Tus datos de pago se procesan de forma segura por Stripe.",
+      "secureHint": "Tus datos de pago son procesados de forma segura por Stripe.",
       "savedCardsSummary": "{count} tarjeta(s) guardada(s)",
       "savedCardsHint": "Puedes establecer una tarjeta predeterminada.",
-      "defaultSet": "Predeterminada",
-      "tipSaveCard": "Puedes guardar tu tarjeta para pagar más rápido."
+      "defaultSet": "Predeterminada establecida",
+      "tipSaveCard": "Opcional: Guarda tu tarjeta para futuros cargos.",
+      "savedCardNote": "Ya tienes una tarjeta guardada.",
+      "newCardNote": "La tarjeta se guardará automáticamente tras la activación exitosa."
     }
   },
   "paymentsPage": {
     "ariaBack": "Volver al feed",
     "autodrain": {
-      "cadence": {
-        "daily": "Diario",
-        "monthly": "Mensual",
-        "weekly": "Semanal"
-      },
-      "cancel": "Finalizar",
-      "incoming": {
-        "title": "Autodrain entrante"
-      },
-      "none": "No hay suscripciones activas.",
-      "outgoing": {
-        "title": "Activados por ti"
-      },
-      "th": {
-        "amount": "Importe",
-        "avatar": "Avatar",
-        "cadence": "Ritmo",
-        "domme": "Domme",
-        "next": "Próximo cargo",
-        "sub": "Sub"
-      },
-      "title": "Autodrain activo"
+      "cadence": { "daily": "Diario", "monthly": "Mensual", "weekly": "Semanal" },
+      "cancel": "Cancelar",
+      "incoming": { "title": "AutoDrain entrante" },
+      "none": "Sin suscripciones activas.",
+      "outgoing": { "title": "Activado por ti" },
+      "th": { "amount": "Importe", "avatar": "Avatar", "cadence": "Cadencia", "domme": "Domme", "next": "Próximo cargo", "sub": "Sub" },
+      "title": "AutoDrain activo"
     },
     "avatarAlt": "Avatar de {name}",
-    "balance": {
-      "export": "Exportar CSV",
-      "title": "Saldo actual:"
-    },
+    "balance": { "export": "Exportar CSV", "title": "Saldo actual:" },
     "guestNote": "Inicia sesión para ver tu historial de pagos.",
     "payments": {
       "amountPrefixReceived": "Recibido: {amount}",
       "amountPrefixSent": "Enviado: {amount}",
-      "received": {
-        "empty": "No hay pagos recibidos.",
-        "title": "Entradas"
-      },
-      "sent": {
-        "empty": "No hay pagos enviados.",
-        "title": "Has enviado"
-      },
-      "status": {
-        "canceled": "Cancelado",
-        "created": "Creado",
-        "failed": "Fallido",
-        "processing": "Procesando",
-        "succeeded": "Correcto"
-      },
-      "th": {
-        "amount": "Importe",
-        "avatar": "Avatar",
-        "date": "Fecha",
-        "status": "Estado",
-        "username": "Usuario",
-        "what": "Concepto"
-      },
-      "what": {
-        "tip": "Propina"
-      }
+      "received": { "empty": "Sin pagos recibidos.", "title": "Recibidos" },
+      "sent": { "empty": "Sin pagos salientes.", "title": "Has enviado" },
+      "status": { "canceled": "Cancelado", "created": "Creado", "failed": "Fallido", "processing": "Procesando", "succeeded": "Completado" },
+      "th": { "amount": "Importe", "avatar": "Avatar", "date": "Fecha", "status": "Estado", "username": "Usuario", "what": "Descripción" },
+      "what": { "tip": "Propina" }
     },
-    "payoutBtn": "Retirar",
-    "payoutTooltip": "Solicitar retiro (próximamente)",
+    "payoutBtn": "Cobro",
+    "payoutTooltip": "Solicitar cobro (próximamente)",
     "title": "Pagos e historial"
   },
-  "tipModal": {
-    "ack": {
-      "checkbox": "Entiendo que los regalos son voluntarios y definitivos."
+  "payoutModal": {
+    "title": "Cobro",
+    "subtitle": "Los cobros se realizan exclusivamente a través de Stripe Connect.",
+    "amount": "Disponible",
+    "ready": "Listo para cobrar.",
+    "min10": "Mínimo: €10",
+    "note": "Nota: Los cobros requieren un onboarding de Stripe Express completado.",
+    "connect": "Conectar Stripe",
+    "openOnboarding": "Abrir onboarding",
+    "request": "Solicitar cobro",
+    "requesting": "Procesando…",
+    "back": "Atrás",
+    "closeAria": "Cerrar",
+    "stripeCard": {
+      "intro": "Conecta tu cuenta Stripe Express. Luego podrás solicitar cobros.",
+      "status": "Estado",
+      "notConnected": "No conectado",
+      "ready": "Listo",
+      "incomplete": "Onboarding incompleto",
+      "incompleteHint": "Tu onboarding de Stripe Express aún no está completado. Abre el onboarding y completa todos los pasos para activar los cobros bancarios.",
+      "accountLabel": "Cuenta Stripe"
     },
-    "actions": {
-      "cancel": "Cancelar",
-      "done": "Listo",
-      "sendGift": "Enviar regalo",
-      "sending": "Enviando…",
-      "back": "Atrás",
-      "continueToPay": "Continuar al pago",
-      "payNow": "Pagar ahora"
-    },
-    "amount": {
-      "label": "Cantidad para la creadora/el creador",
-      "placeholder": "50"
-    },
-    "aria": {
-      "close": "Cerrar"
-    },
-    "breakdown": {
-      "amountToCreator": "Cantidad (para la creadora/el creador)",
-      "platformFeeTop": "Tarifa de la plataforma (10 % adicional)",
-      "youPay": "Pagas"
-    },
-    "disclaimer": {
-      "top": "Los regalos son voluntarios y no un pago por servicios. Subm8 solo facilita la transferencia.",
-      "legal": "Al confirmar, envías un regalo voluntario. No es un pago por servicios. Los regalos son definitivos (sin reembolsos salvo obligación legal)."
-    },
+    "success": "✓ Cobro solicitado",
     "errors": {
-      "confirmFailed": "Confirmación fallida",
-      "createFailed": "No se pudo crear el pago",
-      "generic": "Algo salió mal"
+      "minAmount": "Mínimo €10. Disponible: {amount}",
+      "onboardingFailed": "Onboarding de Stripe fallido",
+      "payoutFailed": "Cobro fallido"
     },
-    "header": {
-      "title": "Enviar un regalo a {name}",
-      "subtitleFinal": "Los regalos son voluntarios y definitivos."
+    "transferOnly": {
+      "title": "Cobros de Stripe no activados",
+      "body": "Puedes continuar transfiriendo fondos solo al balance de Stripe. Un cobro bancario ocurrirá solo después de activar los cobros.",
+      "cancel": "Cancelar",
+      "proceed": "Continuar: solo balance Stripe",
+      "payoutsNotEnabled": "Los cobros bancarios no están activados en tu cuenta Stripe."
+    }
+  },
+  "tipModal": {
+    "ack": { "checkbox": "Entiendo que los regalos son voluntarios y definitivos." },
+    "actions": { "cancel": "Cancelar", "done": "Listo", "sendGift": "Enviar regalo", "sending": "Enviando…", "back": "Atrás", "continueToPay": "Continuar al pago", "payNow": "Pagar ahora" },
+    "amount": { "label": "Importe para el/la creador/a", "placeholder": "50" },
+    "aria": { "close": "Cerrar" },
+    "breakdown": { "amountToCreator": "Importe (para el/la creador/a)", "platformFeeTop": "Comisión de plataforma (10% adicional)", "youPay": "Pagas" },
+    "disclaimer": {
+      "top": "Los regalos son voluntarios y no son pago por servicios. Subm8 solo facilita la transferencia.",
+      "legal": "Al confirmar envías un regalo voluntario. No es pago por servicios. Los regalos son definitivos (sin reembolsos salvo exigencia legal)."
     },
-    "note": {
-      "label": "Nota (opcional)",
-      "placeholder": "Escribe algo bonito…"
-    },
-    "roles": {
-      "domme": "Domme",
-      "sub": "Sub"
-    },
-    "success": {
-      "title": "¡Regalo enviado!",
-      "youPaid": "Has pagado {amount}"
-    },
+    "errors": { "confirmFailed": "Confirmación fallida", "confirmProcessingTimeout": "El pago aún se está finalizando… inténtalo de nuevo en breve.", "createFailed": "No se pudo crear el pago", "generic": "Algo salió mal" },
+    "header": { "title": "Enviar un regalo a {name}", "subtitleFinal": "Los regalos son voluntarios y definitivos." },
+    "note": { "label": "Nota (opcional)", "placeholder": "Escribe algo bonito…" },
+    "roles": { "domme": "Domme", "sub": "Sub" },
+    "success": { "title": "¡Regalo enviado!", "youPaid": "Pagaste {amount}", "closing": "Cerrando…" },
     "stripe": {
-      "enterCard": "Introduce los datos de la tarjeta",
-      "secureHint": "Los datos de pago se procesan de forma segura por Stripe.",
+      "enterCard": "Introducir datos de tarjeta",
+      "secureHint": "Los datos de pago son procesados de forma segura por Stripe.",
       "savedCardsSummary": "Tarjetas guardadas: {count}",
-      "savedCardsHint": "Puedes elegir una tarjeta guardada o introducir una nueva.",
-      "defaultSet": "Predeterminada",
-      "tipSaveCard": "Consejo: guarda tu tarjeta una vez para pagar más rápido la próxima vez.",
-      "errors": {
-        "notReady": "Stripe aún no está listo",
-        "canceled": "Pago cancelado",
-        "paymentFailed": "Pago fallido",
-        "missingPublishableKey": "Falta la variable de entorno: NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY"
-      }
+      "savedCardsHint": "Puedes seleccionar un método guardado o introducir una nueva tarjeta.",
+      "defaultSet": "Establecida como predeterminada",
+      "tipSaveCard": "Consejo: Guarda tu tarjeta una vez para pagar más rápido.",
+      "newCardTitle": "Guardar nueva tarjeta",
+      "savedCardNote": "Ya tienes una tarjeta guardada.",
+      "newCardNote": "La tarjeta se guardará automáticamente tras el pago exitoso.",
+      "errors": { "notReady": "Stripe aún no está listo", "canceled": "Pago cancelado", "paymentFailed": "Pago fallido", "missingPublishableKey": "Variable de entorno faltante: NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY" }
     },
     "methods": {
       "title": "Métodos de pago",
@@ -192,83 +138,38 @@
       "newCardTitle": "Guardar nueva tarjeta",
       "addNewTitle": "Guardar nueva tarjeta",
       "loading": "Cargando…",
-      "empty": "Aún no hay métodos de pago guardados.",
+      "empty": "Aún no hay ningún método de pago guardado.",
       "default": "Predeterminada",
-      "exp": "Exp {month}/{year}",
+      "exp": "Cad. {month}/{year}",
       "securityNote": "Tu tarjeta se guarda de forma segura en Stripe. Puedes eliminarla en cualquier momento.",
-      "actions": {
-        "closeAria": "Cerrar",
-        "manage": "Métodos de pago",
-        "manageTitle": "Gestionar tarjetas guardadas",
-        "addCard": "+ Añadir tarjeta",
-        "setDefault": "Establecer como predeterminada",
-        "remove": "Eliminar",
-        "saveCard": "Guardar tarjeta",
-        "saving": "Guardando…"
-      },
-      "errors": {
-        "loadFailed": "No se pudieron cargar los métodos de pago",
-        "startSetupFailed": "No se pudo iniciar la configuración",
-        "saveFailed": "Error al guardar",
-        "setupNotCompleted": "Configuración no completada",
-        "setDefaultFailed": "No se pudo establecer como predeterminada",
-        "removeFailed": "No se pudo eliminar el método de pago",
-        "invalidResponse": "Respuesta inválida"
-      }
+      "actions": { "closeAria": "Cerrar", "manage": "Métodos de pago", "manageTitle": "Gestionar tarjetas guardadas", "addCard": "+ Añadir tarjeta", "setDefault": "Como predeterminada", "remove": "Eliminar", "removeCard": "Eliminar tarjeta", "saveCard": "Guardar tarjeta", "saving": "Guardando…" },
+      "errors": { "loadFailed": "No se pudieron cargar los métodos de pago", "startSetupFailed": "No se pudo iniciar la configuración", "saveFailed": "Error al guardar", "setupNotCompleted": "Configuración no completada", "setDefaultFailed": "No se pudo establecer la predeterminada", "removeFailed": "No se pudo eliminar el método de pago", "invalidResponse": "Respuesta del servidor no válida" }
     }
   },
   "tipRequest": {
-    "actions": {
-      "cancel": "Cancelar",
-      "create": "Crear solicitud"
-    },
-    "amount": {
-      "label": "Importe solicitado",
-      "placeholder": "50"
-    },
-    "note": {
-      "label": "Nota (opcional)",
-      "placeholder": "Añadir una nota breve…"
-    },
-    "subtitle": "Define el importe que debe pagar el Sub.",
+    "actions": { "cancel": "Cancelar", "create": "Crear solicitud" },
+    "amount": { "label": "Importe solicitado", "placeholder": "50" },
+    "note": { "label": "Nota (opcional)", "placeholder": "Añade una nota breve…" },
+    "subtitle": "Establece el importe que el sub debe pagar.",
     "title": "Crear solicitud de propina"
   },
   "tipRequestAcceptModal": {
-    "actions": {
-      "cancel": "Cancelar",
-      "closeAria": "Cerrar",
-      "processing": "Procesando…",
-      "sendGiftAccept": "Enviar regalo y aceptar ({total})",
-      "back": "Volver",
-      "done": "Listo",
-      "payNow": "Pagar ahora"
-    },
+    "actions": { "cancel": "Cancelar", "closeAria": "Cerrar", "processing": "Procesando…", "sendGiftAccept": "Enviar regalo y aceptar ({total})", "back": "Atrás", "done": "Listo", "payNow": "Pagar ahora", "cards": "Tarjetas" },
     "stripe": {
-      "enterCard": "Introduce los datos de la tarjeta",
-      "secureHint": "Los datos de pago se procesan de forma segura mediante Stripe."
+      "enterCard": "Introducir datos de tarjeta",
+      "secureHint": "Los datos de pago son procesados de forma segura por Stripe.",
+      "savedCardsSummary": "Tarjetas guardadas: {count}",
+      "defaultSet": "Predeterminada establecida",
+      "savedCardsHint": "Puedes seleccionar un método guardado o introducir una nueva tarjeta.",
+      "tipSaveCard": "Opcional: Guarda tu tarjeta para futuros pagos.",
+      "savedCardNote": "Ya tienes una tarjeta guardada.",
+      "newCardNote": "La tarjeta se guardará automáticamente tras la activación exitosa."
     },
-    "success": {
-      "title": "¡Regalo enviado!",
-      "youPaid": "Has pagado {amount}"
-    },
-    "breakdown": {
-      "amount": "Importe",
-      "fee": "Comisión de la plataforma ({pct}%)",
-      "youPay": "Pagas"
-    },
-    "disclaimer": "Al confirmar envías un regalo voluntario. No es un pago por servicios. Los regalos son definitivos (sin reembolso salvo obligación legal).",
-    "errors": {
-      "confirm": "Falló la confirmación",
-      "create": "No se pudo crear el pago",
-      "generic": "Algo salió mal"
-    },
-    "header": {
-      "title": "Aceptar solicitud de regalo",
-      "to": "a {name}"
-    },
-    "requested": {
-      "label": "Importe solicitado",
-      "note": "La creadora/el creador ve este importe. A tu pago se añadirá una comisión de plataforma del {pct}%."
-    }
+    "success": { "title": "¡Regalo enviado!", "youPaid": "Pagaste {amount}", "closing": "Cerrando…" },
+    "breakdown": { "amount": "Importe", "fee": "Comisión de plataforma ({pct}%)", "youPay": "Pagas" },
+    "disclaimer": "Al confirmar envías un regalo voluntario. No es pago por servicios. Los regalos son definitivos (sin reembolsos salvo exigencia legal).",
+    "errors": { "confirm": "Confirmación fallida", "create": "No se pudo crear el pago", "generic": "Algo salió mal" },
+    "header": { "title": "Aceptar solicitud de regalo", "to": "a {name}" },
+    "requested": { "label": "Importe solicitado", "note": "El/la creador/a ve este importe. Se añadirá una comisión de plataforma del {pct}% a tu pago." }
   }
 }

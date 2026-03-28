@@ -1,7 +1,7 @@
 // src/app/api/payments/autodrain/create/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUser } from "@/lib/currentUser";
+import { requireStepUp } from "@/lib/stepup";
 import { addCadence } from "@/lib/autodrain";
 import Stripe from "stripe";
 
@@ -235,8 +235,10 @@ async function resolveClientSecretForSubscription(
 }
 
 export async function POST(req: NextRequest) {
-  const me = await getCurrentUser();
-  if (!me) return NextResponse.json({ ok: false, error: "Not signed in" }, { status: 401 });
+  const stepup = await requireStepUp(req);
+  if (!stepup.ok) return stepup.response;
+
+  const me = { id: stepup.userId };
 
   const body = (await req.json().catch(() => ({}))) as Body;
 
@@ -319,7 +321,6 @@ export async function POST(req: NextRequest) {
 
   const receiptEmail = await syncStripeCustomerEmail(customerId, meDb.email);
 
-  // ✅ NEU: Hole Default Payment Method vom Customer
   const customer = await stripe.customers.retrieve(customerId);
   const defaultPmId = 
     typeof customer !== 'object' || customer.deleted
@@ -362,7 +363,6 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  // ✅ NEU: Subscription Params mit optionalem default_payment_method
   const subParams: Stripe.SubscriptionCreateParams = {
     customer: customerId,
     items: [{ price: price.id }],
@@ -383,7 +383,6 @@ export async function POST(req: NextRequest) {
     expand: ["latest_invoice.payment_intent", "pending_setup_intent"],
   };
 
-  // ✅ NEU: Wenn Default Payment Method existiert, setze ihn
   if (defaultPmId) {
     subParams.default_payment_method = defaultPmId;
   }
