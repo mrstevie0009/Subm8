@@ -69,8 +69,13 @@ const cspHeader = [
     'https://stationapi.veriff.com',
     // Tenor/Giphy nur noch über eigenen Proxy – kein direkter Client-Zugriff nötig
     // Falls du doch direkten Client-Zugriff brauchst:
-    // 'https://g.tenor.com',
-    // 'https://api.giphy.com',
+    'https://media.tenor.com',
+    'https://c.tenor.com',
+    'https://media1.tenor.com',
+    'https://media2.tenor.com',
+    'https://media3.tenor.com',
+    'https://i.giphy.com',
+    'https://media.giphy.com',
     isDev ? 'ws://localhost:* http://localhost:3000 http://localhost:3001' : '',
   ].filter(Boolean).join(' '),
 
