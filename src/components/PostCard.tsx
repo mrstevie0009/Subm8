@@ -496,7 +496,38 @@ const onTouchEndItem = (index: number) => {
 
   if (!start || moved) return;
 
-  onOpen?.(index);
+  const now = Date.now();
+  const last = lastTapTimeRef.current;
+  const lastX = lastTapXRef.current;
+  const lastY = lastTapYRef.current;
+
+  if (
+    last !== null &&
+    now - last < 400 &&
+    Math.abs(start.x - lastX) < 40 &&
+    Math.abs(start.y - lastY) < 40
+  ) {
+    // echter Double-Tap auf Handy
+    lastTapTimeRef.current = null;
+
+    if (pendingSingleTapRef.current) {
+      window.clearTimeout(pendingSingleTapRef.current);
+      pendingSingleTapRef.current = null;
+    }
+
+    onDoubleTap?.(start.x, start.y);
+    return;
+  }
+
+  lastTapTimeRef.current = now;
+  lastTapXRef.current = start.x;
+  lastTapYRef.current = start.y;
+
+  pendingSingleTapRef.current = window.setTimeout(() => {
+    pendingSingleTapRef.current = null;
+    lastTapTimeRef.current = null;
+    onOpen?.(index);
+  }, 400);
 };
 
   const onKeyDown = (e: React.KeyboardEvent) => {
@@ -581,6 +612,14 @@ const onTouchEndItem = (index: number) => {
                   onTouchStart={isTouchDevice ? onTouchStartItem : undefined}
                   onTouchMove={isTouchDevice ? onTouchMoveItem : undefined}
                   onTouchEnd={isTouchDevice ? () => onTouchEndItem(i) : undefined}
+                  onTouchCancel={
+                    isTouchDevice
+                      ? () => {
+                          touchTapStartRef.current = null;
+                          touchMovedRef.current = false;
+                        }
+                      : undefined
+                  }
                   onClick={(e) => e.stopPropagation()}
                 >
                   {isVideoLike ? (
