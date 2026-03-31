@@ -322,6 +322,8 @@ function FeedMediaCarousel({
   const lastTapYRef = React.useRef<number>(0);
   const pendingSingleTapRef = React.useRef<number | null>(null);
   const directionLockedRef = React.useRef<'horizontal' | 'vertical' | null>(null);
+  const touchTapStartRef = React.useRef<{ x: number; y: number } | null>(null);
+  const touchMovedRef = React.useRef(false);
 
   const isTouchDevice =
   typeof window !== 'undefined' &&
@@ -465,6 +467,38 @@ function FeedMediaCarousel({
     directionLockedRef.current = null;
   };
 
+  const onTouchStartItem = (e: React.TouchEvent) => {
+    const t = e.touches[0];
+    if (!t) return;
+    touchTapStartRef.current = { x: t.clientX, y: t.clientY };
+    touchMovedRef.current = false;
+  };
+
+  const onTouchMoveItem = (e: React.TouchEvent) => {
+    const start = touchTapStartRef.current;
+    const t = e.touches[0];
+    if (!start || !t) return;
+
+    const dx = Math.abs(t.clientX - start.x);
+    const dy = Math.abs(t.clientY - start.y);
+
+  if (dx > 10 || dy > 10) {
+    touchMovedRef.current = true;
+  }
+};
+
+const onTouchEndItem = (index: number) => {
+  const start = touchTapStartRef.current;
+  const moved = touchMovedRef.current;
+
+  touchTapStartRef.current = null;
+  touchMovedRef.current = false;
+
+  if (!start || moved) return;
+
+  onOpen?.(index);
+};
+
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'ArrowLeft') {
       e.preventDefault();
@@ -544,6 +578,9 @@ function FeedMediaCarousel({
                   onPointerMove={isTouchDevice ? undefined : onPointerMove}
                   onPointerUp={isTouchDevice ? undefined : onPointerUp}
                   onPointerCancel={isTouchDevice ? undefined : onPointerUp}
+                  onTouchStart={isTouchDevice ? onTouchStartItem : undefined}
+                  onTouchMove={isTouchDevice ? onTouchMoveItem : undefined}
+                  onTouchEnd={isTouchDevice ? () => onTouchEndItem(i) : undefined}
                   onClick={(e) => e.stopPropagation()}
                 >
                   {isVideoLike ? (
