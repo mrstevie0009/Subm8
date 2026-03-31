@@ -840,7 +840,7 @@ export default function PostMediaPage() {
             WebkitOverflowScrolling: 'touch',
             overscrollBehaviorX: 'contain',
             overscrollBehaviorY: 'none',
-            scrollBehavior: 'smooth',
+            scrollBehavior: 'auto',
             touchAction: 'pan-x',
           }}
           onWheel={handleContainerWheel}
@@ -863,6 +863,7 @@ export default function PostMediaPage() {
                   }}
                   data-media-index={i}
                   className="media-viewer-item relative h-full w-[100vw] shrink-0 snap-center overflow-hidden bg-black"
+                  style={{ scrollSnapStop: 'always' }}
                 >
                   <button
                     type="button"
@@ -985,6 +986,10 @@ export default function PostMediaPage() {
           display: none;
           width: 0;
           height: 0;
+        }
+
+        .media-viewer-item {
+          scroll-snap-stop: always;
         }
 
         .media-viewer-container {
