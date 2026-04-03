@@ -633,10 +633,10 @@ export default function SignupAccountPage() {
                 )}
               </div>
 
-              <label className="flex items-start gap-2 text-[13px] sm:text-sm text-white/90">
+              <label className="flex items-center gap-2 text-[13px] sm:text-sm text-white/90 leading-5">
                 <input
                   type="checkbox"
-                  className="accent-[var(--purple)] mt-[3px]"
+                  className="accent-[var(--purple)] shrink-0"
                   checked={agree}
                   onChange={(e) => setAgree(e.target.checked)}
                 />
