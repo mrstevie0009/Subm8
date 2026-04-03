@@ -9,6 +9,8 @@ import { make6DigitCode, hashCode } from "@/lib/emailVerify";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+const isFakeMode = () => process.env.VERIFF_FAKE_MODE === 'true';
+
 type Body = {
   handle?: string;
   role?: string; // 'DOMME' | 'SUBMISSIVE' (any casing)
@@ -160,6 +162,7 @@ export async function POST(req: Request) {
             email: emailLower,
             passwordHash,
             nsfwDefault: false,
+            ageVerified: isFakeMode(),
             emailVerifiedAt: null,
             emailVerifyLastSentAt: new Date(now),
           },

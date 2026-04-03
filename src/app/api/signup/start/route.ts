@@ -1,7 +1,6 @@
 // src/app/api/signup/start/route.ts
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { cookies } from 'next/headers';
 import { Role } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
@@ -9,6 +8,7 @@ export const dynamic = 'force-dynamic';
 function isValidHandle(h: string) {
   return /^[a-z0-9_]{3,20}$/.test(h);
 }
+
 function parseRole(raw: unknown): Role {
   const v = String(raw ?? '').toUpperCase();
   if (v === 'DOMME') return 'DOMME';
@@ -18,47 +18,53 @@ function parseRole(raw: unknown): Role {
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json().catch(() => null) as { 
-      handle?: string; 
+    const body = (await req.json().catch(() => null)) as {
+      handle?: string;
       role?: string;
-      oauthEmail?: string;
     } | null;
-    
-    const handle = String(body?.handle ?? '').toLowerCase();
+
+    const handle = String(body?.handle ?? '').trim().toLowerCase();
     if (!isValidHandle(handle)) {
-      return Response.json({ ok: false, error: 'Invalid handle' }, { status: 400 });
+      return NextResponse.json({ ok: false, error: 'Invalid handle' }, { status: 400 });
     }
 
     let role: Role;
     try {
       role = parseRole(body?.role);
     } catch {
-      return Response.json({ ok: false, error: 'Invalid role' }, { status: 400 });
+      return NextResponse.json({ ok: false, error: 'Invalid role' }, { status: 400 });
     }
 
-    // handle frei?
-    const exists = await prisma.user.findUnique({ where: { handle }, select: { id: true } });
+    const exists = await prisma.user.findUnique({
+      where: { handle },
+      select: { id: true },
+    });
+
     if (exists) {
-      return Response.json({ ok: false, error: 'Handle already taken' }, { status: 409 });
+      return NextResponse.json({ ok: false, error: 'Handle already taken' }, { status: 409 });
     }
 
-    // Cookie setzen
-    const c = await cookies();
-    c.set('signup_handle', handle, { httpOnly: true, sameSite: 'lax', path: '/', maxAge: 900 });
-    c.set('signup_role', role, { httpOnly: true, sameSite: 'lax', path: '/', maxAge: 900 });
+    const res = NextResponse.json({ ok: true });
 
-    if (body?.oauthEmail) {
-      c.set('signup_oauth_email', body.oauthEmail, { 
-        httpOnly: true, 
-        sameSite: 'lax', 
-        path: '/', 
-        maxAge: 900 
-      });
-    }
+    res.cookies.set('signup_handle', handle, {
+      httpOnly: true,
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 900,
+      secure: process.env.NODE_ENV === 'production',
+    });
 
-    return Response.json({ ok: true });
+    res.cookies.set('signup_role', role, {
+      httpOnly: true,
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 900,
+      secure: process.env.NODE_ENV === 'production',
+    });
+
+    return res;
   } catch (e) {
     console.error('POST /api/signup/start failed', e);
-    return Response.json({ ok: false, error: 'Server error' }, { status: 500 });
+    return NextResponse.json({ ok: false, error: 'Server error' }, { status: 500 });
   }
 }

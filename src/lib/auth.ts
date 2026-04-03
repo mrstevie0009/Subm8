@@ -15,10 +15,8 @@ import { getClientIp } from '@/lib/ip';
 import { isBlocked, recordFailure, recordSuccess } from '@/lib/bruteforce';
 
 const SITE_URL = process.env.NEXTAUTH_URL ?? 'http://localhost:3000';
-const PENDING_SIGNUP_COOKIE = 'subm8_pending_signup';
-
-// ✅ NEU: Cookie für OAuth-Pending
 const OAUTH_PENDING_COOKIE = 'subm8_oauth_pending';
+const OAUTH_PENDING_DATA_COOKIE = 'subm8_oauth_pending_data';
 
 declare module 'next-auth' {
   interface User {
@@ -68,7 +66,7 @@ async function generateUniqueHandle(base = 'user'): Promise<string> {
   return `${base}_${Date.now().toString(36)}`.toLowerCase();
 }
 
-async function ensureAvailableHandle(desired: string): Promise<string> {
+export async function ensureAvailableHandle(desired: string): Promise<string> {
   const clean = desired.toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 20);
   if (!clean || !/^[a-z0-9_]{3,20}$/.test(clean)) {
     return generateUniqueHandle('user');
@@ -90,39 +88,38 @@ function augmentedPrismaAdapter(): Adapter {
   return {
     ...base,
     async createUser(data: Omit<AdapterUser, 'id'>): Promise<AdapterUser> {
-    const email = (data.email ?? null) as string | null;
-
-      // ✅ NEU: Check ob User schon existiert (via Email)
-      if (email) {
-        const existing = await prisma.user.findUnique({
-          where: { email: email.toLowerCase() },
-          select: { 
-            id: true, 
-            handle: true, 
-            role: true, 
-            displayName: true, 
-            avatarUrl: true,
-            ageVerified: true,
-          },
-        });
-
-        if (existing) {
-          // User existiert bereits → return AdapterUser
-          return {
-            id: existing.id,
-            name: existing.displayName,
-            email: email,
-            emailVerified: new Date(),
-            image: existing.avatarUrl ?? null,
-            handle: existing.handle,
-            role: existing.role,
-          } as unknown as AdapterUser;
-        }
+      const email = (data.email ?? null) as string | null;
+      if (!email) {
+        throw new Error('OAUTH_EMAIL_MISSING');
       }
 
-      // ✅ WICHTIG: User existiert NICHT → NICHT erstellen, sondern Error werfen
-      // Damit wird der OAuth-Flow abgebrochen und wir können zum Signup leiten
-      throw new Error('OAUTH_USER_NOT_FOUND');
+      const normalizedEmail = email.toLowerCase();
+
+      const existing = await prisma.user.findUnique({
+        where: { email: normalizedEmail },
+        select: {
+          id: true,
+          handle: true,
+          role: true,
+          displayName: true,
+          avatarUrl: true,
+        },
+      });
+
+      if (existing) {
+        return {
+          id: existing.id,
+          name: existing.displayName,
+          email: normalizedEmail,
+          emailVerified: new Date(),
+          image: existing.avatarUrl ?? null,
+          handle: existing.handle,
+          role: existing.role,
+        } as unknown as AdapterUser;
+      }
+
+      // Dieser Fall sollte mit dem neuen Flow nicht mehr normal auftreten.
+      throw new Error('OAUTH_SIGNUP_REQUIRED');
     },
   };
 }
@@ -151,6 +148,7 @@ export const authOptions: NextAuthOptions = {
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID ?? '',
       clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? '',
+      allowDangerousEmailAccountLinking: true,
     }),
     CredentialsProvider({
       name: 'Handle/E-Mail & Passwort',
@@ -252,35 +250,52 @@ export const authOptions: NextAuthOptions = {
   pages: { signIn: '/signin-bridge' },
 
   callbacks: {
-    // ✅ NEU: signIn Callback für OAuth-User-Check
     async signIn({ user, account }) {
-      // Nur für OAuth-Provider
       if (account?.provider === 'google') {
         const email = user.email?.toLowerCase();
         if (!email) return false;
 
-        // Check ob User existiert
         const existing = await prisma.user.findUnique({
           where: { email },
           select: { id: true },
         });
 
-        // User existiert → normal einloggen
         if (existing) {
           return true;
         }
 
-        // User existiert NICHT → Cookie setzen & zu Signup leiten
         const c = await cookies();
+
+        const pendingPayload = {
+          email,
+          provider: 'google',
+          providerAccountId: account.providerAccountId,
+          name: user.name ?? null,
+          image: user.image ?? null,
+        };
+
         c.set(OAUTH_PENDING_COOKIE, email, {
-          httpOnly: true,
+          httpOnly: false,
           sameSite: 'lax',
           path: '/',
-          maxAge: 600, // 10 Minuten
+          maxAge: 600,
+          secure: process.env.NODE_ENV === 'production',
         });
 
-        // NextAuth wird zum error-Parameter redirecten
-        return `/signup?error=OAuthAccountNotLinked`;
+        c.set(
+          OAUTH_PENDING_DATA_COOKIE,
+          encodeURIComponent(JSON.stringify(pendingPayload)),
+          {
+            httpOnly: true,
+            sameSite: 'lax',
+            path: '/',
+            maxAge: 600,
+            secure: process.env.NODE_ENV === 'production',
+          }
+        );
+
+        const locale = c.get('NEXT_LOCALE')?.value || 'en';
+        return `/${locale}/signup?error=OAuthAccountNotLinked`;
       }
 
       return true;
@@ -296,51 +311,41 @@ export const authOptions: NextAuthOptions = {
       return devBase;
     },
 
-    async jwt({ token, user }: { token: JWT; user?: NextAuthUser | undefined }) {
+    async jwt({ token, user }: { token: JWT; user?: NextAuthUser }) {
       if (user) {
-        token.uid = user.id;
+        const dbUser = await prisma.user.findUnique({
+          where: { id: user.id },
+          select: {
+            id: true,
+            handle: true,
+            role: true,
+            displayName: true,
+            avatarUrl: true,
+            email: true,
+            ageVerified: true,
+          },
+        });
 
-        const u = user as NextAuthUser;
-
-        if (u.handle || u.role || typeof u.ageVerified !== 'undefined') {
-          token.handle = u.handle ?? token.handle;
-          token.role = u.role ?? token.role;
-          token.name = typeof u.name !== 'undefined' ? u.name : token.name ?? null;
-          token.picture = typeof u.image !== 'undefined' ? u.image : token.picture ?? null;
-          token.email = typeof u.email !== 'undefined' ? u.email : token.email ?? null;
-          token.ageVerified = typeof u.ageVerified !== 'undefined' ? u.ageVerified : token.ageVerified;
-        } else {
-          const dbUser = await prisma.user.findUnique({
-            where: { id: user.id },
-            select: {
-              handle: true,
-              role: true,
-              displayName: true,
-              avatarUrl: true,
-              email: true,
-              ageVerified: true,
-            },
+        if (dbUser) {
+          token.uid = dbUser.id;
+          token.handle = dbUser.handle;
+          token.role = dbUser.role;
+          token.name = dbUser.displayName ?? null;
+          token.picture = dbUser.avatarUrl ?? null;
+          token.email = dbUser.email ?? null;
+          token.ageVerified = dbUser.ageVerified ?? false;
+          
+          console.log('✅ JWT populated from DB:', { 
+            id: dbUser.id, 
+            handle: dbUser.handle, 
+            role: dbUser.role 
           });
-          if (dbUser) {
-            token.handle = dbUser.handle;
-            token.role = dbUser.role;
-            token.name = dbUser.displayName ?? token.name ?? null;
-            token.picture = dbUser.avatarUrl ?? token.picture ?? null;
-            token.email = dbUser.email ?? token.email ?? null;
-            token.ageVerified = dbUser.ageVerified ?? token.ageVerified ?? false;
-          }
+        } else {
+          console.error('❌ User not found in DB:', user.id);
         }
       }
 
-      if (
-        token.uid &&
-        (
-          !token.handle ||
-          !token.role ||
-          typeof token.ageVerified === 'undefined' ||
-          token.ageVerified === false
-        )
-      ) {
+      if (token.uid && (!token.handle || !token.role)) {
         const dbUser = await prisma.user.findUnique({
           where: { id: token.uid },
           select: {
@@ -354,8 +359,8 @@ export const authOptions: NextAuthOptions = {
         });
 
         if (dbUser) {
-          token.handle = dbUser.handle ?? token.handle;
-          token.role = dbUser.role ?? token.role;
+          token.handle = dbUser.handle;
+          token.role = dbUser.role;
           token.name = dbUser.displayName ?? token.name ?? null;
           token.picture = dbUser.avatarUrl ?? token.picture ?? null;
           token.email = dbUser.email ?? token.email ?? null;
@@ -367,61 +372,19 @@ export const authOptions: NextAuthOptions = {
     },
 
     async session({ session, token }: { session: Session; token: JWT }) {
-      if (!session.user) session.user = { id: token.uid ?? '' };
-
-      if (token.uid) session.user.id = token.uid;
-      if (token.handle) session.user.handle = token.handle;
-      if (token.role) session.user.role = token.role;
-
-      if (typeof token.name !== 'undefined') session.user.name = token.name;
-      if (typeof token.picture !== 'undefined') session.user.image = token.picture;
-      if (typeof token.email !== 'undefined') session.user.email = token.email;
-
-      if (typeof token.ageVerified !== 'undefined') {
-        session.user.ageVerified = token.ageVerified ?? false;
+      if (!session.user) {
+        session.user = { id: '' };
       }
+
+      session.user.id = token.uid ?? '';
+      session.user.handle = token.handle ?? '';
+      session.user.role = token.role as Role;
+      session.user.name = token.name ?? null;
+      session.user.image = token.picture ?? null;
+      session.user.email = token.email ?? null;
+      session.user.ageVerified = token.ageVerified ?? false;
 
       return session;
-    },
-  },
-
-  events: {
-    async createUser(message) {
-      const c = await cookies();
-      const raw = c.get(PENDING_SIGNUP_COOKIE)?.value;
-      if (!raw) return;
-
-      try {
-        const decoded = decodeURIComponent(atob(raw));
-        const parsed = JSON.parse(decoded) as {
-          handle?: string;
-          role?: Role | 'DOMME' | 'SUBMISSIVE' | 'domme' | 'sub';
-        };
-
-        const desiredHandle = parsed.handle ? String(parsed.handle) : undefined;
-        const desiredRole = ((): Role | undefined => {
-          const v = parsed.role;
-          if (!v) return undefined;
-          if (v === 'DOMME' || v === 'SUBMISSIVE') return v;
-          const low = String(v).toLowerCase();
-          if (low === 'domme') return 'DOMME';
-          if (low === 'sub' || low === 'submissive') return 'SUBMISSIVE';
-          return undefined;
-        })();
-
-        const updates: { handle?: string; role?: Role } = {};
-        if (desiredHandle) updates.handle = await ensureAvailableHandle(desiredHandle);
-        if (desiredRole) updates.role = desiredRole;
-
-        if (updates.handle || updates.role) {
-          await prisma.user.update({
-            where: { id: message.user.id },
-            data: updates,
-          });
-        }
-      } catch {
-        // still ok
-      }
     },
   },
 };

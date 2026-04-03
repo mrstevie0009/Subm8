@@ -246,6 +246,20 @@ export default function SignupAccountPage() {
   const role = roleParam === 'DOMME' || roleParam === 'SUBMISSIVE' ? roleParam : null;
   const isDomme = role === 'DOMME';
 
+  const oauthMode = sp.get('oauth') === '1';
+  const [oauthPendingEmail, setOauthPendingEmail] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const match = document.cookie
+      .split('; ')
+      .find((row) => row.startsWith('subm8_oauth_pending='));
+    if (!match) return;
+
+    const value = match.split('=').slice(1).join('=');
+    setOauthPendingEmail(decodeURIComponent(value));
+  }, []);
+
   const [email, setEmail] = React.useState('');
   const [pw, setPw] = React.useState('');
   const [pw2, setPw2] = React.useState('');
@@ -272,11 +286,13 @@ export default function SignupAccountPage() {
   const ready =
     !!handle &&
     !!role &&
-    isValidEmail(email) &&
-    pw.length >= 8 &&
-    pw === pw2 &&
     agree &&
-    (!isDomme || dommeGiftAgree);
+    (!isDomme || dommeGiftAgree) &&
+    (
+      oauthMode
+        ? true
+        : isValidEmail(email) && pw.length >= 8 && pw === pw2
+    );
 
   // --- Splash Host & Portal-Container ---
   const [splashAlive, setSplashAlive] = React.useState(true);
@@ -332,6 +348,11 @@ export default function SignupAccountPage() {
     ev.preventDefault();
     if (!ready || loading) return;
 
+    if (oauthMode) {
+      await signInWithGoogle();
+      return;
+    }
+
     try {
       setLoading(true);
       setErr(null);
@@ -380,16 +401,43 @@ export default function SignupAccountPage() {
   
   const signInWithGoogle = async () => {
     try {
-      // Falls wir schon Handle & Rolle kennen, Cookie mitschicken (optional)
-      if (handle && role) {
-        const payload = { handle, role };
-        const raw = btoa(encodeURIComponent(JSON.stringify(payload)));
-        document.cookie = `subm8_pending_signup=${raw}; Path=/; Max-Age=600; SameSite=Lax`;
+      if (!handle || !role) {
+        setErr(t('errors.signupFailed'));
+        return;
       }
-      await signIn('google', { callbackUrl: `/${locale}` });
+
+      setLoading(true);
+      setErr(null);
+
+      // Signup-Kontext serverseitig frisch setzen
+      const res = await fetch('/api/signup/start', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          accept: 'application/json',
+        },
+        body: JSON.stringify({
+          handle,
+          role,
+        }),
+      });
+
+      const json = await res.json().catch(() => null);
+
+      if (!res.ok || !json?.ok) {
+        setErr(json?.error || t('errors.signupFailed'));
+        setLoading(false);
+        return;
+      }
+
+      // Danach Google OAuth starten
+      await signIn('google', {
+        callbackUrl: `/${locale}`,
+      });
     } catch (e) {
       console.error(e);
       setErr(t('errors.signupFailed'));
+      setLoading(false);
     }
   };
 
@@ -516,58 +564,72 @@ export default function SignupAccountPage() {
             {/* Formular */}
             <form className="mt-6 space-y-4 sm:space-y-5" onSubmit={submit} noValidate>
               <div>
-                <label className="block text-[13px] sm:text-sm font-medium mb-1 text-white/90">
-                  {t('fields.email.label')}
-                </label>
-                <Input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder={t('fields.email.placeholder')}
-                  autoComplete="email"
-                  required
-                  aria-invalid={email.length > 0 && !emailOk ? true : undefined}
-                  className={`${baseInput} h-10 sm:h-11 ${email.length > 0 && !emailOk ? 'border-red-400/70 focus:ring-red-400/30' : ''}`}
-                />
-                {email.length > 0 && !emailOk && (
-                  <div className="mt-1 text-[12px] text-red-300">
-                    {t('errors.emailInvalid', { default: 'Please enter a valid email address.' })}
+                {oauthMode ? (
+                  <div className="rounded-xl border border-blue-300/40 bg-blue-300/15 p-3 text-[13px] sm:text-sm text-blue-100">
+                    {oauthPendingEmail ? (
+                      <>Google account: <strong>{oauthPendingEmail}</strong></>
+                    ) : (
+                      <>Google account will be used for this signup.</>
+                    )}
                   </div>
-                )}
-              </div>
+                ) : (
+                  <>
+                    <div>
+                      <label className="block text-[13px] sm:text-sm font-medium mb-1 text-white/90">
+                        {t('fields.email.label')}
+                      </label>
+                      <Input
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder={t('fields.email.placeholder')}
+                        autoComplete="email"
+                        required
+                        aria-invalid={email.length > 0 && !emailOk ? true : undefined}
+                        className={`${baseInput} h-10 sm:h-11 ${email.length > 0 && !emailOk ? 'border-red-400/70 focus:ring-red-400/30' : ''}`}
+                      />
+                      {email.length > 0 && !emailOk && (
+                        <div className="mt-1 text-[12px] text-red-300">
+                          {t('errors.emailInvalid', { default: 'Please enter a valid email address.' })}
+                        </div>
+                      )}
+                    </div>
 
-              <div>
-                <label className="block text-[13px] sm:text-sm font-medium mb-1 text-white/90">
-                  {t('fields.password.label')}
-                </label>
-                <Input
-                  type="password"
-                  value={pw}
-                  onChange={(e) => setPw(e.target.value)}
-                  placeholder={t('fields.password.placeholder')}
-                  className={`${baseInput} h-10 sm:h-11`}
-                  autoComplete="new-password"
-                  required
-                  minLength={8}
-                />
-                <div className="mt-1 text-[12px] text-white/70">{t('fields.password.help')}</div>
-              </div>
+                    <div>
+                      <label className="block text-[13px] sm:text-sm font-medium mb-1 text-white/90">
+                        {t('fields.password.label')}
+                      </label>
+                      <Input
+                        type="password"
+                        value={pw}
+                        onChange={(e) => setPw(e.target.value)}
+                        placeholder={t('fields.password.placeholder')}
+                        className={`${baseInput} h-10 sm:h-11`}
+                        autoComplete="new-password"
+                        required
+                        minLength={8}
+                      />
+                      <div className="mt-1 text-[12px] text-white/70">{t('fields.password.help')}</div>
+                    </div>
 
-              <div>
-                <label className="block text-[13px] sm:text-sm font-medium mb-1 text-white/90">
-                  {t('fields.password2.label')}
-                </label>
-                <Input
-                  type="password"
-                  value={pw2}
-                  onChange={(e) => setPw2(e.target.value)}
-                  className={`${baseInput} h-10 sm:h-11`}
-                  autoComplete="new-password"
-                  required
-                  minLength={8}
-                />
-                {pw2.length > 0 && pw !== pw2 && (
-                  <div className="mt-1 text-[12px] text-red-300">{t('errors.passwordMismatch')}</div>
+                    <div>
+                      <label className="block text-[13px] sm:text-sm font-medium mb-1 text-white/90">
+                        {t('fields.password2.label')}
+                      </label>
+                      <Input
+                        type="password"
+                        value={pw2}
+                        onChange={(e) => setPw2(e.target.value)}
+                        className={`${baseInput} h-10 sm:h-11`}
+                        autoComplete="new-password"
+                        required
+                        minLength={8}
+                      />
+                      {pw2.length > 0 && pw !== pw2 && (
+                        <div className="mt-1 text-[12px] text-red-300">{t('errors.passwordMismatch')}</div>
+                      )}
+                    </div>
+                  </>
                 )}
               </div>
 
@@ -608,21 +670,23 @@ export default function SignupAccountPage() {
               {err && <div className="text-sm text-red-300">{err}</div>}
 
               <div className="space-y-3">
-                <button
-                  type="submit"
-                  disabled={!ready || loading}
-                  className="w-full rounded-full py-3 sm:py-3.5 text-[16px]  min-h-[48px] sm:text-base font-semibold
-                             bg-[var(--purple)]/80 hover:bg-[var(--purple)]
-                             disabled:opacity-50 disabled:cursor-not-allowed
-                             transition-colors"
-                >
-                  {loading ? t('buttons.creating') : t('buttons.create')}
-                </button>
+                {!oauthMode && (
+                  <button
+                    type="submit"
+                    disabled={!ready || loading}
+                    className="w-full rounded-full py-3 sm:py-3.5 text-[16px] min-h-[48px] sm:text-base font-semibold
+                              bg-[var(--purple)]/80 hover:bg-[var(--purple)]
+                              disabled:opacity-50 disabled:cursor-not-allowed
+                              transition-colors"
+                  >
+                    {loading ? t('buttons.creating') : t('buttons.create')}
+                  </button>
+                )}
 
                 <button
-                  type="button"
-                  onClick={signInWithGoogle}
-                  disabled={loading} // nur noch bei Loading sperren
+                  type={oauthMode ? 'submit' : 'button'}
+                  onClick={oauthMode ? undefined : signInWithGoogle}
+                  disabled={loading || !handle || !role || !agree || (isDomme && !dommeGiftAgree)}
                   className="w-full rounded-full py-3 text-[15px] min-h-[48px] sm:text-sm font-medium
                             border border-white/20 bg-black/20 hover:bg-black/30
                             disabled:opacity-50 disabled:cursor-not-allowed

@@ -570,7 +570,7 @@ export default function SignInPage() {
                   type="button"
                   onClick={() => signIn('google', { callbackUrl: `/${locale}` })}
                   className="w-full rounded-full py-2 text-[14px] sm:text-sm font-medium mt-1
-                             border border-white/20 bg-black/20 hover:bg-black/30 transition-colors"
+                            border border-white/20 bg-black/20 hover:bg-black/30 transition-colors"
                 >
                   {t('buttons.google')}
                 </button>

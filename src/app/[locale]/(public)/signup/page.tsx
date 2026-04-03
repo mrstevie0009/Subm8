@@ -7,7 +7,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
-import dynamic from 'next/dynamic';                        
+import dynamic from 'next/dynamic';                  
 
 // Lottie nur clientseitig laden
 const Lottie = dynamic(() => import('lottie-react'), {
@@ -68,6 +68,192 @@ function AccountTypeCard({
   );
 }
 
+type LegalTab = 'terms' | 'privacy';
+
+function TermsPrivacyModal({
+  open,
+  onClose,
+  initialTab = 'terms',
+}: {
+  open: boolean;
+  onClose: () => void;
+  initialTab?: LegalTab;
+}) {
+  const tTerms = useTranslations('legal.legal.terms');
+  const tPrivacy = useTranslations('legal.legal.privacy');
+  const tShared = useTranslations('legal.legal.shared');
+
+  const [tab, setTab] = React.useState<LegalTab>(initialTab);
+  React.useEffect(() => setTab(initialTab), [initialTab, open]);
+
+  const updatedStr = new Intl.DateTimeFormat('de-DE', { dateStyle: 'medium' }).format(new Date());
+
+  if (!open) return null;
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={tab === 'terms' ? tTerms('title') : tPrivacy('title')}
+      className="fixed inset-0 z-[100] grid place-items-center p-4"
+      onKeyDown={(e) => e.key === 'Escape' && onClose()}
+    >
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full max-w-3xl rounded-2xl bg-white/5 backdrop-blur-xl ring-1 ring-white/40 shadow-[0_8px_40px_rgba(0,0,0,.5)] overflow-hidden">
+        <div className="flex items-center justify-between px-6 pt-5">
+          <div className="inline-flex rounded-full bg-black/30 p-1 ring-1 ring-white/10">
+            <button
+              type="button"
+              onClick={() => setTab('terms')}
+              className={`px-4 py-1.5 text-sm rounded-full transition ${
+                tab === 'terms' ? 'bg-white/20 text-white' : 'text-white/70 hover:text-white/90'
+              }`}
+            >
+              {tTerms('title')}
+            </button>
+            <button
+              type="button"
+              onClick={() => setTab('privacy')}
+              className={`px-4 py-1.5 text-sm rounded-full transition ${
+                tab === 'privacy' ? 'bg-white/20 text-white' : 'text-white/70 hover:text-white/90'
+              }`}
+            >
+              {tPrivacy('title')}
+            </button>
+          </div>
+
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="text-white/70 hover:text-white/100 transition p-2"
+            title="Close"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="max-h-[70svh] overflow-y-auto px-6 pb-6 pt-4">
+          {tab === 'terms' ? (
+            <article className="prose prose-invert prose-sm sm:prose-base max-w-none">
+              <h1 className="mt-0">{tTerms('title')}</h1>
+              <p className="text-white/70 -mt-3">{tTerms('subtitle')}</p>
+              <p className="text-xs text-white/60">
+                {tShared('updated')}: {updatedStr}
+              </p>
+              <h3 className="font-bold">{tTerms('sections.scope')}</h3>
+              <p>{tTerms('content.p_scope')}</p>
+              <h3 className="font-bold">{tTerms('sections.audience')}</h3>
+              <ul className="list-disc pl-5">
+                <li>{tTerms('content.audience_li_1')}</li>
+                <li>{tTerms('content.audience_li_2')}</li>
+              </ul>
+              <h3 className="font-bold">{tTerms('sections.roles')}</h3>
+              <p>{tTerms('content.p_roles')}</p>
+              <ul className="list-disc pl-5">
+                <li>{tTerms('content.roles_li_1')}</li>
+                <li>{tTerms('content.roles_li_2')}</li>
+                <li>{tTerms('content.roles_li_3')}</li>
+              </ul>
+              <h3 className="font-bold">{tTerms('sections.tips')}</h3>
+              <ul className="list-disc pl-5">
+                <li>{tTerms('content.tips_li_1')}</li>
+                <li>{tTerms('content.tips_li_2')}</li>
+                <li>{tTerms('content.tips_li_3')}</li>
+                <li>{tTerms('content.tips_li_4')}</li>
+                <li>{tTerms('content.tips_li_5')}</li>
+              </ul>
+              <h3 className="font-bold">{tTerms('sections.fees')}</h3>
+              <ul className="list-disc pl-5">
+                <li>{tTerms('content.fees_li_1')}</li>
+                <li>{tTerms('content.fees_li_2')}</li>
+                <li>{tTerms('content.fees_li_3')}</li>
+                <li>{tTerms('content.fees_li_4')}</li>
+              </ul>
+              <h3 className="font-bold">{tTerms('sections.tax')}</h3>
+              <ul className="list-disc pl-5">
+                <li>{tTerms('content.tax_li_1')}</li>
+                <li>{tTerms('content.tax_li_2')}</li>
+                <li>{tTerms('content.tax_li_3')}</li>
+              </ul>
+              <h3 className="font-bold">{tTerms('sections.termination')}</h3>
+              <ul className="list-disc pl-5">
+                <li>{tTerms('content.termination_li_1')}</li>
+                <li>{tTerms('content.termination_li_2')}</li>
+              </ul>
+              <h3 className="font-bold">{tTerms('sections.liability')}</h3>
+              <ul className="list-disc pl-5">
+                <li>{tTerms('content.liability_li_1')}</li>
+                <li>{tTerms('content.liability_li_2')}</li>
+              </ul>
+              <h3 className="font-bold">{tTerms('sections.changes')}</h3>
+              <p>{tTerms('content.p_changes')}</p>
+              <h3 className="font-bold">{tTerms('sections.law')}</h3>
+              <p>{tTerms('content.p_law')}</p>
+            </article>
+          ) : (
+            <article className="prose prose-invert prose-sm sm:prose-base max-w-none">
+              <h1 className="mt-0">{tPrivacy('title')}</h1>
+              <p className="text-white/70 -mt-3">{tPrivacy('subtitle')}</p>
+              <p className="text-xs text-white/60">
+                {tShared('updated')}: 30.08.2025
+              </p>
+              <h3 className="font-bold">{tPrivacy('sections.controller')}</h3>
+              <p>{tPrivacy('content.p_controller')}</p>
+              <h3 className="font-bold">{tPrivacy('sections.data')}</h3>
+              <ul className="list-disc pl-5">
+                <li>{tPrivacy('content.data_li_1')}</li>
+                <li>{tPrivacy('content.data_li_2')}</li>
+                <li>{tPrivacy('content.data_li_3')}</li>
+                <li>{tPrivacy('content.data_li_4')}</li>
+              </ul>
+              <h3 className="font-bold">{tPrivacy('sections.purpose')}</h3>
+              <ul className="list-disc pl-5">
+                <li>{tPrivacy('content.purpose_li_1')}</li>
+                <li>{tPrivacy('content.purpose_li_2')}</li>
+                <li>{tPrivacy('content.purpose_li_3')}</li>
+                <li>{tPrivacy('content.purpose_li_4')}</li>
+              </ul>
+              <h3 className="font-bold">{tPrivacy('sections.legal')}</h3>
+              <ul className="list-disc pl-5">
+                <li>{tPrivacy('content.legal_li_1')}</li>
+                <li>{tPrivacy('content.legal_li_2')}</li>
+                <li>{tPrivacy('content.legal_li_3')}</li>
+              </ul>
+              <h3 className="font-bold">{tPrivacy('sections.sharing')}</h3>
+              <ul className="list-disc pl-5">
+                <li>{tPrivacy('content.sharing_li_1')}</li>
+                <li>{tPrivacy('content.sharing_li_2')}</li>
+                <li>{tPrivacy('content.sharing_li_3')}</li>
+              </ul>
+              <h3 className="font-bold">{tPrivacy('sections.retention')}</h3>
+              <p>{tPrivacy('content.p_retention')}</p>
+              <h3 className="font-bold">{tPrivacy('sections.rights')}</h3>
+              <ul className="list-disc pl-5">
+                <li>{tPrivacy('content.rights_li_1')}</li>
+                <li>{tPrivacy('content.rights_li_2')}</li>
+                <li>{tPrivacy('content.rights_li_3')}</li>
+              </ul>
+              <h3 className="font-bold">{tPrivacy('sections.cookies')}</h3>
+              <p>{tPrivacy('content.p_cookies')}</p>
+            </article>
+          )}
+        </div>
+
+        <div className="flex items-center justify-end gap-2 px-6 pb-5">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full px-4 py-2 text-sm border border-white/20 text-white/90 bg-black/20 hover:bg-black/30 transition"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ----------------- Seite ----------------- */
 export default function SignupStartPage() {
   const sp = useSearchParams();
@@ -75,6 +261,7 @@ export default function SignupStartPage() {
   const locale = useLocale();
   const t = useTranslations('auth.auth.signup');
   const tc = useTranslations('common');
+  const tAccount = useTranslations('auth.auth.signupAccount');
 
   const errorParam = sp.get('error');
   const isOAuthPending = errorParam === 'OAuthAccountNotLinked';
@@ -83,8 +270,15 @@ export default function SignupStartPage() {
   const [username, setUsername] = React.useState('');
   const [touched, setTouched] = React.useState(false);
   const [selected, setSelected] = React.useState<RoleUi | null>(null);
+  const isDomme = selected === 'domme';
   const [busy, setBusy] = React.useState(false);
   const [submitAttempted, setSubmitAttempted] = React.useState(false);
+
+  const [agree, setAgree] = React.useState(false);
+  const [dommeGiftAgree, setDommeGiftAgree] = React.useState(false);
+  const [legalOpen, setLegalOpen] = React.useState(false);
+  const [legalTab, setLegalTab] = React.useState<LegalTab>('terms');
+  const [dommeOpen, setDommeOpen] = React.useState(false);
 
   // Reihenfolge-Logik
   const [roleSelectedFirst, setRoleSelectedFirst] = React.useState(false);
@@ -209,6 +403,8 @@ export default function SignupStartPage() {
     async (h: string, r: RoleUi) => {
       if (!validHandle(h) || !r || started.current) return;
       if (handleState === 'taken') return;
+      if (!agree) return;
+      if (r === 'domme' && !dommeGiftAgree) return;
 
       started.current = true;
       setBusy(true);
@@ -251,35 +447,46 @@ export default function SignupStartPage() {
           return;
         }
 
-        //OAuth-Flow → User erstellen + einloggen
-        if (isOAuthPending && oauthEmail) {
-  // User erstellen
-  const createRes = await fetch('/api/signup/oauth-complete', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ 
-      handle: h, 
-      role: roleDb,
-      email: oauthEmail,
-    }),
-  });
+        if (isOAuthPending) {
+          const completeRes = await fetch('/api/signup/oauth-complete', {
+            method: 'POST',
+            headers: {
+              'content-type': 'application/json',
+              accept: 'application/json',
+            },
+            body: JSON.stringify({
+              handle: h,
+              role: roleDb,
+            }),
+          });
 
-  const createJson = await createRes.json().catch(() => null);
-  if (!createRes.ok || !createJson?.ok) {
-    setHandleState('error');
-    setHandleMsg(createJson?.error || t('errors.startFailed'));
-    started.current = false;
-    setBusy(false);
-    return;
-  }
+          const completeJson: unknown = await completeRes.json().catch(() => null);
 
-  // ✅ NEU: Direkt zur Homepage, NextAuth Session wird automatisch erstellt
-  // weil der User jetzt in der DB existiert und Google schon authentifiziert ist
-  window.location.href = `/${locale}`;
-  return;
-}
+          const completeOk =
+            completeRes.ok &&
+            typeof completeJson === 'object' &&
+            completeJson !== null &&
+            'ok' in completeJson &&
+            (completeJson as Record<string, unknown>).ok === true;
 
-        // Normal flow
+          if (!completeOk) {
+            const err = readErrorMessage(completeJson);
+            if (completeRes.status === 409 || (err && /exist|taken|vergeben/i.test(err))) {
+              setHandleState('taken');
+              setHandleMsg(t('errors.handleTaken'));
+            } else {
+              setHandleState('error');
+              setHandleMsg(err || t('errors.startFailed'));
+            }
+            started.current = false;
+            setBusy(false);
+            return;
+          }
+
+          window.location.assign(`/${locale}`);
+          return;
+        }
+
         router.push(`/${locale}/signup/account?handle=${encodeURIComponent(h)}&role=${roleDb}`);
       } catch {
         setHandleState('error');
@@ -288,7 +495,7 @@ export default function SignupStartPage() {
         setBusy(false);
       }
     },
-    [router, locale, handleState, t, isOAuthPending, oauthEmail] 
+    [router, locale, handleState, t, isOAuthPending, oauthEmail, agree, dommeGiftAgree] 
   );
 
   /** Username ändern — kein Auto-Redirect, nur Live-Validierung */
@@ -323,6 +530,8 @@ export default function SignupStartPage() {
 
     if (!validHandle(username)) return;
     if (!selected) return;
+    if (!agree) return;
+    if (selected === 'domme' && !dommeGiftAgree) return;
 
     const status = handleState === 'ok' ? 'ok' : await checkHandleAvailability(username);
     if (status === 'taken') return;
@@ -387,15 +596,69 @@ export default function SignupStartPage() {
               </Link>
 
               {isOAuthPending && oauthEmail && (
-                <div 
-                  className="mb-4 rounded-xl border border-blue-300/40 bg-blue-300/15 p-3 text-[13px] sm:text-sm text-blue-100"
-                  dangerouslySetInnerHTML={{
-                    __html: t('oauthPending', { email: oauthEmail })
-                  }}
-                />
+                <div className="mb-4 rounded-xl border border-blue-300/40 bg-blue-300/15 p-3 text-[13px] sm:text-sm text-blue-100">
+                  {t.rich('oauthPending', {
+                    email: oauthEmail,
+                    strong: (chunks) => <strong>{chunks}</strong>,
+                  })}
+                </div>
               )}
 
               <p className="text-white/70 text-[13px] sm:text-base">{t('chooseUsername')}</p>
+              {isDomme && (
+                <div className="mt-4 rounded-xl border border-yellow-400/40 bg-yellow-400/10">
+                  <div className="p-4 pb-2">
+                    <div className="font-semibold text-yellow-100 text-sm sm:text-base">
+                      ⚠️ {tAccount('dommeDisclaimer.title')}
+                      <ul className="text-[13px] sm:text-sm text-white/85 list-disc pl-5 space-y-1">
+                        <li>{tAccount('dommeDisclaimer.li1')}</li>
+                      </ul>
+                    </div>
+
+                    {dommeOpen ? (
+                      <div className="mt-3">
+                        <ul className="text-[13px] sm:text-sm text-white/85 list-disc pl-5 space-y-1">
+                          <li>{tAccount('dommeDisclaimer.li1')}</li>
+                          <li>{tAccount('dommeDisclaimer.li2')}</li>
+                          <li>{tAccount('dommeDisclaimer.li3')}</li>
+                          <li>{tAccount('dommeDisclaimer.li4')}</li>
+                        </ul>
+                        <div className="mt-2">
+                          <button
+                            type="button"
+                            onClick={() => setDommeOpen(false)}
+                            className="text-[12px] sm:text-sm underline text-yellow-100 hover:text-white"
+                          >
+                            {tAccount('dommeDisclaimer.readLess')}
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="mt-2">
+                        <button
+                          type="button"
+                          onClick={() => setDommeOpen(true)}
+                          className="text-[12px] sm:text-sm underline text-yellow-100 hover:text-white py-2 px-1 rounded-md active:bg-white/10"
+                        >
+                          {tAccount('dommeDisclaimer.readMore')}
+                        </button>
+                      </div>
+                    )}
+
+                    <label className="mt-3 flex items-start gap-3 p-3 rounded-lg cursor-pointer hover:bg-white/5 active:bg-white/10 transition">
+                      <input
+                        type="checkbox"
+                        className="accent-[var(--purple)] w-5 h-5"
+                        checked={dommeGiftAgree}
+                        onChange={(e) => setDommeGiftAgree(e.target.checked)}
+                      />
+                      <span className="text-[13px] sm:text-sm text-white/90">
+                        {tAccount('dommeDisclaimer.checkbox')}
+                      </span>
+                    </label>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Formular (Enter löst submit aus) */}
@@ -469,6 +732,51 @@ export default function SignupStartPage() {
                     {t('errors.selectTypeRequired')}
                   </div>
                 )}
+
+                <label className="mt-4 flex items-start gap-2 text-[13px] sm:text-sm text-white/90">
+                  <input
+                    type="checkbox"
+                    className="accent-[var(--purple)] mt-[3px]"
+                    checked={agree}
+                    onChange={(e) => setAgree(e.target.checked)}
+                  />
+                  <span>
+                    {tAccount('agree').split('Terms')[0]}
+                    <button
+                      type="button"
+                      className="underline text-purple-100 hover:text-white px-1 py-1 rounded-md active:bg-white/10"
+                      onClick={() => {
+                        setLegalTab('terms');
+                        setLegalOpen(true);
+                      }}
+                    >
+                      Terms
+                    </button>
+                    {tAccount('agree').split('Terms')[1]?.split('Privacy Policy')[0] ?? ' & '}
+                    <button
+                      type="button"
+                      className="underline text-purple-100 hover:text-white px-1 py-1 rounded-md active:bg-white/10"
+                      onClick={() => {
+                        setLegalTab('privacy');
+                        setLegalOpen(true);
+                      }}
+                    >
+                      Privacy Policy
+                    </button>
+                    {tAccount('agree').split('Privacy Policy')[1] ?? '.'}
+                  </span>
+                </label>
+                {submitAttempted && !agree && (
+                  <div className="mt-2 text-center text-[12px] text-red-300">
+                    {t('errors.consentRequired')}
+                  </div>
+                )}
+
+                {submitAttempted && isDomme && !dommeGiftAgree && (
+                  <div className="mt-2 text-center text-[12px] text-red-300">
+                    {t('errors.dommeDisclaimerRequired')}
+                  </div>
+                )}
               </div>
 
               {/* Kein Button — Enter im Username-Feld triggert onSubmit */}
@@ -494,6 +802,11 @@ export default function SignupStartPage() {
           </CardContent>
         </Card>
       </div>
+      <TermsPrivacyModal
+        open={legalOpen}
+        onClose={() => setLegalOpen(false)}
+        initialTab={legalTab}
+      />
     </div>
   );
 }
