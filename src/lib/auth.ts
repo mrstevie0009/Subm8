@@ -1,4 +1,4 @@
-//src/lib/auth.ts
+// src/lib/auth.ts
 import type { NextAuthOptions, User as NextAuthUser } from 'next-auth';
 import { PrismaAdapter } from '@next-auth/prisma-adapter';
 import GoogleProvider from 'next-auth/providers/google';
@@ -14,13 +14,12 @@ import { cookies } from 'next/headers';
 import { getClientIp } from '@/lib/ip';
 import { isBlocked, recordFailure, recordSuccess } from '@/lib/bruteforce';
 
-// ---- Base URL (lokal, bis Domain live ist)
 const SITE_URL = process.env.NEXTAUTH_URL ?? 'http://localhost:3000';
-
-// Cookie-Key für Signup-Flow
 const PENDING_SIGNUP_COOKIE = 'subm8_pending_signup';
 
-// --- Module Augmentation ---
+// ✅ NEU: Cookie für OAuth-Pending
+const OAUTH_PENDING_COOKIE = 'subm8_oauth_pending';
+
 declare module 'next-auth' {
   interface User {
     handle: string;
@@ -29,7 +28,6 @@ declare module 'next-auth' {
     email?: string | null;
     image?: string | null;
     id: string;
-    /** ⇨ hinzugefügt: Altersstatus in der DB */
     ageVerified?: boolean | null;
   }
   interface Session {
@@ -40,7 +38,6 @@ declare module 'next-auth' {
       name?: string | null;
       email?: string | null;
       image?: string | null;
-      /** ⇨ hinzugefügt: Altersstatus in der Session */
       ageVerified?: boolean | null;
     };
   }
@@ -54,7 +51,6 @@ declare module 'next-auth/jwt' {
     name?: string | null;
     email?: string | null;
     picture?: string | null;
-    /** ⇨ hinzugefügt: Altersstatus im Token */
     ageVerified?: boolean | null;
   }
 }
@@ -94,39 +90,39 @@ function augmentedPrismaAdapter(): Adapter {
   return {
     ...base,
     async createUser(data: Omit<AdapterUser, 'id'>): Promise<AdapterUser> {
-      const name = (data.name ?? '') as string;
-      const email = (data.email ?? null) as string | null;
-      const image = (data.image ?? null) as string | null;
+    const email = (data.email ?? null) as string | null;
 
-      const displayName = name || (email ? email.split('@')[0] : '') || 'User';
-      const handle = await generateUniqueHandle('user');
-      const role: Role = 'SUBMISSIVE';
+      // ✅ NEU: Check ob User schon existiert (via Email)
+      if (email) {
+        const existing = await prisma.user.findUnique({
+          where: { email: email.toLowerCase() },
+          select: { 
+            id: true, 
+            handle: true, 
+            role: true, 
+            displayName: true, 
+            avatarUrl: true,
+            ageVerified: true,
+          },
+        });
 
-      const created = await prisma.user.create({
-        data: {
-          email,
-          displayName,
-          avatarUrl: image,
-          handle,
-          role,
-          emailVerifiedAt: email ? new Date() : null,
-        },
-      });
+        if (existing) {
+          // User existiert bereits → return AdapterUser
+          return {
+            id: existing.id,
+            name: existing.displayName,
+            email: email,
+            emailVerified: new Date(),
+            image: existing.avatarUrl ?? null,
+            handle: existing.handle,
+            role: existing.role,
+          } as unknown as AdapterUser;
+        }
+      }
 
-      // AdapterUser – inkl. augmentierter Felder (handle/role)
-      const adapterUser: AdapterUser = {
-        id: created.id,
-        name: created.displayName,
-        email: created.email ?? '',
-        emailVerified: null,
-        image: created.avatarUrl ?? null,
-        // ts-expect-error: augmentierte Felder
-        handle: created.handle,
-        // ts-expect-error: augmentierte Felder
-        role: created.role,
-      } as unknown as AdapterUser;
-
-      return adapterUser;
+      // ✅ WICHTIG: User existiert NICHT → NICHT erstellen, sondern Error werfen
+      // Damit wird der OAuth-Flow abgebrochen und wir können zum Signup leiten
+      throw new Error('OAUTH_USER_NOT_FOUND');
     },
   };
 }
@@ -177,16 +173,12 @@ export const authOptions: NextAuthOptions = {
 
         const ip = await getClientIp();
 
-          // 1) Vorab: Block prüfen (ohne Throw, einfach early-return)
         const block = await isBlocked(ip, rawInput);
         console.log('auth.authorize: isBlocked', { ip, rawInput, block });
         if (!block.ok) {
-          // KEIN throw – gib null zurück.
-          // Die UI ruft danach /api/auth/brute-status auf und zeigt die richtige Meldung.
           return null;
         }
 
-        // 2) User lookup wie gehabt
         const emailLike = rawInput.toLowerCase();
         const handleLike = rawInput.replace(/^@/, '').toLowerCase();
 
@@ -218,7 +210,6 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
         if (user.isDeactivated) {
-          // gesperrte Accounts nicht in Throttle zählen (optional)
           throw new Error('ACCOUNT_DEACTIVATED');
         }
 
@@ -233,7 +224,6 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
 
-        // ✅ Passwort ist korrekt → Throttle resetten
         try {
           void recordSuccess(ip, rawInput);
           console.log('auth.authorize: queued recordSuccess', { ip, rawInput, userId: user.id });
@@ -241,30 +231,61 @@ export const authOptions: NextAuthOptions = {
           console.error('auth.authorize: recordSuccess error', { err, ip, rawInput });
         }
 
-        // ✅ JETZT erst Email-Verified erzwingen (leakt weniger)
         if (!user.emailVerifiedAt) {
           throw new Error('EMAIL_NOT_VERIFIED');
         }
 
-        // include ageVerified so callers / jwt callback can avoid another DB hit
         const authUser: NextAuthUser = {
-        id: user.id,
-        email: user.email ?? null,
-        name: user.displayName ?? null,
-        image: user.avatarUrl ?? null,
-        handle: user.handle,
-        role: user.role,
-        ageVerified: user.ageVerified ?? false, // ← sauber typisiert dank Module Augmentation
-      };
+          id: user.id,
+          email: user.email ?? null,
+          name: user.displayName ?? null,
+          image: user.avatarUrl ?? null,
+          handle: user.handle,
+          role: user.role,
+          ageVerified: user.ageVerified ?? false,
+        };
         return authUser;
       }
     }),
   ],
 
-  // Bridge, damit NextAuth nicht auf /signin ohne Locale leitet
   pages: { signIn: '/signin-bridge' },
 
   callbacks: {
+    // ✅ NEU: signIn Callback für OAuth-User-Check
+    async signIn({ user, account }) {
+      // Nur für OAuth-Provider
+      if (account?.provider === 'google') {
+        const email = user.email?.toLowerCase();
+        if (!email) return false;
+
+        // Check ob User existiert
+        const existing = await prisma.user.findUnique({
+          where: { email },
+          select: { id: true },
+        });
+
+        // User existiert → normal einloggen
+        if (existing) {
+          return true;
+        }
+
+        // User existiert NICHT → Cookie setzen & zu Signup leiten
+        const c = await cookies();
+        c.set(OAUTH_PENDING_COOKIE, email, {
+          httpOnly: true,
+          sameSite: 'lax',
+          path: '/',
+          maxAge: 600, // 10 Minuten
+        });
+
+        // NextAuth wird zum error-Parameter redirecten
+        return `/signup?error=OAuthAccountNotLinked`;
+      }
+
+      return true;
+    },
+
     async redirect({ url, baseUrl }) {
       const devBase = SITE_URL;
       if (url.startsWith('/')) return `${devBase}${url}`;
@@ -279,7 +300,6 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.uid = user.id;
 
-        // Dank Module Augmentation hat NextAuthUser diese Felder typisiert:
         const u = user as NextAuthUser;
 
         if (u.handle || u.role || typeof u.ageVerified !== 'undefined') {
@@ -290,7 +310,6 @@ export const authOptions: NextAuthOptions = {
           token.email = typeof u.email !== 'undefined' ? u.email : token.email ?? null;
           token.ageVerified = typeof u.ageVerified !== 'undefined' ? u.ageVerified : token.ageVerified;
         } else {
-          // Fallback: nur wenn Felder fehlen, DB lesen
           const dbUser = await prisma.user.findUnique({
             where: { id: user.id },
             select: {
@@ -358,7 +377,6 @@ export const authOptions: NextAuthOptions = {
       if (typeof token.picture !== 'undefined') session.user.image = token.picture;
       if (typeof token.email !== 'undefined') session.user.email = token.email;
 
-      /** ⇨ neu: Altersstatus in die Session mappen */
       if (typeof token.ageVerified !== 'undefined') {
         session.user.ageVerified = token.ageVerified ?? false;
       }
@@ -368,9 +386,8 @@ export const authOptions: NextAuthOptions = {
   },
 
   events: {
-    // Nach erstem OAuth-Create: Wunsch-Handle/Rolle aus Cookie übernehmen
     async createUser(message) {
-      const c = await cookies(); // async in deiner Umgebung
+      const c = await cookies();
       const raw = c.get(PENDING_SIGNUP_COOKIE)?.value;
       if (!raw) return;
 
@@ -403,13 +420,11 @@ export const authOptions: NextAuthOptions = {
           });
         }
       } catch {
-        // still ok – Account existiert
+        // still ok
       }
-      // Cookie bleibt (readonly). Es verfällt automatisch per Max-Age.
     },
   },
 };
 
-// Helper für Server Components/Actions
 export const getAuth = () => getServerSession(authOptions);
 export const auth = getAuth;

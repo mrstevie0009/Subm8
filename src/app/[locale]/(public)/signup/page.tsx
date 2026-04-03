@@ -5,9 +5,9 @@ import * as React from 'react';
 import { createPortal } from 'react-dom';                     
 import Link from 'next/link';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
-import dynamic from 'next/dynamic';                          
+import dynamic from 'next/dynamic';                        
 
 // Lottie nur clientseitig laden
 const Lottie = dynamic(() => import('lottie-react'), {
@@ -70,10 +70,15 @@ function AccountTypeCard({
 
 /* ----------------- Seite ----------------- */
 export default function SignupStartPage() {
+  const sp = useSearchParams();
   const router = useRouter();
   const locale = useLocale();
   const t = useTranslations('auth.auth.signup');
   const tc = useTranslations('common');
+
+  const errorParam = sp.get('error');
+  const isOAuthPending = errorParam === 'OAuthAccountNotLinked';
+  const [oauthEmail, setOauthEmail] = React.useState<string | null>(null);
 
   const [username, setUsername] = React.useState('');
   const [touched, setTouched] = React.useState(false);
@@ -83,6 +88,18 @@ export default function SignupStartPage() {
 
   // Reihenfolge-Logik
   const [roleSelectedFirst, setRoleSelectedFirst] = React.useState(false);
+
+  // OAuth Email aus Cookie lesen
+  React.useEffect(() => {
+    if (!isOAuthPending) return;
+    
+    const cookies = document.cookie.split(';');
+    const oauthCookie = cookies.find(c => c.trim().startsWith('subm8_oauth_pending='));
+    if (oauthCookie) {
+      const email = oauthCookie.split('=')[1];
+      setOauthEmail(decodeURIComponent(email));
+    }
+  }, [isOAuthPending]);
 
   // Handle-Verfügbarkeit
   type HandleState = 'idle' | 'checking' | 'ok' | 'taken' | 'error';
@@ -202,7 +219,12 @@ export default function SignupStartPage() {
         const res = await fetch('/api/signup/start', {
           method: 'POST',
           headers: { 'content-type': 'application/json', accept: 'application/json' },
-          body: JSON.stringify({ handle: h, role: roleDb }),
+          body: JSON.stringify({ 
+            handle: h, 
+            role: roleDb,
+            //NEU: OAuth-Email mitschicken falls vorhanden
+            ...(isOAuthPending && oauthEmail ? { oauthEmail } : {}),
+          }),
         });
 
         let ok = res.ok;
@@ -229,6 +251,35 @@ export default function SignupStartPage() {
           return;
         }
 
+        //OAuth-Flow → User erstellen + einloggen
+        if (isOAuthPending && oauthEmail) {
+  // User erstellen
+  const createRes = await fetch('/api/signup/oauth-complete', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ 
+      handle: h, 
+      role: roleDb,
+      email: oauthEmail,
+    }),
+  });
+
+  const createJson = await createRes.json().catch(() => null);
+  if (!createRes.ok || !createJson?.ok) {
+    setHandleState('error');
+    setHandleMsg(createJson?.error || t('errors.startFailed'));
+    started.current = false;
+    setBusy(false);
+    return;
+  }
+
+  // ✅ NEU: Direkt zur Homepage, NextAuth Session wird automatisch erstellt
+  // weil der User jetzt in der DB existiert und Google schon authentifiziert ist
+  window.location.href = `/${locale}`;
+  return;
+}
+
+        // Normal flow
         router.push(`/${locale}/signup/account?handle=${encodeURIComponent(h)}&role=${roleDb}`);
       } catch {
         setHandleState('error');
@@ -237,7 +288,7 @@ export default function SignupStartPage() {
         setBusy(false);
       }
     },
-    [router, locale, handleState, t]
+    [router, locale, handleState, t, isOAuthPending, oauthEmail] 
   );
 
   /** Username ändern — kein Auto-Redirect, nur Live-Validierung */
@@ -334,6 +385,16 @@ export default function SignupStartPage() {
               >
                 {tc('brand.name')}
               </Link>
+
+              {isOAuthPending && oauthEmail && (
+                <div 
+                  className="mb-4 rounded-xl border border-blue-300/40 bg-blue-300/15 p-3 text-[13px] sm:text-sm text-blue-100"
+                  dangerouslySetInnerHTML={{
+                    __html: t('oauthPending', { email: oauthEmail })
+                  }}
+                />
+              )}
+
               <p className="text-white/70 text-[13px] sm:text-base">{t('chooseUsername')}</p>
             </div>
 

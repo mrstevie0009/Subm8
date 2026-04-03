@@ -18,13 +18,17 @@ function parseRole(raw: unknown): Role {
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json().catch(() => null) as { handle?: string; role?: string } | null;
+    const body = await req.json().catch(() => null) as { 
+      handle?: string; 
+      role?: string;
+      oauthEmail?: string;
+    } | null;
+    
     const handle = String(body?.handle ?? '').toLowerCase();
     if (!isValidHandle(handle)) {
       return Response.json({ ok: false, error: 'Invalid handle' }, { status: 400 });
     }
 
-    // validate & normalize role
     let role: Role;
     try {
       role = parseRole(body?.role);
@@ -38,10 +42,19 @@ export async function POST(req: NextRequest) {
       return Response.json({ ok: false, error: 'Handle already taken' }, { status: 409 });
     }
 
-    // Für den nächsten Schritt kurz puffern (optional, aber robust)
+    // Cookie setzen
     const c = await cookies();
     c.set('signup_handle', handle, { httpOnly: true, sameSite: 'lax', path: '/', maxAge: 900 });
-    c.set('signup_role', role,   { httpOnly: true, sameSite: 'lax', path: '/', maxAge: 900 });
+    c.set('signup_role', role, { httpOnly: true, sameSite: 'lax', path: '/', maxAge: 900 });
+
+    if (body?.oauthEmail) {
+      c.set('signup_oauth_email', body.oauthEmail, { 
+        httpOnly: true, 
+        sameSite: 'lax', 
+        path: '/', 
+        maxAge: 900 
+      });
+    }
 
     return Response.json({ ok: true });
   } catch (e) {
