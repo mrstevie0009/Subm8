@@ -11,6 +11,7 @@ import {
   deactivateOrDeleteUserAction,
   resolveReportsAction,
   resolveGroupReportsAction,
+  markFeedbackReviewedAction,
 } from '@/app/_actions/admin';
 
 type Params = { locale: string };
@@ -166,6 +167,23 @@ async function loadAggregatedGroupReports() {
   return rows;
 }
 
+async function loadLatestFeedback(limit = 100) {
+  return prisma.feedback.findMany({
+    orderBy: { createdAt: 'desc' },
+    take: limit,
+    include: {
+      user: {
+        select: {
+          id: true,
+          handle: true,
+          displayName: true,
+          email: true,
+        },
+      },
+    },
+  });
+}
+
 async function loadLatestPosts(limit = 30) {
   return prisma.post.findMany({
     orderBy: { createdAt: 'desc' },
@@ -213,14 +231,15 @@ export default async function AdminPage({
     redirect(`/${locale}/signin`);
   }
 
-  const [revenue, reports, groupReports, posts, users, previewPost, blocked] = await Promise.all([
+  const [revenue, reports, groupReports, posts, users, previewPost, blocked, feedback] = await Promise.all([
     loadRevenue(200),
     loadAggregatedReports(),
-    loadAggregatedGroupReports(), // 👈 dieses Ergebnis landet jetzt in groupReports
+    loadAggregatedGroupReports(),
     loadLatestPosts(30),
     loadLatestUsers(30),
     previewPostId ? loadPostPreview(previewPostId) : Promise.resolve(null),
     loadBlocked(),
+    loadLatestFeedback(100),
   ]);
 
   const kpis = (() => {
@@ -350,6 +369,100 @@ export default async function AdminPage({
                   ))}
                 </tbody>
               </table>
+            </div>
+          </section>
+
+                    <section className="rounded-lg border border-white/10 p-4">
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <div>
+                <h2 className="text-base font-semibold">Feedback</h2>
+                <p className="text-xs text-white/50">
+                  Eingesendetes Nutzer-Feedback mit optionalem Screenshot.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid gap-3">
+              {feedback.length === 0 && (
+                <div className="text-sm text-white/60">Kein Feedback vorhanden.</div>
+              )}
+
+              {feedback.map((f) => (
+                <div
+                  key={f.id}
+                  className="rounded-lg border border-white/10 p-3"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium">
+                        {f.user?.handle ? (
+                          <>
+                            @{f.user.handle}
+                            <span className="text-white/50 font-normal">
+                              {' '}({f.user.displayName ?? f.user.handle})
+                            </span>
+                          </>
+                        ) : (
+                          <span className="text-white/70">Unbekannter User</span>
+                        )}
+                      </p>
+
+                      <p className="text-xs text-white/50 mt-1">
+                        {new Date(f.createdAt).toLocaleString()}
+                      </p>
+
+                      {f.user?.email && (
+                        <p className="text-xs text-white/40 mt-1">{f.user.email}</p>
+                      )}
+                    </div>
+
+                    <span
+                      className={[
+                        'rounded px-2 py-0.5 text-xs border',
+                        f.status === 'REVIEWED'
+                          ? 'bg-green-500/15 border-green-400/30 text-green-200'
+                          : 'bg-white/10 border-white/10',
+                      ].join(' ')}
+                    >
+                      {f.status}
+                    </span>
+                  </div>
+
+                  {f.text && (
+                    <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed">
+                      {f.text}
+                    </p>
+                  )}
+
+                  {f.imageUrl && (
+                    <figure className="mt-3 overflow-hidden rounded-lg border border-white/10">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={f.imageUrl}
+                        alt="Feedback upload"
+                        className="block w-full h-auto"
+                      />
+                    </figure>
+                  )}
+
+                  {f.userAgent && (
+                    <p className="mt-3 text-[11px] text-white/35 break-all">
+                      {f.userAgent}
+                    </p>
+                  )}
+
+                  <div className="mt-3 flex items-center justify-end gap-2">
+                    {f.status !== 'REVIEWED' && (
+                      <form action={markFeedbackReviewedAction}>
+                        <input type="hidden" name="feedbackId" value={f.id} />
+                        <button className="text-xs rounded-full border border-white/15 px-3 py-1 hover:bg-white/10">
+                          Als geprüft markieren
+                        </button>
+                      </form>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
           </section>
 

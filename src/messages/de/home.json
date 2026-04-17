@@ -1,4 +1,30 @@
 {
+  "feedbackFab": {
+  "post": "Post",
+  "feedback": "Feedback",
+  "newPosts_one": "{count} neuer Post",
+  "newPosts_other": "{count} neue Posts",
+
+  "closeActionsAria": "Aktionen schließen",
+  "openActionsAria": "Aktionen öffnen",
+  "closeFeedbackModalAria": "Feedback-Dialog schließen",
+
+  "modalTitle": "Feedback senden",
+  "modalDescription": "Sag mir, was falsch ist oder was verbessert werden sollte.",
+  "textareaPlaceholder": "Schreibe dein Feedback...",
+  "attachImage": "Bild anhängen",
+  "attachedImage": "Bild: {name}",
+
+  "cancel": "Abbrechen",
+  "send": "Senden",
+  "sending": "Wird gesendet...",
+
+  "errorEmpty": "Bitte gib Feedback ein oder hänge ein Bild an.",
+  "errorSubmit": "Feedback konnte nicht gesendet werden.",
+
+  "successTitle": "Danke für dein Feedback",
+  "successText": "Wir schauen es uns an."
+},
   "bookmarksPage": {
     "ariaBack": "Zurück zum Feed",
     "emptyDesc": "Speichere Posts, um jederzeit darauf zugreifen zu können.",

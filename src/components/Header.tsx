@@ -476,8 +476,9 @@ export default function Header({ locale }: { locale: string }) {
         {
           height: headerHeight,
           ['--header-h']: headerHeight,
-          ['--icon-size']: iconSize,        // <<< Variable bereitstellen
+          ['--icon-size']: iconSize,
           background: '#000',
+          borderBottom: '1px solid rgba(255,255,255,.10)',
           transform: hidden ? `translateY(calc(-1 * ${headerHeight}))` : 'translateY(0)',
           transition: 'transform 220ms ease',
           willChange: 'transform',
@@ -485,7 +486,6 @@ export default function Header({ locale }: { locale: string }) {
       }
       aria-label="Subm8 Header"
     >
-      <div className="absolute left-0 right-0 bottom-0 h-px bg-white/5" />
 
       <div
         ref={innerRef}

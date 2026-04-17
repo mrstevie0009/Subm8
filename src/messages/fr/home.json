@@ -1,4 +1,30 @@
 {
+  "feedbackFab": {
+  "post": "Publication",
+  "feedback": "Retour",
+  "newPosts_one": "{count} nouvelle publication",
+  "newPosts_other": "{count} nouvelles publications",
+
+  "closeActionsAria": "Fermer les actions",
+  "openActionsAria": "Ouvrir les actions",
+  "closeFeedbackModalAria": "Fermer la fenêtre de retour",
+
+  "modalTitle": "Envoyer un retour",
+  "modalDescription": "Dis-moi ce qui ne va pas ou ce qui devrait être amélioré.",
+  "textareaPlaceholder": "Écris ton retour...",
+  "attachImage": "Joindre une image",
+  "attachedImage": "Image : {name}",
+
+  "cancel": "Annuler",
+  "send": "Envoyer",
+  "sending": "Envoi en cours...",
+
+  "errorEmpty": "Veuillez saisir un retour ou joindre une image.",
+  "errorSubmit": "Impossible d’envoyer le retour.",
+
+  "successTitle": "Merci pour ton retour",
+  "successText": "Nous allons l’examiner."
+},
   "bookmarksPage": {
     "ariaBack": "Retour au flux",
     "emptyDesc": "Enregistrez des publications pour y accéder à tout moment.",

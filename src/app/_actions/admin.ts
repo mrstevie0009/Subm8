@@ -89,3 +89,17 @@ export async function resolveGroupReportsAction(form: FormData) {
 
   revalidatePath('/[locale]/admin', 'page');
 }
+
+export async function markFeedbackReviewedAction(form: FormData) {
+  await assertAdmin();
+
+  const feedbackId = String(form.get('feedbackId') ?? '');
+  if (!feedbackId) throw new Error('feedbackId missing');
+
+  await prisma.feedback.update({
+    where: { id: feedbackId },
+    data: { status: 'REVIEWED' },
+  });
+
+  revalidatePath('/[locale]/admin', 'page');
+}

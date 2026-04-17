@@ -38,6 +38,15 @@ img, video, canvas, svg {
   word-break: break-word;
 }
 
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 /* Utility-Aliase */
 .bg-card{background:var(--card)}
 .border-sub{border-color:var(--border)}

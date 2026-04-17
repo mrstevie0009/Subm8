@@ -2,16 +2,17 @@
 'use client';
 
 import * as React from 'react';
-import { useSearchParams } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import PostCard from '@/components/PostCard';
 import type { FeedPost } from '@/components/PostCard';
 import { AnimatePresence } from 'framer-motion';
 
-// Lottie (dynamisch, um SSR-Probleme zu vermeiden)
+
 import dynamic from 'next/dynamic';
 const Lottie = dynamic(() => import('lottie-react'), { ssr: false });
 
-// Deine Lottie-Datei
+
 import heartPress from '@/lotties/Heart-press-lottie.json';
 
 
@@ -241,8 +242,38 @@ function FeedSkeleton() {
   );
 }
 
+function PlusIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M12 5v14" />
+      <path d="M5 12h14" />
+    </svg>
+  );
+}
+
+function PencilSquareIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M16.862 3.487a2.1 2.1 0 1 1 2.97 2.97L9.75 16.54 6 17.5l.96-3.75 9.902-10.263Z" />
+      <path d="M14.5 5.85l3.65 3.65" />
+      <path d="M4.75 20.25h14.5" />
+    </svg>
+  );
+}
+
+function MessageIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5c-1.26 0-2.45-.27-3.53-.75L3 21l1.75-5.97A8.46 8.46 0 0 1 4 11.5 8.5 8.5 0 1 1 21 11.5Z" />
+    </svg>
+  );
+}
+
 export default function HomeFeedClient({ initialItems }: Props) {
+  const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
+  const t = useTranslations('home.feedbackFab');
 
   const PAGE_SIZE = 12; // kleinere erste Ladung für schnellere Wahrnehmung
   const hasServerItems = initialItems.length > 0;
@@ -315,6 +346,14 @@ export default function HomeFeedClient({ initialItems }: Props) {
   const [optimisticPosts, setOptimisticPosts] = React.useState<FeedPost[]>([]);
   const [firstLoading, setFirstLoading] = React.useState(items.length === 0);
   const [feedReady, setFeedReady] = React.useState(items.length > 0);
+  const [fabOpen, setFabOpen] = React.useState(false);
+  const [feedbackOpen, setFeedbackOpen] = React.useState(false);
+  const [feedbackText, setFeedbackText] = React.useState('');
+  const [feedbackImage, setFeedbackImage] = React.useState<File | null>(null);
+  const [feedbackSubmitting, setFeedbackSubmitting] = React.useState(false);
+  const [feedbackError, setFeedbackError] = React.useState<string | null>(null);
+  const [feedbackSuccess, setFeedbackSuccess] = React.useState(false);
+  const [fabHiddenByScroll, setFabHiddenByScroll] = React.useState(false);
   
 
   // Bottom-Infinite-Scroll
@@ -566,11 +605,133 @@ export default function HomeFeedClient({ initialItems }: Props) {
     });
   }, [loadNewPosts]);
 
+  const openCompose = React.useCallback(() => {
+    const sp = new URLSearchParams(searchParams.toString());
+    sp.set('compose', '1');
+    router.push(`${pathname}?${sp.toString()}`, { scroll: false });
+    setFabOpen(false);
+  }, [pathname, router, searchParams]);
+
+  const openFeedback = React.useCallback(() => {
+    setFabOpen(false);
+    setFeedbackError(null);
+    setFeedbackSuccess(false);
+    setFeedbackOpen(true);
+  }, []);
+
+  const submitFeedback = React.useCallback(async () => {
+    const text = feedbackText.trim();
+    if (!text && !feedbackImage) {
+      setFeedbackError(t('errorEmpty'));
+      return;
+    }
+
+    setFeedbackSubmitting(true);
+    setFeedbackError(null);
+
+    try {
+      const fd = new FormData();
+      fd.append('text', text);
+      if (feedbackImage) fd.append('image', feedbackImage);
+
+      const res = await fetch('/api/feedback', {
+        method: 'POST',
+        body: fd,
+      });
+
+      const data = (await res.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
+
+      if (!res.ok || !data?.ok) {
+        throw new Error(data?.error || t('errorSubmit'));
+      }
+
+      setFeedbackText('');
+      setFeedbackImage(null);
+      setFeedbackSuccess(true);
+
+      window.setTimeout(() => {
+        setFeedbackOpen(false);
+        setFeedbackSuccess(false);
+      }, 1600);
+    } catch (err) {
+      setFeedbackError(err instanceof Error ? err.message : t('errorSubmit'));
+    } finally {
+      setFeedbackSubmitting(false);
+    }
+  }, [feedbackText, feedbackImage, t]);
+
   React.useEffect(() => {
     const handler = () => { void handleClickNew(); };
     window.addEventListener('home:refresh', handler as EventListener);
     return () => window.removeEventListener('home:refresh', handler as EventListener);
   }, [handleClickNew]);
+
+  React.useEffect(() => {
+    if (!fabOpen && !feedbackOpen) return;
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      if (feedbackOpen) setFeedbackOpen(false);
+      else setFabOpen(false);
+    };
+
+    const prev = document.body.style.overflow;
+    document.addEventListener('keydown', onKey);
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [fabOpen, feedbackOpen]);
+
+  React.useEffect(() => {
+    if (fabOpen || feedbackOpen) {
+      setFabHiddenByScroll(false);
+      return;
+    }
+
+    let raf = 0;
+    let lastY = window.scrollY || 0;
+
+    const onScroll = () => {
+      if (raf) return;
+
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+
+        const y = window.scrollY || 0;
+        const delta = y - lastY;
+
+        // ganz oben -> immer zeigen
+        if (y < 24) {
+          setFabHiddenByScroll(false);
+          lastY = y;
+          return;
+        }
+
+        // kleine Mikrobewegungen ignorieren
+        if (Math.abs(delta) < 8) return;
+
+        if (delta > 0) {
+          // runter
+          setFabHiddenByScroll(true);
+        } else {
+          // rauf
+          setFabHiddenByScroll(false);
+        }
+
+        lastY = y;
+      });
+    };
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [fabOpen, feedbackOpen]);
 
   // Optimistic Post Creation
   React.useEffect(() => {
@@ -589,6 +750,8 @@ export default function HomeFeedClient({ initialItems }: Props) {
     window.addEventListener('post:optimistic', handleOptimistic);
     return () => window.removeEventListener('post:optimistic', handleOptimistic);
   }, []);
+
+  const fabVisible = fabOpen || feedbackOpen || !fabHiddenByScroll;
 
   return (
     <>
@@ -638,7 +801,9 @@ export default function HomeFeedClient({ initialItems }: Props) {
               </div>
             </div>
           ) : (
-            `${newCount} New ${newCount === 1 ? 'post' : 'posts'}`
+            newCount === 1
+              ? t('newPosts_one', { count: newCount })
+              : t('newPosts_other', { count: newCount })
           )}
         </button>
       </div>
@@ -683,6 +848,159 @@ export default function HomeFeedClient({ initialItems }: Props) {
           <div className="text-center text-sm opacity-60 py-6">Keine weiteren Posts.</div>
         )}
       </section>
+
+      {feedbackOpen && (
+        <>
+          <button
+            type="button"
+            aria-label={t('closeFeedbackModalAria')}
+            onClick={() => setFeedbackOpen(false)}
+            className="fixed inset-0 z-[94] bg-black/60"
+          />
+
+          <div className="fixed inset-0 z-[95] overflow-y-auto overscroll-contain no-scrollbar">
+            <div className="min-h-full flex items-center justify-center p-4 sm:p-6">
+              <div className="w-full max-w-md max-h-[calc(100dvh-2rem)] rounded-[24px] border border-white/10 bg-black shadow-2xl overflow-hidden">
+              <div className="px-4 py-4 border-b border-white/10">
+                <div className="text-white text-lg font-semibold">{t('modalTitle')}</div>
+                <div className="text-white/60 text-sm mt-1">
+                  {t('modalDescription')}
+                </div>
+              </div>
+
+              <div className="p-4 grid gap-4 overflow-y-auto max-h-[calc(100dvh-9rem)] no-scrollbar">
+                <textarea
+                  value={feedbackText}
+                  onChange={(e) => setFeedbackText(e.target.value)}
+                  rows={5}
+                  maxLength={2000}
+                  placeholder={t('textareaPlaceholder')}
+                  className="w-full rounded-2xl bg-white/5 border border-white/10 px-4 py-3 text-white placeholder:text-white/35 outline-none resize-none focus:border-[var(--purple)]"
+                />
+
+                <label className="block">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0] ?? null;
+                      setFeedbackImage(file);
+                    }}
+                  />
+                  <span className="inline-flex h-11 items-center rounded-full border border-white/10 bg-white/5 px-4 text-sm text-white cursor-pointer hover:bg-white/8">
+                    {feedbackImage
+                      ? t('attachedImage', { name: feedbackImage.name })
+                      : t('attachImage')}
+                  </span>
+                </label>
+
+                {feedbackError && (
+                  <div className="text-sm text-red-400">{feedbackError}</div>
+                )}
+
+                {feedbackSuccess && (
+                  <div className="rounded-2xl border border-green-400/20 bg-green-500/10 px-4 py-3">
+                    <div className="text-sm font-medium text-green-200">
+                      {t('successTitle')}
+                    </div>
+                    <div className="mt-1 text-xs text-green-200/80">
+                      {t('successText')}
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setFeedbackOpen(false)}
+                    disabled={feedbackSubmitting}
+                    className="h-11 px-4 rounded-full border border-white/10 text-white hover:bg-white/5 disabled:opacity-60"
+                  >
+                    {t('cancel')}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={submitFeedback}
+                    disabled={feedbackSubmitting || feedbackSuccess}
+                    className="h-11 px-5 rounded-full bg-[var(--purple)] text-white disabled:opacity-60"
+                  >
+                    {feedbackSubmitting ? t('sending') : t('send')}
+                  </button>
+                </div>
+              </div>
+            </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* FAB Backdrop */}
+      {fabOpen && !feedbackOpen && (
+        <button
+          type="button"
+          aria-label="Close actions"
+          onClick={() => setFabOpen(false)}
+          className="fixed inset-0 z-[88] bg-black/35"
+        />
+      )}
+
+      {/* FAB Actions */}
+      <div
+        className={[
+          'fixed right-4 z-[90] flex flex-col items-end gap-3',
+          'transition-all duration-300 ease-out will-change-transform',
+          fabVisible
+            ? 'translate-y-0 opacity-100 scale-100'
+            : 'translate-y-8 opacity-0 scale-90 pointer-events-none',
+        ].join(' ')}
+        style={{ bottom: 'calc(76px + env(safe-area-inset-bottom))' }}
+      >
+        <div
+          className={[
+            'flex flex-col items-end gap-3 transition-all duration-200',
+            fabOpen
+              ? 'opacity-100 translate-y-0 pointer-events-auto'
+              : 'opacity-0 translate-y-2 pointer-events-none',
+          ].join(' ')}
+        >
+          <button
+            type="button"
+            onClick={openFeedback}
+            className="flex items-center gap-3 rounded-full bg-black text-white shadow-xl border border-white/10 px-4 h-12"
+          >
+            <span className="text-sm font-medium">{t('feedback')}</span>
+            <span className="grid place-items-center w-10 h-10 rounded-full bg-[var(--purple)] text-white">
+              <MessageIcon className="w-5 h-5" />
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={openCompose}
+            className="flex items-center gap-3 rounded-full bg-black text-white shadow-xl border border-white/10 px-4 h-12"
+          >
+            <span className="text-sm font-medium">{t('post')}</span>
+            <span className="grid place-items-center w-10 h-10 rounded-full bg-[var(--purple)] text-white">
+              <PencilSquareIcon className="w-5 h-5" />
+            </span>
+          </button>
+        </div>
+
+        <button
+          type="button"
+          aria-label={fabOpen ? t('closeActionsAria') : t('openActionsAria')}
+          onClick={() => setFabOpen((v) => !v)}
+          className={[
+            'grid place-items-center w-16 h-16 rounded-full shadow-2xl',
+            'bg-[var(--purple)] text-white transition-all duration-300 ease-out',
+            fabOpen ? 'rotate-45 scale-95' : 'rotate-0 scale-100',
+          ].join(' ')}
+        >
+          <PlusIcon className="w-7 h-7" />
+        </button>
+      </div>
     </>
   );
 }

@@ -1,4 +1,30 @@
 {
+  "feedbackFab": {
+  "post": "Publicación",
+  "feedback": "Comentarios",
+  "newPosts_one": "{count} publicación nueva",
+  "newPosts_other": "{count} publicaciones nuevas",
+
+  "closeActionsAria": "Cerrar acciones",
+  "openActionsAria": "Abrir acciones",
+  "closeFeedbackModalAria": "Cerrar cuadro de comentarios",
+
+  "modalTitle": "Enviar comentarios",
+  "modalDescription": "Dime qué está mal o qué debería mejorarse.",
+  "textareaPlaceholder": "Escribe tus comentarios...",
+  "attachImage": "Adjuntar imagen",
+  "attachedImage": "Imagen: {name}",
+
+  "cancel": "Cancelar",
+  "send": "Enviar",
+  "sending": "Enviando...",
+
+  "errorEmpty": "Introduce comentarios o adjunta una imagen.",
+  "errorSubmit": "No se pudieron enviar los comentarios.",
+
+  "successTitle": "Gracias por tus comentarios",
+  "successText": "Lo revisaremos."
+},
   "bookmarksPage": {
     "ariaBack": "Volver al feed",
     "emptyDesc": "Guarda publicaciones para acceder a ellas en cualquier momento.",

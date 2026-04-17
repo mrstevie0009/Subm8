@@ -1,4 +1,30 @@
 {
+  "feedbackFab": {
+  "post": "Post",
+  "feedback": "Feedback",
+  "newPosts_one": "{count} new post",
+  "newPosts_other": "{count} new posts",
+
+  "closeActionsAria": "Close actions",
+  "openActionsAria": "Open actions",
+  "closeFeedbackModalAria": "Close feedback dialog",
+
+  "modalTitle": "Send feedback",
+  "modalDescription": "Tell me what is wrong or what should be improved.",
+  "textareaPlaceholder": "Write your feedback...",
+  "attachImage": "Attach image",
+  "attachedImage": "Image: {name}",
+
+  "cancel": "Cancel",
+  "send": "Send",
+  "sending": "Sending...",
+
+  "errorEmpty": "Please enter feedback or attach an image.",
+  "errorSubmit": "Failed to send feedback.",
+
+  "successTitle": "Thanks for your feedback",
+  "successText": "We’ll take a look."
+},
   "bookmarksPage": {
     "ariaBack": "Back to feed",
     "emptyDesc": "Save posts to access them here anytime.",
