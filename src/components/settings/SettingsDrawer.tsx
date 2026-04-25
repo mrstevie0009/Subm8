@@ -280,7 +280,7 @@ export default function SettingsDrawer({ open, onClose }: Props) {
       settings: `/${locale}/settings`,
       bookmarks: `/${locale}/settings/bookmarks`,
       premium: `/${locale}/settings/premium`,
-      payments: `/${locale}/settings/payments`
+      payments: `/${locale}/settings/payments`,
     }),
     [isAuth, handle, locale, callbackUrl]
   );
@@ -1164,3 +1164,4 @@ function PaymentsIcon(c: string) {
     </svg>
   );
 }
+
