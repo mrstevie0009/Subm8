@@ -252,7 +252,7 @@ export default async function AdminPage({
 
   return (
     <>
-      <section className="rounded-xl border border-white/10 overflow-hidden">
+      <section className="w-full max-w-full overflow-hidden rounded-xl border border-white/10">
         <header className="px-4 pt-3 pb-4 border-b border-white/10">
           <div className="flex items-center gap-2">
             <Link href={`/${locale}`} className="p-1" aria-label="Zurück">
@@ -267,7 +267,7 @@ export default async function AdminPage({
           </div>
         </header>
 
-        <div className="grid gap-6 p-4">
+        <div className="grid min-w-0 gap-6 p-3 sm:p-4">
           {/* KPIs */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <KpiCard label="Gesamt-Umsatz (Brutto)" amountCents={kpis.gross} />
@@ -284,8 +284,8 @@ export default async function AdminPage({
                 Plattform-Netto = Plattformgebühr − Payment-Provider-Gebühr
               </p>
             </div>
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-sm">
+            <div className="-mx-4 overflow-x-auto overscroll-x-contain px-4">
+              <table className="min-w-[760px] text-sm">
                 <thead className="text-white/60">
                   <tr className="border-b border-white/10">
                     <Th>Datum</Th>
@@ -329,8 +329,8 @@ export default async function AdminPage({
               Bei massivem Missbrauch → permanent.
             </p>
 
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-sm">
+            <div className="-mx-4 overflow-x-auto overscroll-x-contain px-4">
+              <table className="min-w-[760px] text-sm">
                 <thead className="text-white/60">
                   <tr className="border-b border-white/10">
                     <Th>IP</Th>
@@ -372,8 +372,8 @@ export default async function AdminPage({
             </div>
           </section>
 
-                    <section className="rounded-lg border border-white/10 p-4">
-            <div className="flex items-center justify-between gap-3 mb-3">
+          <section className="min-w-0 rounded-lg border border-white/10 p-3 sm:p-4">
+            <div className="flex flex-col items-start gap-2 mb-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h2 className="text-base font-semibold">Feedback</h2>
                 <p className="text-xs text-white/50">
@@ -390,9 +390,9 @@ export default async function AdminPage({
               {feedback.map((f) => (
                 <div
                   key={f.id}
-                  className="rounded-lg border border-white/10 p-3"
+                  className="min-w-0 rounded-lg border border-white/10 p-3"
                 >
-                  <div className="flex items-start justify-between gap-3">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0">
                       <p className="text-sm font-medium">
                         {f.user?.handle ? (
@@ -412,7 +412,7 @@ export default async function AdminPage({
                       </p>
 
                       {f.user?.email && (
-                        <p className="text-xs text-white/40 mt-1">{f.user.email}</p>
+                        <p className="mt-1 break-all text-xs text-white/40">{f.user.email}</p>
                       )}
                     </div>
 
@@ -451,7 +451,7 @@ export default async function AdminPage({
                     </p>
                   )}
 
-                  <div className="mt-3 flex items-center justify-end gap-2">
+                  <div className="mt-3 flex items-center justify-start gap-2 sm:justify-end">
                     {f.status !== 'REVIEWED' && (
                       <form action={markFeedbackReviewedAction}>
                         <input type="hidden" name="feedbackId" value={f.id} />
@@ -507,7 +507,7 @@ export default async function AdminPage({
             <h2 className="text-base font-semibold mb-3">Neueste Posts</h2>
             <div className="grid gap-2">
               {posts.map((p) => (
-                <form key={p.id} action={deletePostAction} className="flex items-center justify-between gap-3 rounded border border-white/10 px-3 py-2">
+                <form key={p.id} action={deletePostAction} className="flex flex-col gap-3 rounded border border-white/10 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
                   <input type="hidden" name="postId" value={p.id} />
                   <div className="min-w-0">
                     <p className="text-sm truncate">
@@ -517,7 +517,7 @@ export default async function AdminPage({
                     </p>
                     <p className="text-xs text-white/50">{new Date(p.createdAt).toLocaleString()}</p>
                   </div>
-                  <button className="text-xs rounded-full border border-red-400/40 text-red-200/90 px-3 py-1 hover:bg-red-500/10">
+                  <button className="self-start text-xs rounded-full border border-red-400/40 text-red-200/90 px-3 py-1 hover:bg-red-500/10 whitespace-nowrap sm:self-auto">
                     Löschen
                   </button>
                 </form>
@@ -530,7 +530,7 @@ export default async function AdminPage({
             <h2 className="text-base font-semibold mb-3">Neueste Nutzer</h2>
             <div className="grid gap-2">
               {users.map((u) => (
-                <form key={u.id} action={deactivateOrDeleteUserAction} className="flex items-center justify-between gap-3 rounded border border-white/10 px-3 py-2">
+                <form key={u.id} action={deactivateOrDeleteUserAction} className="flex flex-col gap-3 rounded border border-white/10 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
                   <input type="hidden" name="userId" value={u.id} />
                   <div className="min-w-0">
                     <p className="text-sm truncate">
@@ -538,7 +538,7 @@ export default async function AdminPage({
                     </p>
                     <p className="text-xs text-white/50">{u.email ?? '—'}</p>
                   </div>
-                  <button className="text-xs rounded-full border border-yellow-400/40 text-yellow-200/90 px-3 py-1 hover:bg-yellow-500/10">
+                  <button className="self-start text-xs rounded-full border border-yellow-400/40 text-yellow-200/90 px-3 py-1 hover:bg-yellow-500/10 whitespace-nowrap sm:self-auto">
                     Deaktivieren/Löschen
                   </button>
                 </form>
@@ -600,7 +600,7 @@ function ReportCard(props: {
         {props.rows.map((r) => {
           const href = props.linkBuilder ? props.linkBuilder(r.targetId) : `/${props.locale}/admin`;
           return (
-            <div key={r.targetId} className="p-3 flex items-center justify-between gap-3">
+            <div key={r.targetId} className="min-w-0 p-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0">
                 <Link href={href} className="text-sm truncate hover:underline">
                   {r.handleOrSnippet ?? r.targetId}
@@ -609,13 +609,13 @@ function ReportCard(props: {
                   {r.count} Meldung(en) · zuletzt {new Date(r.lastReportedAt).toLocaleString()}
                 </p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <form action={props.onResolve}>
                   {/* For groups we only need the id field name */}
                   <input type="hidden" name={props.resolveName} value={r.targetId} />
                   {/* Keep targetType to be consistent; resolveGroupReportsAction ignores it. */}
                   <input type="hidden" name="targetType" value={props.targetType} />
-                  <button className="text-xs rounded-full border border-white/15 px-3 py-1 hover:bg-white/10">
+                  <button className="text-xs rounded-full border border-white/15 px-3 py-1 hover:bg-white/10 whitespace-nowrap">
                     Als gelöst markieren
                   </button>
                 </form>
@@ -623,7 +623,7 @@ function ReportCard(props: {
                 {props.onDelete && props.deleteLabel && (
                   <form action={props.onDelete}>
                     <input type="hidden" name={props.resolveName} value={r.targetId} />
-                    <button className="text-xs rounded-full border border-red-400/40 text-red-200/90 px-3 py-1 hover:bg-red-500/10">
+                    <button className="text-xs rounded-full border border-red-400/40 text-red-200/90 px-3 py-1 hover:bg-red-500/10 whitespace-nowrap">
                       {props.deleteLabel}
                     </button>
                   </form>
@@ -638,13 +638,13 @@ function ReportCard(props: {
 }
 
 function Th({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  return <th className={`px-3 py-2 text-left font-medium ${className}`}>{children}</th>;
+  return <th className={`whitespace-nowrap px-3 py-2 text-left font-medium ${className}`}>{children}</th>;
 }
 function Td({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  return <td className={`px-3 py-2 ${className}`}>{children}</td>;
+  return <td className={`whitespace-nowrap px-3 py-2 ${className}`}>{children}</td>;
 }
 function TdRight({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  return <td className={`px-3 py-2 text-right tabular-nums ${className}`}>{children}</td>;
+  return <td className={`whitespace-nowrap px-3 py-2 text-right tabular-nums ${className}`}>{children}</td>;
 }
 
 function fmtCents(cents: number) {

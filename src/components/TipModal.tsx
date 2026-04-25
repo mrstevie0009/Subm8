@@ -3,8 +3,10 @@
 
 import * as React from 'react';
 import Image from 'next/image';
-import { useTranslations } from 'next-intl';
+import Link from 'next/link';
+import { useLocale, useTranslations } from 'next-intl';
 import { createPortal } from 'react-dom';
+
 
 import { loadStripe } from '@stripe/stripe-js';
 import type { Stripe } from '@stripe/stripe-js';
@@ -36,7 +38,6 @@ const MIN_CENTS = 100;
 const MAX_CENTS = 1_000_000;
 const CURRENCY = 'EUR';
 const PLATFORM_FEE_BPS_TOPUP = 1000; // 10% on top
-const GIFT_ACK_KEY = 'subm8_gift_ack_v1';
 
 // Stripe
 const STRIPE_PK = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? '';
@@ -723,6 +724,7 @@ export default function TipModal({
   onSuccess,
 }: Props) {
   const t = useTranslations('payment.tipModal');
+  const locale = useLocale();
 
   const [amount, setAmount] = React.useState('50');
   const [note, setNote] = React.useState('');
@@ -797,7 +799,7 @@ export default function TipModal({
     }
   }
 
-  const [giftAck, setGiftAck] = React.useState<boolean>(true);
+  const [giftAck, setGiftAck] = React.useState<boolean>(false);
   React.useEffect(() => {
     if (!open) return;
 
@@ -817,12 +819,7 @@ export default function TipModal({
 
     refreshSavedSummary();
 
-    try {
-      const v = typeof window !== 'undefined' ? window.localStorage.getItem(GIFT_ACK_KEY) : '1';
-      setGiftAck(v === '1');
-    } catch {
-      setGiftAck(true);
-    }
+    setGiftAck(false);
   }, [open]);
 
   const amountCents = parseCents(amount) ?? 0;
@@ -869,15 +866,6 @@ export default function TipModal({
   async function handlePaidFinal(r: { paymentId: string; totalCents: number; currency: string; baseAmountCents: number }) {
     setSuccess({ paymentId: r.paymentId, totalCents: r.totalCents, currency: r.currency });
     setStep('success');
-
-    try {
-      localStorage.setItem(GIFT_ACK_KEY, '1');
-      fetch('/api/me/disclaimers', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ giftAccepted: true }),
-      }).catch(() => {});
-    } catch {}
 
     // Event sofort feuern (damit Chat/UI gleich updatet)
     await new Promise<void>((r) => requestAnimationFrame(() => r()));
@@ -1067,16 +1055,36 @@ export default function TipModal({
                 <div className="mt-2 text-[12px] text-white/70">{t('disclaimer.legal')}</div>
               </div>
 
-              {!giftAck && step === 'form' && (
-                <label className="mt-3 flex items-start gap-2 text-[13px]">
-                  <input
-                    type="checkbox"
-                    className="accent-[var(--purple)] mt-[2px]"
-                    checked={giftAck}
-                    onChange={(e) => setGiftAck(e.target.checked)}
-                  />
-                  <span>{t('ack.checkbox')}</span>
-                </label>
+             {step === 'form' && (
+                <div className="mt-3 rounded-xl border border-white/10 bg-white/[.03] p-3">
+                  <label className="flex items-start gap-3">
+                    <input
+                      type="checkbox"
+                      className="mt-1 h-4 w-4 shrink-0 accent-[var(--purple)]"
+                      checked={giftAck}
+                      onChange={(e) => setGiftAck(e.target.checked)}
+                    />
+
+                    <span className="text-[13px] font-medium leading-snug text-white/90">
+                      {t.rich('ack.checkboxShort', {
+                        terms: (chunks) => (
+                          <Link
+                            href={`/${locale}/legal`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[var(--purple)] underline underline-offset-2 hover:opacity-90"
+                          >
+                            {chunks}
+                          </Link>
+                        ),
+                      })}
+                    </span>
+                  </label>
+
+                  <p className="mt-2 pl-7 text-[11px] leading-relaxed text-white/50">
+                    {t('ack.helper')}
+                  </p>
+                </div>
               )}
 
               {error && (

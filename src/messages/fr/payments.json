@@ -105,7 +105,10 @@
     }
   },
   "tipModal": {
-    "ack": { "checkbox": "Je comprends que les cadeaux sont volontaires et définitifs." },
+    "ack": {
+      "checkboxShort": "J’accepte les <terms>Conditions d’utilisation</terms>.",
+      "helper": "Il s’agit d’un cadeau volontaire, et non d’un paiement pour des services."
+    },
     "actions": { "cancel": "Annuler", "done": "Terminé", "sendGift": "Envoyer le cadeau", "sending": "Envoi…", "back": "Retour", "continueToPay": "Continuer vers le paiement", "payNow": "Payer maintenant" },
     "amount": { "label": "Montant pour le/la créateur/trice", "placeholder": "50" },
     "aria": { "close": "Fermer" },

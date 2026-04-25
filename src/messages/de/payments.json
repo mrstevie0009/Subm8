@@ -105,7 +105,10 @@
     }
   },
   "tipModal": {
-    "ack": { "checkbox": "Ich verstehe, dass Geschenke freiwillig und endgültig sind." },
+    "ack": {
+      "checkboxShort": "Ich akzeptiere die <terms>Nutzungsbedingungen</terms>.",
+      "helper": "Dies ist ein freiwilliges Geschenk, keine Zahlung für Dienstleistungen."
+    },
     "actions": { "cancel": "Abbrechen", "done": "Fertig", "sendGift": "Geschenk senden", "sending": "Sende…", "back": "Zurück", "continueToPay": "Weiter zur Zahlung", "payNow": "Jetzt zahlen" },
     "amount": { "label": "Betrag für die Creatorin/den Creator", "placeholder": "50" },
     "aria": { "close": "Schließen" },

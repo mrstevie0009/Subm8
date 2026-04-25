@@ -58,25 +58,48 @@ export default function SettingsDrawer({ open, onClose }: Props) {
   const [show, setShow] = React.useState(false);
 
   React.useEffect(() => setMounted(true), []);
+
   React.useEffect(() => {
     if (!open) return setShow(false);
     const id = requestAnimationFrame(() => setShow(true));
     return () => cancelAnimationFrame(id);
   }, [open]);
+
   React.useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [open, onClose]);
+
   React.useEffect(() => {
-    if (!open) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, [open]);
+  if (!open) return;
+
+  const scrollY = window.scrollY;
+  const body = document.body;
+
+  const prevOverflow = body.style.overflow;
+  const prevPosition = body.style.position;
+  const prevTop = body.style.top;
+  const prevWidth = body.style.width;
+  const prevTouchAction = body.style.touchAction;
+
+  body.style.overflow = 'hidden';
+  body.style.position = 'fixed';
+  body.style.top = `-${scrollY}px`;
+  body.style.width = '100%';
+  body.style.touchAction = 'none';
+
+  return () => {
+    body.style.overflow = prevOverflow;
+    body.style.position = prevPosition;
+    body.style.top = prevTop;
+    body.style.width = prevWidth;
+    body.style.touchAction = prevTouchAction;
+
+    window.scrollTo(0, scrollY);
+  };
+}, [open]);
 
   const callbackUrl = React.useMemo(() => {
     const qs = search.toString();
@@ -273,22 +296,28 @@ export default function SettingsDrawer({ open, onClose }: Props) {
     WebkitBackdropFilter: 'blur(6px)',
     opacity: show ? 1 : 0,
     pointerEvents: open ? 'auto' : 'none',
-    transition: 'opacity 200ms ease'
+    transition: 'opacity 200ms ease',
+    overscrollBehavior: 'contain',
+    touchAction: 'none',
   };
 
   const panelStyle: React.CSSProperties = {
     position: 'fixed',
     top: 0,
-    bottom: 0,
     left: 0,
-    width: 'min(86vw, 420px)',
+    height: '100dvh',
+    maxHeight: '100dvh',
+    width: 'min(88vw, 420px)',
     background: '#000',
     borderRight: '1px solid rgba(255,255,255,0.10)',
     transform: show ? 'translateX(0)' : 'translateX(-100%)',
     transition: 'transform 220ms ease',
     padding: '20px 16px',
-    paddingBottom: 'calc(env(safe-area-inset-bottom) + 16px)',
-    overflowY: 'auto'
+    paddingBottom: 'calc(env(safe-area-inset-bottom) + 20px)',
+    overflowY: 'auto',
+    overscrollBehavior: 'contain',
+    WebkitOverflowScrolling: 'touch',
+    touchAction: 'pan-y',
   };
 
 async function smartSignOut() {
@@ -317,15 +346,22 @@ async function smartSignOut() {
     <div
       style={overlayStyle}
       onMouseDown={(e) => {
-        if (!open) return; // Ignore clicks when hidden
+        if (!open) return;
         if (e.target === e.currentTarget) onClose();
+      }}
+      onTouchMove={(e) => {
+        if (e.target === e.currentTarget) e.preventDefault();
       }}
       role="dialog"
       aria-modal="true"
       aria-label={t('aria')}
       aria-hidden={!open}
     >
-      <aside style={panelStyle} onMouseDown={(e) => e.stopPropagation()}>
+      <aside
+        style={panelStyle}
+        onMouseDown={(e) => e.stopPropagation()}
+        onTouchMove={(e) => e.stopPropagation()}
+      >
         {/* Header */}
         <div style={{ paddingBottom: 12, borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
           <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>

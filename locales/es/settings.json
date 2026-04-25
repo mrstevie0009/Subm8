@@ -1,165 +1,165 @@
 {
   "links": {
-    "settings": "Einstellungen"
+    "settings": "Configuración"
   },
   "profileSettings": {
-    "alreadyDeactivated": "Account ist deaktiviert",
-    "ariaBack": "Zurück",
-    "changePassword": "Passwort ändern",
-    "countryLabel": "Land",
-    "countryMissing": "Spalte fehlt in DB",
+    "alreadyDeactivated": "La cuenta está desactivada",
+    "ariaBack": "Volver",
+    "changePassword": "Cambiar contraseña",
+    "countryLabel": "País",
+    "countryMissing": "Columna faltante en la BD",
     "countryPlaceholder": "DE, AT, CH, US",
-    "currentPasswordLabel": "Aktuelles Passwort",
-    "dangerZoneDesc": "Das Deaktivieren sperrt dein Profil und beendet deine Sitzungen.",
-    "dangerZoneTitle": "Gefahrenbereich",
-    "deactivateButton": "Account deaktivieren",
-    "deactivateNotAvailable": "Deaktivieren nicht verfügbar",
-    "deleteButton": "Account endgültig löschen",
-    "deleteButtonTitle": "Account endgültig löschen",
-    "deleteHint": "Löscht deinen Account und die zugehörigen Daten. Falls verknüpfte Accounts existieren, wechselst du zum Home-Feed; sonst geht es zur Anmeldeseite.",
-    "emailLabel": "E-Mail",
-    "emailPlaceholder": "du@example.com",
-    "handleHelp": "3–20 Zeichen; a–z, 0–9, „_“ und „.“ erlaubt.",
-    "handleLabel": "Handle",
-    "handlePlaceholder": "dein.handle",
-    "headerTitle": "Profil & Account verwalten",
-    "languageButton": "Ändern",
-    "languageHelp": "Wähle deine bevorzugte Sprache für die Oberfläche.",
-    "languageLabel": "Sprache",
-    "logoutButton": "Abmelden",
-    "logoutSectionTitle": "Abmelden",
-    "newPassword2Label": "Neues Passwort (Wiederholen)",
-    "newPassword2Placeholder": "nochmal eingeben",
-    "newPasswordLabel": "Neues Passwort",
-    "newPasswordPlaceholder": "mind. 8 Zeichen",
-    "notSignedInMessage": "Bitte melde dich an, um Einstellungen zu ändern.",
-    "passwordSectionTitle": "Passwort",
-    "phoneLabel": "Telefonnummer",
-    "phoneMissing": "Spalte fehlt in DB",
+    "currentPasswordLabel": "Contraseña actual",
+    "dangerZoneDesc": "Desactivar bloqueará tu perfil y cerrará tus sesiones.",
+    "dangerZoneTitle": "Zona de peligro",
+    "deactivateButton": "Desactivar cuenta",
+    "deactivateNotAvailable": "Desactivación no disponible",
+    "deleteButton": "Eliminar cuenta permanentemente",
+    "deleteButtonTitle": "Eliminar cuenta permanentemente",
+    "deleteHint": "Elimina tu cuenta y los datos asociados. Si existen cuentas vinculadas, irás al feed; de lo contrario, a iniciar sesión.",
+    "emailLabel": "Correo electrónico",
+    "emailPlaceholder": "tu@email.com",
+    "handleHelp": "3–20 caracteres; a–z, 0–9, “_” y “.” permitidos.",
+    "handleLabel": "Usuario",
+    "handlePlaceholder": "tu.usuario",
+    "headerTitle": "Gestionar perfil y cuenta",
+    "languageButton": "Cambiar",
+    "languageHelp": "Elige tu idioma preferido para la interfaz.",
+    "languageLabel": "Idioma",
+    "logoutButton": "Cerrar sesión",
+    "logoutSectionTitle": "Cerrar sesión",
+    "newPassword2Label": "Nueva contraseña (repetir)",
+    "newPassword2Placeholder": "introducir de nuevo",
+    "newPasswordLabel": "Nueva contraseña",
+    "newPasswordPlaceholder": "mín. 8 caracteres",
+    "notSignedInMessage": "Inicia sesión para cambiar la configuración.",
+    "passwordSectionTitle": "Contraseña",
+    "phoneLabel": "Número de teléfono",
+    "phoneMissing": "Columna faltante en la BD",
     "phonePlaceholder": "+49 170 1234567",
-    "profileSectionTitle": "Profil",
-    "saveProfile": "Profil speichern"
+    "profileSectionTitle": "Perfil",
+    "saveProfile": "Guardar perfil"
   },
   "securityPage": {
-    "ariaBack": "Zurück",
+    "ariaBack": "Volver",
     "extraPassword": {
-      "desc": "Beim Zurücksetzen des Passworts muss zusätzlich E-Mail oder Telefonnummer bestätigt werden.",
-      "title": "Zusätzlicher Passwortschutz",
+      "desc": "Al restablecer la contraseña, también se debe confirmar correo o teléfono.",
+      "title": "Protección adicional de contraseña",
       "toggle": {
-        "disable": "Schutz deaktivieren",
-        "enable": "Schutz aktivieren",
-        "title": "Passwort-Zurücksetzungsschutz umschalten"
+        "disable": "Desactivar protección",
+        "enable": "Activar protección",
+        "title": "Alternar protección de restablecimiento"
       }
     },
-    "notSignedInMessage": "Bitte melde dich an, um Sicherheitsoptionen zu verwalten.",
+    "notSignedInMessage": "Inicia sesión para gestionar la seguridad.",
     "sessions": {
-      "desc": "Beendet alle aktiven Sitzungen auf allen Geräten und meldet dich ab.",
-      "endAll": "Alle Sitzungen beenden",
-      "title": "Sitzungen beenden"
+      "desc": "Finaliza todas las sesiones en todos los dispositivos.",
+      "endAll": "Cerrar todas las sesiones",
+      "title": "Cerrar sesiones"
     },
     "status": {
-      "active": "Aktiv",
-      "notSetup": "Nicht eingerichtet",
-      "ready": "Bereit"
+      "active": "Activo",
+      "notSetup": "No configurado",
+      "ready": "Listo"
     },
-    "title": "Sicherheit & Zugriff",
+    "title": "Seguridad y acceso",
     "twofa": {
-      "active": "Aktiv: App-basierte 2FA ist eingeschaltet.",
-      "confirm": "Bestätigen",
-      "disable": "Deaktivieren",
-      "intro": "Schütze deinen Account mit einer zweiten Anmeldestufe. Nutze App (TOTP), SMS oder Passkeys.",
-      "passkeyActiveMsg": "Passkey ist aktiviert. Du kannst ihn beim Login verwenden.",
-      "passkeysActiveNote": "Passkey ist eingerichtet und für die 2-Stufen-Anmeldung gespeichert.",
-      "passkeysDisable": "Passkeys deaktivieren",
-      "passkeysNote": "Richte einen Passkey ein, um dich schneller und sicherer anzumelden.",
-      "passkeysRemoveAllTitle": "Alle Passkeys entfernen",
-      "passkeysTitle": "Sicherheitsschlüssel / Passkeys",
-      "qrAlt": "TOTP-QR-Code",
-      "resend": "Neu senden",
-      "resendTitle": "Code erneut senden",
-      "scanIntro": "Scanne den QR-Code mit deiner Authenticator-App und gib anschließend den 6-stelligen Code ein.",
-      "setup": "Einrichten",
+      "active": "Activo: 2FA con app habilitado.",
+      "confirm": "Confirmar",
+      "disable": "Desactivar",
+      "intro": "Protege tu cuenta con un segundo paso. Usa app, SMS o passkeys.",
+      "passkeyActiveMsg": "Passkey activada.",
+      "passkeysActiveNote": "Passkey configurada.",
+      "passkeysDisable": "Desactivar passkeys",
+      "passkeysNote": "Configura una passkey para iniciar sesión más rápido.",
+      "passkeysRemoveAllTitle": "Eliminar todas las passkeys",
+      "passkeysTitle": "Claves de seguridad",
+      "qrAlt": "Código QR TOTP",
+      "resend": "Reenviar",
+      "resendTitle": "Reenviar código",
+      "scanIntro": "Escanea el QR e introduce el código de 6 dígitos.",
+      "setup": "Configurar",
       "sms": {
-        "disable2fa": "SMS-2FA deaktivieren",
-        "disable2faTitle": "SMS-2FA deaktivieren (Telefonnummer bleibt gespeichert)",
-        "loginSendsToPrefix": "Beim Login senden wir einen Code an",
-        "removeNumber": "Nummer entfernen",
-        "removeNumberTitle": "Telefonnummer entfernen",
-        "request": "SMS-Code anfordern"
+        "disable2fa": "Desactivar SMS 2FA",
+        "disable2faTitle": "Desactivar SMS 2FA",
+        "loginSendsToPrefix": "En el login enviamos código a",
+        "removeNumber": "Eliminar número",
+        "removeNumberTitle": "Eliminar número",
+        "request": "Solicitar código SMS"
       },
-      "smsActiveMsg": "Zwei-Faktor-Anmeldung per SMS ist aktiviert.",
-      "smsAddPhoneFirst": "Hinterlege zuerst eine Telefonnummer in deinen Profileinstellungen.",
-      "smsAddPhoneHintEnd": "und füge eine Telefonnummer hinzu.",
-      "smsAddPhoneHintStart": "Öffne deine",
-      "smsChangeNumber": "Nummer ändern",
-      "smsPhoneReady": "Telefonnummer ist hinterlegt. Du kannst SMS-Codes jetzt einrichten.",
-      "smsTitle": "SMS-Codes",
-      "title": "Zwei-Faktor-Authentifizierung",
-      "tokenAria": "6-stelliger Bestätigungscode",
+      "smsActiveMsg": "2FA por SMS activado.",
+      "smsAddPhoneFirst": "Añade primero un número.",
+      "smsAddPhoneHintEnd": "y añade un número.",
+      "smsAddPhoneHintStart": "Abre tu",
+      "smsChangeNumber": "Cambiar número",
+      "smsPhoneReady": "Número listo.",
+      "smsTitle": "Códigos SMS",
+      "title": "Autenticación de dos factores",
+      "tokenAria": "Código de 6 dígitos",
       "tokenPlaceholder": "123456",
-      "totpTitle": "Authenticator-App (TOTP)"
+      "totpTitle": "App autenticadora"
     }
   },
   "settings": {
-    "aria": "Einstellungen",
-    "avatarAlt": "Profilbild",
-    "follow": "Folgen",
-    "guest": "Gast",
-    "loading": "Laden…",
+    "aria": "Configuración",
+    "avatarAlt": "Foto de perfil",
+    "follow": "Seguir",
+    "guest": "Invitado",
+    "loading": "Cargando…",
     "menu": {
-      "bookmarks": "Lesezeichen",
-      "payments": "Zahlungen",
+      "bookmarks": "Guardados",
+      "payments": "Pagos",
       "premium": "Premium",
-      "profile": "Profil",
-      "settings": "Einstellungen"
+      "profile": "Perfil",
+      "settings": "Configuración"
     },
     "noHandle": "—",
-    "recommended": "Empfohlene Profile",
+    "recommended": "Perfiles recomendados",
     "roleDomme": "Domina",
     "roleSub": "Sub",
-    "signIn": "Anmelden",
-    "signOut": "Abmelden",
-    "statsError": "Fehler beim Laden der Statistiken",
-    "statsFollowers": "Follower",
-    "statsFollowing": "Folge ich",
-    "suggestionsEmpty": "Derzeit keine Vorschläge.",
-    "switchToHandle": "Wechseln zu @{handle}",
-    "switchToName": "Zu {name} wechseln",
-    "unfollow": "Entfolgen"
+    "signIn": "Iniciar sesión",
+    "signOut": "Cerrar sesión",
+    "statsError": "Error al cargar estadísticas",
+    "statsFollowers": "Seguidores",
+    "statsFollowing": "Siguiendo",
+    "suggestionsEmpty": "No hay sugerencias.",
+    "switchToHandle": "Cambiar a @{handle}",
+    "switchToName": "Cambiar a {name}",
+    "unfollow": "Dejar de seguir"
   },
   "settingsPage": {
-    "ariaBack": "Zurück zum Feed",
+    "ariaBack": "Volver al feed",
     "items": {
       "account": {
-        "desc": "Profilinfo ansehen und bearbeiten (Name, Bio, Avatar, Banner), Daten exportieren und Account-Optionen.",
-        "title": "Dein Account"
+        "desc": "Ver y editar perfil y opciones.",
+        "title": "Tu cuenta"
       },
       "bookmarks": {
-        "desc": "Gespeicherte Posts verwalten.",
-        "title": "Bookmarks"
+        "desc": "Gestionar guardados.",
+        "title": "Guardados"
       },
       "monetization": {
-        "desc": "Vom Tip bis zur Community. Alle Wege zu stabilen Einnahmen.",
-        "title": "Monetarisierung"
+        "desc": "Todas las formas de ganar dinero.",
+        "title": "Monetización"
       },
       "notifications": {
-        "desc": "Lege fest, über welche Aktivitäten, Empfehlungen und Nachrichten du benachrichtigt wirst.",
-        "title": "Mitteilungen"
+        "desc": "Configura notificaciones.",
+        "title": "Notificaciones"
       },
       "premium": {
-        "desc": "Vorteile ansehen und deine Premium-Einstellungen verwalten.",
+        "desc": "Gestionar premium.",
         "title": "Premium"
       },
       "privacy": {
-        "desc": "Steuere, welche Informationen du siehst und teilst, und passe deine Privatsphäre an.",
-        "title": "Datenschutz"
+        "desc": "Controla tu privacidad.",
+        "title": "Privacidad"
       },
       "security": {
-        "desc": "Login-Sicherheit prüfen, verbundene Apps verwalten und Zugriff überwachen.",
-        "title": "Sicherheit & Zugriff"
+        "desc": "Seguridad de acceso.",
+        "title": "Seguridad y acceso"
       }
     },
-    "searchPlaceholder": "Einstellungen durchsuchen",
-    "title": "Einstellungen"
+    "searchPlaceholder": "Buscar ajustes",
+    "title": "Configuración"
   }
 }

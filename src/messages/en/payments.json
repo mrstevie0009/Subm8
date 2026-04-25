@@ -105,7 +105,10 @@
     }
   },
   "tipModal": {
-    "ack": { "checkbox": "I understand that gifts are voluntary and final." },
+    "ack": {
+     "checkboxShort": "I agree to the <terms>Terms and Services</terms>.",
+     "helper": "This is a voluntary gift, not payment for services."
+    },
     "actions": { "cancel": "Cancel", "done": "Done", "sendGift": "Send gift", "sending": "Sending…", "back": "Back", "continueToPay": "Continue to payment", "payNow": "Pay now" },
     "amount": { "label": "Amount for the creator", "placeholder": "50" },
     "aria": { "close": "Close" },

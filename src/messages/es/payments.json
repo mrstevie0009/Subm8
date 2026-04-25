@@ -105,7 +105,10 @@
     }
   },
   "tipModal": {
-    "ack": { "checkbox": "Entiendo que los regalos son voluntarios y definitivos." },
+    "ack": {
+      "checkboxShort": "Acepto los <terms>Términos y Servicios</terms>.",
+      "helper": "Esto es un regalo voluntario, no un pago por servicios."
+    },
     "actions": { "cancel": "Cancelar", "done": "Listo", "sendGift": "Enviar regalo", "sending": "Enviando…", "back": "Atrás", "continueToPay": "Continuar al pago", "payNow": "Pagar ahora" },
     "amount": { "label": "Importe para el/la creador/a", "placeholder": "50" },
     "aria": { "close": "Cerrar" },
