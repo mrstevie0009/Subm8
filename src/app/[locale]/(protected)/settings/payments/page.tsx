@@ -86,25 +86,32 @@ export default async function PaymentsPage({ params }: { params: Promise<Params>
   });
 
   // Earned (DB) - calculate available balance
+  const payoutUnlockCutoff = new Date();
+  payoutUnlockCutoff.setDate(payoutUnlockCutoff.getDate() - 30);
+
   const availablePayments = payments.filter(
-    (p) => p.payeeId === me.id && p.status === "SUCCEEDED" && !p.payoutRequestId
+    (p) =>
+      p.payeeId === me.id &&
+      p.status === "SUCCEEDED" &&
+      !p.payoutRequestId &&
+      p.createdAt <= payoutUnlockCutoff
+  );
+
+  const lockedPayments = payments.filter(
+    (p) =>
+      p.payeeId === me.id &&
+      p.status === "SUCCEEDED" &&
+      !p.payoutRequestId &&
+      p.createdAt > payoutUnlockCutoff
   );
 
   const balanceCents = availablePayments.reduce((acc, p) => acc + (p.amountNetToDommeCents || 0), 0);
 
+  const lockedCents = lockedPayments.reduce((acc, p) => acc + (p.amountNetToDommeCents || 0), 0);
+
+  const totalEarnedCents = balanceCents + lockedCents;
+
   const balanceCurrency = payments.find((p) => p.payeeId === me.id)?.currency ?? "EUR";
-
-  const payoutSettings = await prisma.user.findUnique({
-    where: { id: me.id },
-    select: {
-      payoutMethod: true,
-      stripeAccountId: true,
-    },
-  });
-
-  const methodLabel =
-  payoutSettings?.stripeAccountId ? "Auszahlbar (Stripe – verbunden)" : "Auszahlbar (Stripe – nicht verbunden)";
-
 
   const rows = payments.map((p) => {
     const incoming = p.payeeId === me.id;
@@ -198,16 +205,26 @@ export default async function PaymentsPage({ params }: { params: Promise<Params>
       </header>
 
       {/* Balance (Earned DB + Available Stripe) */}
-      <PayoutBalances
-        earnedCents={balanceCents}
-        earnedCurrency={balanceCurrency}
-        csvUrl={csvUrl}
-        tBalanceTitle={t("paymentsPage.balance.title")}
-        tExportLabel={t("paymentsPage.balance.export")}
-        tEarnedLabel={methodLabel}
-        tPendingLabel={"Pending"}
-        tPendingHint={"Noch in Verarbeitung – wird später auszahlbar."}
-      />
+      <div>
+        <PayoutBalances
+          earnedCents={totalEarnedCents}
+          earnedCurrency={balanceCurrency}
+          csvUrl={csvUrl}
+          tBalanceTitle={t("paymentsPage.balance.totalEarned")}
+          tExportLabel={t("paymentsPage.balance.export")}
+          tEarnedLabel={t("paymentsPage.balance.available", {
+            amount: fmtMoney(balanceCents, balanceCurrency, locale),
+          })}
+          tPendingLabel={t("paymentsPage.balance.locked", {
+            amount: fmtMoney(lockedCents, balanceCurrency, locale),
+          })}
+          tPendingHint={t("paymentsPage.balance.lockedHint")}
+        />
+
+        <div className="px-5 -mt-7 pb-5 text-[12px] leading-relaxed text-white/55">
+          {t("paymentsPage.balance.lockedHint")}
+        </div>
+      </div>
 
       {/* Active Autodrain */}
       <section className="px-4 py-6 border-b border-white/10">

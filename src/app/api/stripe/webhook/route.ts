@@ -3,6 +3,8 @@ import { NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
 import type Stripe from "stripe";
+import { randomUUID } from "node:crypto";
+import { addCadence } from "@/lib/autodrain";
 
 export const runtime = "nodejs";
 
@@ -71,6 +73,207 @@ function getPayoutRequestIdFromPayout(p: Stripe.Payout): string | null {
   const v = (p.metadata as Record<string, string | undefined> | null | undefined)?.payoutRequestId;
   return typeof v === "string" && v.length > 0 ? v : null;
 }
+
+function getInvoiceSubscriptionId(inv: Stripe.Invoice): string | null {
+  const raw = inv as unknown as Record<string, unknown>;
+  const sub = raw["subscription"];
+
+  if (typeof sub === "string") return sub;
+  if (sub && typeof sub === "object" && "id" in sub && typeof sub.id === "string") return sub.id;
+
+  return null;
+}
+
+function getInvoicePaymentIntentId(inv: Stripe.Invoice): string | null {
+  const raw = inv as unknown as Record<string, unknown>;
+  const pi = raw["payment_intent"];
+
+  if (typeof pi === "string") return pi;
+  if (pi && typeof pi === "object" && "id" in pi && typeof pi.id === "string") return pi.id;
+
+  return null;
+}
+
+async function handleAutodrainInvoicePaid(inv: Stripe.Invoice) {
+  const stripeSubscriptionId = getInvoiceSubscriptionId(inv);
+  if (!stripeSubscriptionId) return;
+
+  const sub = await stripe.subscriptions.retrieve(stripeSubscriptionId);
+  const autoDrainId = sub.metadata?.autoDrainId;
+
+  if (!autoDrainId) return;
+
+  const ad = await prisma.autoDrainSubscription.findUnique({
+    where: { id: autoDrainId },
+    select: {
+      id: true,
+      dommeId: true,
+      subId: true,
+      amountCents: true,
+      currency: true,
+      cadence: true,
+      nextChargeAt: true,
+      active: true,
+    },
+  });
+
+  if (!ad) return;
+
+  const invoiceId = inv.id;
+  const paymentIntentId = getInvoicePaymentIntentId(inv);
+
+  // Idempotenz: Invoice darf nur einmal als Payment landen
+  const existingPayment = await prisma.payment.findFirst({
+    where: {
+      metadataJson: {
+        path: ["stripeInvoiceId"],
+        equals: invoiceId,
+      },
+    },
+    select: { id: true },
+  });
+
+  if (existingPayment) return;
+
+  const now = new Date();
+
+  const topupFeeCents = Math.round(ad.amountCents * TOPUP_PCT);
+  const splitFeeCents = Math.round(ad.amountCents * SPLIT_PCT);
+  const totalCents = ad.amountCents + topupFeeCents;
+  const dommeNetCents = ad.amountCents - splitFeeCents;
+  const platformFeeTotalCents = topupFeeCents + splitFeeCents;
+
+  let stripeChargeId: string | null = null;
+  let processorFeeCents = 0;
+
+  if (paymentIntentId) {
+    const pi = await stripe.paymentIntents.retrieve(paymentIntentId, {
+      expand: ["latest_charge.balance_transaction"],
+    });
+
+    stripeChargeId =
+      typeof pi.latest_charge === "string"
+        ? pi.latest_charge
+        : pi.latest_charge?.id ?? null;
+
+    const charge =
+      typeof pi.latest_charge !== "string" ? pi.latest_charge : null;
+
+    const bt =
+      charge && typeof charge.balance_transaction !== "string"
+        ? charge.balance_transaction
+        : null;
+
+    processorFeeCents = bt?.fee ?? 0;
+  }
+
+  const next = addCadence(ad.nextChargeAt ?? now, ad.cadence);
+
+  await prisma.$transaction(async (tx) => {
+    const payment = await tx.payment.create({
+      data: {
+        id: randomUUID(),
+        payerId: ad.subId,
+        payeeId: ad.dommeId,
+        amountGrossCents: totalCents,
+        amountNetToDommeCents: dommeNetCents,
+        platformFeeCents: platformFeeTotalCents,
+        processorFeeCents,
+        currency: ad.currency,
+        status: "SUCCEEDED",
+        externalRef: paymentIntentId ?? invoiceId,
+        paymentProvider: "Stripe",
+        stripeChargeId,
+        metadataJson: {
+          kind: "autodrain",
+          autoDrainId: ad.id,
+          stripeSubscriptionId,
+          stripeInvoiceId: invoiceId,
+          stripePaymentIntentId: paymentIntentId,
+          cadence: ad.cadence,
+        },
+      },
+      select: { id: true },
+    });
+
+    const charge = await tx.autoDrainCharge.create({
+      data: {
+        subscriptionId: ad.id,
+        amountCents: ad.amountCents,
+        currency: ad.currency,
+        status: "SUCCESS",
+        receiptId: invoiceId,
+      },
+      select: { id: true, at: true },
+    });
+
+    await tx.autoDrainSubscription.update({
+      where: { id: ad.id },
+      data: {
+        active: true,
+        stripeStatus: sub.status,
+        lastChargeAt: charge.at,
+        nextChargeAt: next,
+      },
+    });
+
+    await tx.ledger.createMany({
+      data: [
+        {
+          id: randomUUID(),
+          paymentId: payment.id,
+          entryType: "DEBIT",
+          account: "SUB_CASH",
+          amountCents: totalCents,
+          currency: ad.currency,
+        },
+        {
+          id: randomUUID(),
+          paymentId: payment.id,
+          entryType: "CREDIT",
+          account: "DOMME_WALLET",
+          amountCents: dommeNetCents,
+          currency: ad.currency,
+        },
+        {
+          id: randomUUID(),
+          paymentId: payment.id,
+          entryType: "CREDIT",
+          account: "PLATFORM_WALLET",
+          amountCents: platformFeeTotalCents,
+          currency: ad.currency,
+        },
+      ],
+    });
+
+    const convo = await tx.conversation.findFirst({
+      where: {
+        dommeId: ad.dommeId,
+        subId: ad.subId,
+      },
+      select: { id: true },
+    });
+
+    if (convo) {
+      await tx.message.create({
+        data: {
+          conversationId: convo.id,
+          authorId: ad.dommeId,
+          text: `ADCHG::${JSON.stringify({
+            id: charge.id,
+            paymentId: payment.id,
+            amountCents: ad.amountCents,
+            currency: ad.currency,
+            cadence: ad.cadence,
+            at: charge.at.toISOString(),
+            receiptId: invoiceId,
+            nextChargeAt: next.toISOString(),
+          })}`,
+        },
+      });
+    }
+  });
+  }
 
 export async function POST(req: Request) {
   const sig = req.headers.get("stripe-signature");
@@ -189,6 +392,13 @@ export async function POST(req: Request) {
           },
         });
 
+        return NextResponse.json({ ok: true });
+      }
+
+      case "invoice.paid":
+      case "invoice.payment_succeeded": {
+        const inv = event.data.object as Stripe.Invoice;
+        await handleAutodrainInvoicePaid(inv);
         return NextResponse.json({ ok: true });
       }
 

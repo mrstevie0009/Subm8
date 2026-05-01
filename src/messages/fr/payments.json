@@ -53,7 +53,12 @@
       "title": "AutoDrain actif"
     },
     "avatarAlt": "Avatar de {name}",
-    "balance": { "export": "Export CSV", "title": "Solde actuel :" },
+    "balance": { "export": "Export CSV",
+    "title": "Solde actuel :",
+    "totalEarned": "Total gagné",
+    "available": "{amount} disponible",
+    "locked": "{amount} bloqué",
+    "lockedHint": "Le solde bloqué devient automatiquement disponible 30 jours après la réception du paiement." },
     "guestNote": "Veuillez vous connecter pour voir votre historique de paiements.",
     "payments": {
       "amountPrefixReceived": "Reçu : {amount}",

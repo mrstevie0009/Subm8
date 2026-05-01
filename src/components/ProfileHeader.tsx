@@ -67,17 +67,22 @@ const Chip = React.memo(function Chip({
 }) {
   const styles: Record<string, React.CSSProperties> = {
     neutral: { color: 'rgba(255,255,255,.9)', background: 'rgba(255,255,255,.08)', border: '1px solid rgba(255,255,255,.12)' },
-    purple:  { color: 'var(--purple)', background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.25)' },
+    purple:  { color: '#d9c7ff', background: 'linear-gradient(135deg, rgba(139,92,246,.28), rgba(168,85,247,.12))', border: '1px solid rgba(168,85,247,.45)' },
     success: { color: '#4ade80', background: 'rgba(74,222,128,.12)', border: '1px solid rgba(74,222,128,.25)' },
     danger:  { color: '#fca5a5', background: 'rgba(239,68,68,.12)', border: '1px solid rgba(239,68,68,.25)' },
   };
+
   const sizeCls: Record<'sm'|'md'|'lg', string> = {
     sm: 'text-[11px] px-2 py-1',
-    md: 'text-[12px] px-2.5 py-[6px]',
-    lg: 'text-[14px] px-3 py-[6px]',
+    md: 'text-[12px] px-3 py-[7px]',
+    lg: 'text-[14px] px-3.5 h-8',
   };
+
   return (
-    <span className={`rounded-full leading-none whitespace-nowrap ${sizeCls[size]}`} style={styles[tone]}>
+    <span
+      className={`inline-flex items-center justify-center rounded-full leading-[1] whitespace-nowrap shadow-[0_0_18px_rgba(139,92,246,.22)] ${sizeCls[size]}`}
+      style={styles[tone]}
+    >
       {children}
     </span>
   );
@@ -968,21 +973,25 @@ export default function ProfileHeader({
           />
         )}
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/30 via-black/0 to-black/35" />
-        <div className="absolute top-2 left-2 z-10">
-          <BackButton
-            fallbackHref={`/${locale}`}
-            ariaLabel="Back"
-            className="inline-flex items-center justify-center size-9 rounded-full border border-white/15
-                      bg-black/40 backdrop-blur hover:bg-black/60 text-white"
-          />
-        </div>
+        <div className="absolute top-2 left-2 z-10 flex items-center gap-2">
+        <BackButton
+          fallbackHref={`/${locale}`}
+          ariaLabel="Back"
+          className="inline-flex items-center justify-center size-9 rounded-full border border-white/15
+                    bg-black/40 backdrop-blur hover:bg-black/60 text-white"
+        />
+
+        <Chip tone="purple" size="lg">
+          {profile.role === 'domme' ? 'Domme' : 'Sub'}
+        </Chip>
+      </div>
         <div className="absolute top-2 right-2 z-10">
           <MoreMenu />
         </div>
 
         {/* Avatar am Banner andocken (halb überlappend) */}
         <div
-          className="absolute left-4 bottom-0 translate-y-[60%] z-20"
+          className="absolute left-4 bottom-0 translate-y-[42%] z-20"
           style={{ width: 'var(--avatar)' }}
         >
           <div className="inline-block w-fit rounded-full p-[2px] bg-gradient-to-br from-[var(--purple)]/70 via-fuchsia-500/50 to-sky-400/50">
@@ -1008,25 +1017,14 @@ export default function ProfileHeader({
               />
             </div>
           </div>
-          <div className="-mt-1 text-center">
-            <Chip tone="purple" size="sm">{profile.role === 'domme' ? 'Dom' : 'Sub'}</Chip>
-          </div>
         </div>
       </div>
 
-      {/* ===== Action-Bar DIREKT UNTER dem Banner (außerhalb des Banners) ===== */}
+      {/* ===== Action-Bar + Name ===== */}
       <div className="px-4 mt-2">
-        <div
-          className="grid gap-y-1 items-end"
-          style={{ gridTemplateColumns: 'var(--avatar) 1fr' }}
-        >
-          {/* linke Spalte = Avatar-Breite als Spacer */}
-          <div aria-hidden style={{ width: 'var(--avatar)' }} />
-
-          {/* rechte Spalte = Buttons (unverändert) */}
-          <div className="ml-auto flex items-center gap-2 flex-nowrap justify-end">
+        <div className="flex items-center justify-end gap-2 flex-wrap">
           {isOwner ? (
-            <div className="flex items-center gap-2">
+            <>
               <Link
                 href={`/${locale}/u/${profile.username}/edit`}
                 className="px-3 sm:px-4 h-9 inline-flex items-center rounded-full border border-white/20 hover:bg-white/5 text-[12px] sm:text-[13px] whitespace-nowrap"
@@ -1034,13 +1032,11 @@ export default function ProfileHeader({
                 {tProf('editProfile')}
               </Link>
 
-              {/* ⬇️ Nur Dommes dürfen Offers haben */}
               {profile.role === 'domme' && (
                 <button
                   type="button"
                   onClick={handleOfferClick}
-                  className="h-9 inline-flex items-center rounded-full bg-[var(--purple)]/95 text-white text-[12px] sm:text-[13px] font-semibold shadow-[0_8px_30px_-12px_rgba(139,92,246,.9)]
-                            hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--purple)]/60 px-2 sm:px-4 shrink-0 whitespace-nowrap"
+                  className="h-9 inline-flex items-center rounded-full bg-[var(--purple)]/95 text-white text-[12px] sm:text-[13px] font-semibold shadow-[0_8px_30px_-12px_rgba(139,92,246,.9)] hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--purple)]/60 px-2 sm:px-4 shrink-0 whitespace-nowrap"
                   aria-label={tProf('offerMenu')}
                   title={tProf('offerMenu')}
                 >
@@ -1048,10 +1044,9 @@ export default function ProfileHeader({
                   <span className="hidden sm:inline">{tProf('offer')}</span>
                 </button>
               )}
-            </div>
+            </>
           ) : (
             <>
-              {/* TIP links vom Chat (nur für Dommes & wenn nicht geblockt) */}
               {profile.role === 'domme' && !blockedEither && (
                 <>
                   <button
@@ -1065,7 +1060,6 @@ export default function ProfileHeader({
                     <TipIcon className="w-[30px] h-[30px]" />
                   </button>
 
-                  {/* Einmaliges ActionMenu – bleibt bestehen */}
                   {tipMenuOpen && tipAnchorRect && (
                     <ActionMenu anchorRect={tipAnchorRect} onClose={() => setTipMenuOpen(false)}>
                       <button
@@ -1094,7 +1088,6 @@ export default function ProfileHeader({
                 </>
               )}
 
-              {/* Chat-Button direkt nach dem Tip-Button */}
               {!blockedEither ? (
                 <button
                   type="button"
@@ -1116,13 +1109,11 @@ export default function ProfileHeader({
                 </span>
               )}
 
-              {/* Offer */}
               {profile.role === 'domme' && !blockedEither && (
                 <button
                   type="button"
                   onClick={handleOfferClick}
-                  className="h-9 inline-flex items-center rounded-full bg-[var(--purple)]/95 text-white text-[12px] sm:text-[13px] font-semibold shadow-[0_8px_30px_-12px_rgba(139,92,246,.9)]
-                            hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--purple)]/60 px-2 sm:px-4 shrink-0 whitespace-nowrap"
+                  className="h-9 inline-flex items-center rounded-full bg-[var(--purple)]/95 text-white text-[12px] sm:text-[13px] font-semibold shadow-[0_8px_30px_-12px_rgba(139,92,246,.9)] hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--purple)]/60 px-2 sm:px-4 shrink-0 whitespace-nowrap"
                   aria-label={tProf('offerMenu')}
                   title={tProf('offerMenu')}
                 >
@@ -1131,7 +1122,6 @@ export default function ProfileHeader({
                 </button>
               )}
 
-              {/* Follow / Unfollow */}
               {!blockedEither ? (
                 <form
                   action={isFollowing ? unfollowAction : followAction}
@@ -1169,39 +1159,35 @@ export default function ProfileHeader({
             </>
           )}
         </div>
-      {/* Zeile 2: Name + Badges + Handle direkt unter den Buttons */}
-      <div className="col-start-2 min-w-0">
-        <div className="flex items-center gap-1.5">
-          <h1 className="text-[clamp(20px,2.6vw,24px)] font-semibold leading-none truncate">
-            {profile.displayName}
-          </h1>
-          <UserBadges
-            role={toDbRole(profile.role)}
-            isPremium={premiumActive}
-            isFirstAdopter={firstAdopter}
-            size={18}
-            className="-ml-0.5"
-            premiumLabel={b('badges.verified')}
-            firstAdopterLabel={b('badges.firstAdopter')}
-          />
+
+        <div className="mt-2 min-w-0">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <h1 className="text-[clamp(20px,2.6vw,24px)] font-semibold leading-none truncate">
+              {profile.displayName}
+            </h1>
+
+            <UserBadges
+              role={toDbRole(profile.role)}
+              isPremium={premiumActive}
+              isFirstAdopter={firstAdopter}
+              size={18}
+              className="-ml-0.5 shrink-0"
+              premiumLabel={b('badges.verified')}
+              firstAdopterLabel={b('badges.firstAdopter')}
+            />
+          </div>
+
+          <div className="mt-1 text-white/70 text-sm leading-tight truncate">
+            @{profile.username}
+          </div>
         </div>
-        <span className="text-white/70 text-sm leading-tight truncate">
-          @{profile.username}
-        </span>
       </div>
-    </div>
-  </div>
 
       {/* Sentinel */}
       <div ref={sentinelRef} aria-hidden className="h-1" />
 
       {/* Content */}
-      <div className="px-4 pb-0 pt-[calc(var(--avatar)*0.25)]">
-        {/* Header-Zeile: Avatar liegt absolut am Banner, hier nur Spacer */}
-        <div className="flex gap-3 pt-2 items-start">
-          <div className="shrink-0" style={{ width: 'var(--avatar)' }} aria-hidden />
-          <div className="min-w-0 flex-1" />
-        </div>
+      <div className="px-3 pb-0 pt-[calc(var(--avatar)*0.001+6px)]">
 
       {/* Bio & Meta */}
       <BioCard

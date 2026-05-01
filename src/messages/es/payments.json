@@ -53,7 +53,12 @@
       "title": "AutoDrain activo"
     },
     "avatarAlt": "Avatar de {name}",
-    "balance": { "export": "Exportar CSV", "title": "Saldo actual:" },
+    "balance": { "export": "Exportar CSV",
+      "title": "Saldo actual:",
+      "totalEarned": "Total ganado",
+      "available": "{amount} disponible",
+      "locked": "{amount} bloqueado",
+      "lockedHint": "El saldo bloqueado pasa a estar disponible automáticamente 30 días después de recibir el pago." },
     "guestNote": "Inicia sesión para ver tu historial de pagos.",
     "payments": {
       "amountPrefixReceived": "Recibido: {amount}",

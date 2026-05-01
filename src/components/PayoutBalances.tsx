@@ -113,10 +113,6 @@ export default function PayoutBalances({
               {fmtMoney(earnedCents, earnedCurrency)}
             </div>
 
-            <div className="mt-2 text-[12px] text-emerald-400/70">
-              ✓ Verfügbar für SEPA-Auszahlung
-            </div>
-
             {/* Pending line (Stripe) */}
             <div className="mt-3 pt-3 border-t border-white/10">
               <div className="flex items-center justify-between gap-3">

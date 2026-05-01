@@ -21,217 +21,6 @@ function isValidEmail(e: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
 }
 
-type LegalTab = 'terms' | 'privacy';
-
-/* ---------------- Terms/Privacy Modal (unverändert) ---------------- */
-function TermsPrivacyModal({
-  open,
-  onClose,
-  initialTab = 'terms',
-}: {
-  open: boolean;
-  onClose: () => void;
-  initialTab?: LegalTab;
-}) {
-  const tTerms = useTranslations('legal.legal.terms');
-  const tPrivacy = useTranslations('legal.legal.privacy');
-  const tShared = useTranslations('legal.legal.shared');
-
-  const [tab, setTab] = React.useState<LegalTab>(initialTab);
-  React.useEffect(() => setTab(initialTab), [initialTab, open]);
-
-  const updatedStr = new Intl.DateTimeFormat('de-DE', { dateStyle: 'medium' }).format(new Date());
-
-  return open ? (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label={tab === 'terms' ? tTerms('title') : tPrivacy('title')}
-      className="fixed inset-0 z-[100] grid place-items-center p-4"
-      onKeyDown={(e) => e.key === 'Escape' && onClose()}
-    >
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-3xl rounded-2xl bg-white/5 backdrop-blur-xl ring-1 ring-white/40 shadow-[0_8px_40px_rgba(0,0,0,.5)] overflow-hidden">
-        <div className="flex items-center justify-between px-6 pt-5">
-          <div className="inline-flex rounded-full bg-black/30 p-1 ring-1 ring-white/10">
-            <button
-              type="button"
-              onClick={() => setTab('terms')}
-              className={`px-4 py-1.5 text-sm rounded-full transition ${
-                tab === 'terms' ? 'bg-white/20 text-white' : 'text-white/70 hover:text-white/90'
-              }`}
-            >
-              {tTerms('title')}
-            </button>
-            <button
-              type="button"
-              onClick={() => setTab('privacy')}
-              className={`px-4 py-1.5 text-sm rounded-full transition ${
-                tab === 'privacy' ? 'bg-white/20 text-white' : 'text-white/70 hover:text-white/90'
-              }`}
-            >
-              {tPrivacy('title')}
-            </button>
-          </div>
-
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="text-white/70 hover:text-white/100 transition p-2"
-            title="Close"
-          >
-            ✕
-          </button>
-        </div>
-
-        <div className="max-h-[70svh] overflow-y-auto px-6 pb-6 pt-4">
-          {tab === 'terms' ? (
-            <article className="prose prose-invert prose-sm sm:prose-base max-w-none">
-              <h1 className="mt-0">{tTerms('title')}</h1>
-              <p className="text-white/70 -mt-3">{tTerms('subtitle')}</p>
-              <p className="text-xs text-white/60">
-                {tShared('updated')}: {updatedStr}
-              </p>
-              <h3 className="font-bold">{tTerms('sections.scope')}</h3>
-              <p>{tTerms('content.p_scope')}</p>
-              <h3 className="font-bold">{tTerms('sections.audience')}</h3>
-              <ul className="list-disc pl-5">
-                <li>{tTerms('content.audience_li_1')}</li>
-                <li>{tTerms('content.audience_li_2')}</li>
-              </ul>
-              <h3 className="font-bold">{tTerms('sections.roles')}</h3>
-              <p>{tTerms('content.p_roles')}</p>
-              <ul className="list-disc pl-5">
-                <li>{tTerms('content.roles_li_1')}</li>
-                <li>{tTerms('content.roles_li_2')}</li>
-                <li>{tTerms('content.roles_li_3')}</li>
-              </ul>
-              <h3 className="font-bold">{tTerms('sections.tips')}</h3>
-              <ul className="list-disc pl-5">
-                <li>
-                  <strong>{tTerms('content.tips_li_1').split(':')[0]}</strong>
-                  {': '}
-                  {tTerms('content.tips_li_1').split(':').slice(1).join(':').trim()}
-                </li>
-                <li>
-                  <strong>{tTerms('content.tips_li_2').split(':')[0]}</strong>
-                  {': '}
-                  {tTerms('content.tips_li_2').split(':').slice(1).join(':').trim()}
-                </li>
-                <li>
-                  <strong>{tTerms('content.tips_li_3').split(':')[0]}</strong>
-                  {': '}
-                  {tTerms('content.tips_li_3').split(':').slice(1).join(':').trim()}
-                </li>
-                <li>
-                  <strong>{tTerms('content.tips_li_4').split(':')[0]}</strong>
-                  {': '}
-                  {tTerms('content.tips_li_4').split(':').slice(1).join(':').trim()}
-                </li>
-                <li>
-                  <strong>{tTerms('content.tips_li_5').split(':')[0]}</strong>
-                  {': '}
-                  {tTerms('content.tips_li_5').split(':').slice(1).join(':').trim()}
-                </li>
-              </ul>
-              <h3 className="font-bold">{tTerms('sections.fees')}</h3>
-              <ul className="list-disc pl-5">
-                <li>{tTerms('content.fees_li_1')}</li>
-                <li>{tTerms('content.fees_li_2')}</li>
-                <li>{tTerms('content.fees_li_3')}</li>
-                <li>{tTerms('content.fees_li_4')}</li>
-              </ul>
-              <h3 className="font-bold">{tTerms('sections.tax')}</h3>
-              <ul className="list-disc pl-5">
-                <li>{tTerms('content.tax_li_1')}</li>
-                <li>{tTerms('content.tax_li_2')}</li>
-                <li>{tTerms('content.tax_li_3')}</li>
-              </ul>
-              <h3 className="font-bold">{tTerms('sections.termination')}</h3>
-              <ul className="list-disc pl-5">
-                <li>{tTerms('content.termination_li_1')}</li>
-                <li>{tTerms('content.termination_li_2')}</li>
-              </ul>
-              <h3 className="font-bold">{tTerms('sections.liability')}</h3>
-              <ul className="list-disc pl-5">
-                <li>{tTerms('content.liability_li_1')}</li>
-                <li>{tTerms('content.liability_li_2')}</li>
-              </ul>
-              <h3 className="font-bold">{tTerms('sections.changes')}</h3>
-              <p>{tTerms('content.p_changes')}</p>
-              <h3 className="font-bold">{tTerms('sections.law')}</h3>
-              <p>{tTerms('content.p_law')}</p>
-              <div className="mt-4 rounded-xl border border-blue-300/30 bg-blue-300/10 p-4">
-                <div className="font-semibold text-blue-100">{tTerms('content.callout_title')}</div>
-                <p className="text-white/90 mt-1">{tTerms('content.callout_body')}</p>
-              </div>
-            </article>
-          ) : (
-            <article className="prose prose-invert prose-sm sm:prose-base max-w-none">
-              <h1 className="mt-0">{tPrivacy('title')}</h1>
-              <p className="text-white/70 -mt-3">{tPrivacy('subtitle')}</p>
-              <p className="text-xs text-white/60">{tShared('updated')}: 30.08.2025</p>
-              <h3 className="font-bold">{tPrivacy('sections.controller')}</h3>
-              <p>{tPrivacy('content.p_controller')}</p>
-              <h3 className="font-bold">{tPrivacy('sections.data')}</h3>
-              <ul className="list-disc pl-5">
-                <li>{tPrivacy('content.data_li_1')}</li>
-                <li>{tPrivacy('content.data_li_2')}</li>
-                <li>{tPrivacy('content.data_li_3')}</li>
-                <li>{tPrivacy('content.data_li_4')}</li>
-              </ul>
-              <h3 className="font-bold">{tPrivacy('sections.purpose')}</h3>
-              <ul className="list-disc pl-5">
-                <li>{tPrivacy('content.purpose_li_1')}</li>
-                <li>{tPrivacy('content.purpose_li_2')}</li>
-                <li>{tPrivacy('content.purpose_li_3')}</li>
-                <li>{tPrivacy('content.purpose_li_4')}</li>
-              </ul>
-              <h3 className="font-bold">{tPrivacy('sections.legal')}</h3>
-              <ul className="list-disc pl-5">
-                <li>{tPrivacy('content.legal_li_1')}</li>
-                <li>{tPrivacy('content.legal_li_2')}</li>
-                <li>{tPrivacy('content.legal_li_3')}</li>
-              </ul>
-              <h3 className="font-bold">{tPrivacy('sections.sharing')}</h3>
-              <ul className="list-disc pl-5">
-                <li>{tPrivacy('content.sharing_li_1')}</li>
-                <li>{tPrivacy('content.sharing_li_2')}</li>
-                <li>{tPrivacy('content.sharing_li_3')}</li>
-              </ul>
-              <h3 className="font-bold">{tPrivacy('sections.retention')}</h3>
-              <p>{tPrivacy('content.p_retention')}</p>
-              <h3 className="font-bold">{tPrivacy('sections.rights')}</h3>
-              <ul className="list-disc pl-5">
-                <li>{tPrivacy('content.rights_li_1')}</li>
-                <li>{tPrivacy('content.rights_li_2')}</li>
-                <li>{tPrivacy('content.rights_li_3')}</li>
-              </ul>
-              <h3 className="font-bold">{tPrivacy('sections.cookies')}</h3>
-              <p>{tPrivacy('content.p_cookies')}</p>
-              <div className="mt-4 rounded-xl border border-yellow-300/30 bg-yellow-300/10 p-4">
-                <div className="font-semibold text-yellow-100">{tPrivacy('content.callout_title')}</div>
-                <p className="text-white/90 mt-1">{tPrivacy('content.callout_body')}</p>
-              </div>
-            </article>
-          )}
-        </div>
-
-        <div className="flex items-center justify-end gap-2 px-6 pb-5">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-full px-4 py-2 text-sm border border-white/20 text-white/90 bg-black/20 hover:bg-black/30 transition"
-          >
-            Close
-          </button>
-        </div>
-      </div>
-    </div>
-  ) : null;
-}
-
 /* ---------------- Page: Signup Account ---------------- */
 export default function SignupAccountPage() {
   const sp = useSearchParams();
@@ -263,7 +52,6 @@ export default function SignupAccountPage() {
   const [email, setEmail] = React.useState('');
   const [pw, setPw] = React.useState('');
   const [pw2, setPw2] = React.useState('');
-  const [agree, setAgree] = React.useState(false);
   const [dommeGiftAgree, setDommeGiftAgree] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
 
@@ -277,16 +65,12 @@ export default function SignupAccountPage() {
 
   const [err, setErr] = React.useState<string | null>(null);
 
-  const [legalOpen, setLegalOpen] = React.useState(false);
-  const [legalTab, setLegalTab] = React.useState<LegalTab>('terms');
-
   // NEW: Domme-Disclaimer auf/zu
   const [dommeOpen, setDommeOpen] = React.useState(false);
 
   const ready =
     !!handle &&
     !!role &&
-    agree &&
     (!isDomme || dommeGiftAgree) &&
     (
       oauthMode
@@ -516,7 +300,6 @@ export default function SignupAccountPage() {
                   {dommeOpen ? (
                     <div className="mt-3">
                       <ul className="text-[13px] sm:text-sm text-white/85 list-disc pl-5 space-y-1">
-                        <li>{t('dommeDisclaimer.li1')}</li>
                         <li>{t('dommeDisclaimer.li2')}</li>
                         <li>{t('dommeDisclaimer.li3')}</li>
                         <li>{t('dommeDisclaimer.li4')}</li>
@@ -633,40 +416,6 @@ export default function SignupAccountPage() {
                 )}
               </div>
 
-              <label className="flex items-center gap-2 text-[13px] sm:text-sm text-white/90 leading-5">
-                <input
-                  type="checkbox"
-                  className="accent-[var(--purple)] shrink-0"
-                  checked={agree}
-                  onChange={(e) => setAgree(e.target.checked)}
-                />
-                <span>
-                  {t('agree').split('Terms')[0]}
-                  <button
-                    type="button"
-                    className="underline text-purple-100 hover:text-white px-1 py-1 rounded-md active:bg-white/10"
-                    onClick={() => {
-                      setLegalTab('terms');
-                      setLegalOpen(true);
-                    }}
-                  >
-                    Terms
-                  </button>
-                  {t('agree').split('Terms')[1]?.split('Privacy Policy')[0] ?? ' & '}
-                  <button
-                    type="button"
-                    className="underline text-purple-100 hover:text-white px-1 py-1 rounded-md active:bg-white/10"
-                    onClick={() => {
-                      setLegalTab('privacy');
-                      setLegalOpen(true);
-                    }}
-                  >
-                    Privacy Policy
-                  </button>
-                  {t('agree').split('Privacy Policy')[1] ?? '.'}
-                </span>
-              </label>
-
               {err && <div className="text-sm text-red-300">{err}</div>}
 
               <div className="space-y-3">
@@ -686,7 +435,7 @@ export default function SignupAccountPage() {
                 <button
                   type={oauthMode ? 'submit' : 'button'}
                   onClick={oauthMode ? undefined : signInWithGoogle}
-                  disabled={loading || !handle || !role || !agree || (isDomme && !dommeGiftAgree)}
+                  disabled={loading || !handle || !role || (isDomme && !dommeGiftAgree)}
                   className="w-full rounded-full py-3 text-[15px] min-h-[48px] sm:text-sm font-medium
                             border border-white/20 bg-black/20 hover:bg-black/30
                             disabled:opacity-50 disabled:cursor-not-allowed
@@ -843,7 +592,6 @@ export default function SignupAccountPage() {
           </div>
         </div>
       )}
-      <TermsPrivacyModal open={legalOpen} onClose={() => setLegalOpen(false)} initialTab={legalTab} />
     </div>
   );
 }

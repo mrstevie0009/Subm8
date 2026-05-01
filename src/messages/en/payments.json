@@ -53,7 +53,12 @@
       "title": "Active AutoDrain"
     },
     "avatarAlt": "{name} avatar",
-    "balance": { "export": "CSV export", "title": "Current balance:" },
+    "balance": { "export": "CSV export",
+      "title": "Current balance:",
+      "totalEarned": "Total earned",
+      "available": "{amount} available",
+      "locked": "{amount} locked",
+      "lockedHint": "Locked balance automatically becomes available 30 days after the payment is received." },
     "guestNote": "Please sign in to view your payment history.",
     "payments": {
       "amountPrefixReceived": "Received: {amount}",

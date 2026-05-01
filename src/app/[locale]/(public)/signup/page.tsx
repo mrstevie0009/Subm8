@@ -280,9 +280,6 @@ export default function SignupStartPage() {
   const [legalTab, setLegalTab] = React.useState<LegalTab>('terms');
   const [dommeOpen, setDommeOpen] = React.useState(false);
 
-  // Reihenfolge-Logik
-  const [roleSelectedFirst, setRoleSelectedFirst] = React.useState(false);
-
   // OAuth Email aus Cookie lesen
   React.useEffect(() => {
     if (!isOAuthPending) return;
@@ -505,21 +502,27 @@ export default function SignupStartPage() {
     if (!touched) setTouched(true);
   }
 
+  const tryProceed = React.useCallback(
+    async (h: string, r: RoleUi | null) => {
+      if (started.current || busy) return;
+      if (!validHandle(h)) return;
+      if (!r) return;
+      if (!agree) return;
+      if (r === 'domme' && !dommeGiftAgree) return;
+      if (handleState === 'taken' || handleState === 'checking') return;
+
+      const status = handleState === 'ok' ? 'ok' : await checkHandleAvailability(h);
+      if (status !== 'ok') return;
+
+      await proceed(h, r);
+    },
+    [agree, busy, dommeGiftAgree, handleState, checkHandleAvailability, proceed]
+  );
+
   /** Rolle wählen — ggf. Auto-Redirect (nur wenn Username → Rolle) */
-  async function onSelect(type: RoleUi) {
+  function onSelect(type: RoleUi) {
     setSelected(type);
-
-    if (validHandle(username) && !roleSelectedFirst) {
-      const status = handleState === 'ok' ? 'ok' : await checkHandleAvailability(username);
-      if (status === 'ok') {
-        void proceed(username, type);
-      }
-      return;
-    }
-
-    if (!validHandle(username)) {
-      setRoleSelectedFirst(true);
-    }
+    void tryProceed(username, type);
   }
 
   /** Enter (Submit) — Flow Rolle → Username */
@@ -532,9 +535,10 @@ export default function SignupStartPage() {
     if (!selected) return;
     if (!agree) return;
     if (selected === 'domme' && !dommeGiftAgree) return;
+    if (started.current || busy) return;
 
     const status = handleState === 'ok' ? 'ok' : await checkHandleAvailability(username);
-    if (status === 'taken') return;
+    if (status !== 'ok') return;
 
     await proceed(username, selected);
   }
@@ -650,7 +654,14 @@ export default function SignupStartPage() {
                         type="checkbox"
                         className="accent-[var(--purple)] w-5 h-5"
                         checked={dommeGiftAgree}
-                        onChange={(e) => setDommeGiftAgree(e.target.checked)}
+                        onChange={(e) => {
+                          const checked = e.target.checked;
+                          setDommeGiftAgree(checked);
+
+                          if (checked) {
+                            void tryProceed(username, selected);
+                          }
+                        }}
                       />
                       <span className="text-[13px] sm:text-sm text-white/90">
                         {tAccount('dommeDisclaimer.checkbox')}
@@ -738,7 +749,14 @@ export default function SignupStartPage() {
                     type="checkbox"
                     className="accent-[var(--purple)] mt-[3px]"
                     checked={agree}
-                    onChange={(e) => setAgree(e.target.checked)}
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      setAgree(checked);
+
+                      if (checked) {
+                        void tryProceed(username, selected);
+                      }
+                    }}
                   />
                   <span>
                     {tAccount('agree').split('Terms')[0]}

@@ -6,6 +6,13 @@ import { randomUUID } from 'node:crypto';
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
+  if (process.env.NODE_ENV === "production") {
+    return Response.json(
+      { ok: false, error: "Disabled in production" },
+      { status: 403 }
+    );
+  }
+
   try {
     const now = new Date();
 

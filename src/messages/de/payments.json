@@ -53,7 +53,12 @@
       "title": "Aktiver Autodrain"
     },
     "avatarAlt": "{name} Avatar",
-    "balance": { "export": "CSV-Export", "title": "Aktueller Kontostand:" },
+    "balance": {  "export": "CSV-Export",
+      "title": "Aktueller Kontostand:",
+      "totalEarned": "Gesamt verdient",
+      "available": "{amount} auszahlbar",
+      "locked": "{amount} gesperrt",
+      "lockedHint": "Gesperrtes Guthaben wird 30 Tage nach Zahlungseingang automatisch auszahlbar." },
     "guestNote": "Bitte melde dich an, um deinen Zahlungsverlauf zu sehen.",
     "payments": {
       "amountPrefixReceived": "Eingegangen: {amount}",
