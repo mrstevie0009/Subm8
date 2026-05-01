@@ -1961,7 +1961,7 @@ export default function ChatThreadPage() {
           });
           if (!put.ok) throw new Error('Upload failed');
 
-          await fetch(`${baseUrl}`, {
+          const sendRes = await fetch(`${baseUrl}`, {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
             body: JSON.stringify({
@@ -1970,6 +1970,11 @@ export default function ChatThreadPage() {
               mediaType: file.type || 'application/octet-stream',
             }),
           });
+
+          const sendJson = await sendRes.json().catch(() => null);
+          if (!sendRes.ok || !sendJson?.ok) {
+            throw new Error(sendJson?.error || `Send failed: HTTP ${sendRes.status}`);
+          }
         } else {
           await fetch(`${baseUrl}`, {
             method: 'POST',

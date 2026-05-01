@@ -67,8 +67,9 @@ const cspHeader = [
     "connect-src 'self'",
     'https://api.stripe.com',
     'https://stationapi.veriff.com',
-    // Tenor/Giphy nur noch über eigenen Proxy – kein direkter Client-Zugriff nötig
-    // Falls du doch direkten Client-Zugriff brauchst:
+    'https://*.r2.cloudflarestorage.com',
+    'https://*.s3.amazonaws.com',
+    'https://cdn.subm8.com',
     'https://media.tenor.com',
     'https://c.tenor.com',
     'https://media1.tenor.com',

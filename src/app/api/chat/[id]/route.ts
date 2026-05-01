@@ -554,7 +554,7 @@ export async function POST(
     const bodyMediaKey  = b?.mediaKey  ? b.mediaKey  : null;
     const bodyMediaType = b?.mediaType ? b.mediaType : null;
 
-    if (!text && !bodyMediaUrl) {
+    if (!text && !bodyMediaUrl && !bodyMediaKey) {
       return Response.json({ ok: false, error: 'Empty message' }, { status: 400 });
     }
 
