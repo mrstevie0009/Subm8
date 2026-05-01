@@ -20,10 +20,17 @@ function yyyymm(d = new Date()) {
   return [d.getFullYear(), String(d.getMonth() + 1).padStart(2, '0')].join('/');
 }
 
-export function buildKey(
-  kind: 'post-media' | 'avatars' | 'banners' | 'offers' | 'profile' | 'chat-media' | 'contract-private',
-  fileName: string
-) {
+export type UploadKind =
+  | 'post-media'
+  | 'avatars'
+  | 'banners'
+  | 'offers'
+  | 'profile'
+  | 'chat-media'
+  | 'contract-private'
+  | 'chat-media-private';
+
+export function buildKey(kind: UploadKind, fileName: string) {
   const ext = fileName.split('.').pop()?.toLowerCase() || 'bin';
   return `${kind}/${yyyymm()}/${crypto.randomUUID()}.${ext}`;
 }

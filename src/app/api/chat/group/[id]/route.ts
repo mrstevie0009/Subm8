@@ -365,7 +365,7 @@ export async function POST(
 
     /* ---------- B) JSON: presigned Upload / typing ---------- */
     const body = (await req.json().catch(() => null)) as
-      | { text?: string; typing?: boolean; mediaUrl?: string; mediaType?: string }
+      | { text?: string; typing?: boolean; mediaUrl?: string; mediaKey?: string; mediaType?: string }
       | null;
 
     // ✅ Typing Ping (optimiert)

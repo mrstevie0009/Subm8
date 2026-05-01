@@ -1941,15 +1941,18 @@ export default function ChatThreadPage() {
       try {
         // Netzwerk-Request
         if (file) {
-          const pre = await fetch(`/api/upload-urls?kind=chat-media`, {
+          const pre = await fetch(`/api/chat/upload-urls`, {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ files: [{ name: file.name, type: file.type || 'application/octet-stream' }] }),
+            body: JSON.stringify({
+              conversationId: String(id),
+              files: [{ name: file.name, type: file.type || 'application/octet-stream' }],
+            }),
           });
           if (!pre.ok) throw new Error('Failed to presign');
           const pj = await pre.json();
           const item = pj?.items?.[0];
-          if (!item?.uploadUrl || !item?.publicUrl) throw new Error('Invalid presign');
+          if (!item?.uploadUrl || !item?.key) throw new Error('Invalid presign');
 
           const put = await fetch(item.uploadUrl, {
             method: 'PUT',
@@ -1958,12 +1961,12 @@ export default function ChatThreadPage() {
           });
           if (!put.ok) throw new Error('Upload failed');
 
-          await fetch(`${baseUrl}`, { 
+          await fetch(`${baseUrl}`, {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
             body: JSON.stringify({
               text: trimmedText,
-              mediaUrl: item.publicUrl,
+              mediaKey: item.key,
               mediaType: file.type || 'application/octet-stream',
             }),
           });

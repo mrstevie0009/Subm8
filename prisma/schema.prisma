@@ -333,6 +333,7 @@ model Message {
   authorId       String
   text           String?       @db.VarChar(4000)
   mediaUrl       String?
+  mediaKey       String?
   mediaType      String?
   seenAt         DateTime?
   author         User          @relation(fields: [authorId], references: [id], onDelete: Cascade)

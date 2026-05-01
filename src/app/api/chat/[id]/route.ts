@@ -33,14 +33,6 @@ async function getBlockFlags(aUserId: string, bUserId: string) {
   };
 }
 
-/** Type Guards statt `any` */
-function hasRoleField(u: unknown): u is { role?: DbRole | null } {
-  return typeof u === 'object' && u !== null && 'role' in (u as Record<string, unknown>);
-}
-function hasAvatarField(u: unknown): u is { avatarUrl?: string | null } {
-  return typeof u === 'object' && u !== null && 'avatarUrl' in (u as Record<string, unknown>);
-}
-
 /* ---------- Typing (nutzt bestehende Tabelle) ---------- */
 const TYPING_TABLE = `"ConversationTypingState"`;
 
@@ -198,11 +190,9 @@ export async function GET(
       select: { role: true, avatarUrl: true },
     });
 
-    const meRole: DbRole | null =
-      (hasRoleField(me) ? me.role ?? null : null) ?? meProfile?.role ?? null;
+    const meRole: DbRole | null = meProfile?.role ?? null;
 
-    const meAvatarUrlRaw =
-      (hasAvatarField(me) ? me.avatarUrl ?? null : null) ?? meProfile?.avatarUrl ?? null;
+    const meAvatarUrlRaw = meProfile?.avatarUrl ?? null;
     const meAvatarUrl = meAvatarUrlRaw && meAvatarUrlRaw.trim() ? meAvatarUrlRaw : null;
 
     // Block-Status in beide Richtungen
@@ -543,6 +533,7 @@ export async function POST(
       text?: string;
       typing?: boolean;
       mediaUrl?: string;
+      mediaKey?: string;
       mediaType?: string;
     } | null;
 
@@ -556,10 +547,12 @@ export async function POST(
       return Response.json({ ok: true });
     }
 
-    // Normaler Text
-    const text = (body?.text ?? '').toString().trim();
-    const bodyMediaUrl = typeof body?.mediaUrl === 'string' && body.mediaUrl ? body.mediaUrl : null;
-    const bodyMediaType = typeof body?.mediaType === 'string' && body.mediaType ? body.mediaType : null;
+    // Normaler Text — body hier neu lesen um TS-Narrowing zu umgehen
+    const b = body as { text?: string; mediaUrl?: string; mediaKey?: string; mediaType?: string } | null;
+    const text = (b?.text ?? '').toString().trim();
+    const bodyMediaUrl  = b?.mediaUrl  ? b.mediaUrl  : null;
+    const bodyMediaKey  = b?.mediaKey  ? b.mediaKey  : null;
+    const bodyMediaType = b?.mediaType ? b.mediaType : null;
 
     if (!text && !bodyMediaUrl) {
       return Response.json({ ok: false, error: 'Empty message' }, { status: 400 });
@@ -585,7 +578,8 @@ export async function POST(
         conversationId: id,
         authorId: me.id,
         text: text || null,
-        mediaUrl: bodyMediaUrl,
+        mediaUrl: bodyMediaKey ? `/api/chat/media/${bodyMediaKey}` : bodyMediaUrl,
+        mediaKey: bodyMediaKey,
         mediaType: bodyMediaType || null,
       },
       select: {

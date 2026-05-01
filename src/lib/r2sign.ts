@@ -31,7 +31,7 @@ const ALLOWED_UPLOAD_TYPES = new Set([
 ]);
 
 export async function presignPut(
-  kind: 'post-media' | 'avatars' | 'banners' | 'offers' | 'profile' | 'chat-media' | 'contract-private',
+  kind: 'post-media' | 'avatars' | 'banners' | 'offers' | 'profile' | 'chat-media' | 'contract-private' | 'chat-media-private',
   filename: string,
   contentType: string
 ) {
@@ -70,14 +70,12 @@ export async function presignPut(
 
   // Query-Parameter für SigV4
   const query: Record<string, string> = {
-    'X-Amz-Algorithm': 'AWS4-HMAC-SHA256',
-    'X-Amz-Credential': `${accessKeyId}/${dateStamp}/${region}/${service}/aws4_request`,
-    'X-Amz-Date': amzDate,
-    'X-Amz-Expires': String(60 * 5), // 5 Minuten
-    'X-Amz-SignedHeaders': 'host',
-    // content-type als Info für den Client, S3 ignoriert das als normalen Query-Param
-    'Content-Type': ct,
-  };
+  'X-Amz-Algorithm': 'AWS4-HMAC-SHA256',
+  'X-Amz-Credential': `${accessKeyId}/${dateStamp}/${region}/${service}/aws4_request`,
+  'X-Amz-Date': amzDate,
+  'X-Amz-Expires': String(60 * 5),
+  'X-Amz-SignedHeaders': 'host',
+};
 
   const sortedKeys = Object.keys(query).sort();
   const canonicalQuery = sortedKeys
@@ -119,8 +117,8 @@ export async function presignPut(
 }
 
 export async function presignGet(key: string, expiresSeconds = 60) {
-  if (!key.startsWith('contract-private/')) {
-    throw new Error('Only private contract media can be signed here');
+  if (!key.startsWith('contract-private/') && !key.startsWith('chat-media-private/')) {
+    throw new Error('Only private media can be signed here');
   }
 
   const bucket = process.env.S3_BUCKET!;
