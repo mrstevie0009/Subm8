@@ -1,4 +1,123 @@
 {
+  "contracts": {
+    "title": "Contracts",
+    "subtitle": "Schulden- und Erpressungsverträge",
+    "new": "Neu",
+    "currentContracts": "Aktuelle Contracts",
+    "searchPlaceholder": "Contracts suchen",
+    "filter": {
+      "title": "Contracts filtern",
+      "latest": "Neueste zuerst",
+      "mostDebt": "Meiste Schulden",
+      "onlyBlackmail": "Nur BM-Contracts",
+      "onlyDebt": "Nur Schulden-Contracts"
+    },
+    "donut": {
+      "paid": "Bezahlt",
+      "unlocked": "auszahlbar",
+      "locked": "gesperrt 30T"
+    },
+    "card": {
+      "typeDebt": "Schulden-Contract",
+      "typeBlackmail": "Erpressungs-Contract",
+      "amountPaid": "Bezahlter Betrag",
+      "amountLeft": "Restbetrag",
+      "nextInterest": "Nächste Zinsen",
+      "interest": "Zinssatz",
+      "days": "{count} Tage",
+      "changeAmount": "Betrag ändern",
+      "stopContract": "Contract stoppen",
+      "deleteContract": "Contract löschen",
+      "paymentHistory": "Zahlungshistorie",
+      "blackmailInfo": "Erpressungsinfos",
+      "payerHint": "Du bist der Zahler. Nur der Empfänger kann den Contract ändern oder stoppen.",
+      "paused": "Pausiert"
+    },
+    "actions": {
+      "cancel": "Abbrechen",
+      "save": "Speichern",
+      "continue": "Weiter",
+      "goBack": "Zurück",
+      "yes": "Ja",
+      "no": "Nein"
+    },
+    "new_flow": {
+      "titlePick": "Contract auswählen",
+      "titleDebt": "Schulden-Contract",
+      "titleBlackmail": "Erpressungs-Contract",
+      "subtitlePick": "User und Contract-Typ auswählen",
+      "searchEmpty": "Suche nach einem User um einen Contract zu erstellen.",
+      "typeQuestion": "Welchen Contract-Typ möchtest du erstellen?",
+      "debtTitle": "Schulden-Contract",
+      "debtDesc": "Schulden, Zinsen und Zahlungsbedingungen festlegen.",
+      "blackmailTitle": "Erpressungs-Contract",
+      "blackmailDesc": "Schulden plus Einwilligungsinformationen."
+    },
+    "form": {
+      "debtInfo": "Schuldeninformationen",
+      "amountLabel": "Zu zahlender Betrag",
+      "interestLabel": "Monatliche Zinsen",
+      "interestHint": "Zinsen werden automatisch zu Beginn jedes Monats berechnet.",
+      "whoPaysSectionLabel": "Wer zahlt wem?",
+      "selectedUser": "Ausgewählter User",
+      "selectedPaysViewer": "{name} zahlt dir",
+      "selectedPaysViewerHint": "Du kannst den Betrag ändern und den Contract stoppen.",
+      "viewerPaysSelected": "Du zahlst {name}",
+      "viewerPaysSelectedHint": "Du kannst den Betrag nicht ändern, stoppen oder deaktivieren.",
+      "directionRequired": "Bitte wähle wer wem zahlt."
+    },
+    "changeAmount": {
+      "title": "Contract aktualisieren",
+      "newAmountLabel": "Neuer Gesamtschuldenbetrag",
+      "externalTipLabel": "Außerhalb von Subm8 erhaltene Zahlung",
+      "externalTipHint": "Nutze das zweite Feld wenn der Sub dich außerhalb von Subm8 bezahlt hat. Dieser Betrag wird als bezahlt verbucht."
+    },
+    "history": {
+      "title": "Schulden-Zahlungshistorie",
+      "thDate": "Datum/Uhrzeit",
+      "thType": "Typ",
+      "thAmount": "Betrag"
+    },
+    "blackmail": {
+      "title": "Erpressungsinfos",
+      "uploadTitle": "Private Beweisdateien hinzufügen",
+      "uploadHint": "Fotos/Videos hier hineinziehen. Nur autorisierte Contract-User können sie sehen.",
+      "filesSelected": "{count} Datei(en) ausgewählt",
+      "uploading": "Hochladen…",
+      "personalTitle": "Persönliche Informationen",
+      "workTitle": "Arbeitsinformationen",
+      "closePersonTitle": "Nahestehende Person",
+      "locked": "gesperrt"
+    },
+    "bm": {
+      "fullName": "Vollständiger Name",
+      "city": "Stadt",
+      "street": "Straße",
+      "door": "Tür",
+      "phone": "Telefonnummer",
+      "card": "Kartendetails",
+      "jobTitle": "Berufsbezeichnung",
+      "salary": "Gehalt",
+      "bossName": "Name des Vorgesetzten",
+      "address": "Adresse"
+    },
+    "stop": {
+      "title": "Contract stoppen/deaktivieren",
+      "deactivate": "Deaktivieren",
+      "delete": "Löschen",
+      "deactivateHint": "Bei Deaktivierung stoppen die Zinsen und es werden keine Zahlungen mehr hinzugefügt.",
+      "deleteHint": "Beim Löschen gehen alle Contract-Informationen für immer verloren.",
+      "confirmDeactivate": "Bist du sicher, dass du ihn deaktivieren möchtest?",
+      "confirmDelete": "Bist du sicher, dass du ihn löschen möchtest?"
+    },
+    "states": {
+      "loading": "Contracts werden geladen…",
+      "errorTitle": "Contracts konnten nicht geladen werden",
+      "retry": "Erneut versuchen",
+      "emptyTitle": "Keine aktiven Contracts",
+      "emptyHint": "Erstelle einen neuen Contract um ihn hier zu sehen."
+    }
+  },
   "stepUp": {
     "title": "Sicherheitsbestätigung",
     "subtitle": "Bestätige dein Passwort um \"{action}\" auszuführen.",

@@ -73,33 +73,56 @@ export default function SettingsDrawer({ open, onClose }: Props) {
   }, [open, onClose]);
 
   React.useEffect(() => {
-  if (!open) return;
+    if (!open) return;
 
-  const scrollY = window.scrollY;
-  const body = document.body;
+    const scrollY = window.scrollY;
+    const body = document.body;
+    const html = document.documentElement;
 
-  const prevOverflow = body.style.overflow;
-  const prevPosition = body.style.position;
-  const prevTop = body.style.top;
-  const prevWidth = body.style.width;
-  const prevTouchAction = body.style.touchAction;
+    const prevBodyOverflow = body.style.overflow;
+    const prevBodyPosition = body.style.position;
+    const prevBodyTop = body.style.top;
+    const prevBodyWidth = body.style.width;
+    const prevBodyTouchAction = body.style.touchAction;
+    const prevHtmlOverflow = html.style.overflow;
 
-  body.style.overflow = 'hidden';
-  body.style.position = 'fixed';
-  body.style.top = `-${scrollY}px`;
-  body.style.width = '100%';
-  body.style.touchAction = 'none';
+    body.style.overflow = 'hidden';
+    body.style.position = 'fixed';
+    body.style.top = `-${scrollY}px`;
+    body.style.width = '100%';
+    body.style.touchAction = 'none';
+    html.style.overflow = 'hidden';
 
-  return () => {
-    body.style.overflow = prevOverflow;
-    body.style.position = prevPosition;
-    body.style.top = prevTop;
-    body.style.width = prevWidth;
-    body.style.touchAction = prevTouchAction;
+    return () => {
+      body.style.overflow = prevBodyOverflow;
+      body.style.position = prevBodyPosition;
+      body.style.top = prevBodyTop;
+      body.style.width = prevBodyWidth;
+      body.style.touchAction = prevBodyTouchAction;
+      html.style.overflow = prevHtmlOverflow;
 
-    window.scrollTo(0, scrollY);
-  };
-}, [open]);
+      window.scrollTo(0, scrollY);
+    };
+  }, [open]);
+
+  const overlayRef = React.useRef<HTMLDivElement | null>(null);
+
+  React.useEffect(() => {
+    if (!open) return;
+    const el = overlayRef.current;
+    if (!el) return;
+
+    const preventScroll = (e: TouchEvent) => {
+      if (e.target instanceof Node && el.contains(e.target)) {
+        const panel = el.querySelector('aside');
+        if (panel && panel.contains(e.target as Node)) return;
+      }
+      e.preventDefault();
+    };
+
+    el.addEventListener('touchmove', preventScroll, { passive: false });
+    return () => el.removeEventListener('touchmove', preventScroll);
+  }, [open]);
 
   const callbackUrl = React.useMemo(() => {
     const qs = search.toString();
@@ -281,6 +304,7 @@ export default function SettingsDrawer({ open, onClose }: Props) {
       bookmarks: `/${locale}/settings/bookmarks`,
       premium: `/${locale}/settings/premium`,
       payments: `/${locale}/settings/payments`,
+      contracts: `/${locale}/settings/contracts`
     }),
     [isAuth, handle, locale, callbackUrl]
   );
@@ -299,6 +323,7 @@ export default function SettingsDrawer({ open, onClose }: Props) {
     transition: 'opacity 200ms ease',
     overscrollBehavior: 'contain',
     touchAction: 'none',
+    overflow: 'hidden',
   };
 
   const panelStyle: React.CSSProperties = {
@@ -315,9 +340,11 @@ export default function SettingsDrawer({ open, onClose }: Props) {
     padding: '20px 16px',
     paddingBottom: 'calc(env(safe-area-inset-bottom) + 20px)',
     overflowY: 'auto',
+    overflowX: 'hidden',
     overscrollBehavior: 'contain',
     WebkitOverflowScrolling: 'touch',
     touchAction: 'pan-y',
+    willChange: 'transform',
   };
 
 async function smartSignOut() {
@@ -344,13 +371,14 @@ async function smartSignOut() {
 
   const root = (
     <div
+      ref={overlayRef}
       style={overlayStyle}
       onMouseDown={(e) => {
         if (!open) return;
         if (e.target === e.currentTarget) onClose();
       }}
-      onTouchMove={(e) => {
-        if (e.target === e.currentTarget) e.preventDefault();
+      onTouchEnd={(e) => {
+        if (e.target === e.currentTarget) onClose();
       }}
       role="dialog"
       aria-modal="true"
@@ -360,6 +388,7 @@ async function smartSignOut() {
       <aside
         style={panelStyle}
         onMouseDown={(e) => e.stopPropagation()}
+        onTouchStart={(e) => e.stopPropagation()}
         onTouchMove={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -510,6 +539,7 @@ async function smartSignOut() {
           <MenuItem icon={BookmarkIcon} label={t('menu.bookmarks')} href={hrefs.bookmarks} onClick={onClose} />
           <MenuItem icon={BoltIcon} label={t('menu.premium')} href={hrefs.premium} onClick={onClose} />
           <MenuItem icon={PaymentsIcon} label={t('menu.payments')} href={hrefs.payments} onClick={onClose} />
+          <MenuItem icon={ContractsIcon} label={t('menu.contracts')} href={hrefs.contracts} onClick={onClose} />
         </nav>
 
         <div style={{ height: 1, background: 'rgba(255,255,255,0.1)', margin: '10px 0' }} />
@@ -1165,3 +1195,24 @@ function PaymentsIcon(c: string) {
   );
 }
 
+function ContractsIcon(c: string) {
+  return (
+    <svg viewBox="0 0 24 24" style={{ width: 20, height: 20, color: c }} aria-hidden="true">
+      <path
+        d="M7 3.5h7.5L19 8v12.5H7a2 2 0 0 1-2-2v-13a2 2 0 0 1 2-2Z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M14.5 3.5V8H19"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+      <path d="M8.5 12h7M8.5 15h5M8.5 18h6.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  );
+}

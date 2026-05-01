@@ -1,4 +1,123 @@
 {
+  "contracts": {
+    "title": "Contrats",
+    "subtitle": "Contrats de dette et de chantage",
+    "new": "Nouveau",
+    "currentContracts": "Contrats en cours",
+    "searchPlaceholder": "Rechercher des contrats actifs",
+    "filter": {
+      "title": "Filtrer les contrats",
+      "latest": "Plus récents",
+      "mostDebt": "Dette restante la plus élevée",
+      "onlyBlackmail": "Contrats chantage uniquement",
+      "onlyDebt": "Contrats dette uniquement"
+    },
+    "donut": {
+      "paid": "Payé",
+      "unlocked": "disponible",
+      "locked": "bloqué 30j"
+    },
+    "card": {
+      "typeDebt": "Contrat de dette",
+      "typeBlackmail": "Contrat de chantage",
+      "amountPaid": "Montant payé",
+      "amountLeft": "Montant restant",
+      "nextInterest": "Prochain intérêt",
+      "interest": "Intérêt",
+      "days": "{count} jours",
+      "changeAmount": "Modifier le montant",
+      "stopContract": "Arrêter le contrat",
+      "deleteContract": "Supprimer le contrat",
+      "paymentHistory": "Historique des paiements",
+      "blackmailInfo": "Infos chantage",
+      "payerHint": "Vous êtes le payeur de ce contrat. Seul le bénéficiaire peut le modifier ou l'arrêter.",
+      "paused": "Suspendu"
+    },
+    "actions": {
+      "cancel": "Annuler",
+      "save": "Enregistrer",
+      "continue": "Continuer",
+      "goBack": "Retour",
+      "yes": "Oui",
+      "no": "Non"
+    },
+    "new_flow": {
+      "titlePick": "Choisir un contrat",
+      "titleDebt": "Contrat de dette",
+      "titleBlackmail": "Contrat de chantage",
+      "subtitlePick": "Choisissez un utilisateur et un type de contrat",
+      "searchEmpty": "Recherchez un utilisateur pour créer un contrat.",
+      "typeQuestion": "Quel type de contrat souhaitez-vous créer ?",
+      "debtTitle": "Contrat de dette",
+      "debtDesc": "Définissez la dette, les intérêts et les conditions de paiement.",
+      "blackmailTitle": "Contrat de chantage",
+      "blackmailDesc": "Dette plus informations de chantage consensuel."
+    },
+    "form": {
+      "debtInfo": "Informations sur la dette",
+      "amountLabel": "Montant à payer",
+      "interestLabel": "Intérêt mensuel",
+      "interestHint": "Les intérêts sont appliqués automatiquement au début de chaque mois.",
+      "whoPaysSectionLabel": "Qui paie qui ?",
+      "selectedUser": "Utilisateur sélectionné",
+      "selectedPaysViewer": "{name} vous paie",
+      "selectedPaysViewerHint": "Vous pouvez modifier le montant et arrêter le contrat.",
+      "viewerPaysSelected": "Vous payez {name}",
+      "viewerPaysSelectedHint": "Vous ne pouvez pas modifier le montant, arrêter ou désactiver ce contrat.",
+      "directionRequired": "Veuillez choisir qui paie qui."
+    },
+    "changeAmount": {
+      "title": "Mettre à jour le contrat",
+      "newAmountLabel": "Nouveau montant total de la dette",
+      "externalTipLabel": "Paiement reçu hors Subm8",
+      "externalTipHint": "Utilisez ce champ lorsque le sub vous a payé en dehors de Subm8. Ce montant sera enregistré comme payé."
+    },
+    "history": {
+      "title": "Historique des paiements de dette",
+      "thDate": "Date/heure",
+      "thType": "Type",
+      "thAmount": "Montant"
+    },
+    "blackmail": {
+      "title": "Infos chantage",
+      "uploadTitle": "Ajouter des fichiers de preuve privés",
+      "uploadHint": "Glissez des photos/vidéos ici. Seuls les utilisateurs autorisés du contrat peuvent les voir.",
+      "filesSelected": "{count} fichier(s) sélectionné(s)",
+      "uploading": "Envoi en cours…",
+      "personalTitle": "Informations personnelles",
+      "workTitle": "Informations professionnelles",
+      "closePersonTitle": "Personne proche de l'utilisateur",
+      "locked": "verrouillé"
+    },
+    "bm": {
+      "fullName": "Nom complet",
+      "city": "Ville",
+      "street": "Rue",
+      "door": "Porte",
+      "phone": "Numéro de téléphone",
+      "card": "Détails de la carte",
+      "jobTitle": "Intitulé du poste",
+      "salary": "Salaire",
+      "bossName": "Nom du responsable",
+      "address": "Adresse"
+    },
+    "stop": {
+      "title": "Arrêter/Désactiver le contrat",
+      "deactivate": "Désactiver",
+      "delete": "Supprimer",
+      "deactivateHint": "Si vous le désactivez, les intérêts s'arrêtent et aucun paiement ne sera ajouté.",
+      "deleteHint": "Si vous le supprimez, toutes les informations du contrat seront perdues définitivement.",
+      "confirmDeactivate": "Êtes-vous sûr de vouloir le désactiver ?",
+      "confirmDelete": "Êtes-vous sûr de vouloir le supprimer ?"
+    },
+    "states": {
+      "loading": "Chargement des contrats…",
+      "errorTitle": "Impossible de charger les contrats",
+      "retry": "Réessayer",
+      "emptyTitle": "Aucun contrat actif",
+      "emptyHint": "Créez un nouveau contrat pour le voir ici."
+    }
+  },
   "stepUp": {
     "title": "Confirmation de sécurité",
     "subtitle": "Confirmez votre mot de passe pour effectuer \"{action}\".",

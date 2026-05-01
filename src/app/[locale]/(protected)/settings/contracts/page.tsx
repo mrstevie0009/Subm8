@@ -1,16 +1,36 @@
+// src/app/[locale]/(protected)/settings/contracts/page.tsx
 'use client';
 
 import * as React from 'react';
 import Image from 'next/image';
 import { useParams, useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 
 type ContractType = 'debt' | 'blackmail';
 type ContractStatus = 'active' | 'paused';
 type MoneyDirection = 'selectedUserPaysViewer' | 'viewerPaysSelectedUser';
 
+type SearchUser = {
+  id: string;
+  handle: string;
+  displayName: string;
+  avatarUrl?: string | null;
+  role: 'DOMME' | 'SUBMISSIVE' | 'domme' | 'sub';
+};
+
+type ContractMedia = {
+  id: string;
+  filename?: string | null;
+  mimeType: string;
+  kind: 'IMAGE' | 'VIDEO';
+  sizeBytes?: number | null;
+  createdAt: string;
+};
+
 type Contract = {
   id: string;
   type: ContractType;
+  media?: ContractMedia[];
   status: ContractStatus;
   user: {
     id: string;
@@ -20,6 +40,8 @@ type Contract = {
   };
   totalCents: number;
   paidCents: number;
+  unlockedPaidCents: number;
+  lockedPaidCents: number;
   interestPct: number;
   nextInterestDays: number;
   createdAt: string;
@@ -44,91 +66,6 @@ type BlackmailInfo = {
 
 const AVATAR_PH = '/images/avatar-placeholder.png';
 
-const MOCK_CONTRACTS: Contract[] = [
-  {
-    id: 'c1',
-    type: 'debt',
-    status: 'active',
-    user: {
-      id: 'u1',
-      handle: 'maxsub',
-      displayName: 'Max Mustermann',
-      avatarUrl: null,
-    },
-    totalCents: 1000000,
-    paidCents: 250000,
-    interestPct: 15,
-    nextInterestDays: 10,
-    createdAt: '2025-04-20',
-    history: [
-      { id: 'h1', date: '20.04.2025', type: 'Debt payment', amountCents: 5000 },
-      { id: 'h2', date: '19.04.2025', type: 'Dom changed amount', amountCents: 50000 },
-      { id: 'h3', date: '30.03.2025', type: 'Interest', amountCents: -2530 },
-      { id: 'h4', date: '20.03.2025', type: 'Debt payment', amountCents: 5000 },
-      { id: 'h5', date: '19.03.2025', type: 'Dom changed amount', amountCents: 50000 },
-      { id: 'h6', date: '30.02.2025', type: 'Interest', amountCents: -2530 },
-      { id: 'h7', date: '20.02.2025', type: 'Debt payment', amountCents: 5000 },
-      { id: 'h8', date: '19.02.2025', type: 'Dom changed amount', amountCents: 50000 },
-    ],
-    moneyDirection: 'selectedUserPaysViewer',
-    viewerCanManage: true,
-  },
-  {
-    id: 'c2',
-    type: 'blackmail',
-    status: 'active',
-    user: {
-      id: 'u2',
-      handle: 'blackmailmax',
-      displayName: 'Alex Schuld',
-      avatarUrl: null,
-    },
-    totalCents: 450000,
-    paidCents: 175000,
-    interestPct: 10,
-    nextInterestDays: 6,
-    createdAt: '2025-04-12',
-    history: [
-      { id: 'b1', date: '20.04.2025', type: 'Blackmail payment', amountCents: 2500 },
-      { id: 'b2', date: '15.04.2025', type: 'Amount changed', amountCents: 10000 },
-      { id: 'b3', date: '12.04.2025', type: 'Contract created', amountCents: 0 },
-    ],
-    blackmailInfo: {
-      personal: {
-        'Full Name': 'Alex Schuld',
-        City: 'Vienna',
-        Street: '',
-        Door: '',
-        'Telephone Number': '',
-        'Card Details': '',
-      },
-      work: {
-        'Job Title': '',
-        Salary: '',
-        "Boss's Name": '',
-        Address: '',
-        Door: '',
-      },
-      closePerson: {
-        'Full Name': '',
-        City: '',
-        Street: '',
-        Door: '',
-        'Telephone Number': '',
-        'Card Details': '',
-      },
-    },
-    moneyDirection: 'selectedUserPaysViewer',
-    viewerCanManage: true,
-  },
-];
-
-const SEARCH_USERS = [
-  { id: 'u1', handle: 'maxsub', displayName: 'Max Mustermann', avatarUrl: null, role: 'sub' },
-  { id: 'u2', handle: 'blackmailmax', displayName: 'Alex Schuld', avatarUrl: null, role: 'domme' },
-  { id: 'u3', handle: 'walletpet', displayName: 'Wallet Pet', avatarUrl: null, role: 'sub' },
-] as const;
-
 function money(cents: number) {
   return new Intl.NumberFormat(undefined, {
     style: 'currency',
@@ -145,8 +82,12 @@ function pct(paid: number, total: number) {
 export default function ContractsPage() {
   const router = useRouter();
   const { locale } = useParams() as { locale: string };
+  const t = useTranslations('payment.contracts');
 
-  const [contracts, setContracts] = React.useState<Contract[]>(MOCK_CONTRACTS);
+  const [contracts, setContracts] = React.useState<Contract[]>([]);
+  const [loading, setLoading] = React.useState(true);
+  const [err, setErr] = React.useState<string | null>(null);
+
   const [query, setQuery] = React.useState('');
   const [filterOpen, setFilterOpen] = React.useState(false);
   const [typeFilter, setTypeFilter] = React.useState<ContractType | null>(null);
@@ -158,47 +99,71 @@ export default function ContractsPage() {
   const [blackmailFor, setBlackmailFor] = React.useState<Contract | null>(null);
   const [stopFor, setStopFor] = React.useState<Contract | null>(null);
   const [confirmAction, setConfirmAction] = React.useState<'deactivate' | 'delete' | null>(null);
+
   const filterRef = React.useRef<HTMLDivElement | null>(null);
 
-    React.useEffect(() => {
+  const reloadContracts = React.useCallback(async () => {
+    setErr(null);
+
+    try {
+      const r = await fetch('/api/contracts', { cache: 'no-store' });
+      const j = await r.json().catch(() => null);
+
+      if (!r.ok || !j?.ok) {
+        throw new Error(j?.error || 'Failed to load contracts');
+      }
+
+      setContracts(j.contracts ?? []);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Failed to load contracts');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    void reloadContracts();
+  }, [reloadContracts]);
+
+  React.useEffect(() => {
     if (!filterOpen) return;
 
     function handlePointerDown(e: PointerEvent) {
-        if (!filterRef.current) return;
-        if (filterRef.current.contains(e.target as Node)) return;
-
-        setFilterOpen(false);
+      if (!filterRef.current) return;
+      if (filterRef.current.contains(e.target as Node)) return;
+      setFilterOpen(false);
     }
 
     function handleKeyDown(e: KeyboardEvent) {
-        if (e.key === 'Escape') setFilterOpen(false);
+      if (e.key === 'Escape') setFilterOpen(false);
     }
 
     document.addEventListener('pointerdown', handlePointerDown);
     document.addEventListener('keydown', handleKeyDown);
 
     return () => {
-        document.removeEventListener('pointerdown', handlePointerDown);
-        document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
     };
-    }, [filterOpen]);
+  }, [filterOpen]);
 
   const visibleContracts = React.useMemo(() => {
     const q = query.trim().toLowerCase();
 
     let out = contracts.filter((c) => {
-        if (typeFilter && c.type !== typeFilter) return false;
+      if (typeFilter && c.type !== typeFilter) return false;
 
-        if (!q) return true;
-        return (
-            c.user.displayName.toLowerCase().includes(q) ||
-            c.user.handle.toLowerCase().includes(q) ||
-            c.type.toLowerCase().includes(q)
-        );
+      if (!q) return true;
+
+      return (
+        c.user.displayName.toLowerCase().includes(q) ||
+        c.user.handle.toLowerCase().includes(q) ||
+        c.type.toLowerCase().includes(q)
+      );
     });
 
     if (sort === 'mostDebt') {
-      out = out.slice().sort((a, b) => (b.totalCents - b.paidCents) - (a.totalCents - a.paidCents));
+      out = out.slice().sort((a, b) => b.totalCents - b.paidCents - (a.totalCents - a.paidCents));
     } else {
       out = out.slice().sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt));
     }
@@ -206,40 +171,49 @@ export default function ContractsPage() {
     return out;
   }, [contracts, query, sort, typeFilter]);
 
-  function updateAmount(contract: Contract, nextTotalCents: number) {
-    setContracts((prev) =>
-      prev.map((c) =>
-        c.id === contract.id
-          ? {
-              ...c,
-              totalCents: Math.max(c.paidCents, nextTotalCents),
-              history: [
-                {
-                  id: crypto.randomUUID(),
-                  date: new Date().toLocaleDateString(),
-                  type: 'Amount changed',
-                  amountCents: nextTotalCents - c.totalCents,
-                },
-                ...c.history,
-              ],
-            }
-          : c
-      )
-    );
+  async function updateAmount(contract: Contract, nextTotalCents: number, externalTipCents: number) {
+    const r = await fetch(`/api/contracts/${contract.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'change_amount',
+        totalCents: nextTotalCents,
+        externalTipCents,
+      }),
+    });
+
+    if (!r.ok) return;
+
+    setSelectedContract(null);
+    await reloadContracts();
   }
 
-  function deactivate(contract: Contract) {
-    setContracts((prev) =>
-      prev.map((c) => (c.id === contract.id ? { ...c, status: 'paused' } : c))
-    );
+  async function deactivate(contract: Contract) {
+    const r = await fetch(`/api/contracts/${contract.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'pause' }),
+    });
+
+    if (!r.ok) return;
+
     setConfirmAction(null);
     setStopFor(null);
+    await reloadContracts();
   }
 
-  function deleteContract(contract: Contract) {
-    setContracts((prev) => prev.filter((c) => c.id !== contract.id));
+  async function deleteContract(contract: Contract) {
+    const r = await fetch(`/api/contracts/${contract.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'delete' }),
+    });
+
+    if (!r.ok) return;
+
     setConfirmAction(null);
     setStopFor(null);
+    await reloadContracts();
   }
 
   return (
@@ -256,9 +230,9 @@ export default function ContractsPage() {
               <ChevronLeftIcon />
             </button>
 
-            <div className="min-w-0 flex-1">
-                <h1 className="text-[26px] font-extrabold leading-none">Contracts</h1>
-                <p className="mt-1 text-[13px] text-white/55">Debt and blackmail contracts</p>
+             <div className="min-w-0 flex-1">
+              <h1 className="text-[26px] font-extrabold leading-none">{t('title')}</h1>
+              <p className="mt-1 text-[13px] text-white/55">{t('subtitle')}</p>
             </div>
 
             <button
@@ -266,14 +240,14 @@ export default function ContractsPage() {
               onClick={() => setNewOpen(true)}
               className="h-10 px-5 rounded-full bg-[var(--purple)]/35 hover:bg-[var(--purple)]/50 border border-[var(--purple)]/30 font-semibold"
             >
-              New
+              {t('new')}
             </button>
           </div>
         </header>
 
         <div className="px-4 py-4">
           <div className="mb-4">
-            <h2 className="text-[18px] font-bold">Current Contracts</h2>
+            <h2 className="text-[18px] font-bold">{t('currentContracts')}</h2>
 
             <div className="mt-2 flex items-center gap-2">
               <label className="relative flex-1 block">
@@ -283,7 +257,7 @@ export default function ContractsPage() {
                 <input
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search active contracts"
+                  placeholder={t('searchPlaceholder')}
                   className="w-full h-9 rounded-full bg-white/[.06] border border-white/10 pl-9 pr-3 text-[13px] outline-none focus:ring-2 focus:ring-[var(--purple)]/35"
                 />
               </label>
@@ -300,7 +274,8 @@ export default function ContractsPage() {
 
                 {filterOpen && (
                   <div className="absolute right-0 top-11 z-30 w-48 rounded-2xl border border-white/10 bg-[#121214] p-2 shadow-2xl">
-                    <div className="px-2 py-1 text-[11px] text-white/45">Filter Contracts</div>
+                     <div className="px-2 py-1 text-[11px] text-white/45">{t('filter.title')}</div>
+
                     <button
                       type="button"
                       onClick={() => {
@@ -310,8 +285,9 @@ export default function ContractsPage() {
                       className="w-full flex items-center gap-2 rounded-xl px-3 py-2 text-left text-[13px] hover:bg-white/10"
                     >
                       <CheckBox active={sort === 'latest'} />
-                      Latest Contract
+                      {t('filter.latest')}
                     </button>
+
                     <button
                       type="button"
                       onClick={() => {
@@ -321,29 +297,36 @@ export default function ContractsPage() {
                       className="w-full flex items-center gap-2 rounded-xl px-3 py-2 text-left text-[13px] hover:bg-white/10"
                     >
                       <CheckBox active={sort === 'mostDebt'} />
-                      Most debt left
+                      {t('filter.mostDebt')}
                     </button>
-                    <div className="my-1 h-px bg-white/10" />
-                    <button
-                        type="button"
-                        onClick={() => {
-                            setTypeFilter((v) => (v === 'blackmail' ? null : 'blackmail'));
-                        }}
-                        className="w-full flex items-center gap-2 rounded-xl px-3 py-2 text-left text-[13px] hover:bg-white/10"
-                        >
-                        <CheckBox active={typeFilter === 'blackmail'} />
-                        Only BM Contracts
-                        </button>
 
-                        <button
-                        type="button"
-                        onClick={() => {
-                            setTypeFilter((v) => (v === 'debt' ? null : 'debt'));
-                        }}
-                        className="w-full flex items-center gap-2 rounded-xl px-3 py-2 text-left text-[13px] hover:bg-white/10"
-                        >
-                        <CheckBox active={typeFilter === 'debt'} />
-                        Only Debt Contracts
+                    <div className="my-1 h-px bg-white/10" />
+
+                    <button
+                      type="button"
+                      onClick={() => setTypeFilter((v) => (v === 'blackmail' ? null : 'blackmail'))}
+                      className="w-full flex items-center gap-2 rounded-xl px-3 py-2 text-left text-[13px] hover:bg-white/10"
+                    >
+                      <CheckBox active={typeFilter === 'blackmail'} />
+                      {t('filter.onlyBlackmail')}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setTypeFilter((v) => (v === 'debt' ? null : 'debt'))}
+                      className="w-full flex items-center gap-2 rounded-xl px-3 py-2 text-left text-[13px] hover:bg-white/10"
+                    >
+                      <CheckBox active={typeFilter === 'debt'} />
+                      {t('filter.onlyDebt')}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setTypeFilter((v) => (v === 'debt' ? null : 'debt'))}
+                      className="w-full flex items-center gap-2 rounded-xl px-3 py-2 text-left text-[13px] hover:bg-white/10"
+                    >
+                      <CheckBox active={typeFilter === 'debt'} />
+                      Only Debt Contracts
                     </button>
                   </div>
                 )}
@@ -351,7 +334,11 @@ export default function ContractsPage() {
             </div>
           </div>
 
-          {visibleContracts.length === 0 ? (
+          {loading ? (
+            <LoadingState />
+          ) : err ? (
+            <ErrorState message={err} onRetry={reloadContracts} />
+          ) : visibleContracts.length === 0 ? (
             <EmptyState />
           ) : (
             <div className="snap-y snap-mandatory space-y-4 sm:snap-none pb-[calc(96px+env(safe-area-inset-bottom))]">
@@ -373,9 +360,9 @@ export default function ContractsPage() {
       {newOpen && (
         <NewContractFlow
           onClose={() => setNewOpen(false)}
-          onCreate={(next) => {
-            setContracts((prev) => [next, ...prev]);
+          onCreated={async () => {
             setNewOpen(false);
+            await reloadContracts();
           }}
         />
       )}
@@ -384,26 +371,19 @@ export default function ContractsPage() {
         <ChangeAmountOverlay
           contract={selectedContract}
           onClose={() => setSelectedContract(null)}
-          onSave={(amount) => {
-            updateAmount(selectedContract, amount);
-            setSelectedContract(null);
-          }}
+          onSave={(amount, externalTipCents) => updateAmount(selectedContract, amount, externalTipCents)}
         />
       )}
 
-      {historyFor && (
-        <HistoryOverlay contract={historyFor} onClose={() => setHistoryFor(null)} />
-      )}
+      {historyFor && <HistoryOverlay contract={historyFor} onClose={() => setHistoryFor(null)} />}
 
       {blackmailFor && (
         <BlackmailOverlay
           contract={blackmailFor}
           onClose={() => setBlackmailFor(null)}
-          onSave={(info) => {
-            setContracts((prev) =>
-              prev.map((c) => (c.id === blackmailFor.id ? { ...c, blackmailInfo: info } : c))
-            );
+          onSave={async () => {
             setBlackmailFor(null);
+            await reloadContracts();
           }}
         />
       )}
@@ -438,25 +418,21 @@ function ContractCard({
   onBlackmailInfo: () => void;
   onStop: () => void;
 }) {
+  const t = useTranslations('payment.contracts');
   const paidPct = pct(contract.paidCents, contract.totalCents);
-  const leftCents = contract.totalCents - contract.paidCents;
+  const leftCents = Math.max(0, contract.totalCents - contract.paidCents);
   const canManage = contract.viewerCanManage;
-
-  const typeLabel = contract.type === 'blackmail' ? 'Blackmail Contract' : 'Debt Contract';
+  const typeLabel = contract.type === 'blackmail' ? t('card.typeBlackmail') : t('card.typeDebt');
 
   return (
     <article className="contract-card snap-start">
       <div className="contract-card-head">
         <div className="flex items-center gap-3 min-w-0">
           <Avatar src={contract.user.avatarUrl} name={contract.user.displayName} />
-            <div className="min-w-0">
-            <div className="text-[17px] font-extrabold truncate">
-                {contract.user.displayName}
-            </div>
-            <div className="text-[12px] text-white/45 truncate">
-                @{contract.user.handle}
-            </div>
-            </div>
+          <div className="min-w-0">
+            <div className="text-[17px] font-extrabold truncate">{contract.user.displayName}</div>
+            <div className="text-[12px] text-white/45 truncate">@{contract.user.handle}</div>
+          </div>
         </div>
 
         <div className="text-right shrink-0">
@@ -467,54 +443,70 @@ function ContractCard({
 
       <div className="contract-main">
         <div className="contract-donut-wrap">
-          <ProgressDonut percent={paidPct} />
+          <ProgressDonut
+            totalCents={contract.totalCents}
+            unlockedPaidCents={contract.unlockedPaidCents}
+            lockedPaidCents={contract.lockedPaidCents}
+          />
           <div className="contract-donut-center">
             <div className="text-[11px] text-white/45 font-semibold">Paid</div>
             <div className="text-[28px] font-black tracking-tight">{paidPct}%</div>
+            <div className="mt-1.5 flex flex-col gap-0.5">
+              <div className="flex items-center gap-1 text-[10px] text-white/45">
+                <span className="size-2 rounded-full bg-[#8b5cf6] shrink-0" />
+                {t('donut.unlocked')}
+              </div>
+              <div className="flex items-center gap-1 text-[10px] text-white/45">
+                <span className="size-2 rounded-full bg-[#3b0764] shrink-0" />
+                {t('donut.locked')}
+              </div>
+            </div>
           </div>
         </div>
 
         <div className="contract-stats">
-          <StatBox label="Amount paid" value={money(contract.paidCents)} tone="paid" />
-          <StatBox label="Amount left" value={money(leftCents)} tone="left" />
-          <StatBox label="Next interest" value={`${contract.nextInterestDays} days`} />
-          <StatBox label="Interest" value={`${contract.interestPct}%`} />
+          <StatBox label={t('card.amountPaid')} value={money(contract.paidCents)} tone="paid" />
+          <StatBox label={t('card.amountLeft')} value={money(leftCents)} tone="left" />
+          <StatBox label={t('card.nextInterest')} value={t('card.days', { count: contract.nextInterestDays })} />
+          <StatBox label={t('card.interest')} value={`${contract.interestPct}%`} />
         </div>
       </div>
 
       <div className="contract-actions">
-        <button
-        className="contract-btn contract-btn-primary disabled:opacity-35 disabled:cursor-not-allowed"
-        onClick={onChangeAmount}
-        disabled={!canManage}
+         <button
+          className="contract-btn contract-btn-primary disabled:opacity-35 disabled:cursor-not-allowed"
+          onClick={onChangeAmount}
+          disabled={!canManage}
         >
-        Change Amount
+          {t('card.changeAmount')}
         </button>
 
         <button
-        className="contract-btn contract-btn-danger disabled:opacity-35 disabled:cursor-not-allowed"
-        onClick={onStop}
-        disabled={!canManage}
+          className="contract-btn contract-btn-danger disabled:opacity-35 disabled:cursor-not-allowed"
+          onClick={onStop}
+          disabled={!canManage}
         >
-        {contract.status === 'paused' ? 'Delete Contract' : 'Stop Contract'}
+          {contract.status === 'paused' ? t('card.deleteContract') : t('card.stopContract')}
         </button>
+
         <button className="contract-btn contract-btn-soft" onClick={onHistory}>
-          Payment History
+          {t('card.paymentHistory')}
         </button>
 
         {contract.type === 'blackmail' ? (
-        <button className="contract-btn contract-btn-dark" onClick={onBlackmailInfo}>
-            Blackmail Info
-        </button>
+          <button className="contract-btn contract-btn-dark" onClick={onBlackmailInfo}>
+            {t('card.blackmailInfo')}
+          </button>
         ) : (
-        <div className="contract-history-spacer" />
+          <div className="contract-history-spacer" />
         )}
       </div>
-        {!canManage && (
-            <div className="mt-3 rounded-xl border border-white/10 bg-black/25 px-3 py-2 text-[12px] text-white/50">
-            You are the payer in this contract. Only the receiver can change or stop it.
-            </div>
-        )}
+
+      {!canManage && (
+         <div className="mt-3 rounded-xl border border-white/10 bg-black/25 px-3 py-2 text-[12px] text-white/50">
+          {t('card.payerHint')}
+        </div>
+      )}
     </article>
   );
 }
@@ -544,14 +536,26 @@ function StatBox({
   );
 }
 
-function ProgressDonut({ percent }: { percent: number }) {
+function ProgressDonut({
+  totalCents,
+  unlockedPaidCents,
+  lockedPaidCents,
+}: {
+  totalCents: number;
+  unlockedPaidCents: number;
+  lockedPaidCents: number;
+}) {
+  const unlocked = totalCents > 0 ? Math.min(100, Math.round((unlockedPaidCents / totalCents) * 100)) : 0;
+  const locked   = totalCents > 0 ? Math.min(100 - unlocked, Math.round((lockedPaidCents / totalCents) * 100)) : 0;
+
   return (
     <div
       className="contract-donut"
       style={{
         background: `conic-gradient(
-          #8b5cf6 0 ${percent}%,
-          rgba(255,255,255,.10) ${percent}% 100%
+          #8b5cf6 0 ${unlocked}%,
+          #3b0764 ${unlocked}% ${unlocked + locked}%,
+          rgba(255,255,255,.10) ${unlocked + locked}% 100%
         )`,
       }}
     >
@@ -562,61 +566,66 @@ function ProgressDonut({ percent }: { percent: number }) {
 
 function NewContractFlow({
   onClose,
-  onCreate,
+  onCreated,
 }: {
   onClose: () => void;
-  onCreate: (contract: Contract) => void;
+  onCreated: () => void | Promise<void>;
 }) {
+  const t = useTranslations('payment.contracts');
   const [step, setStep] = React.useState<'pick' | 'form'>('pick');
   const [q, setQ] = React.useState('');
-  const [selectedUser, setSelectedUser] = React.useState<(typeof SEARCH_USERS)[number] | null>(null);
+  const [users, setUsers] = React.useState<SearchUser[]>([]);
+  const [selectedUser, setSelectedUser] = React.useState<SearchUser | null>(null);
   const [type, setType] = React.useState<ContractType>('debt');
   const [moneyDirection, setMoneyDirection] = React.useState<MoneyDirection | null>(null);
 
-  const users = SEARCH_USERS.filter((u) => {
-    const s = q.trim().toLowerCase();
-    return !s || u.displayName.toLowerCase().includes(s) || u.handle.toLowerCase().includes(s);
-  });
+  React.useEffect(() => {
+    const s = q.trim();
 
-  function createBase(totalCents: number, interestPct: number, blackmailInfo?: BlackmailInfo) {
-    if (!selectedUser || !moneyDirection) return;
-
-    onCreate({
-        id: crypto.randomUUID(),
-        type,
-        status: 'active',
-        user: selectedUser,
-        totalCents,
-        paidCents: 0,
-        interestPct,
-        nextInterestDays: 30,
-        createdAt: new Date().toISOString(),
-        moneyDirection,
-        viewerCanManage: moneyDirection === 'selectedUserPaysViewer',
-        history: [
-        {
-            id: crypto.randomUUID(),
-            date: new Date().toLocaleDateString(),
-            type: 'Contract created',
-            amountCents: 0,
-        },
-        ],
-        blackmailInfo,
-    });
+    if (!s) {
+      setUsers([]);
+      return;
     }
 
+    const t = setTimeout(async () => {
+      const r = await fetch(`/api/users/search?q=${encodeURIComponent(s)}&limit=20`);
+      const j = await r.json().catch(() => null);
+
+      if (r.ok && j?.ok) {
+        setUsers(j.items ?? []);
+      }
+    }, 250);
+
+    return () => clearTimeout(t);
+  }, [q]);
+
+  async function createBase(totalCents: number, interestPct: number, blackmailInfo?: BlackmailInfo) {
+    if (!selectedUser || !moneyDirection) return;
+
+    const r = await fetch('/api/contracts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type,
+        counterpartyId: selectedUser.id,
+        totalCents,
+        interestPct,
+        moneyDirection,
+        blackmailInfo,
+      }),
+    });
+
+    if (!r.ok) return;
+
+    await onCreated();
+  }
+
   return (
-    <Overlay>
-      <div className="modal-card max-w-md max-h-[calc(100dvh-96px-env(safe-area-inset-bottom))] overflow-hidden flex flex-col">
+    <Overlay onClose={onClose}>
+      <div className="modal-card flex flex-col">
         <OverlayHeader
-          title={step === 'pick' ? 'Pick a Contract' : type === 'debt' ? 'Debt Contract' : 'Blackmail Contract'}
-          subtitle={
-            step === 'pick'
-              ? 'Choose a user and contract type'
-              : selectedUser
-              ? selectedUser.displayName
-              : undefined
-          }
+          title={step === 'pick' ? t('new_flow.titlePick') : type === 'debt' ? t('new_flow.titleDebt') : t('new_flow.titleBlackmail')}
+          subtitle={step === 'pick' ? t('new_flow.subtitlePick') : selectedUser?.displayName}
           onBack={step === 'pick' ? onClose : () => setStep('pick')}
         />
 
@@ -625,47 +634,54 @@ function NewContractFlow({
             <SearchInput value={q} onChange={setQ} placeholder="Search Subm8" />
 
             <div className="mt-4 rounded-2xl border border-white/10 bg-white/[.035] overflow-hidden">
-              {users.map((u) => {
-                const active = selectedUser?.id === u.id;
+              {users.length === 0 ? (
+                <div className="px-4 py-5 text-center text-[13px] text-white/45">
+                  {t('new_flow.searchEmpty')}
+                </div>
+              ) : (
+                users.map((u) => {
+                  const active = selectedUser?.id === u.id;
+                  const isDomme = u.role === 'DOMME' || u.role === 'domme';
 
-                return (
-                  <button
-                    key={u.id}
-                    type="button"
-                    onClick={() => setSelectedUser(u)}
-                    className={[
-                      'w-full flex items-center gap-3 px-3 py-3 text-left transition',
-                      active ? 'bg-[var(--purple)]/18' : 'hover:bg-white/[.06]',
-                    ].join(' ')}
-                  >
-                    <Avatar src={u.avatarUrl} name={u.displayName} />
-                    <div className="min-w-0 flex-1">
+                  return (
+                    <button
+                      key={u.id}
+                      type="button"
+                      onClick={() => setSelectedUser(u)}
+                      className={[
+                        'w-full flex items-center gap-3 px-3 py-3 text-left transition',
+                        active ? 'bg-[var(--purple)]/18' : 'hover:bg-white/[.06]',
+                      ].join(' ')}
+                    >
+                      <Avatar src={u.avatarUrl} name={u.displayName} />
+                      <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 min-w-0">
-                            <div className="font-extrabold truncate">{u.displayName}</div>
+                          <div className="font-extrabold truncate">{u.displayName}</div>
 
-                            <span
+                          <span
                             className={[
-                                'shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-black uppercase leading-none',
-                                u.role === 'domme'
+                              'shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-black uppercase leading-none',
+                              isDomme
                                 ? 'border-fuchsia-400/30 bg-fuchsia-500/15 text-fuchsia-200'
                                 : 'border-sky-400/30 bg-sky-500/15 text-sky-200',
                             ].join(' ')}
-                            >
-                            {u.role === 'domme' ? 'Domme' : 'Sub'}
-                            </span>
+                          >
+                            {isDomme ? 'Domme' : 'Sub'}
+                          </span>
                         </div>
 
                         <div className="text-[12px] text-white/55 truncate">@{u.handle}</div>
-                    </div>
-                    {active && <div className="text-[var(--purple)] font-black">✓</div>}
-                  </button>
-                );
-              })}
+                      </div>
+                      {active && <div className="text-[var(--purple)] font-black">✓</div>}
+                    </button>
+                  );
+                })
+              )}
             </div>
 
             <div className="mt-5">
               <div className="text-center text-[15px] font-black mb-3">
-                What kind of contract do you want to make?
+                {t('new_flow.typeQuestion')}
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -674,8 +690,8 @@ function NewContractFlow({
                   onClick={() => setType('debt')}
                   className={`contract-choice-clean ${type === 'debt' ? 'is-active' : ''}`}
                 >
-                  <strong>Debt Contract</strong>
-                  <span>Set debt, interest and payment terms.</span>
+                  <strong>{t('new_flow.debtTitle')}</strong>
+                  <span>{t('new_flow.debtDesc')}</span>
                 </button>
 
                 <button
@@ -683,22 +699,22 @@ function NewContractFlow({
                   onClick={() => setType('blackmail')}
                   className={`contract-choice-clean ${type === 'blackmail' ? 'is-active' : ''}`}
                 >
-                  <strong>Blackmail Contract</strong>
-                  <span>Debt plus consensual blackmail info.</span>
+                  <strong>{t('new_flow.blackmailTitle')}</strong>
+                  <span>{t('new_flow.blackmailDesc')}</span>
                 </button>
               </div>
             </div>
 
             <div className="mt-5 flex gap-3">
               <button className="secondary-btn" onClick={onClose}>
-                Cancel
+                {t('actions.cancel')}
               </button>
               <button
                 className="primary-btn disabled:opacity-40 disabled:cursor-not-allowed"
                 disabled={!selectedUser}
                 onClick={() => setStep('form')}
               >
-                Continue
+                {t('actions.continue')}
               </button>
             </div>
           </div>
@@ -710,21 +726,14 @@ function NewContractFlow({
             setMoneyDirection={setMoneyDirection}
             onCancel={onClose}
             onSave={(amount, interest, info) => createBase(amount, interest, info)}
-        />
+          />
         )}
       </div>
     </Overlay>
   );
 }
 
-function ContractForm({
-  type,
-  userName,
-  moneyDirection,
-  setMoneyDirection,
-  onCancel,
-  onSave,
-}: {
+function ContractForm({ type, userName, moneyDirection, setMoneyDirection, onCancel, onSave }: {
   type: ContractType;
   userName: string;
   moneyDirection: MoneyDirection | null;
@@ -732,6 +741,7 @@ function ContractForm({
   onCancel: () => void;
   onSave: (amountCents: number, interestPct: number, blackmailInfo?: BlackmailInfo) => void;
 }) {
+  const t = useTranslations('payment.contracts');
   const [amount, setAmount] = React.useState('');
   const [interest, setInterest] = React.useState('');
   const [submitted, setSubmitted] = React.useState(false);
@@ -741,6 +751,16 @@ function ContractForm({
     work: {},
     closePerson: {},
   });
+
+  React.useEffect(() => {
+    setInfo((p) => ({
+      ...p,
+      personal: {
+        ...p.personal,
+        'Full Name': p.personal['Full Name'] || userName,
+      },
+    }));
+  }, [userName]);
 
   const amountCents = Math.max(0, Math.round(Number(amount.replace(',', '.')) * 100) || 0);
   const interestPct = Math.max(0, Math.round(Number(interest.replace(',', '.')) || 0));
@@ -761,22 +781,17 @@ function ContractForm({
   function handleSave() {
     setSubmitted(true);
     if (!canSave) return;
-
     onSave(amountCents, interestPct, type === 'blackmail' ? info : undefined);
   }
 
   return (
     <div className="overflow-y-auto p-4 pb-[calc(120px+env(safe-area-inset-bottom))]">
-      <p className="text-center text-[13px] text-white/60 leading-snug">
-        This contract will be saved locally for now. Later you can connect this form to your API.
-      </p>
-
-      <section className="mt-4 form-panel">
-        <div className="form-section-title">Debt Information</div>
+      <section className="mt-1 form-panel">
+        <div className="form-section-title">{t('form.debtInfo')}</div>
 
         <div className="grid gap-3">
           <Input
-            label="Amount to be paid"
+            label={t('form.amountLabel')}
             required
             error={amountInvalid}
             value={amount}
@@ -786,7 +801,7 @@ function ContractForm({
 
           <div className="grid gap-2">
             <Input
-              label="Monthly interest"
+              label={t('form.interestLabel')}
               required
               error={interestInvalid}
               value={interest}
@@ -795,12 +810,12 @@ function ContractForm({
             />
 
             <div className="rounded-xl border border-white/10 bg-black/25 px-3 py-2 text-[12px] text-white/55">
-              Interest is applied automatically at the beginning of every month.
+              {t('form.interestHint')}
             </div>
 
             <div className="mt-3 grid gap-2">
               <div className={`text-[12px] font-bold ${directionInvalid ? 'text-red-400' : 'text-white/65'}`}>
-                Who pays whom? <span className="text-red-400">*</span>
+                {t('form.whoPaysSectionLabel')} <span className="text-red-400">*</span>
               </div>
 
               <button
@@ -808,8 +823,8 @@ function ContractForm({
                 onClick={() => setMoneyDirection('selectedUserPaysViewer')}
                 className={`direction-choice ${moneyDirection === 'selectedUserPaysViewer' ? 'is-active' : ''} ${directionInvalid ? 'is-error' : ''}`}
               >
-                <span>{userName || 'Selected user'} pays you</span>
-                <small>You can change amount and stop the contract.</small>
+                <span>{t('form.selectedPaysViewer', { name: userName || t('form.selectedUser') })}</span>
+                <small>{t('form.selectedPaysViewerHint')}</small>
               </button>
 
               <button
@@ -817,13 +832,13 @@ function ContractForm({
                 onClick={() => setMoneyDirection('viewerPaysSelectedUser')}
                 className={`direction-choice ${moneyDirection === 'viewerPaysSelectedUser' ? 'is-active' : ''} ${directionInvalid ? 'is-error' : ''}`}
               >
-                <span>You pay {userName || 'selected user'}</span>
-                <small>You cannot change amount, stop, or deactivate this contract.</small>
+                <span>{t('form.viewerPaysSelected', { name: userName || t('form.selectedUser') })}</span>
+                <small>{t('form.viewerPaysSelectedHint')}</small>
               </button>
 
               {directionInvalid && (
                 <div className="text-[12px] font-semibold text-red-400">
-                  Please choose who pays whom.
+                  {t('form.directionRequired')}
                 </div>
               )}
             </div>
@@ -834,86 +849,103 @@ function ContractForm({
       {type === 'blackmail' && (
         <div className="mt-3 space-y-3">
           <InfoGroup
-            title="Personal Information"
+            title={t('blackmail.personalTitle')}
             value={info.personal}
             onChange={(next) => setInfo((p) => ({ ...p, personal: next }))}
-            fields={['Full Name', 'City', 'Street', 'Door', 'Telephone Number', 'Card Details']}
-            requiredFields={['Full Name']}
-            errorFields={fullNameInvalid ? ['Full Name'] : []}
+            fields={[t('bm.fullName'), t('bm.city'), t('bm.street'), t('bm.door'), t('bm.phone'), t('bm.card')]}
+            requiredFields={[t('bm.fullName')]}
+            errorFields={fullNameInvalid ? [t('bm.fullName')] : []}
           />
-
           <InfoGroup
-            title="Work Information"
+            title={t('blackmail.workTitle')}
             value={info.work}
             onChange={(next) => setInfo((p) => ({ ...p, work: next }))}
-            fields={['Job Title', 'Salary', "Boss's Name", 'Address', 'Door']}
+            fields={[t('bm.jobTitle'), t('bm.salary'), t('bm.bossName'), t('bm.address'), t('bm.door')]}
           />
-
           <InfoGroup
-            title="Someone Close to User"
+            title={t('blackmail.closePersonTitle')}
             value={info.closePerson}
             onChange={(next) => setInfo((p) => ({ ...p, closePerson: next }))}
-            fields={['Full Name', 'City', 'Street', 'Door', 'Telephone Number', 'Card Details']}
+            fields={[t('bm.fullName'), t('bm.city'), t('bm.street'), t('bm.door'), t('bm.phone'), t('bm.card')]}
           />
         </div>
       )}
 
       <div className="mt-5 flex gap-3">
         <button className="secondary-btn" onClick={onCancel}>
-          Cancel
+          {t('actions.cancel')}
         </button>
         <button className="primary-btn" onClick={handleSave}>
-          Save
+          {t('actions.save')}
         </button>
       </div>
     </div>
   );
 }
 
-function ChangeAmountOverlay({
-  contract,
-  onClose,
-  onSave,
-}: {
+function ChangeAmountOverlay({ contract, onClose, onSave }: {
   contract: Contract;
   onClose: () => void;
-  onSave: (amountCents: number) => void;
+  onSave: (amountCents: number, externalTipCents: number) => void;
 }) {
+  const t = useTranslations('payment.contracts');
   const [amount, setAmount] = React.useState(String(contract.totalCents / 100));
+  const [externalTip, setExternalTip] = React.useState('');
+
   const cents = Math.round((Number(amount.replace(',', '.')) || 0) * 100);
+  const externalTipCents = Math.round((Number(externalTip.replace(',', '.')) || 0) * 100);
 
   return (
-    <Overlay>
-      <div className="modal-card max-w-sm p-4">
-        <h2 className="text-center text-[22px] font-black">Change Amount</h2>
+    <Overlay onClose={onClose}>
+      <div className="modal-card p-4">
+        <h2 className="text-center text-[22px] font-black">{t('changeAmount.title')}</h2>
         <p className="text-center text-white/60 text-[13px]">{contract.user.displayName}</p>
 
-        <div className="mt-4">
-          <Input label="New total amount" value={amount} onChange={setAmount} suffix="€" />
+        <div className="mt-4 space-y-3">
+          <Input label={t('changeAmount.newAmountLabel')} value={amount} onChange={setAmount} suffix="€" />
+
+          <Input label={t('changeAmount.externalTipLabel')} value={externalTip} onChange={setExternalTip} suffix="€" />
+
+          <div className="rounded-xl border border-white/10 bg-black/25 px-3 py-2 text-[12px] leading-snug text-white/55">
+            {t('changeAmount.externalTipHint')}
+          </div>
         </div>
 
         <div className="mt-5 flex gap-3">
-          <button className="secondary-btn" onClick={onClose}>Cancel</button>
-          <button className="primary-btn" onClick={() => onSave(cents)}>Save</button>
+          <button className="secondary-btn" onClick={onClose}>{t('actions.cancel')}</button>
+          <button className="primary-btn" onClick={() => onSave(cents, externalTipCents)}>{t('actions.save')}</button>
         </div>
       </div>
     </Overlay>
   );
 }
 
+function isDebtIncreaseHistory(type: string) {
+  const t = type.toLowerCase();
+  return t.includes('amount changed') || t.includes('dom changed amount') || t.includes('interest');
+}
+
+function historyTone(h: HistoryRow) {
+  if (isDebtIncreaseHistory(h.type)) return 'text-red-500';
+  if (h.amountCents > 0) return 'text-emerald-500';
+  if (h.amountCents < 0) return 'text-red-500';
+  return 'text-white/55';
+}
+
 function HistoryOverlay({ contract, onClose }: { contract: Contract; onClose: () => void }) {
+  const t = useTranslations('payment.contracts');
   return (
-    <Overlay>
-      <div className="modal-card max-w-md p-4">
-        <h2 className="text-[22px] font-black">Debt Payment History</h2>
+    <Overlay onClose={onClose}>
+      <div className="modal-card p-4">
+        <h2 className="text-[22px] font-black">{t('history.title')}</h2>
 
         <div className="mt-3 max-h-[55dvh] overflow-y-auto rounded-xl border border-white/10">
           <table className="w-full text-[12px]">
             <thead className="sticky top-0 bg-[#222]">
               <tr className="text-white/80">
-                <th className="text-left px-2 py-2">Date/time</th>
-                <th className="text-left px-2 py-2">Type</th>
-                <th className="text-right px-2 py-2">Amount</th>
+                <th className="text-left px-2 py-2">{t('history.thDate')}</th>
+                <th className="text-left px-2 py-2">{t('history.thType')}</th>
+                <th className="text-right px-2 py-2">{t('history.thAmount')}</th>
               </tr>
             </thead>
             <tbody>
@@ -921,8 +953,8 @@ function HistoryOverlay({ contract, onClose }: { contract: Contract; onClose: ()
                 <tr key={h.id} className="border-t border-white/10">
                   <td className="px-2 py-2">{h.date}</td>
                   <td className="px-2 py-2">{h.type}</td>
-                  <td className={`px-2 py-2 text-right font-bold ${h.amountCents >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                    {h.amountCents >= 0 ? '+' : ''}
+                  <td className={`px-2 py-2 text-right font-bold ${historyTone(h)}`}>
+                    {h.amountCents > 0 && !isDebtIncreaseHistory(h.type) ? '+' : ''}
                     {money(h.amountCents)}
                   </td>
                 </tr>
@@ -931,71 +963,212 @@ function HistoryOverlay({ contract, onClose }: { contract: Contract; onClose: ()
           </table>
         </div>
 
-        <button className="mt-4 w-full h-12 rounded-xl bg-white/10 hover:bg-white/15 font-black text-[20px]" onClick={onClose}>
-          Go Back
-        </button>
+        <button
+          className="mt-4 w-full h-12 rounded-xl bg-white/10 hover:bg-white/15 font-black text-[20px]"
+          onClick={onClose}>{t('actions.goBack')}</button>
       </div>
     </Overlay>
   );
 }
 
-function BlackmailOverlay({
-  contract,
-  onClose,
-  onSave,
-}: {
+function BlackmailOverlay({ contract, onClose, onSave }: {
   contract: Contract;
   onClose: () => void;
-  onSave: (info: BlackmailInfo) => void;
+  onSave: (info: BlackmailInfo) => void | Promise<void>;
 }) {
-  const [info, setInfo] = React.useState<BlackmailInfo>(
-    contract.blackmailInfo ?? { personal: {}, work: {}, closePerson: {} }
-  );
+  const t = useTranslations('payment.contracts');
+  const isOwner = contract.viewerCanManage;
+  const existing = contract.blackmailInfo ?? { personal: {}, work: {}, closePerson: {} };
+
+  const [info, setInfo] = React.useState<BlackmailInfo>(existing);
+
+  const fileInputRef = React.useRef<HTMLInputElement | null>(null);
+  const [files, setFiles] = React.useState<File[]>([]);
+  const [uploading, setUploading] = React.useState(false);
+
+  function pickFiles(list?: FileList | null) {
+    if (!list?.length) return;
+
+    const next = Array.from(list).filter(
+      (f) => f.type.startsWith('image/') || f.type.startsWith('video/')
+    );
+
+    setFiles((prev) => [...prev, ...next].slice(0, 10));
+  }
+
+  async function uploadPrivateFiles() {
+    if (!files.length) return [];
+
+    setUploading(true);
+
+    try {
+      const r = await fetch(`/api/contracts/${contract.id}/private-upload-urls`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          files: files.map((f) => ({ name: f.name, type: f.type })),
+        }),
+      });
+
+      if (!r.ok) throw new Error('Presign failed');
+
+      const j = (await r.json()) as {
+        items: {
+          key: string;
+          uploadUrl: string;
+          contentType: string;
+        }[];
+      };
+
+      await Promise.all(
+        j.items.map((item, i) =>
+          fetch(item.uploadUrl, {
+            method: 'PUT',
+            body: files[i],
+            headers: {
+              'Content-Type': item.contentType || files[i].type || 'application/octet-stream',
+            },
+          })
+        )
+      );
+
+      const save = await fetch(`/api/contracts/${contract.id}/media`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          files: j.items.map((item, i) => ({
+            key: item.key,
+            filename: files[i]?.name,
+            mimeType: item.contentType,
+            sizeBytes: files[i]?.size,
+          })),
+        }),
+      });
+
+      if (!save.ok) throw new Error('Media save failed');
+
+      return j.items.map((x) => x.key);
+    } finally {
+      setUploading(false);
+    }
+  }
 
   return (
-    <Overlay>
-      <div className="modal-card max-w-md max-h-[calc(100dvh-24px)] overflow-y-auto p-4">
-        <h2 className="text-center text-[24px] font-black">Blackmail Info</h2>
+    <Overlay onClose={onClose}>
+      <div className="modal-card overflow-y-auto p-4">
+        <h2 className="text-center text-[24px] font-black">{t('blackmail.title')}</h2>
         <p className="text-center font-bold">{contract.user.displayName}</p>
+
+        <div
+          className="mt-4 rounded-2xl border border-dashed border-white/20 bg-black/25 px-4 py-5 text-center cursor-pointer hover:bg-white/[.04]"
+          onClick={() => fileInputRef.current?.click()}
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={(e) => {
+            e.preventDefault();
+            pickFiles(e.dataTransfer.files);
+          }}
+        >
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*,video/*"
+            multiple
+            className="sr-only"
+            onChange={(e) => pickFiles(e.currentTarget.files)}
+          />
+
+          <div className="text-[14px] font-black">{t('blackmail.uploadTitle')}</div>
+          <div className="mt-1 text-[12px] text-white/50">
+            {t('blackmail.uploadHint')}
+          </div>
+          {files.length > 0 && (
+            <div className="mt-3 text-[12px] text-emerald-300">
+              {t('blackmail.filesSelected', { count: files.length })}
+            </div>
+          )}
+        </div>
+
+        {contract.media && contract.media.length > 0 && (
+          <div className="mt-3 grid grid-cols-3 gap-2">
+            {contract.media.map((m) => (
+              <div
+                key={m.id}
+                className="overflow-hidden rounded-xl border border-white/10 bg-black/30 aspect-square"
+              >
+                {m.kind === 'VIDEO' ? (
+                  <video
+                    src={`/api/contracts/${contract.id}/media/${m.id}`}
+                    className="h-full w-full object-cover"
+                    controls
+                  />
+                ) : (
+                  <Image
+                    src={`/api/contracts/${contract.id}/media/${m.id}`}
+                    alt={m.filename || 'Private contract media'}
+                    width={240}
+                    height={240}
+                    unoptimized
+                    className="h-full w-full object-cover"
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+        )}
 
         <div className="mt-4 space-y-3">
           <InfoGroup
-            title="Personal Information"
+            title={t('blackmail.personalTitle')}
             value={info.personal}
+            lockedValues={isOwner ? {} : existing.personal}
             onChange={(next) => setInfo((p) => ({ ...p, personal: next }))}
-            fields={['Full Name', 'City', 'Street', 'Door', 'Telephone Number', 'Card Details']}
+            fields={[t('bm.fullName'), t('bm.city'), t('bm.street'), t('bm.door'), t('bm.phone'), t('bm.card')]}
           />
           <InfoGroup
-            title="Work Information"
+            title={t('blackmail.workTitle')}
             value={info.work}
+            lockedValues={isOwner ? {} : existing.work}
             onChange={(next) => setInfo((p) => ({ ...p, work: next }))}
-            fields={['Job Title', 'Salary', "Boss's Name", 'Address', 'Door']}
+            fields={[t('bm.jobTitle'), t('bm.salary'), t('bm.bossName'), t('bm.address'), t('bm.door')]}
           />
           <InfoGroup
-            title="Someone Close to Information Max"
+            title={t('blackmail.closePersonTitle')}
             value={info.closePerson}
+            lockedValues={isOwner ? {} : existing.closePerson}
             onChange={(next) => setInfo((p) => ({ ...p, closePerson: next }))}
-            fields={['Full Name', 'City', 'Street', 'Door', 'Telephone Number', 'Card Details']}
+            fields={[t('bm.fullName'), t('bm.city'), t('bm.street'), t('bm.door'), t('bm.phone'), t('bm.card')]}
           />
         </div>
 
         <div className="mt-5 flex gap-3">
-          <button className="secondary-btn" onClick={onClose}>Cancel</button>
-          <button className="primary-btn" onClick={() => onSave(info)}>Save</button>
+          <button className="secondary-btn" onClick={onClose}>{t('actions.cancel')}</button>
+          <button
+            className="primary-btn disabled:opacity-50"
+            disabled={uploading}
+            onClick={async () => {
+              await uploadPrivateFiles();
+
+              const r = await fetch(`/api/contracts/${contract.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  action: 'update_blackmail',
+                  blackmailInfo: info,
+                }),
+              });
+
+              if (r.ok) await onSave(info);
+            }}
+          >
+            {uploading ? t('blackmail.uploading') : t('actions.save')}
+          </button>
         </div>
       </div>
     </Overlay>
   );
 }
 
-function StopOverlay({
-  contract,
-  confirmAction,
-  setConfirmAction,
-  onClose,
-  onDeactivate,
-  onDelete,
-}: {
+function StopOverlay({ contract, confirmAction, setConfirmAction, onClose, onDeactivate, onDelete }: {
   contract: Contract;
   confirmAction: 'deactivate' | 'delete' | null;
   setConfirmAction: (v: 'deactivate' | 'delete' | null) => void;
@@ -1003,42 +1176,45 @@ function StopOverlay({
   onDeactivate: () => void;
   onDelete: () => void;
 }) {
+  const t = useTranslations('payment.contracts');
   return (
-    <Overlay>
-      <div className="modal-card max-w-sm p-4 relative">
+    <Overlay onClose={onClose}>
+      <div className="modal-card p-4 relative">
         <p className="text-center text-white/45 font-bold">{contract.user.displayName}</p>
-        <h2 className="text-center text-[26px] font-black leading-tight">Stop/Deactivate Contract</h2>
+        <h2 className="text-center text-[26px] font-black leading-tight">{t('stop.title')}</h2>
 
         <div className="mt-5 grid grid-cols-2 gap-3">
           <button className="primary-btn bg-fuchsia-950/90" onClick={() => setConfirmAction('deactivate')}>
-            Deactivate
+            {t('stop.deactivate')}
           </button>
           <button className="primary-btn bg-red-900" onClick={() => setConfirmAction('delete')}>
-            Delete
+            {t('stop.delete')}
           </button>
         </div>
 
         <div className="mt-3 grid grid-cols-2 gap-3 text-center text-[12px] text-white/75 font-semibold">
-          <p>If you deactivate it, interest stops and no payments will be added.</p>
-          <p>If you delete it, all contract information will be lost forever.</p>
+          <p>{t('stop.deactivateHint')}</p>
+          <p>{t('stop.deleteHint')}</p>
         </div>
 
-        <button className="mt-5 w-full secondary-btn" onClick={onClose}>Cancel</button>
+        <button className="mt-5 w-full secondary-btn" onClick={onClose}>
+          {t('actions.cancel')}
+        </button>
 
         {confirmAction && (
           <div className="absolute inset-x-6 top-20 z-10 rounded-2xl border border-white/10 bg-[#090909] p-4 shadow-2xl">
             <h3 className="text-center text-[18px] font-black">
-              Are you sure you want to {confirmAction === 'delete' ? 'delete' : 'deactivate'} it?
+              {confirmAction === 'delete' ? t('stop.confirmDelete') : t('stop.confirmDeactivate')}
             </h3>
             <div className="mt-4 grid grid-cols-2 gap-3">
               <button
                 className="primary-btn bg-fuchsia-950"
                 onClick={confirmAction === 'delete' ? onDelete : onDeactivate}
               >
-                Yes
+                {t('actions.yes')}
               </button>
               <button className="primary-btn bg-red-900" onClick={() => setConfirmAction(null)}>
-                No
+                {t('actions.no')}
               </button>
             </div>
           </div>
@@ -1068,6 +1244,7 @@ function InfoGroup({
   onChange,
   requiredFields = [],
   errorFields = [],
+  lockedValues = {},
 }: {
   title: string;
   fields: string[];
@@ -1075,7 +1252,9 @@ function InfoGroup({
   onChange: (next: Record<string, string>) => void;
   requiredFields?: string[];
   errorFields?: string[];
+  lockedValues?: Record<string, string>;
 }) {
+  const t = useTranslations('payment.contracts');
   return (
     <div>
       <div className="mb-1 text-[14px] font-black">{title}</div>
@@ -1084,6 +1263,8 @@ function InfoGroup({
         {fields.map((f) => {
           const required = requiredFields.includes(f);
           const hasError = errorFields.includes(f);
+          // Gesperrt wenn lockedValues dieses Feld hat und es nicht leer ist
+          const isLocked = Boolean(lockedValues[f] && lockedValues[f].trim() !== '');
 
           return (
             <label
@@ -1092,17 +1273,26 @@ function InfoGroup({
             >
               <span className={hasError ? 'text-red-400' : ''}>
                 {f}:{required && <span className="text-red-400"> *</span>}
+                {isLocked && (
+                  <span className="ml-1 text-[9px] text-white/30 font-normal">{t('blackmail.locked')}</span>
+                )}
               </span>
 
-              <input
-                value={value[f] ?? ''}
-                placeholder={INFO_PLACEHOLDERS[f] ?? `Enter ${f.toLowerCase()}`}
-                onChange={(e) => onChange({ ...value, [f]: e.target.value })}
-                className={[
-                  'h-8 min-w-0 rounded-lg bg-black/40 border px-2 outline-none focus:ring-2 focus:ring-[var(--purple)]/30 placeholder:text-white/38 placeholder:font-semibold',
-                  hasError ? 'border-red-500/80 ring-1 ring-red-500/35' : 'border-white/10',
-                ].join(' ')}
-              />
+              {isLocked ? (
+                <div className="h-8 min-w-0 rounded-lg bg-black/20 border border-white/05 px-2 flex items-center text-white/55 select-text cursor-default overflow-hidden">
+                  <span className="truncate">{lockedValues[f]}</span>
+                </div>
+              ) : (
+                <input
+                  value={value[f] ?? ''}
+                  placeholder={INFO_PLACEHOLDERS[f] ?? `Enter ${f.toLowerCase()}`}
+                  onChange={(e) => onChange({ ...value, [f]: e.target.value })}
+                  className={[
+                    'h-8 min-w-0 rounded-lg bg-black/40 border px-2 outline-none focus:ring-2 focus:ring-[var(--purple)]/30 placeholder:text-white/38 placeholder:font-semibold',
+                    hasError ? 'border-red-500/80 ring-1 ring-red-500/35' : 'border-white/10',
+                  ].join(' ')}
+                />
+              )}
             </label>
           );
         })}
@@ -1147,30 +1337,55 @@ function Input({
         {suffix && <span className="px-3 text-white/45">{suffix}</span>}
       </div>
 
-      {error && (
-        <div className="mt-1 text-[11px] font-semibold text-red-400">
-          This field is required.
-        </div>
-      )}
+      {error && <div className="mt-1 text-[11px] font-semibold text-red-400">This field is required.</div>}
     </label>
   );
 }
 
+function LoadingState() {
+  const t = useTranslations('payment.contracts');
+  return (
+    <div className="min-h-[55dvh] rounded-2xl border border-white/10 bg-[#171719] grid place-items-center p-8 text-center">
+      <div className="text-white/45 font-bold">{t('states.loading')}</div>
+    </div>
+  );
+}
+
+function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
+  const t = useTranslations('payment.contracts');
+  return (
+    <div className="min-h-[55dvh] rounded-2xl border border-red-500/20 bg-[#171719] grid place-items-center p-8 text-center">
+      <div>
+        <h2 className="text-[20px] font-black text-red-300">{t('states.errorTitle')}</h2>
+        <p className="mt-2 text-[13px] text-white/45">{message}</p>
+        <button className="mt-4 secondary-btn px-5" onClick={onRetry}>{t('states.retry')}</button>
+      </div>
+    </div>
+  );
+}
+
 function EmptyState() {
+  const t = useTranslations('payment.contracts');
   return (
     <div className="min-h-[55dvh] rounded-2xl border border-white/10 bg-[#171719] grid place-items-center p-8 text-center">
       <div>
         <div className="mx-auto mb-4 size-14 rounded-full bg-white/5 border border-white/10 grid place-items-center text-[var(--purple)]">
           <ContractsSmallIcon />
         </div>
-        <h2 className="text-[25px] font-black text-white/40 leading-tight">Currently no active Contracts</h2>
-        <p className="mt-2 text-[13px] text-white/45">Create a new contract to see it here.</p>
+        <h2 className="text-[25px] font-black text-white/40 leading-tight">{t('states.emptyTitle')}</h2>
+        <p className="mt-2 text-[13px] text-white/45">{t('states.emptyHint')}</p>
       </div>
     </div>
   );
 }
 
-function Overlay({ children }: { children: React.ReactNode }) {
+function Overlay({
+  children,
+  onClose,
+}: {
+  children: React.ReactNode;
+  onClose?: () => void;
+}) {
   React.useEffect(() => {
     const scrollY = window.scrollY;
     const body = document.body;
@@ -1196,7 +1411,12 @@ function Overlay({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <div className="fixed inset-0 z-[2147483600] grid place-items-center bg-black/70 backdrop-blur-sm p-3">
+    <div
+      className="fixed inset-0 z-[2147483600] flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm"
+      onPointerDown={(e) => {
+        if (e.target === e.currentTarget) onClose?.();
+      }}
+    >
       {children}
     </div>
   );
@@ -1263,315 +1483,300 @@ function Viewport({ children }: { children: React.ReactNode }) {
 
       <style jsx global>{`
         .direction-choice.is-error {
-        border-color: rgba(239, 68, 68, .75);
-        box-shadow: inset 0 0 0 1px rgba(239, 68, 68, .25);
+          border-color: rgba(239, 68, 68, .75);
+          box-shadow: inset 0 0 0 1px rgba(239, 68, 68, .25);
         }
+
         .contract-history-spacer {
-        display: block;
+          display: block;
         }
 
         @media (min-width: 381px) {
-        .contract-history-spacer {
+          .contract-history-spacer {
             display: block;
-        }
+          }
 
-        .contract-actions:has(.contract-history-spacer) .contract-btn-soft {
+          .contract-actions:has(.contract-history-spacer) .contract-btn-soft {
             grid-column: 1 / -1;
             justify-self: center;
             width: calc(50% - 5px);
-        }
+          }
         }
 
         @media (max-width: 380px) {
-        .contract-history-spacer {
+          .contract-history-spacer {
             display: none;
+          }
+
+          .contract-actions:has(.contract-history-spacer) .contract-btn-soft {
+            width: 100%;
+          }
         }
 
-        .contract-actions:has(.contract-history-spacer) .contract-btn-soft {
-            width: 100%;
-        }
-        }
         .direction-choice {
-        width: 100%;
-        border-radius: 16px;
-        border: 1px solid rgba(255,255,255,.10);
-        background: rgba(0,0,0,.25);
-        padding: 12px;
-        text-align: left;
-        display: grid;
-        gap: 3px;
+          width: 100%;
+          border-radius: 16px;
+          border: 1px solid rgba(255,255,255,.10);
+          background: rgba(0,0,0,.25);
+          padding: 12px;
+          text-align: left;
+          display: grid;
+          gap: 3px;
         }
 
         .direction-choice span {
-        font-size: 14px;
-        font-weight: 900;
+          font-size: 14px;
+          font-weight: 900;
         }
 
         .direction-choice small {
-        font-size: 12px;
-        color: rgba(255,255,255,.48);
-        line-height: 1.25;
+          font-size: 12px;
+          color: rgba(255,255,255,.48);
+          line-height: 1.25;
         }
 
         .direction-choice.is-active {
-        border-color: rgba(139,92,246,.65);
-        background: rgba(139,92,246,.20);
+          border-color: rgba(139,92,246,.65);
+          background: rgba(139,92,246,.20);
         }
+
         .contract-card {
-            border-radius: 28px;
-            border: 1px solid rgba(255,255,255,.10);
-            background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
-            box-shadow: 0 18px 55px rgba(0,0,0,.35);
-            overflow: hidden;
-            padding: 14px;
+          border-radius: 28px;
+          border: 1px solid rgba(255,255,255,.10);
+          background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+          box-shadow: 0 18px 55px rgba(0,0,0,.35);
+          overflow: hidden;
+          padding: 14px;
         }
 
         @media (max-width: 640px) {
-            .contract-card {
-                min-height: calc(100dvh - 178px - 88px);
-                scroll-margin-bottom: calc(96px + env(safe-area-inset-bottom));
-                display: flex;
-                flex-direction: column;
-                justify-content: space-between;
-            }
+          .contract-card {
+            min-height: calc(100dvh - 178px - 88px);
+            scroll-margin-bottom: calc(96px + env(safe-area-inset-bottom));
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+          }
         }
 
         .contract-card-head {
-            display: flex;
-            align-items: flex-start;
-            justify-content: space-between;
-            gap: 12px;
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 12px;
         }
 
         .contract-type-pill {
-            border-radius: 999px;
-            padding: 6px 10px;
-            font-size: 12px;
-            font-weight: 900;
-            color: #e9d5ff;
-            background: rgba(139,92,246,.16);
-            border: 1px solid rgba(139,92,246,.28);
-            white-space: nowrap;
+          border-radius: 999px;
+          padding: 6px 10px;
+          font-size: 12px;
+          font-weight: 900;
+          color: #e9d5ff;
+          background: rgba(139,92,246,.16);
+          border: 1px solid rgba(139,92,246,.28);
+          white-space: nowrap;
         }
 
         .contract-main {
-            display: grid;
-            grid-template-columns: minmax(180px, 280px) 1fr;
-            align-items: center;
-            gap: 22px;
-            padding: 24px 4px 18px;
+          display: grid;
+          grid-template-columns: minmax(180px, 280px) 1fr;
+          align-items: center;
+          gap: 22px;
+          padding: 24px 4px 18px;
         }
 
         @media (max-width: 640px) {
-            .contract-main {
+          .contract-main {
             grid-template-columns: 1fr;
             gap: 18px;
             padding-top: 18px;
-            }
+          }
         }
 
         .contract-donut-wrap {
-            position: relative;
-            display: grid;
-            place-items: center;
-            justify-self: center;
+          position: relative;
+          display: grid;
+          place-items: center;
+          justify-self: center;
         }
 
         .contract-donut {
-            position: relative;
-            width: min(62vw, 260px);
-            height: min(62vw, 260px);
-            max-width: 260px;
-            max-height: 260px;
-            min-width: 190px;
-            min-height: 190px;
-            border-radius: 999px;
-            box-shadow: inset 0 0 0 1px rgba(255,255,255,.08);
+          position: relative;
+          width: min(62vw, 260px);
+          height: min(62vw, 260px);
+          max-width: 260px;
+          max-height: 260px;
+          min-width: 190px;
+          min-height: 190px;
+          border-radius: 999px;
+          box-shadow: inset 0 0 0 1px rgba(255,255,255,.08);
         }
 
         .contract-donut-hole {
-            position: absolute;
-            inset: 22%;
-            border-radius: 999px;
-            background: #151518;
-            border: 1px solid rgba(255,255,255,.08);
+          position: absolute;
+          inset: 22%;
+          border-radius: 999px;
+          background: #151518;
+          border: 1px solid rgba(255,255,255,.08);
         }
 
         .contract-donut-center {
-            position: absolute;
-            inset: 0;
-            display: grid;
-            place-content: center;
-            text-align: center;
-            pointer-events: none;
+          position: absolute;
+          inset: 0;
+          display: grid;
+          place-content: center;
+          text-align: center;
+          pointer-events: none;
         }
 
         .contract-stats {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-        }
-
-        @media (max-width: 420px) {
-            .contract-stats {
-            grid-template-columns: 1fr 1fr;
-            }
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 10px;
         }
 
         .stat-box {
-            min-height: 72px;
-            border-radius: 18px;
-            padding: 12px;
-            background: rgba(0,0,0,.28);
-            border: 1px solid rgba(255,255,255,.08);
+          min-height: 72px;
+          border-radius: 18px;
+          padding: 12px;
+          background: rgba(0,0,0,.28);
+          border: 1px solid rgba(255,255,255,.08);
         }
 
         .contract-actions {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 10px;
         }
 
         @media (max-width: 380px) {
-            .contract-actions {
+          .contract-actions {
             grid-template-columns: 1fr;
-            }
+          }
         }
 
         .contract-btn {
-            min-height: 46px;
-            border-radius: 999px;
-            padding: 0.65rem 0.9rem;
-            font-size: 14px;
-            font-weight: 900;
-            color: white;
-            transition: transform 140ms ease, opacity 140ms ease, background 140ms ease;
+          min-height: 46px;
+          border-radius: 999px;
+          padding: 0.65rem 0.9rem;
+          font-size: 14px;
+          font-weight: 900;
+          color: white;
+          transition: transform 140ms ease, opacity 140ms ease, background 140ms ease;
         }
 
         .contract-btn:active {
-            transform: scale(.98);
+          transform: scale(.98);
         }
 
         .contract-btn-primary {
-            background: linear-gradient(135deg, rgba(139,92,246,.95), rgba(168,85,247,.72));
+          background: linear-gradient(135deg, rgba(139,92,246,.95), rgba(168,85,247,.72));
         }
 
         .contract-btn-soft {
-            background: rgba(139,92,246,.22);
-            border: 1px solid rgba(139,92,246,.22);
+          background: rgba(139,92,246,.22);
+          border: 1px solid rgba(139,92,246,.22);
         }
 
         .contract-btn-danger {
-            background: rgba(190,18,60,.28);
-            border: 1px solid rgba(244,63,94,.22);
-            color: #fecdd3;
+          background: rgba(190,18,60,.28);
+          border: 1px solid rgba(244,63,94,.22);
+          color: #fecdd3;
         }
 
         .contract-btn-dark {
-            background: rgba(0,0,0,.42);
-            border: 1px solid rgba(255,255,255,.08);
+          background: rgba(0,0,0,.42);
+          border: 1px solid rgba(255,255,255,.08);
         }
 
         .modal-card {
-            width: 100%;
+          width: 100%;
+          border-radius: 24px 24px 0 0;
+          border: 1px solid rgba(255,255,255,.12);
+          background: #18181b;
+          box-shadow: 0 -8px 40px rgba(0,0,0,.55);
+          overflow: hidden;
+          max-height: 92dvh;
+          display: flex;
+          flex-direction: column;
+        }
+
+        @media (min-width: 640px) {
+          .modal-card {
             border-radius: 24px;
-            border: 1px solid rgba(255,255,255,.12);
-            background: #18181b;
             box-shadow: 0 20px 80px rgba(0,0,0,.55);
-            overflow: hidden;
+            max-width: 448px;
+            max-height: 88dvh;
+          }
         }
 
         .primary-btn {
-            min-height: 44px;
-            flex: 1;
-            border-radius: 999px;
-            background: linear-gradient(135deg, rgba(139,92,246,.95), rgba(168,85,247,.68));
-            padding: .65rem 1rem;
-            font-weight: 850;
-            color: white;
+          min-height: 44px;
+          flex: 1;
+          border-radius: 999px;
+          background: linear-gradient(135deg, rgba(139,92,246,.95), rgba(168,85,247,.68));
+          padding: .65rem 1rem;
+          font-weight: 850;
+          color: white;
         }
 
         .secondary-btn {
-            min-height: 44px;
-            flex: 1;
-            border-radius: 999px;
-            background: rgba(255,255,255,.07);
-            padding: .65rem 1rem;
-            font-weight: 850;
-            color: white;
+          min-height: 44px;
+          flex: 1;
+          border-radius: 999px;
+          background: rgba(255,255,255,.07);
+          padding: .65rem 1rem;
+          font-weight: 850;
+          color: white;
         }
 
-        .contract-choice {
-            min-height: 128px;
-            border-radius: 20px;
-            background:
-            radial-gradient(circle at 30% 0%, rgba(255,255,255,.16), transparent 38%),
-            linear-gradient(180deg, rgba(139,92,246,.95), rgba(88,28,135,.9));
-            padding: 14px;
-            text-align: center;
-            display: grid;
-            gap: 8px;
-            align-content: center;
-            border: 1px solid rgba(255,255,255,.10);
-        }
-
-        .contract-choice strong {
-            line-height: 1.05;
-        }
-
-        .contract-choice span {
-            font-size: 13px;
-            color: rgba(255,255,255,.68);
-            line-height: 1.15;
-        }
-        
         .contract-choice-clean {
-        min-height: 132px;
-        border-radius: 22px;
-        padding: 14px;
-        display: grid;
-        align-content: center;
-        gap: 8px;
-        text-align: center;
-        background: rgba(255,255,255,.045);
-        border: 1px solid rgba(255,255,255,.10);
-        transition: transform 140ms ease, background 140ms ease, border 140ms ease;
+          min-height: 132px;
+          border-radius: 22px;
+          padding: 14px;
+          display: grid;
+          align-content: center;
+          gap: 8px;
+          text-align: center;
+          background: rgba(255,255,255,.045);
+          border: 1px solid rgba(255,255,255,.10);
+          transition: transform 140ms ease, background 140ms ease, border 140ms ease;
         }
 
         .contract-choice-clean:active {
-        transform: scale(.98);
+          transform: scale(.98);
         }
 
         .contract-choice-clean.is-active {
-        background: rgba(139,92,246,.22);
-        border-color: rgba(139,92,246,.55);
-        box-shadow: inset 0 0 0 1px rgba(139,92,246,.22);
+          background: rgba(139,92,246,.22);
+          border-color: rgba(139,92,246,.55);
+          box-shadow: inset 0 0 0 1px rgba(139,92,246,.22);
         }
 
         .contract-choice-clean strong {
-        font-size: 16px;
-        line-height: 1.05;
+          font-size: 16px;
+          line-height: 1.05;
         }
 
         .contract-choice-clean span {
-        font-size: 13px;
-        line-height: 1.25;
-        color: rgba(255,255,255,.62);
+          font-size: 13px;
+          line-height: 1.25;
+          color: rgba(255,255,255,.62);
         }
 
         .form-panel {
-        border-radius: 20px;
-        border: 1px solid rgba(255,255,255,.10);
-        background: rgba(255,255,255,.045);
-        padding: 14px;
+          border-radius: 20px;
+          border: 1px solid rgba(255,255,255,.10);
+          background: rgba(255,255,255,.045);
+          padding: 14px;
         }
 
         .form-section-title {
-        margin-bottom: 10px;
-        font-size: 14px;
-        font-weight: 900;
+          margin-bottom: 10px;
+          font-size: 14px;
+          font-weight: 900;
         }
-        `}</style>
+      `}</style>
     </div>
   );
 }

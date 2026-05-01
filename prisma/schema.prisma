@@ -122,6 +122,11 @@ model User {
   payoutPaxumEmail    String?
   payoutCosmoWalletId String?
 
+  //CONTRACTS
+  contractsAsOwner   Contract[]      @relation("ContractOwner")
+  contractsAsCounter Contract[]      @relation("ContractCounterparty")
+  contractEventsMade ContractEvent[] @relation("ContractEventActor")
+
   //STRIPE
   stripeCustomerId       String?
   stripeDefaultPmId      String? // optional
@@ -615,6 +620,7 @@ model Payment {
   id                    String        @id
   payerId               String
   payeeId               String
+  contractId            String?
   amountGrossCents      Int
   amountNetToDommeCents Int
   platformFeeCents      Int
@@ -650,6 +656,7 @@ model Payment {
   @@index([payerId])
   @@index([payeeId])
   @@index([payoutRequestId])
+  @@index([contractId])
 }
 
 model StepUpChallenge {
@@ -981,9 +988,129 @@ model AutoDrainCharge {
   @@index([subscriptionId, at])
 }
 
+//CONTACTS MODULES/ENUMS
+model Contract {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  type   ContractType
+  status ContractStatus @default(ACTIVE)
+
+  // Der User, der Contract verwaltet/empfängt, z.B. Domme
+  ownerId String
+  owner   User   @relation("ContractOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+
+  // Der andere User, z.B. Sub
+  counterpartyId String
+  counterparty   User   @relation("ContractCounterparty", fields: [counterpartyId], references: [id], onDelete: Cascade)
+
+  currency String @default("EUR") @db.VarChar(3)
+
+  totalCents Int
+  paidCents  Int @default(0)
+
+  interestPctMonthly Int       @default(0)
+  interestAnchorDay  Int       @default(1)
+  lastInterestAt     DateTime?
+  nextInterestAt     DateTime?
+
+  blackmailInfoJson Json?
+
+  events ContractEvent[]
+  media  ContractPrivateMedia[]
+
+  // Für spätere 10%-Progress Notifications vorbereiten
+  lastProgressNotifiedPct Int @default(0)
+
+  @@index([ownerId, status, updatedAt(sort: Desc)])
+  @@index([counterpartyId, status, updatedAt(sort: Desc)])
+  @@index([nextInterestAt])
+  @@index([type, status])
+}
+
+model ContractEvent {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  contractId String
+  contract   Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  actorId String?
+  actor   User?   @relation("ContractEventActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  type ContractEventType
+
+  amountCents Int     @default(0)
+  note        String? @db.VarChar(300)
+
+  // Optional: Link zu Payment, wenn ein Subm8-Tip dieses Event erzeugt hat
+  paymentId String?
+
+  metadataJson Json?
+
+  @@index([contractId, createdAt(sort: Desc)])
+  @@index([actorId])
+  @@index([paymentId])
+  @@index([type, createdAt])
+}
+
+model ContractPrivateMedia {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  contractId String
+  contract   Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  uploadedById String
+
+  // R2 private object key, KEINE publicUrl
+  key String @unique
+
+  filename  String?
+  mimeType  String
+  kind      ContractMediaKind
+  sizeBytes Int?
+
+  @@index([contractId, createdAt(sort: Desc)])
+  @@index([uploadedById])
+}
+
 /**
  * ------------------------------ Enums -------------------------------------
  */
+
+enum ContractType {
+  DEBT
+  BLACKMAIL
+}
+
+enum ContractStatus {
+  ACTIVE
+  PAUSED
+  CLOSED
+  DELETED
+}
+
+enum ContractEventType {
+  CREATED
+  TOTAL_CHANGED
+  MANUAL_PAYMENT
+  TIP_PAYMENT
+  AUTODRAIN_PAYMENT
+  INTEREST_APPLIED
+  PAUSED
+  RESUMED
+  CLOSED
+  DELETED
+  INFO_UPDATED
+  PRIVATE_MEDIA_ADDED
+}
+
+enum ContractMediaKind {
+  IMAGE
+  VIDEO
+}
 
 enum SmsChallengePurpose {
   SETUP // Eigentumsnachweis beim Einrichten

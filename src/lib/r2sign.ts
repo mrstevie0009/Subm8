@@ -31,7 +31,7 @@ const ALLOWED_UPLOAD_TYPES = new Set([
 ]);
 
 export async function presignPut(
-  kind: 'post-media' | 'avatars' | 'banners' | 'offers' | 'profile' | 'chat-media',
+  kind: 'post-media' | 'avatars' | 'banners' | 'offers' | 'profile' | 'chat-media' | 'contract-private',
   filename: string,
   contentType: string
 ) {
@@ -116,4 +116,63 @@ export async function presignPut(
 
   // ct zurückgeben → kann der Client als Content-Type-Header nutzen
   return { key, uploadUrl: presignedUrl, publicUrl, contentType: ct };
+}
+
+export async function presignGet(key: string, expiresSeconds = 60) {
+  if (!key.startsWith('contract-private/')) {
+    throw new Error('Only private contract media can be signed here');
+  }
+
+  const bucket = process.env.S3_BUCKET!;
+  const endpoint = (process.env.S3_ENDPOINT || '').replace(/\/$/, '');
+  const region = process.env.S3_REGION || 'auto';
+  const accessKeyId = process.env.S3_ACCESS_KEY!;
+  const secretKey = process.env.S3_SECRET_KEY!;
+
+  if (!bucket || !endpoint || !accessKeyId || !secretKey) {
+    throw new Error('Missing S3/R2 env vars for presignGet');
+  }
+
+  const now = new Date();
+  const amzDate = now.toISOString().replace(/[:-]|\.\d{3}/g, '');
+  const dateStamp = amzDate.slice(0, 8);
+  const service = 's3';
+
+  const urlPath = `/${bucket}/${encodeURIComponent(key).replace(/%2F/g, '/')}`;
+  const urlObj = new URL(endpoint + urlPath);
+  const host = urlObj.host;
+
+  const query: Record<string, string> = {
+    'X-Amz-Algorithm': 'AWS4-HMAC-SHA256',
+    'X-Amz-Credential': `${accessKeyId}/${dateStamp}/${region}/${service}/aws4_request`,
+    'X-Amz-Date': amzDate,
+    'X-Amz-Expires': String(expiresSeconds),
+    'X-Amz-SignedHeaders': 'host',
+  };
+
+  const canonicalQuery = Object.keys(query)
+    .sort()
+    .map((k) => `${encodeURIComponent(k)}=${encodeURIComponent(query[k])}`)
+    .join('&');
+
+  const canonicalRequest = [
+    'GET',
+    urlPath,
+    canonicalQuery,
+    `host:${host}\n`,
+    'host',
+    'UNSIGNED-PAYLOAD',
+  ].join('\n');
+
+  const stringToSign = [
+    'AWS4-HMAC-SHA256',
+    amzDate,
+    `${dateStamp}/${region}/${service}/aws4_request`,
+    sha256Hex(canonicalRequest),
+  ].join('\n');
+
+  const signingKey = getSigningKey(secretKey, dateStamp, region, service);
+  const signature = hmacHex(signingKey, stringToSign);
+
+  return `${endpoint}${urlPath}?${canonicalQuery}&X-Amz-Signature=${signature}`;
 }

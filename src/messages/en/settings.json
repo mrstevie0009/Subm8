@@ -113,7 +113,8 @@
       "payments": "Payments",
       "premium": "Premium",
       "profile": "Profile",
-      "settings": "Settings"
+      "settings": "Settings",
+      "contracts": "Contracts"
     },
     "noHandle": "—",
     "recommended": "Recommended profiles",

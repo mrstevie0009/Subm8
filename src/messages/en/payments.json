@@ -1,4 +1,123 @@
 {
+  "contracts": {
+    "title": "Contracts",
+    "subtitle": "Debt and blackmail contracts",
+    "new": "New",
+    "currentContracts": "Current Contracts",
+    "searchPlaceholder": "Search active contracts",
+    "filter": {
+      "title": "Filter Contracts",
+      "latest": "Latest Contract",
+      "mostDebt": "Most debt left",
+      "onlyBlackmail": "Only BM Contracts",
+      "onlyDebt": "Only Debt Contracts"
+    },
+    "donut": {
+      "paid": "Paid",
+      "unlocked": "withdrawable",
+      "locked": "locked 30d"
+    },
+    "card": {
+      "typeDebt": "Debt Contract",
+      "typeBlackmail": "Blackmail Contract",
+      "amountPaid": "Amount paid",
+      "amountLeft": "Amount left",
+      "nextInterest": "Next interest",
+      "interest": "Interest",
+      "days": "{count} days",
+      "changeAmount": "Change Amount",
+      "stopContract": "Stop Contract",
+      "deleteContract": "Delete Contract",
+      "paymentHistory": "Payment History",
+      "blackmailInfo": "Blackmail Info",
+      "payerHint": "You are the payer in this contract. Only the receiver can change or stop it.",
+      "paused": "Paused"
+    },
+    "actions": {
+      "cancel": "Cancel",
+      "save": "Save",
+      "continue": "Continue",
+      "goBack": "Go Back",
+      "yes": "Yes",
+      "no": "No"
+    },
+    "new_flow": {
+      "titlePick": "Pick a Contract",
+      "titleDebt": "Debt Contract",
+      "titleBlackmail": "Blackmail Contract",
+      "subtitlePick": "Choose a user and contract type",
+      "searchEmpty": "Search for a user to create a contract.",
+      "typeQuestion": "What kind of contract do you want to make?",
+      "debtTitle": "Debt Contract",
+      "debtDesc": "Set debt, interest and payment terms.",
+      "blackmailTitle": "Blackmail Contract",
+      "blackmailDesc": "Debt plus consensual blackmail info."
+    },
+    "form": {
+      "debtInfo": "Debt Information",
+      "amountLabel": "Amount to be paid",
+      "interestLabel": "Monthly interest",
+      "interestHint": "Interest is applied automatically at the beginning of every month.",
+      "whoPaysSectionLabel": "Who pays whom?",
+      "selectedUser": "Selected user",
+      "selectedPaysViewer": "{name} pays you",
+      "selectedPaysViewerHint": "You can change amount and stop the contract.",
+      "viewerPaysSelected": "You pay {name}",
+      "viewerPaysSelectedHint": "You cannot change amount, stop, or deactivate this contract.",
+      "directionRequired": "Please choose who pays whom."
+    },
+    "changeAmount": {
+      "title": "Update Contract",
+      "newAmountLabel": "New total debt amount",
+      "externalTipLabel": "Tip/payment received outside Subm8",
+      "externalTipHint": "Use this field when the sub paid you outside Subm8. This amount will be added as paid."
+    },
+    "history": {
+      "title": "Debt Payment History",
+      "thDate": "Date/time",
+      "thType": "Type",
+      "thAmount": "Amount"
+    },
+    "blackmail": {
+      "title": "Blackmail Info",
+      "uploadTitle": "Add private proof files",
+      "uploadHint": "Tap or drop photos/videos here. Only authorized contract users can view them.",
+      "filesSelected": "{count} file(s) selected",
+      "uploading": "Uploading…",
+      "personalTitle": "Personal Information",
+      "workTitle": "Work Information",
+      "closePersonTitle": "Someone Close to User",
+      "locked": "locked"
+    },
+    "bm": {
+      "fullName": "Full Name",
+      "city": "City",
+      "street": "Street",
+      "door": "Door",
+      "phone": "Telephone Number",
+      "card": "Card Details",
+      "jobTitle": "Job Title",
+      "salary": "Salary",
+      "bossName": "Boss's Name",
+      "address": "Address"
+    },
+    "stop": {
+      "title": "Stop/Deactivate Contract",
+      "deactivate": "Deactivate",
+      "delete": "Delete",
+      "deactivateHint": "If you deactivate it, interest stops and no payments will be added.",
+      "deleteHint": "If you delete it, all contract information will be lost forever.",
+      "confirmDeactivate": "Are you sure you want to deactivate it?",
+      "confirmDelete": "Are you sure you want to delete it?"
+    },
+    "states": {
+      "loading": "Loading contracts…",
+      "errorTitle": "Could not load contracts",
+      "retry": "Retry",
+      "emptyTitle": "Currently no active Contracts",
+      "emptyHint": "Create a new contract to see it here."
+    }
+  },
   "stepUp": {
     "title": "Security Confirmation",
     "subtitle": "Confirm your password to perform \"{action}\".",

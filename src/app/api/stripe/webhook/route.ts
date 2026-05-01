@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import type Stripe from "stripe";
 import { randomUUID } from "node:crypto";
 import { addCadence } from "@/lib/autodrain";
+import { linkPaymentToContract } from "@/lib/contracts";
 
 export const runtime = "nodejs";
 
@@ -169,7 +170,7 @@ async function handleAutodrainInvoicePaid(inv: Stripe.Invoice) {
 
   const next = addCadence(ad.nextChargeAt ?? now, ad.cadence);
 
-  await prisma.$transaction(async (tx) => {
+  const { paymentId: newPaymentId } = await prisma.$transaction(async (tx) => {
     const payment = await tx.payment.create({
       data: {
         id: randomUUID(),
@@ -272,7 +273,18 @@ async function handleAutodrainInvoicePaid(inv: Stripe.Invoice) {
         },
       });
     }
+
+    return { paymentId: payment.id };
   });
+
+  // NEU: Contract-Payment buchen falls aktiver Contract zwischen sub und domme
+  await linkPaymentToContract(
+    ad.subId,
+    ad.dommeId,
+    dommeNetCents,
+    newPaymentId,
+    'AUTODRAIN_PAYMENT'
+  );
   }
 
 export async function POST(req: Request) {
@@ -472,6 +484,15 @@ export async function POST(req: Request) {
             },
           });
         }
+
+        //Contract-Payment buchen falls aktiver Contract existiert
+        await linkPaymentToContract(
+          updated.payerId,
+          updated.payeeId,
+          updated.amountNetToDommeCents,
+          paymentId,
+          'TIP_PAYMENT'
+        );
 
         return NextResponse.json({ ok: true });
       }

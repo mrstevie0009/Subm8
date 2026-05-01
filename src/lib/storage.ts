@@ -21,7 +21,7 @@ function yyyymm(d = new Date()) {
 }
 
 export function buildKey(
-  kind: 'post-media' | 'avatars' | 'banners' | 'offers' | 'profile' | 'chat-media',
+  kind: 'post-media' | 'avatars' | 'banners' | 'offers' | 'profile' | 'chat-media' | 'contract-private',
   fileName: string
 ) {
   const ext = fileName.split('.').pop()?.toLowerCase() || 'bin';
