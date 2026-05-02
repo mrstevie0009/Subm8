@@ -161,6 +161,23 @@
     }
   },
   "paymentsPage": {
+    "budget": {
+      "title": "Spending Budget",
+      "cadence": {
+        "daily": "daily",
+        "weekly": "weekly",
+        "monthly": "monthly"
+      },
+      "percentUsed": "{pct}% used",
+      "overBudget": "{amount} over budget",
+      "remaining": "{amount} remaining",
+      "actionLabel": "Action when exceeded:",
+      "actions": {
+        "block": "Blocked",
+        "warn": "Warning",
+        "notify": "Notification"
+      }
+    },
     "ariaBack": "Back to feed",
     "autodrain": {
       "cadence": { "daily": "Daily", "monthly": "Monthly", "weekly": "Weekly" },
@@ -229,6 +246,15 @@
     }
   },
   "tipModal": {
+    "budget": {
+    "daily": "daily",
+    "weekly": "weekly",
+    "monthly": "monthly",
+    "blocked": "🚫 Budget reached — payments are blocked until the next period.",
+    "warnOver": "⚠️ You have exceeded your budget. Do you want to proceed anyway?",
+    "warnAck": "Yes, I want to pay anyway",
+    "notifyOver": "ℹ️ You are over your budget. You will be notified after payment."
+  },
     "ack": {
      "checkboxShort": "I agree to the <terms>Terms and Services</terms>.",
      "helper": "This is a voluntary gift, not payment for services."

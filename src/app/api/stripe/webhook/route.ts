@@ -6,6 +6,7 @@ import type Stripe from "stripe";
 import { randomUUID } from "node:crypto";
 import { addCadence } from "@/lib/autodrain";
 import { linkPaymentToContract } from "@/lib/contracts";
+import { recordBudgetSpend } from "@/lib/budget";
 
 export const runtime = "nodejs";
 
@@ -285,7 +286,10 @@ async function handleAutodrainInvoicePaid(inv: Stripe.Invoice) {
     newPaymentId,
     'AUTODRAIN_PAYMENT'
   );
-  }
+
+  // Budget-Tracking für den Sub
+  await recordBudgetSpend(ad.subId, ad.amountCents).catch(() => {});
+}
 
 export async function POST(req: Request) {
   const sig = req.headers.get("stripe-signature");
@@ -493,6 +497,9 @@ export async function POST(req: Request) {
           paymentId,
           'TIP_PAYMENT'
         );
+
+        // Budget-Tracking für den Sub
+        await recordBudgetSpend(updated.payerId, baseAmountCents).catch(() => {});
 
         return NextResponse.json({ ok: true });
       }

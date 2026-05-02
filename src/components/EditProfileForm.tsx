@@ -46,6 +46,10 @@ export type EditInitial = {
   bannerUrl?: string;
   websiteUrl?: string;
   kinks?: string[];
+  // Budget (nur Subs)
+  budgetAmountCents?: number | null;
+  budgetCadence?: 'DAILY' | 'WEEKLY' | 'MONTHLY' | null;
+  budgetAction?: 'BLOCK' | 'WARN' | 'NOTIFY';
 };
 
 type CheckState = 'idle' | 'checking' | 'ok' | 'taken' | 'error';
@@ -96,6 +100,20 @@ export default function EditProfileForm({
 
   const displayDebRef = React.useRef<number | null>(null);
   const handleDebRef = React.useRef<number | null>(null);
+
+  // Budget State (nur für Subs)
+  const [budgetEnabled, setBudgetEnabled] = React.useState(!!initial.budgetAmountCents);
+  const [budgetAmount, setBudgetAmount] = React.useState(
+    initial.budgetAmountCents ? String(Math.round(initial.budgetAmountCents / 100)) : ''
+  );
+  const [budgetCadence, setBudgetCadence] = React.useState<'DAILY' | 'WEEKLY' | 'MONTHLY'>(
+    initial.budgetCadence ?? 'MONTHLY'
+  );
+  const [budgetAction, setBudgetAction] = React.useState<'BLOCK' | 'WARN' | 'NOTIFY'>(
+    initial.budgetAction ?? 'WARN'
+  );
+  const [budgetSaving, setBudgetSaving] = React.useState(false);
+  const [budgetSaved, setBudgetSaved] = React.useState(false);
 
   const [bannerIsVideo, setBannerIsVideo] = React.useState(() => {
     const u = (initial.bannerUrl || '').split('?')[0].toLowerCase();
@@ -271,6 +289,26 @@ export default function EditProfileForm({
     if (uploads.bannerUrl) fd.append('bannerUrl', uploads.bannerUrl);
 
     await action(fd);
+  };
+
+  const saveBudget = async () => {
+    setBudgetSaving(true);
+    setBudgetSaved(false);
+    try {
+      await fetch('/api/budget', {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          amountCents: budgetEnabled && budgetAmount ? Math.round(Number(budgetAmount) * 100) : null,
+          cadence: budgetCadence,
+          action: budgetAction,
+        }),
+      });
+      setBudgetSaved(true);
+      setTimeout(() => setBudgetSaved(false), 2000);
+    } finally {
+      setBudgetSaving(false);
+    }
   };
 
   const revoke = (url?: string | null) => {
@@ -638,6 +676,143 @@ export default function EditProfileForm({
             />
           </Field>
         </div>
+
+        {/* Budget — nur für Subs */}
+        {initial.role === 'submissive' && (
+          <div className="rounded-xl border border-white/10 bg-white/[.02] p-4">
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <div>
+                <div className="text-[15px] font-semibold">{t('budget.title')}</div>
+                <div className="text-[12px] text-white/60 mt-0.5">
+                  {t('budget.subtitle')}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setBudgetEnabled((v) => !v)}
+                className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors ${
+                  budgetEnabled ? 'bg-[var(--purple)]' : 'bg-white/20'
+                }`}
+                role="switch"
+                aria-checked={budgetEnabled}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow-lg ring-0 transition-transform ${
+                    budgetEnabled ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+
+            {budgetEnabled && (
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-[12px] text-white/70 mb-1">{t('budget.amountLabel')}</label>
+                  <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-lg px-3 h-10">
+                    <span className="text-white/60">€</span>
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      min="1"
+                      step="1"
+                      value={budgetAmount}
+                      onChange={(e) => setBudgetAmount(e.target.value)}
+                      placeholder="z.B. 100"
+                      className="flex-1 bg-transparent outline-none"
+                    />
+                  </div>
+                  <div className="mt-1.5 flex flex-wrap gap-1.5">
+                    {[25, 50, 100, 250].map((p) => (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() => setBudgetAmount(String(p))}
+                        className="px-2.5 py-1 rounded-full text-[12px] border border-white/15 hover:bg-white/5"
+                      >
+                        €{p}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Zeitraum */}
+                <div>
+                  <label className="block text-[12px] text-white/70 mb-1">{t('budget.cadenceLabel')}</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {(['DAILY', 'WEEKLY', 'MONTHLY'] as const).map((c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => setBudgetCadence(c)}
+                        className={`py-1.5 rounded-lg border text-[13px] transition ${
+                          budgetCadence === c
+                            ? 'border-[var(--purple)] bg-[var(--purple)]/20 text-white'
+                            : 'border-white/15 text-white/70 hover:bg-white/5'
+                        }`}
+                      >
+                        {c === 'DAILY'
+                          ? t('budget.cadence.daily')
+                          : c === 'WEEKLY'
+                          ? t('budget.cadence.weekly')
+                          : t('budget.cadence.monthly')}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Verhalten bei Überschreitung */}
+                <div>
+                  <label className="block text-[12px] text-white/70 mb-1">{t('budget.actionLabel')}</label>
+                  <div className="space-y-2">
+                    {([
+                      { v: 'BLOCK' as const, label: t('budget.actions.block'), desc: t('budget.actions.blockDesc') },
+                      { v: 'WARN' as const,  label: t('budget.actions.warn'),  desc: t('budget.actions.warnDesc') },
+                      { v: 'NOTIFY' as const,label: t('budget.actions.notify'),desc: t('budget.actions.notifyDesc') },
+                    ] as const).map(({ v, label, desc }) => (
+                      <button
+                        key={v}
+                        type="button"
+                        onClick={() => setBudgetAction(v)}
+                        className={`w-full text-left rounded-xl border px-3 py-2.5 transition ${
+                          budgetAction === v
+                            ? 'border-[var(--purple)] bg-[var(--purple)]/10'
+                            : 'border-white/10 hover:bg-white/[.03]'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <div className={`w-3.5 h-3.5 rounded-full border-2 shrink-0 ${
+                            budgetAction === v ? 'border-[var(--purple)] bg-[var(--purple)]' : 'border-white/30'
+                          }`} />
+                          <span className="text-[13px] font-medium">{label}</span>
+                        </div>
+                        <div className="text-[11px] text-white/55 mt-0.5 ml-[22px]">{desc}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={saveBudget}
+                  disabled={budgetSaving || !budgetAmount || Number(budgetAmount) < 1}
+                  className="w-full py-2 rounded-xl bg-[var(--purple)] text-white disabled:opacity-50 text-[14px] font-medium"
+                >
+                  {budgetSaving
+                    ? t('budget.saving')
+                    : budgetSaved
+                    ? t('budget.saved')
+                    : t('budget.save')}
+                </button>
+              </div>
+            )}
+
+            {!budgetEnabled && initial.budgetAmountCents && (
+              <div className="text-[12px] text-white/50 mt-1">
+                {t('budget.disabledHint')}
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Field label={t('fields.role')}>

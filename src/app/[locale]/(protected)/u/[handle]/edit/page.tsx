@@ -40,6 +40,9 @@ export default async function Page({ params }: { params: Promise<Params> }) {
       role: true,
       websiteUrl: true,
       kinks: true,
+      budgetAmountCents: true,
+      budgetCadence: true,
+      budgetAction: true,
     },
   });
   if (!u) notFound();
@@ -55,6 +58,9 @@ export default async function Page({ params }: { params: Promise<Params> }) {
     bannerUrl: u.bannerUrl ?? undefined,
     websiteUrl: u.websiteUrl ?? '',
     kinks: u.kinks ?? [],
+    budgetAmountCents: u.budgetAmountCents ?? null,
+    budgetCadence: (u.budgetCadence ?? null) as 'DAILY' | 'WEEKLY' | 'MONTHLY' | null,
+    budgetAction: (u.budgetAction ?? 'WARN') as 'BLOCK' | 'WARN' | 'NOTIFY',
   };
 
   const isDomme = u.role === 'DOMME';

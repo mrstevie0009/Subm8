@@ -415,6 +415,9 @@ export default async function PaymentsPage({ params }: { params: Promise<Params>
         )}
       </section>
 
+      {/* Budget Status */}
+      <BudgetSection locale={locale} userId={me.id} />
+
       {/* Sent */}
       <section className="px-4 py-6">
         <h2 className="text-[18px] font-semibold mb-3">{t("paymentsPage.payments.sent.title")}</h2>
@@ -480,6 +483,73 @@ export default async function PaymentsPage({ params }: { params: Promise<Params>
           </div>
         )}
       </section>
+    </section>
+  );
+}
+
+async function BudgetSection({ locale, userId }: { locale: string; userId: string }) {
+  const { getBudgetStatus } = await import('@/lib/budget');
+  const budget = await getBudgetStatus(userId);
+
+  if (!budget || !budget.amountCents) return null;
+
+  // Eigener Translator für diese Server-Komponente
+  const paymentFile = (await import(`@/messages/${locale}/payments.json`)).default;
+  const messages = { payment: paymentFile };
+  const t = createTranslator({ locale, messages, namespace: 'payment' });
+
+  const fmtMoney = (cents: number) =>
+    new Intl.NumberFormat(locale, { style: 'currency', currency: 'EUR' }).format(cents / 100);
+
+  const cadenceLabel =
+    budget.cadence === 'DAILY'
+      ? t('paymentsPage.budget.cadence.daily')
+      : budget.cadence === 'WEEKLY'
+      ? t('paymentsPage.budget.cadence.weekly')
+      : t('paymentsPage.budget.cadence.monthly');
+
+  return (
+    <section className="px-4 py-6 border-b border-white/10">
+      <h2 className="text-[18px] font-semibold mb-3">{t('paymentsPage.budget.title')}</h2>
+      <div className="rounded-xl border border-white/10 bg-white/[.03] p-4">
+        <div className="flex items-center justify-between text-[13px] mb-2">
+          <span className="text-white/70">
+            {t('paymentsPage.budget.title')} {cadenceLabel}
+          </span>
+          <span className={budget.isOver ? 'text-red-400 font-semibold' : 'text-white'}>
+            {fmtMoney(budget.spentCents)} / {fmtMoney(budget.amountCents)}
+          </span>
+        </div>
+        <div className="h-3 rounded-full bg-white/10 overflow-hidden">
+          <div
+            className={`h-full rounded-full transition-all ${
+              budget.isOver ? 'bg-red-500' :
+              budget.percentUsed > 75 ? 'bg-yellow-400' : 'bg-[var(--purple)]'
+            }`}
+            style={{ width: `${Math.min(budget.percentUsed, 100)}%` }}
+          />
+        </div>
+        <div className="mt-2 flex items-center justify-between text-[12px] text-white/60">
+          <span>{t('paymentsPage.budget.percentUsed', { pct: budget.percentUsed })}</span>
+          <span>
+            {budget.isOver
+              ? t('paymentsPage.budget.overBudget', { amount: fmtMoney(Math.abs(budget.remainingCents)) })
+              : t('paymentsPage.budget.remaining', { amount: fmtMoney(budget.remainingCents) })}
+          </span>
+        </div>
+        {budget.isOver && (
+          <div className="mt-2 text-[12px] text-white/60">
+            {t('paymentsPage.budget.actionLabel')}{' '}
+            <span className="text-white">
+              {budget.action === 'BLOCK'
+                ? t('paymentsPage.budget.actions.block')
+                : budget.action === 'WARN'
+                ? t('paymentsPage.budget.actions.warn')
+                : t('paymentsPage.budget.actions.notify')}
+            </span>
+          </div>
+        )}
+      </div>
     </section>
   );
 }

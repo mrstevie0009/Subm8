@@ -142,6 +142,13 @@ model User {
   stepUpChallenges       StepUpChallenge[]
   stepUpAttempts         StepUpAttempt[]
 
+  // Spending Budget (nur für Subs)
+  budgetAmountCents Int?
+  budgetCadence     BudgetCadence?
+  budgetAction      BudgetAction   @default(WARN)
+  budgetPeriodStart DateTime?
+  budgetSpentCents  Int            @default(0)
+
   @@index([verifiedByUserId])
   @@index([premiumUntil])
   @@index([stripeCustomerId])
@@ -1199,4 +1206,16 @@ enum CommunityJoinPolicy {
   INVITE_ONLY
   DOMME_ONLY
   SUB_ONLY
+}
+
+enum BudgetCadence {
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
+enum BudgetAction {
+  BLOCK
+  WARN
+  NOTIFY
 }

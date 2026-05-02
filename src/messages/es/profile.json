@@ -1,5 +1,30 @@
 {
   "editProfileForm": {
+    "budget": {
+    "title": "Presupuesto de gastos",
+    "subtitle": "Limita tus gastos por período. Privado — solo tú puedes verlo.",
+    "amountLabel": "Importe del presupuesto (€)",
+    "cadenceLabel": "Período",
+    "actionLabel": "Al superar el presupuesto",
+    "cadence": {
+      "daily": "Diario",
+      "weekly": "Semanal",
+      "monthly": "Mensual"
+    },
+    "actions": {
+      "block": "Bloquear pagos",
+      "blockDesc": "No podrás realizar pagos hasta que se reinicie el período.",
+      "warn": "Mostrar advertencia",
+      "warnDesc": "Verás una advertencia pero podrás continuar con el pago.",
+      "notify": "Solo notificar",
+      "notifyDesc": "Se te informará después de cada pago cuando superes el presupuesto."
+    },
+    "save": "Guardar presupuesto",
+    "saving": "Guardando…",
+    "saved": "✓ Guardado",
+    "disabledHint": "Presupuesto desactivado. El presupuesto existente se eliminará al guardar.",
+    "quickAmounts": "Importes rápidos"
+  },
     "bannerTip": {
       "label": "Consejo:",
       "text": "Aquí también puedes usar un GIF/vídeo como banner. Los vídeos/GIF no se recortan — se recomienda {ratio} (p. ej. {examples}), {seconds}, {size}.",

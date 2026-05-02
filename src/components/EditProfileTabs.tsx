@@ -2,7 +2,7 @@
 'use client';
 
 import * as React from 'react';
-import Image from 'next/image';                // <— hinzugefügt
+import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import BackButton from '@/components/BackButtonStandard';
 import type { EditInitial } from '@/components/EditProfileForm';

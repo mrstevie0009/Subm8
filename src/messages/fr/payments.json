@@ -161,6 +161,23 @@
     }
   },
   "paymentsPage": {
+    "budget": {
+      "title": "Budget de dépenses",
+      "cadence": {
+        "daily": "quotidien",
+        "weekly": "hebdomadaire",
+        "monthly": "mensuel"
+      },
+      "percentUsed": "{pct}% utilisé",
+      "overBudget": "{amount} au-dessus du budget",
+      "remaining": "{amount} restant",
+      "actionLabel": "Action en cas de dépassement :",
+      "actions": {
+        "block": "Bloqué",
+        "warn": "Avertissement",
+        "notify": "Notification"
+      }
+    },
     "ariaBack": "Retour au fil",
     "autodrain": {
       "cadence": { "daily": "Quotidien", "monthly": "Mensuel", "weekly": "Hebdomadaire" },
@@ -229,6 +246,15 @@
     }
   },
   "tipModal": {
+    "budget": {
+    "daily": "quotidien",
+    "weekly": "hebdomadaire",
+    "monthly": "mensuel",
+    "blocked": "🚫 Budget atteint — les paiements sont bloqués jusqu'à la prochaine période.",
+    "warnOver": "⚠️ Vous avez dépassé votre budget. Voulez-vous continuer quand même ?",
+    "warnAck": "Oui, je veux quand même payer",
+    "notifyOver": "ℹ️ Vous êtes au-dessus de votre budget. Vous serez informé après le paiement."
+  },
     "ack": {
       "checkboxShort": "J’accepte les <terms>Conditions d’utilisation</terms>.",
       "helper": "Il s’agit d’un cadeau volontaire, et non d’un paiement pour des services."

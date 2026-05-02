@@ -685,10 +685,36 @@ export default function TipRequestAcceptModal({
 
   const [closingSoon, setClosingSoon] = React.useState(false);
   const closeTimerRef = React.useRef<number | null>(null);
+  const [note, setNote] = React.useState('');
+
+  // Budget
+  type BudgetStatus = {
+    amountCents: number;
+    cadence: string;
+    action: 'BLOCK' | 'WARN' | 'NOTIFY';
+    spentCents: number;
+    percentUsed: number;
+    isOver: boolean;
+    remainingCents: number;
+  };
+  const [budget, setBudget] = React.useState<BudgetStatus | null>(null);
+  const [budgetWarnAck, setBudgetWarnAck] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!open) return;
+    fetch('/api/budget')
+      .then(r => { if (!r.ok) return null; return r.json(); })
+      .then(j => { setBudget(j?.budget ?? null); })
+      .catch(() => { setBudget(null); });
+  }, [open]);
 
   const platformFeeCents = Math.round(amountCents * TOPUP_PCT);
   const totalCents = amountCents + platformFeeCents;
   const pctLabel = Math.round(TOPUP_PCT * 100);
+
+  const budgetWouldBlock = budget?.action === 'BLOCK' && budget?.isOver;
+  const budgetWouldWarn = budget?.action === 'WARN' && budget?.isOver && !budgetWarnAck;
+  const canSend = !sending && !budgetWouldBlock && !budgetWouldWarn;
 
   async function refreshSavedSummary() {
     try {
@@ -723,6 +749,9 @@ export default function TipRequestAcceptModal({
     setCustomerSessionClientSecret(null);
     setPaymentId(null);
     setClosingSoon(false);
+    setNote('');
+    setBudget(null);
+    setBudgetWarnAck(false);
 
     if (closeTimerRef.current) {
       window.clearTimeout(closeTimerRef.current);
@@ -743,7 +772,7 @@ export default function TipRequestAcceptModal({
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         // ✅ API bereits angepasst: saveForFuture mitgeben
-        body: JSON.stringify({ toUserId, amountCents, conversationId, saveForFuture:true }),
+        body: JSON.stringify({ toUserId, amountCents, conversationId, note: note.trim() || undefined, saveForFuture: true }),
       });
       const j1: unknown = await res1.json().catch(() => null);
 
@@ -900,78 +929,168 @@ export default function TipRequestAcceptModal({
 
           {/* Body */}
           {step !== 'success' ? (
-            <div className="px-5 pb-5 overflow-y-auto overscroll-contain" style={{ WebkitOverflowScrolling: 'touch' }}>
-              <div className="text-[12px] text-white/75 mb-3">{t('disclaimer')}</div>
+            <div
+              className="pb-5 overflow-y-auto overscroll-contain"
+              style={{ WebkitOverflowScrolling: 'touch', overflowX: 'hidden' }}
+            >
+              {/* ── STEP: review ── */}
+              {step === 'review' && (
+                <div className="px-5">
+                  <div className="text-[12px] text-white/75 mb-3">{t('disclaimer')}</div>
 
-              <div className="rounded-xl border border-white/10 bg-white/[.03] p-3">
-                <label className="block text-[12px] text-white/70 mb-1">{t('requested.label')}</label>
-                <div className="text-[24px] font-semibold">{fmtCurrency(amountCents, currency)}</div>
-                <p className="mt-1 text-[12px] text-white/60">{t('requested.note', { pct: pctLabel })}</p>
-              </div>
+                  {/* Budget Progressbar */}
+                  {budget && (
+                    <div className="mb-3 rounded-xl border border-white/10 bg-white/[.03] p-3">
+                      <div className="flex items-center justify-between text-[12px] mb-1.5">
+                        <span className="text-white/70">
+                          {budget.cadence === 'DAILY'
+                            ? tTip('budget.daily')
+                            : budget.cadence === 'WEEKLY'
+                            ? tTip('budget.weekly')
+                            : tTip('budget.monthly')}
+                        </span>
+                        <span className={budget.isOver ? 'text-red-400' : 'text-white/70'}>
+                          {fmtCurrency(budget.spentCents)} / {fmtCurrency(budget.amountCents)}
+                        </span>
+                      </div>
+                      <div className="h-2 rounded-full bg-white/10 overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all ${
+                            budget.isOver ? 'bg-red-500' : budget.percentUsed > 75 ? 'bg-yellow-400' : 'bg-[var(--purple)]'
+                          }`}
+                          style={{ width: `${Math.min(budget.percentUsed, 100)}%` }}
+                        />
+                      </div>
+                      {budget.action === 'BLOCK' && budget.isOver && (
+                        <div className="mt-2 text-[12px] text-red-400 font-medium">
+                          {tTip('budget.blocked')}
+                        </div>
+                      )}
+                      {budget.action === 'WARN' && budget.isOver && (
+                        <div className="mt-2">
+                          <div className="text-[12px] text-yellow-300 mb-1.5">
+                            {tTip('budget.warnOver')}
+                          </div>
+                          <label className="flex items-center gap-2 text-[12px]">
+                            <input
+                              type="checkbox"
+                              className="accent-yellow-400"
+                              checked={budgetWarnAck}
+                              onChange={(e) => setBudgetWarnAck(e.target.checked)}
+                            />
+                            <span className="text-white/80">{tTip('budget.warnAck')}</span>
+                          </label>
+                        </div>
+                      )}
+                      {budget.action === 'NOTIFY' && budget.isOver && (
+                        <div className="mt-2 text-[12px] text-orange-300">
+                          {tTip('budget.notifyOver')}
+                        </div>
+                      )}
+                    </div>
+                  )}
 
-              <div className="mt-4 rounded-xl border border-white/10 bg-gradient-to-b from-white/[.04] to-transparent p-3">
-                <div className="flex items-center justify-between text-[14px] mb-1">
-                  <span>{t('breakdown.amount')}</span>
-                  <strong className="text-white">{fmtCurrency(amountCents, currency)}</strong>
-                </div>
-                <div className="flex items-center justify-between text-[13px] text-white/70">
-                  <span>{t('breakdown.fee', { pct: pctLabel })}</span>
-                  <span>{fmtCurrency(platformFeeCents, currency)}</span>
-                </div>
-                <div className="mt-2 border-t border-white/10 pt-2 flex items-center justify-between">
-                  <span className="text-[14px]">{t('breakdown.youPay')}</span>
-                  <span className="text-[16px] font-semibold">{fmtCurrency(totalCents, currency)}</span>
-                </div>
-              </div>
+                  {/* Kompakte Zusammenfassung */}
+                  <div className="rounded-xl border border-white/10 bg-white/[.03] p-3">
+                    <div className="flex items-center justify-between text-[13px] mb-1">
+                      <span className="text-white/70">{t('breakdown.amount')}</span>
+                      <span className="font-medium">{fmtCurrency(amountCents, currency)}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-[12px] text-white/60 mb-2">
+                      <span>{t('breakdown.fee', { pct: pctLabel })}</span>
+                      <span>{fmtCurrency(platformFeeCents, currency)}</span>
+                    </div>
+                    <div className="flex items-center justify-between border-t border-white/10 pt-2">
+                      <span className="text-[14px] font-semibold">{t('breakdown.youPay')}</span>
+                      <span className="text-[18px] font-bold text-[var(--purple)]">{fmtCurrency(totalCents, currency)}</span>
+                    </div>
+                  </div>
 
-              {error && (
-                <div className="mt-3 text-[13px] text-red-300 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">{error}</div>
+                  {error && (
+                    <div className="mt-3 text-[13px] text-red-300 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">{error}</div>
+                  )}
+
+                  <div className="mt-4 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2">
+                    <button type="button" onClick={onClose} className="px-3 py-2 rounded-lg border border-white/15 hover:bg-white/10" disabled={sending}>
+                      {t('actions.cancel')}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleContinueToPay}
+                      disabled={!canSend || !STRIPE_PK}
+                      className={`relative px-4 py-2 rounded-lg text-white transition ${
+                        canSend && STRIPE_PK ? 'bg-[var(--purple)] hover:opacity-95' : 'bg-white/10 opacity-60 cursor-not-allowed'
+                      }`}
+                    >
+                      <span className="inline-flex items-center gap-2">
+                        <SparkleIcon />
+                        {sending ? (t('actions.processing') ?? 'Verarbeite…') : t('actions.sendGiftAccept', { total: fmtCurrency(totalCents, currency) })}
+                      </span>
+                    </button>
+                  </div>
+                </div>
               )}
 
-              {step === 'pay' && paymentId && stripeClientSecret && elementsOptions ? (
-                <Elements stripe={stripePromise} options={elementsOptions}>
-                  <StripePayStep
-                    t={t}
-                    paymentId={paymentId}
-                    sending={sending}
-                    setSending={setSending}
-                    setError={setError}
-                    onBack={() => {
-                      setStep('review');
-                      setError(null);
-                      setStripeClientSecret(null);
-                      setCustomerSessionClientSecret(null);
-                      setPaymentId(null);
-                    }}
-                    onPaid={(r) => handlePaidFinal(r)}
-                    savedSummary={{ count: savedCount, hasDefault: hasDefaultSaved }}
-                    onRemoveSaved={async () => {
-                      if (stepUpForRemove.isVerified) { await removeDefaultSaved(); return; }
-                      pendingRemoveRef.current = removeDefaultSaved;
-                      setStepUpRemoveOpen(true);
-                    }}
-                  />
-                </Elements>
-              ) : (
-                <div className="mt-4 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2">
-                  <button type="button" onClick={onClose} className="px-3 py-2 rounded-lg border border-white/15 hover:bg-white/10" disabled={sending}>
-                    {t('actions.cancel')}
-                  </button>
+              {/* ── STEP: pay ── */}
+              {step === 'pay' && paymentId && stripeClientSecret && elementsOptions && (
+                <div className="px-5">
+                  {/* Kompakte Zusammenfassung */}
+                  <div className="mb-4 rounded-xl border border-white/10 bg-white/[.03] p-3">
+                    <div className="flex items-center justify-between text-[13px] mb-1">
+                      <span className="text-white/70">{t('breakdown.amount')}</span>
+                      <span className="font-medium">{fmtCurrency(amountCents, currency)}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-[12px] text-white/60 mb-2">
+                      <span>{t('breakdown.fee', { pct: pctLabel })}</span>
+                      <span>{fmtCurrency(platformFeeCents, currency)}</span>
+                    </div>
+                    <div className="flex items-center justify-between border-t border-white/10 pt-2">
+                      <span className="text-[14px] font-semibold">{t('breakdown.youPay')}</span>
+                      <span className="text-[18px] font-bold text-[var(--purple)]">{fmtCurrency(totalCents, currency)}</span>
+                    </div>
+                  </div>
 
-                  <button
-                    type="button"
-                    onClick={handleContinueToPay}
-                    disabled={sending || !STRIPE_PK}
-                    className={`relative px-4 py-2 rounded-lg text-white transition ${
-                      !sending && STRIPE_PK ? 'bg-[var(--purple)] hover:opacity-95' : 'bg-white/10 opacity-60 cursor-not-allowed'
-                    }`}
-                    title={!STRIPE_PK ? 'Missing NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY' : undefined}
-                  >
-                    <span className="inline-flex items-center gap-2">
-                      <SparkleIcon />
-                      {sending ? (t('actions.processing') ?? 'Verarbeite…') : t('actions.sendGiftAccept', { total: fmtCurrency(totalCents, currency) })}
-                    </span>
-                  </button>
+                  {/* Optionale Note — nur im pay-Step */}
+                  <div className="mb-3">
+                    <label className="block text-[12px] text-white/60 mb-1">{tTip('note.label')}</label>
+                    <textarea
+                      value={note}
+                      onChange={(e) => setNote(e.target.value)}
+                      maxLength={200}
+                      rows={2}
+                      placeholder={tTip('note.placeholder')}
+                      disabled={sending}
+                      className="w-full rounded-xl bg-white/[.03] border border-white/10 px-3 py-2 outline-none text-white disabled:opacity-60 text-[13px] resize-none"
+                    />
+                  </div>
+
+                  {error && (
+                    <div className="mb-3 text-[13px] text-red-300 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">{error}</div>
+                  )}
+
+                  <Elements stripe={stripePromise} options={elementsOptions}>
+                    <StripePayStep
+                      t={t}
+                      paymentId={paymentId}
+                      sending={sending}
+                      setSending={setSending}
+                      setError={setError}
+                      onBack={() => {
+                        setStep('review');
+                        setError(null);
+                        setStripeClientSecret(null);
+                        setCustomerSessionClientSecret(null);
+                        setPaymentId(null);
+                      }}
+                      onPaid={(r) => handlePaidFinal(r)}
+                      savedSummary={{ count: savedCount, hasDefault: hasDefaultSaved }}
+                      onRemoveSaved={async () => {
+                        if (stepUpForRemove.isVerified) { await removeDefaultSaved(); return; }
+                        pendingRemoveRef.current = removeDefaultSaved;
+                        setStepUpRemoveOpen(true);
+                      }}
+                    />
+                  </Elements>
                 </div>
               )}
             </div>

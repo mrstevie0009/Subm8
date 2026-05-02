@@ -800,6 +800,27 @@ export default function TipModal({
   }
 
   const [giftAck, setGiftAck] = React.useState<boolean>(false);
+
+  // Budget
+  type BudgetStatus = {
+    amountCents: number;
+    cadence: string;
+    action: 'BLOCK' | 'WARN' | 'NOTIFY';
+    spentCents: number;
+    percentUsed: number;
+    isOver: boolean;
+    remainingCents: number;
+  };
+  const [budget, setBudget] = React.useState<BudgetStatus | null>(null);
+  const [budgetWarnAck, setBudgetWarnAck] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!open) return;
+    fetch('/api/budget').then(r => r.json()).then(j => {
+      setBudget(j?.budget ?? null);
+    }).catch(() => {});
+  }, [open]);
+
   React.useEffect(() => {
     if (!open) return;
 
@@ -827,7 +848,9 @@ export default function TipModal({
   const totalCents = amountCents + topupFeeCents;
 
   const amountValid = amountCents >= MIN_CENTS && amountCents <= MAX_CENTS;
-  const canSend = amountValid && !sending && giftAck;
+  const budgetWouldBlock = budget?.action === 'BLOCK' && budget?.isOver;
+  const budgetWouldWarn = budget?.action === 'WARN' && budget?.isOver && !budgetWarnAck;
+  const canSend = amountValid && !sending && giftAck && !budgetWouldBlock && !budgetWouldWarn;
 
   async function handleStartStripePayment() {
     try {
@@ -993,184 +1016,234 @@ export default function TipModal({
 
           {/* Body */}
           {step !== 'success' ? (
-            <div className="px-5 pb-5 overflow-y-auto overscroll-contain" style={{ WebkitOverflowScrolling: 'touch' }}>
-              <div className="mb-3 text-[12px] text-white/75">{t('disclaimer.top')}</div>
+            <div
+              className="pb-5 overflow-y-auto overscroll-contain"
+              style={{ WebkitOverflowScrolling: 'touch', overflowX: 'hidden' }}
+            >
+              {/* ── STEP: form ── */}
+              {step === 'form' && (
+                <div className="px-5">
+                  <div className="mb-3 text-[12px] text-white/75">{t('disclaimer.top')}</div>
 
-              <div className="rounded-xl border border-white/10 bg-white/[.03] p-3">
-                <label className="block text-[12px] text-white/70 mb-1">{t('amount.label')}</label>
-                <div className="flex items-center gap-2">
-                  <div className="shrink-0 px-2 py-2 rounded-lg bg-white/5 border border-white/10 text-white/80">€</div>
-                  <input
-                    inputMode="decimal"
-                    placeholder={t('amount.placeholder')}
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                    disabled={sending || step === 'pay'}
-                    className="flex-1 bg-transparent outline-none text-[28px] leading-none font-semibold tracking-wide placeholder:text-white/30 disabled:opacity-60"
-                  />
-                </div>
+                  {/* Budget Progressbar */}
+                  {budget && (
+                    <div className="mb-3 rounded-xl border border-white/10 bg-white/[.03] p-3">
+                      <div className="flex items-center justify-between text-[12px] mb-1.5">
+                        <span className="text-white/70">
+                          {budget.cadence === 'DAILY'
+                            ? t('budget.daily')
+                            : budget.cadence === 'WEEKLY'
+                            ? t('budget.weekly')
+                            : t('budget.monthly')}
+                        </span>
+                        <span className={budget.isOver ? 'text-red-400' : 'text-white/70'}>
+                          {fmtCurrency(budget.spentCents)} / {fmtCurrency(budget.amountCents)}
+                        </span>
+                      </div>
+                      <div className="h-2 rounded-full bg-white/10 overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all ${
+                            budget.isOver ? 'bg-red-500' : budget.percentUsed > 75 ? 'bg-yellow-400' : 'bg-[var(--purple)]'
+                          }`}
+                          style={{ width: `${Math.min(budget.percentUsed, 100)}%` }}
+                        />
+                      </div>
+                      {budget.action === 'BLOCK' && budget.isOver && (
+                        <div className="mt-2 text-[12px] text-red-400 font-medium">
+                          {t('budget.blocked')}
+                        </div>
+                      )}
+                      {budget.action === 'WARN' && budget.isOver && (
+                        <div className="mt-2">
+                          <div className="text-[12px] text-yellow-300 mb-1.5">
+                            {t('budget.warnOver')}
+                          </div>
+                          <label className="flex items-center gap-2 text-[12px]">
+                            <input
+                              type="checkbox"
+                              className="accent-yellow-400"
+                              checked={budgetWarnAck}
+                              onChange={(e) => setBudgetWarnAck(e.target.checked)}
+                            />
+                            <span className="text-white/80">Ja, ich möchte trotzdem zahlen</span>
+                          </label>
+                        </div>
+                      )}
+                      {budget.action === 'NOTIFY' && budget.isOver && (
+                        <div className="mt-2 text-[12px] text-orange-300">
+                          {t('budget.notifyOver')}
+                        </div>
+                      )}
+                    </div>
+                  )}
 
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {[5, 10, 25, 50].map((p) => (
+                  {/* Betrag */}
+                  <div className="rounded-xl border border-white/10 bg-white/[.03] p-3">
+                    <label className="block text-[12px] text-white/70 mb-1">{t('amount.label')}</label>
+                    <div className="flex items-center gap-2">
+                      <div className="shrink-0 px-2 py-2 rounded-lg bg-white/5 border border-white/10 text-white/80">€</div>
+                      <input
+                        inputMode="decimal"
+                        placeholder={t('amount.placeholder')}
+                        value={amount}
+                        onChange={(e) => setAmount(e.target.value)}
+                        disabled={sending}
+                        className="flex-1 bg-transparent outline-none text-[28px] leading-none font-semibold tracking-wide placeholder:text-white/30 disabled:opacity-60"
+                      />
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {[5, 10, 25, 50].map((p) => (
+                        <button
+                          key={p}
+                          type="button"
+                          onClick={() => setAmount(String(p))}
+                          disabled={sending}
+                          className="px-3 py-1.5 rounded-full text-[13px] border border-white/15 hover:bg-white/10 disabled:opacity-60"
+                        >
+                          {fmtCurrency(p * 100)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Ack */}
+                  <div className="mt-3 rounded-xl border border-white/10 bg-white/[.03] p-3">
+                    <label className="flex items-start gap-3">
+                      <input
+                        type="checkbox"
+                        className="mt-1 h-4 w-4 shrink-0 accent-[var(--purple)]"
+                        checked={giftAck}
+                        onChange={(e) => setGiftAck(e.target.checked)}
+                      />
+                      <span className="text-[13px] font-medium leading-snug text-white/90">
+                        {t.rich('ack.checkboxShort', {
+                          terms: (chunks) => (
+                            <Link
+                              href={`/${locale}/legal`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-[var(--purple)] underline underline-offset-2 hover:opacity-90"
+                            >
+                              {chunks}
+                            </Link>
+                          ),
+                        })}
+                      </span>
+                    </label>
+                    <p className="mt-2 pl-7 text-[11px] leading-relaxed text-white/50">
+                      {t('ack.helper')}
+                    </p>
+                  </div>
+
+                  {error && (
+                    <div className="mt-3 text-[13px] text-red-300 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">
+                      {error}
+                    </div>
+                  )}
+
+                  <div className="mt-4 flex items-center justify-end gap-2">
                     <button
-                      key={p}
                       type="button"
-                      onClick={() => setAmount(String(p))}
-                      disabled={sending || step === 'pay'}
-                      className="px-3 py-1.5 rounded-full text-[13px] border border-white/15 hover:bg-white/10 disabled:opacity-60"
+                      onClick={() => { setSuccess(null); onClose(); }}
+                      className="px-3 py-2 rounded-lg border border-white/15 hover:bg-white/10"
+                      disabled={sending}
                     >
-                      {fmtCurrency(p * 100)}
+                      {t('actions.cancel')}
                     </button>
-                  ))}
+                    <button
+                      type="button"
+                      onClick={handleStartStripePayment}
+                      disabled={!canSend || !STRIPE_PK}
+                      className={`relative px-4 py-2 rounded-lg text-white transition ${
+                        canSend && STRIPE_PK ? 'bg-[var(--purple)] hover:opacity-95' : 'bg-white/10 opacity-60 cursor-not-allowed'
+                      }`}
+                    >
+                      <span className="inline-flex items-center gap-2">
+                        <SparkleIcon />
+                        {sending ? t('actions.sending') : (t('actions.continueToPay') ?? t('actions.sendGift'))}
+                      </span>
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
 
-              <div className="mt-3">
-                <label className="block text-[12px] text-white/70 mb-1">{t('note.label')}</label>
-                <textarea
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                  maxLength={200}
-                  rows={2}
-                  placeholder={t('note.placeholder')}
-                  disabled={sending || step === 'pay'}
-                  className="w-full rounded-xl bg-white/[.03] border border-white/10 px-3 py-2 outline-none text-white disabled:opacity-60"
-                />
-                <div className="mt-1 text-[12px] text-white/50">{note.length}/200</div>
-              </div>
+              {/* ── STEP: pay ── */}
+              {step === 'pay' && paymentId && stripeClientSecret && elementsOptions && (
+                <div className="px-5">
+                  {/* Kompakte Zusammenfassung */}
+                  <div className="mb-4 rounded-xl border border-white/10 bg-white/[.03] p-3">
+                    <div className="flex items-center justify-between text-[13px] mb-1">
+                      <span className="text-white/70">{t('breakdown.amountToCreator')}</span>
+                      <span className="font-medium">{fmtCurrency(amountCents)}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-[12px] text-white/60 mb-2">
+                      <span>{t('breakdown.platformFeeTop')}</span>
+                      <span>{fmtCurrency(topupFeeCents)}</span>
+                    </div>
+                    <div className="flex items-center justify-between border-t border-white/10 pt-2">
+                      <span className="text-[14px] font-semibold">{t('breakdown.youPay')}</span>
+                      <span className="text-[18px] font-bold text-[var(--purple)]">{fmtCurrency(totalCents)}</span>
+                    </div>
+                  </div>
 
-              <div className="mt-4 rounded-xl border border-white/10 bg-gradient-to-b from-white/[.04] to-transparent p-3">
-                <div className="flex items-center justify-between text-[14px] mb-1">
-                  <span>{t('breakdown.amountToCreator')}</span>
-                  <strong className="text-white">{fmtCurrency(amountCents)}</strong>
-                </div>
-                <div className="flex items-center justify-between text-[13px] text-white/70">
-                  <span>{t('breakdown.platformFeeTop')}</span>
-                  <span>{fmtCurrency(topupFeeCents)}</span>
-                </div>
-                <div className="mt-2 border-t border-white/10 pt-2 flex items-center justify-between">
-                  <span className="text-[14px]">{t('breakdown.youPay')}</span>
-                  <span className="text-[16px] font-semibold">{fmtCurrency(totalCents)}</span>
-                </div>
-                <div className="mt-2 text-[12px] text-white/70">{t('disclaimer.legal')}</div>
-              </div>
-
-             {step === 'form' && (
-                <div className="mt-3 rounded-xl border border-white/10 bg-white/[.03] p-3">
-                  <label className="flex items-start gap-3">
-                    <input
-                      type="checkbox"
-                      className="mt-1 h-4 w-4 shrink-0 accent-[var(--purple)]"
-                      checked={giftAck}
-                      onChange={(e) => setGiftAck(e.target.checked)}
+                  {/* Optionale Note */}
+                  <div className="mb-3">
+                    <label className="block text-[12px] text-white/60 mb-1">{t('note.label')}</label>
+                    <textarea
+                      value={note}
+                      onChange={(e) => setNote(e.target.value)}
+                      maxLength={200}
+                      rows={2}
+                      placeholder={t('note.placeholder')}
+                      disabled={sending}
+                      className="w-full rounded-xl bg-white/[.03] border border-white/10 px-3 py-2 outline-none text-white disabled:opacity-60 text-[13px] resize-none"
                     />
+                  </div>
 
-                    <span className="text-[13px] font-medium leading-snug text-white/90">
-                      {t.rich('ack.checkboxShort', {
-                        terms: (chunks) => (
-                          <Link
-                            href={`/${locale}/legal`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-[var(--purple)] underline underline-offset-2 hover:opacity-90"
-                          >
-                            {chunks}
-                          </Link>
-                        ),
-                      })}
-                    </span>
-                  </label>
+                  {error && (
+                    <div className="mb-3 text-[13px] text-red-300 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">
+                      {error}
+                    </div>
+                  )}
 
-                  <p className="mt-2 pl-7 text-[11px] leading-relaxed text-white/50">
-                    {t('ack.helper')}
-                  </p>
-                </div>
-              )}
-
-              {error && (
-                <div className="mt-3 text-[13px] text-red-300 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">
-                  {error}
-                </div>
-              )}
-
-              {step === 'pay' && paymentId && stripeClientSecret && elementsOptions ? (
-                <Elements stripe={stripePromise} options={elementsOptions}>
-                  <StripePayStep
-                    t={t}
-                    paymentId={paymentId}
-                    sending={sending}
-                    setSending={setSending}
-                    setError={setError}
-                    onBack={() => {
-                      setStep('form');
-                      setError(null);
-                      setStripeClientSecret(null);
-                      setCustomerSessionClientSecret(null);
-                      setPaymentId(null);
-                    }}
-                    onPaid={(r) => handlePaidFinal(r)}
-                    savedSummary={{ count: savedCount, hasDefault: hasDefaultSaved }}
-                    onRemoveSaved={async () => {
-                      if (stepUpForRemove.isVerified) { await doRemoveSaved(); return; }
-                      pendingRemoveRef.current = doRemoveSaved;
-                      setStepUpRemoveOpen(true);
-                    }}
-                  />
-                </Elements>
-              ) : (
-                <div className="mt-4 flex items-center justify-end gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSuccess(null);
-                      onClose();
-                    }}
-                    className="px-3 py-2 rounded-lg border border-white/15 hover:bg-white/10"
-                    disabled={sending}
-                  >
-                    {t('actions.cancel')}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleStartStripePayment}
-                    disabled={!canSend || !STRIPE_PK}
-                    className={`relative px-4 py-2 rounded-lg text-white transition ${
-                      canSend && STRIPE_PK ? 'bg-[var(--purple)] hover:opacity-95' : 'bg-white/10 opacity-60 cursor-not-allowed'
-                    }`}
-                    title={!STRIPE_PK ? t('stripe.errors.missingPublishableKey') : undefined}
-                  >
-                    <span className="inline-flex items-center gap-2">
-                      <SparkleIcon />
-                      {sending ? t('actions.sending') : (t('actions.continueToPay') ?? t('actions.sendGift'))}
-                    </span>
-                  </button>
+                  <Elements stripe={stripePromise} options={elementsOptions}>
+                    <StripePayStep
+                      t={t}
+                      paymentId={paymentId}
+                      sending={sending}
+                      setSending={setSending}
+                      setError={setError}
+                      onBack={() => {
+                        setStep('form');
+                        setError(null);
+                        setStripeClientSecret(null);
+                        setCustomerSessionClientSecret(null);
+                        setPaymentId(null);
+                      }}
+                      onPaid={(r) => handlePaidFinal(r)}
+                      savedSummary={{ count: savedCount, hasDefault: hasDefaultSaved }}
+                      onRemoveSaved={async () => {
+                        if (stepUpForRemove.isVerified) { await doRemoveSaved(); return; }
+                        pendingRemoveRef.current = doRemoveSaved;
+                        setStepUpRemoveOpen(true);
+                      }}
+                    />
+                  </Elements>
                 </div>
               )}
             </div>
           ) : (
+            /* success screen bleibt gleich */
             <div className="px-5 py-10 relative overflow-hidden grid place-items-center">
               <div
                 className={`absolute inset-0 -z-10 transition-opacity duration-300 ${closingSoon ? "opacity-100" : "opacity-90"}`}
-                style={{
-                  background: "radial-gradient(700px 260px at 50% 35%, rgba(139,92,246,.28), rgba(139,92,246,0))",
-                }}
+                style={{ background: "radial-gradient(700px 260px at 50% 35%, rgba(139,92,246,.28), rgba(139,92,246,0))" }}
               />
-
               <div className="text-center">
                 <CheckBurst closingSoon={closingSoon} />
-
-                <h3 className="mt-4 text-[18px] font-semibold tracking-tight">
-                  {t('success.title')}
-                </h3>
-
-                <p className="mt-1 text-white/80">
-                  {t('success.youPaid', { amount: fmtCurrency(success?.totalCents ?? 0) })}
-                </p>
-
-                <div className="mt-3 text-[12px] text-white/55">
-                  {t('success.closing')}
-                </div>
+                <h3 className="mt-4 text-[18px] font-semibold tracking-tight">{t('success.title')}</h3>
+                <p className="mt-1 text-white/80">{t('success.youPaid', { amount: fmtCurrency(success?.totalCents ?? 0) })}</p>
+                <div className="mt-3 text-[12px] text-white/55">{t('success.closing')}</div>
               </div>
             </div>
           )}

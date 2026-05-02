@@ -1,5 +1,30 @@
 {
   "editProfileForm": {
+    "budget": {
+    "title": "Spending Budget",
+    "subtitle": "Begrenze deine Ausgaben pro Zeitraum. Privat — nur du siehst das.",
+    "amountLabel": "Budget-Betrag (€)",
+    "cadenceLabel": "Zeitraum",
+    "actionLabel": "Bei Budgetüberschreitung",
+    "cadence": {
+      "daily": "Täglich",
+      "weekly": "Wöchentlich",
+      "monthly": "Monatlich"
+    },
+    "actions": {
+      "block": "Zahlungen blockieren",
+      "blockDesc": "Du kannst nicht mehr zahlen bis der Zeitraum endet.",
+      "warn": "Warnung anzeigen",
+      "warnDesc": "Du siehst eine Warnung, kannst aber trotzdem zahlen.",
+      "notify": "Nur benachrichtigen",
+      "notifyDesc": "Du wirst nach jeder Zahlung informiert wenn du über Budget bist."
+    },
+    "save": "Budget speichern",
+    "saving": "Speichere…",
+    "saved": "✓ Gespeichert",
+    "disabledHint": "Budget deaktiviert. Bisheriges Budget wird gelöscht beim Speichern.",
+    "quickAmounts": "Schnellbeträge"
+  },
     "bannerTip": {
       "label": "Tipp:",
       "text": "Du kannst hier auch GIF/Video als Banner verwenden. Videos/GIFs werden nicht zugeschnitten – empfohlen ist {ratio} (z. B. {examples}), {seconds}, {size}.",

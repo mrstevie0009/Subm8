@@ -845,6 +845,27 @@ export default function AutoDrainEnableModal({
   const [error, setError] = React.useState<string | null>(null);
   const [giftAck, setGiftAck] = React.useState<boolean>(true);
 
+  // Budget
+  type BudgetStatus = {
+    amountCents: number;
+    cadence: string;
+    action: 'BLOCK' | 'WARN' | 'NOTIFY';
+    spentCents: number;
+    percentUsed: number;
+    isOver: boolean;
+    remainingCents: number;
+  };
+  const [budget, setBudget] = React.useState<BudgetStatus | null>(null);
+  const [budgetWarnAck, setBudgetWarnAck] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!open) return;
+    fetch('/api/budget')
+      .then(r => { if (!r.ok) return null; return r.json(); })
+      .then(j => { setBudget(j?.budget ?? null); })
+      .catch(() => { setBudget(null); });
+  }, [open]);
+
   const [step, setStep] = React.useState<Step>('form');
 
   const [clientSecret, setClientSecret] = React.useState<string | null>(null);
@@ -909,6 +930,8 @@ export default function AutoDrainEnableModal({
     setSuccess(null);
 
     refreshSavedSummary();
+    setBudget(null);
+    setBudgetWarnAck(false);
 
     try {
       const v = typeof window !== 'undefined' ? window.localStorage.getItem(GIFT_ACK_KEY) : '1';
@@ -925,6 +948,10 @@ export default function AutoDrainEnableModal({
 
   const topupFeeCents = Math.round(amountCents * (PLATFORM_FEE_BPS_TOPUP / 10_000));
   const totalCents = amountCents + topupFeeCents;
+
+  const budgetWouldBlock = budget?.action === 'BLOCK' && budget?.isOver;
+  const budgetWouldWarn = budget?.action === 'WARN' && budget?.isOver && !budgetWarnAck;
+  const canSend = giftAck && amountValid && !sending && !budgetWouldBlock && !budgetWouldWarn;
 
   const cadenceLabel =
     cadence === 'DAILY'
@@ -1124,12 +1151,64 @@ export default function AutoDrainEnableModal({
 
           {/* Body */}
           {step !== 'success' ? (
-            <div className="px-4 sm:px-5 pb-5 overflow-y-auto overscroll-contain" style={{ WebkitOverflowScrolling: 'touch' }}>
+            <div className="px-4 sm:px-5 pb-5 overflow-y-auto overscroll-contain" style={{ WebkitOverflowScrolling: 'touch', overflowX: 'hidden' }}>
               {step === 'form' ? (
                 <>
                   <div className="text-[12px] text-white/75 mb-3">
                     {t('disclaimer', { default: 'Wiederkehrende Zahlungen sind freiwillig und final.' })}
                   </div>
+
+                  {/* Budget Progressbar */}
+                  {budget && (
+                    <div className="mb-3 rounded-xl border border-white/10 bg-white/[.03] p-3">
+                      <div className="flex items-center justify-between text-[12px] mb-1.5">
+                        <span className="text-white/70">
+                          {budget.cadence === 'DAILY'
+                            ? paymentT('budget.daily')
+                            : budget.cadence === 'WEEKLY'
+                            ? paymentT('budget.weekly')
+                            : paymentT('budget.monthly')}
+                        </span>
+                        <span className={budget.isOver ? 'text-red-400' : 'text-white/70'}>
+                          {fmtCurrency(budget.spentCents, currency)} / {fmtCurrency(budget.amountCents, currency)}
+                        </span>
+                      </div>
+                      <div className="h-2 rounded-full bg-white/10 overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all ${
+                            budget.isOver ? 'bg-red-500' : budget.percentUsed > 75 ? 'bg-yellow-400' : 'bg-[var(--purple)]'
+                          }`}
+                          style={{ width: `${Math.min(budget.percentUsed, 100)}%` }}
+                        />
+                      </div>
+                      {budget.action === 'BLOCK' && budget.isOver && (
+                        <div className="mt-2 text-[12px] text-red-400 font-medium">
+                          {paymentT('budget.blocked')}
+                        </div>
+                      )}
+                      {budget.action === 'WARN' && budget.isOver && (
+                        <div className="mt-2">
+                          <div className="text-[12px] text-yellow-300 mb-1.5">
+                            {paymentT('budget.warnOver')}
+                          </div>
+                          <label className="flex items-center gap-2 text-[12px]">
+                            <input
+                              type="checkbox"
+                              className="accent-yellow-400"
+                              checked={budgetWarnAck}
+                              onChange={(e) => setBudgetWarnAck(e.target.checked)}
+                            />
+                            <span className="text-white/80">{paymentT('budget.warnAck')}</span>
+                          </label>
+                        </div>
+                      )}
+                      {budget.action === 'NOTIFY' && budget.isOver && (
+                        <div className="mt-2 text-[12px] text-orange-300">
+                          {paymentT('budget.notifyOver')}
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   <div className="rounded-xl border border-white/10 bg-white/[.03] p-3">
                     <label className="block text-[12px] text-white/70 mb-1">{t('charge.label', { default: 'Betrag pro Abbuchung' })}</label>
@@ -1255,9 +1334,9 @@ export default function AutoDrainEnableModal({
                     <button
                       type="button"
                       onClick={handleStartStripe}
-                      disabled={sending || !giftAck || !amountValid || !STRIPE_PK}
-                      className={`relative px-4 py-2 rounded-lg text-white transition w-full sm:w-auto ${
-                        giftAck && amountValid && !sending && STRIPE_PK ? 'bg-[var(--purple)] hover:opacity-95' : 'bg-white/10 opacity-60 cursor-not-allowed'
+                      disabled={!canSend || !STRIPE_PK}
+                      className={`... ${
+                        canSend && STRIPE_PK ? 'bg-[var(--purple)] ...' : 'bg-white/10 ...'
                       }`}
                       title={!STRIPE_PK ? 'Missing NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY' : undefined}
                     >
@@ -1269,9 +1348,28 @@ export default function AutoDrainEnableModal({
                   </div>
                 </>
               ) : (
-                <>
+                <div style={{ overflowX: 'hidden' }}>
+                  {/* Kompakte Zusammenfassung */}
+                  <div className="mb-4 rounded-xl border border-white/10 bg-white/[.03] p-3">
+                    <div className="flex items-center justify-between text-[13px] mb-1">
+                      <span className="text-white/70">{t('breakdown.amountToCreator', { default: `Betrag an ${toDisplayName}` })}</span>
+                      <span className="font-medium">{fmtCurrency(amountCents, currency)}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-[12px] text-white/60 mb-2">
+                      <span>{t('breakdown.platformFeeTop', { default: 'Plattform-Gebühr (10%)' })}</span>
+                      <span>{fmtCurrency(topupFeeCents, currency)}</span>
+                    </div>
+                    <div className="flex items-center justify-between border-t border-white/10 pt-2">
+                      <span className="text-[14px] font-semibold">{t('breakdown.youPay', { default: 'Du zahlst' })}</span>
+                      <span className="text-[18px] font-bold text-[var(--purple)]">
+                        {fmtCurrency(totalCents, currency)}{' '}
+                        <span className="text-[13px] font-normal text-white/70">({cadenceLabel})</span>
+                      </span>
+                    </div>
+                  </div>
+
                   {error && (
-                    <div className="mt-3 text-[13px] text-red-300 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">{error}</div>
+                    <div className="mb-3 text-[13px] text-red-300 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">{error}</div>
                   )}
 
                   {clientSecret && elementsOptions && autoDrainId ? (
@@ -1323,7 +1421,7 @@ export default function AutoDrainEnableModal({
                       />
                     </Elements>
                   ) : null}
-                </>
+                </div>
               )}
             </div>
           ) : (

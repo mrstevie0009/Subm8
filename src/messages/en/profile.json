@@ -1,5 +1,30 @@
 {
   "editProfileForm": {
+    "budget": {
+    "title": "Spending Budget",
+    "subtitle": "Limit your spending per period. Private — only you can see this.",
+    "amountLabel": "Budget amount (€)",
+    "cadenceLabel": "Period",
+    "actionLabel": "When budget is exceeded",
+    "cadence": {
+      "daily": "Daily",
+      "weekly": "Weekly",
+      "monthly": "Monthly"
+    },
+    "actions": {
+      "block": "Block payments",
+      "blockDesc": "You cannot make payments until the period resets.",
+      "warn": "Show warning",
+      "warnDesc": "You will see a warning but can still proceed with payment.",
+      "notify": "Notify only",
+      "notifyDesc": "You will be informed after each payment when over budget."
+    },
+    "save": "Save budget",
+    "saving": "Saving…",
+    "saved": "✓ Saved",
+    "disabledHint": "Budget disabled. Existing budget will be deleted on save.",
+    "quickAmounts": "Quick amounts"
+  },
     "bannerTip": {
       "label": "Tip:",
       "text": "You can also use a GIF/video as your banner here. Videos/GIFs are not cropped — recommended is {ratio} (e.g. {examples}), {seconds}, {size}.",

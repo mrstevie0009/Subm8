@@ -1,5 +1,30 @@
 {
   "editProfileForm": {
+    "budget": {
+    "title": "Budget de dépenses",
+    "subtitle": "Limitez vos dépenses par période. Privé — seulement vous pouvez le voir.",
+    "amountLabel": "Montant du budget (€)",
+    "cadenceLabel": "Période",
+    "actionLabel": "En cas de dépassement du budget",
+    "cadence": {
+      "daily": "Quotidien",
+      "weekly": "Hebdomadaire",
+      "monthly": "Mensuel"
+    },
+    "actions": {
+      "block": "Bloquer les paiements",
+      "blockDesc": "Vous ne pouvez pas effectuer de paiements jusqu'à la réinitialisation de la période.",
+      "warn": "Afficher un avertissement",
+      "warnDesc": "Vous verrez un avertissement mais pourrez quand même effectuer le paiement.",
+      "notify": "Notifier seulement",
+      "notifyDesc": "Vous serez informé après chaque paiement lorsque vous dépassez le budget."
+    },
+    "save": "Enregistrer le budget",
+    "saving": "Enregistrement…",
+    "saved": "✓ Enregistré",
+    "disabledHint": "Budget désactivé. Le budget existant sera supprimé lors de l'enregistrement.",
+    "quickAmounts": "Montants rapides"
+  },
     "bannerTip": {
       "label": "Astuce :",
       "text": "Tu peux aussi utiliser un GIF/une vidéo comme bannière. Les vidéos/GIF ne sont pas recadrés — recommandé : {ratio} (ex. {examples}), {seconds}, {size}.",

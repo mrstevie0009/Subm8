@@ -161,6 +161,23 @@
     }
   },
   "paymentsPage": {
+    "budget": {
+      "title": "Presupuesto de gastos",
+      "cadence": {
+        "daily": "diario",
+        "weekly": "semanal",
+        "monthly": "mensual"
+      },
+      "percentUsed": "{pct}% utilizado",
+      "overBudget": "{amount} por encima del presupuesto",
+      "remaining": "{amount} restante",
+      "actionLabel": "Acción al superar:",
+      "actions": {
+        "block": "Bloqueado",
+        "warn": "Advertencia",
+        "notify": "Notificación"
+      }
+    },
     "ariaBack": "Volver al feed",
     "autodrain": {
       "cadence": { "daily": "Diario", "monthly": "Mensual", "weekly": "Semanal" },
@@ -229,6 +246,15 @@
     }
   },
   "tipModal": {
+    "budget": {
+    "daily": "diario",
+    "weekly": "semanal",
+    "monthly": "mensual",
+    "blocked": "🚫 Presupuesto alcanzado — los pagos están bloqueados hasta el próximo período.",
+    "warnOver": "⚠️ Has superado tu presupuesto. ¿Deseas continuar de todos modos?",
+    "warnAck": "Sí, quiero pagar de todos modos",
+    "notifyOver": "ℹ️ Estás por encima de tu presupuesto. Se te notificará después del pago."
+  },
     "ack": {
       "checkboxShort": "Acepto los <terms>Términos y Servicios</terms>.",
       "helper": "Esto es un regalo voluntario, no un pago por servicios."
