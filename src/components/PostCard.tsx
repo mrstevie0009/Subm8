@@ -2399,6 +2399,13 @@ export default function PostCard({
         data-no-nav
         onClick={(e) => e.stopPropagation()}
       >
+        <time
+          className="text-muted whitespace-nowrap text-xs md:text-[13px] leading-none"
+          dateTime={c.createdAt}
+          title={c.createdAt}
+        >
+          {timeAgoShort(c.createdAt, tTime)}
+        </time>
         {isPinned && !isRepost && (
           <span
             className="inline-flex items-center gap-1 rounded-full border border-[var(--purple)]/30 bg-[var(--purple)]/10 px-2 py-0.5 text-[11px] font-medium text-[var(--purple)]"
@@ -2438,9 +2445,9 @@ export default function PostCard({
 
         {/* Name/Handle/Meta + Text (rechte Spalte) */}
         <div className="col-start-2 row-start-1 min-w-0">
-          <div className="flex items-center flex-wrap gap-x-1.5">
+          <div className="flex flex-wrap items-baseline gap-x-1.5 leading-none">
             <div data-no-nav onClick={(e) => e.stopPropagation()}>
-              <div className="flex items-center gap-1">
+              <div className="inline-flex items-baseline gap-1 leading-none align-baseline">
                   <ProfileLink
                     handle={c.author.handle}
                     className="font-semibold text-[0.95rem] md:text-[1rem] hover:underline leading-none"
@@ -2453,38 +2460,21 @@ export default function PostCard({
                     isPremium={isPremiumActive(c.author.premiumUntil)}
                     isFirstAdopter={!!c.author.isFirstAdopter}
                     size={16}
-                    className="shrink-0 -ml-0.5"
+                    className="shrink-0 -ml-0.5 translate-y-[1px]"
                     premiumLabel={t('badges.verified')}
                     firstAdopterLabel={t('badges.firstAdopter')}
                   />
                 </div>
               </div>
 
-            <div data-no-nav onClick={(e) => e.stopPropagation()}>
-              <ProfileLink
-                handle={c.author.handle}
-                className="text-muted truncate text-xs md:text-[11px] hover:underline leading-none"
-              >
-                @{c.author.handle}
-              </ProfileLink>
-            </div>
-
             <BlockBadges
               hasBlockedAuthor={!!hasBlockedAuthor}
               blockedByAuthor={!!initialBlockedByAuthor}
               tPost={tPost}
             />
-            <span className="text-muted mx-1 text-xs md:text-[13px]" aria-hidden>·</span>
-            <time
-              className="text-muted whitespace-nowrap text-xs md:text-[13px]"
-              dateTime={c.createdAt}
-              title={c.createdAt}
-            >
-              {timeAgoShort(c.createdAt, tTime)}
-            </time>
           </div>
 
-          <div className="mt-0.5 leading-snug">
+          <div className="mt-1.5 leading-snug">
             <ExpandableRichText
               text={c.text}
               locale={locale}
