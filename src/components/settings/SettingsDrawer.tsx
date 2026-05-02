@@ -302,7 +302,7 @@ export default function SettingsDrawer({ open, onClose }: Props) {
           : `/${locale}/signin?callbackUrl=${encodeURIComponent(callbackUrl)}`,
       settings: `/${locale}/settings`,
       bookmarks: `/${locale}/settings/bookmarks`,
-      premium: `/${locale}/settings/premium`,
+//      premium: `/${locale}/settings/premium`,     bis ich vorhabe es zu bauen
       payments: `/${locale}/settings/payments`,
       contracts: `/${locale}/settings/contracts`
     }),
@@ -537,7 +537,7 @@ async function smartSignOut() {
           <MenuItem icon={ProfileIcon} label={t('menu.profile')} href={hrefs.profile} onClick={onClose} />
           <MenuItem icon={CogIcon} label={t('menu.settings')} href={hrefs.settings} onClick={onClose} />
           <MenuItem icon={BookmarkIcon} label={t('menu.bookmarks')} href={hrefs.bookmarks} onClick={onClose} />
-          <MenuItem icon={BoltIcon} label={t('menu.premium')} href={hrefs.premium} onClick={onClose} />
+          
           <MenuItem icon={PaymentsIcon} label={t('menu.payments')} href={hrefs.payments} onClick={onClose} />
           <MenuItem icon={ContractsIcon} label={t('menu.contracts')} href={hrefs.contracts} onClick={onClose} />
         </nav>
