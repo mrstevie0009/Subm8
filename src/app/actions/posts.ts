@@ -6,7 +6,7 @@ import { getCurrentUser } from '@/lib/currentUser';
 import { revalidatePath } from 'next/cache';
 // ⬇️ guardAndSave raus – wir validieren nur Größe
 import { envMaxUploadBytes } from '@/lib/uploadGuard';
-import { takeToken } from '@/lib/ratelimit';
+import { rateLimit } from '@/lib/rateLimitStore';
 import { postsPerMinute, rateIntervalMs } from '@/lib/config';
 import { redirect } from 'next/navigation';
 
@@ -48,14 +48,14 @@ export async function createPost(formData: FormData): Promise<void> {
     redirect(toURL(returnTo, { error: 'Nicht eingeloggt.' }));
   }
 
-  // Rate Limit
+  // Rate Limit (persistent, serverless-tauglich)
   const cap = postsPerMinute(5);
   const interval = rateIntervalMs(60_000);
-  const decision = takeToken(`post:${me!.id}`, cap, interval);
+  const decision = await rateLimit(`post:${me!.id}`, cap, interval);
   if (!decision.ok) {
     redirect(
       toURL(returnTo, {
-        error: `Zu viele Posts. Bitte warte ${Math.ceil(decision.retryAfterMs / 1000)}s.`,
+        error: `Zu viele Posts. Bitte warte ${decision.retryAfterSec}s.`,
       }),
     );
   }

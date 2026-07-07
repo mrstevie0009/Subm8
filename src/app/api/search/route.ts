@@ -1,10 +1,20 @@
 //src/api/search/route.ts
 import { prisma } from '@/lib/prisma';
+import { getClientIp } from '@/lib/ip';
+import { rateLimit } from '@/lib/rateLimitStore';
 
 type Person = { handle: string; name: string; avatar?: string };
 type TrendingItem = { tag: string; posts: number };
 
 export async function GET(req: Request) {
+  const ip = await getClientIp();
+  const gate = await rateLimit(`search:${ip}`, 120, 60 * 1000); // 120/min
+  if (!gate.ok) {
+    return new Response(JSON.stringify({ error: 'Too many requests' }), {
+      status: 429,
+      headers: { 'Content-Type': 'application/json', 'Retry-After': String(gate.retryAfterSec) },
+    });
+  }
   const { searchParams } = new URL(req.url);
   const q = (searchParams.get('q') || '').trim();
   const limit = Math.min(Math.max(Number(searchParams.get('limit') || 8), 1), 20);

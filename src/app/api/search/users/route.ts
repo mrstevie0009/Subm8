@@ -1,7 +1,17 @@
 import { prisma } from '@/lib/prisma';
+import { getClientIp } from '@/lib/ip';
+import { rateLimit } from '@/lib/rateLimitStore';
 import { excludeAdminFromUsers } from '@/lib/adminFilter';
 
 export async function GET(req: Request) {
+  const ip = await getClientIp();
+  const gate = await rateLimit(`search:${ip}`, 120, 60 * 1000); // 120/min
+  if (!gate.ok) {
+    return new Response(JSON.stringify({ error: 'Too many requests' }), {
+      status: 429,
+      headers: { 'Content-Type': 'application/json', 'Retry-After': String(gate.retryAfterSec) },
+    });
+  }
   const sp = new URL(req.url).searchParams;
   const q = (sp.get('q') || '').trim();
   const limit = Math.min(Math.max(Number(sp.get('limit') || 8), 1), 25);

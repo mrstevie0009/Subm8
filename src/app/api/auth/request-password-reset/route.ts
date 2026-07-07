@@ -3,6 +3,9 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { sendMail } from '@/lib/mailer';
 import crypto from 'crypto';
+import { getClientIp } from '@/lib/ip';
+import { rateLimit } from '@/lib/rateLimitStore';
+
 
 const LOCALE_WHITELIST = new Set(['de', 'en']); // passe an, falls mehr Locales
 
@@ -13,8 +16,21 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Invalid email' }, { status: 400 });
   }
 
+  const emailLower = email.toLowerCase();
+
+  //IP-Limit gegen breit gestreutes Bombing
+  const ip = await getClientIp();
+  const ipGate = await rateLimit(`reset-ip:${ip}`, 10, 60 * 60 * 1000); // 10/h
+  //Pro-Ziel-Limit gegen gezieltes Zumüllen einer fremden Adresse
+  const mailGate = await rateLimit(`reset-mail:${emailLower}`, 3, 60 * 60 * 1000); // 3/h
+
+  if (!ipGate.ok || !mailGate.ok) {
+    //Bewusst 200 zurückgeben damit keine Enumeration entsteht.
+    return NextResponse.json({ ok: true });
+  }
+
   const user = await prisma.user.findUnique({
-    where: { email: email.toLowerCase() },
+    where: { email: emailLower },
   });
 
   // Locale sicher bestimmen (Body > URL > Fallback)

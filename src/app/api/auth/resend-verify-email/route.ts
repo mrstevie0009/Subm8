@@ -3,6 +3,8 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendMail } from "@/lib/mailer";
 import { make6DigitCode, hashCode } from "@/lib/emailVerify";
+import { getClientIp } from "@/lib/ip";
+import { rateLimit } from "@/lib/rateLimitStore";
 
 const CODE_TTL_MIN = 10;
 const purple = "#a259ff";
@@ -99,6 +101,18 @@ export async function POST(req: Request) {
 
   if (!identifierRaw) {
     return NextResponse.json({ ok: false, error: "Invalid input" }, { status: 400 });
+  }
+
+  //Rate-Limit: IP + Ziel-Identifier (der bestehende 15s-Cooldown greift nur
+  //pro DB-User; dieses Limit verhindert Streu-Bombing schon vor dem DB-Lookup)
+  const ip = await getClientIp();
+  const ipGate = await rateLimit(`resend-ip:${ip}`, 10, 60 * 60 * 1000);
+  const idGate = await rateLimit(`resend-id:${identifierLower}`, 5, 60 * 60 * 1000);
+  if (!ipGate.ok || !idGate.ok) {
+    return NextResponse.json(
+      { ok: false, error: "Too many requests" },
+      { status: 429, headers: { "Retry-After": String(Math.max(ipGate.ok ? 0 : (ipGate as { retryAfterSec: number }).retryAfterSec, idGate.ok ? 0 : (idGate as { retryAfterSec: number }).retryAfterSec)) } }
+    );
   }
 
   // 1) User finden: per Email oder per Handle

@@ -4,6 +4,12 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/currentUser";
 import { randomUUID } from "node:crypto";
 import Stripe from "stripe";
+import { getClientIp } from "@/lib/ip";
+import { rateLimit } from "@/lib/rateLimitStore";
+
+// Betrags-Grenzen (in Cent). Passe die Obergrenze an dein Risikoprofil an.
+const MIN_TIP_CENTS = 100;       // 1,00 €
+const MAX_TIP_CENTS = 50_000;   // 500,00 €
 
 export const runtime = "nodejs";
 
@@ -58,6 +64,16 @@ export async function POST(req: NextRequest) {
   const me = await getCurrentUser();
   if (!me) return NextResponse.json({ ok: false, error: "Not signed in" }, { status: 401 });
 
+  // ✅ Rate-Limit: max. 20 Tip-Intents pro 10 min pro User (+IP)
+  const ip = await getClientIp();
+  const gate = await rateLimit(`tip:${me.id}:${ip}`, 20, 10 * 60 * 1000);
+  if (!gate.ok) {
+    return NextResponse.json(
+      { ok: false, error: "Too many payment attempts. Please slow down." },
+      { status: 429, headers: { "Retry-After": String(gate.retryAfterSec) } }
+    );
+  }
+
   const body = (await req.json().catch(() => ({}))) as CreateBody;
 
   const toUserId = String(body.toUserId || "");
@@ -67,6 +83,19 @@ export async function POST(req: NextRequest) {
 
   if (!toUserId || !Number.isFinite(baseAmountCents) || baseAmountCents <= 0) {
     return NextResponse.json({ ok: false, error: "Invalid input" }, { status: 400 });
+  }
+
+  //Betrags-Cap: verhindert 0-Cent-Spam und absurd hohe/fehlerhafte Beträge
+  if (baseAmountCents < MIN_TIP_CENTS || baseAmountCents > MAX_TIP_CENTS) {
+    return NextResponse.json(
+      { ok: false, error: `Amount must be between ${MIN_TIP_CENTS} and ${MAX_TIP_CENTS} cents` },
+      { status: 400 }
+    );
+  }
+
+  //Selbst-Tipping verhindern (spart Stripe-Fees + Missbrauch)
+  if (toUserId === me.id) {
+    return NextResponse.json({ ok: false, error: "Cannot tip yourself" }, { status: 400 });
   }
 
   const payee = await prisma.user.findUnique({
