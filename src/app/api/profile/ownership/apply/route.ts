@@ -1,102 +1,116 @@
 // src/app/api/profile/ownership/apply/route.ts
 import { NextResponse } from 'next/server';
-import { mkdir, writeFile } from 'node:fs/promises';
-import path from 'node:path';
 import { prisma } from '@/lib/prisma';
+import { getCurrentUser } from '@/lib/currentUser';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// ──────────────────────────────────────────────────────────────────────────────
+const OWNREQ_PREFIX = 'OWNREQ::';
 
-function extFromMime(mime: string): string {
-  const m = (mime || '').toLowerCase();
-  if (m.includes('jpeg')) return 'jpg';
-  if (m.includes('png')) return 'png';
-  if (m.includes('webp')) return 'webp';
-  if (m.includes('gif')) return 'gif';
-  return 'bin';
+//Struktur der OWNREQ-Nachricht (wie im Chat kodiert)
+type OwnReqPayload = {
+  avatar?: true;
+  banner?: true;
+  bio?: string;
+  avatarUrl?: string;
+  bannerUrl?: string;
+  avatarDataUrl?: string;
+  bannerDataUrl?: string;
+};
+
+function parseOwnReq(text?: string | null): OwnReqPayload | null {
+  if (!text || !text.startsWith(OWNREQ_PREFIX)) return null;
+  try {
+    const obj = JSON.parse(text.slice(OWNREQ_PREFIX.length)) as unknown;
+    if (obj && typeof obj === 'object') return obj as OwnReqPayload;
+  } catch {}
+  return null;
 }
 
-async function saveIncomingFile(
-  file: File,
-  userId: string,
-  kind: 'avatar' | 'banner',
-): Promise<string> {
-  const arrayBuf = await file.arrayBuffer();
-  const buf = Buffer.from(arrayBuf);
-
-  const dir = path.join(process.cwd(), 'public', 'uploads', 'profile');
-  await mkdir(dir, { recursive: true });
-
-  const ext = extFromMime(file.type);
-  const filename = `${userId}.${kind}.${Date.now()}.${ext}`;
-  const filepath = path.join(dir, filename);
-
-  await writeFile(filepath, buf);
-
-  // öffentliche URL
-  return `/uploads/profile/${filename}`;
-}
-
-/** User-ID aus Request-Headern ermitteln (für dein Auth-System ggf. anpassen) */
-function getCurrentUserId(req: Request): string | null {
-  const devId = req.headers.get('x-user-id');
-  return devId || null;
-}
-
-// ──────────────────────────────────────────────────────────────────────────────
+type Body = { conversationId?: string; messageId?: string };
 
 export async function POST(req: Request) {
   try {
-    const userId = getCurrentUserId(req);
-    if (!userId) {
+    //1. Eingeloggter User aus der Session – niemals aus dem Client.
+    const me = await getCurrentUser().catch(() => null);
+    if (!me) {
       return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
     }
 
-    const form = await req.formData();
-
-    const bioRaw = form.get('bio');
-    const bio =
-      typeof bioRaw === 'string'
-        ? bioRaw.trim().slice(0, 300) // Prisma: VarChar(300)
-        : undefined;
-
-    const avatarFile = form.get('avatar');
-    const bannerFile = form.get('banner');
-
-    if (avatarFile && !(avatarFile instanceof File)) {
-      return NextResponse.json({ ok: false, error: 'Invalid avatar' }, { status: 400 });
-    }
-    if (bannerFile && !(bannerFile instanceof File)) {
-      return NextResponse.json({ ok: false, error: 'Invalid banner' }, { status: 400 });
+    // 2. Nur Referenzen entgegennehmen – keine anzuwendenden Werte!
+    const body = (await req.json().catch(() => ({}))) as Body;
+    const conversationId = String(body.conversationId || '');
+    const messageId = String(body.messageId || '');
+    if (!conversationId || !messageId) {
+      return NextResponse.json({ ok: false, error: 'Missing references' }, { status: 400 });
     }
 
-    let avatarUrl: string | undefined;
-    let bannerUrl: string | undefined;
-
-    if (avatarFile instanceof File && avatarFile.size > 0) {
-      avatarUrl = await saveIncomingFile(avatarFile, userId, 'avatar');
+    // 3. Conversation laden und Berechtigung prüfen:
+    //    - Der eingeloggte User MUSS der Sub dieser Conversation sein.
+    const convo = await prisma.conversation.findUnique({
+      where: { id: conversationId },
+      select: { id: true, dommeId: true, subId: true },
+    });
+    if (!convo || !convo.dommeId || !convo.subId) {
+      return NextResponse.json({ ok: false, error: 'Conversation not found' }, { status: 404 });
     }
-    if (bannerFile instanceof File && bannerFile.size > 0) {
-      bannerUrl = await saveIncomingFile(bannerFile, userId, 'banner');
+    if (convo.subId !== me.id) {
+      // Nur der Sub darf einen Ownership-Request auf SEIN Profil anwenden.
+      return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
     }
 
-    if (!avatarUrl && !bannerUrl && typeof bio !== 'string') {
+    // 4. Die referenzierte Nachricht laden und verifizieren:
+    //    - Sie gehört zu DIESER Conversation.
+    //    - Sie wurde von der DOMME dieser Conversation geschrieben.
+    //    - Sie ist wirklich ein OWNREQ.
+    const msg = await prisma.message.findUnique({
+      where: { id: messageId },
+      select: { id: true, conversationId: true, authorId: true, text: true },
+    });
+    if (!msg || msg.conversationId !== convo.id) {
+      return NextResponse.json({ ok: false, error: 'Request not found' }, { status: 404 });
+    }
+    if (msg.authorId !== convo.dommeId) {
+      return NextResponse.json({ ok: false, error: 'Invalid request author' }, { status: 403 });
+    }
+
+    const payload = parseOwnReq(msg.text);
+    if (!payload) {
+      return NextResponse.json({ ok: false, error: 'Not an ownership request' }, { status: 400 });
+    }
+
+    // 5. Werte AUSSCHLIESSLICH aus der serverseitig geladenen Nachricht ziehen.
+    // Der Client kann hier nichts unterschieben.
+    const avatarUrl = payload.avatar ? (payload.avatarUrl ?? payload.avatarDataUrl) : undefined;
+    const bannerUrl = payload.banner ? (payload.bannerUrl ?? payload.bannerDataUrl) : undefined;
+    const bio = typeof payload.bio === 'string' ? payload.bio.trim().slice(0, 300) : undefined;
+
+    // Nur echte URLs zulassen (keine data:-URLs mehr in die DB schreiben – siehe Hinweis unten)
+    const safeAvatar = avatarUrl && /^\/?uploads\//.test(avatarUrl) ? avatarUrl : undefined;
+    const safeBanner = bannerUrl && /^\/?uploads\//.test(bannerUrl) ? bannerUrl : undefined;
+
+    if (!safeAvatar && !safeBanner && typeof bio !== 'string') {
       return NextResponse.json({ ok: false, error: 'Nothing to apply' }, { status: 400 });
     }
 
     await prisma.user.update({
-      where: { id: userId },
+      where: { id: me.id }, //Nur das eigene Profil des annehmenden Subs.
       data: {
-        ...(avatarUrl ? { avatarUrl } : {}),
-        ...(bannerUrl ? { bannerUrl } : {}),
+        ...(safeAvatar ? { avatarUrl: safeAvatar } : {}),
+        ...(safeBanner ? { bannerUrl: safeBanner } : {}),
         ...(typeof bio === 'string' ? { bio } : {}),
       },
     });
 
-    return NextResponse.json({ ok: true, avatarUrl, bannerUrl, bio });
+    return NextResponse.json({
+      ok: true,
+      avatarUrl: safeAvatar,
+      bannerUrl: safeBanner,
+      bio,
+    });
   } catch (e) {
+    console.error('ownership/apply failed', e);
     const msg = e instanceof Error ? e.message : 'Apply failed';
     return NextResponse.json({ ok: false, error: msg }, { status: 500 });
   }

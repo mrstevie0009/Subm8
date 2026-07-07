@@ -23,36 +23,20 @@ export type OwnershipReqPayload = {
 type Props = {
   open: boolean;
   onClose: () => void;
-  payload: OwnershipReqPayload;
+  payload: OwnershipReqPayload;   // weiterhin nur für die Vorschau
   onSuccess: () => void;
-  /** eigene User-ID – wird als Header gesendet (und zusätzlich im FormData als Fallback) */
-  selfUserId?: string;
+  /** Referenzen für die serverseitige Verifikation */
+  conversationId: string;
+  messageId: string;
 };
-
-function dataUrlToBlob(dataUrl: string): Blob {
-  const m = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
-  if (!m) throw new Error('Invalid data URL');
-  const mime = m[1];
-  const b64 = m[2];
-  const bin = atob(b64);
-  const u8 = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
-  return new Blob([u8], { type: mime });
-}
-
-async function srcToBlob(src: string): Promise<Blob> {
-  if (src.startsWith('data:')) return dataUrlToBlob(src);
-  const res = await fetch(src);
-  if (!res.ok) throw new Error(`Failed to fetch asset (${res.status})`);
-  return await res.blob();
-}
 
 export default function OwnershipRequestAcceptModal({
   open,
   onClose,
   payload,
   onSuccess,
-  selfUserId,
+  conversationId,
+  messageId,
 }: Props) {
   const t = useTranslations('ownership.ownershipRequestAcceptModal');
 
@@ -79,31 +63,15 @@ export default function OwnershipRequestAcceptModal({
 
   const nothingToApply = !canApplyAvatar && !canApplyBanner && !canApplyBio;
 
-  const apply = async () => {
+    const apply = async () => {
     if (nothingToApply) return;
     setBusy(true);
     setErr(null);
     try {
-      const fd = new FormData();
-
-      if (selfUserId) fd.append('userId', selfUserId); // Fallback für die Route
-      if (canApplyBio) fd.append('bio', payload.bio!.trim());
-
-      if (canApplyAvatar && avatarSrc) {
-        const b = await srcToBlob(avatarSrc);
-        fd.append('avatar', b, 'avatar');
-      }
-      if (canApplyBanner && bannerSrc) {
-        const b = await srcToBlob(bannerSrc);
-        fd.append('banner', b, 'banner');
-      }
-
-      const headers: HeadersInit | undefined = selfUserId ? { 'x-user-id': selfUserId } : undefined;
-
       const res = await fetch('/api/profile/ownership/apply', {
         method: 'POST',
-        body: fd,
-        headers,
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ conversationId, messageId }),
         credentials: 'same-origin',
       });
       if (!res.ok) throw new Error(`Apply failed (${res.status})`);

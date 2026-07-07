@@ -1451,7 +1451,10 @@ export default function ChatThreadPage() {
     }
     }, [baseUrl, kind, other]);
 
-  const [ownToAccept, setOwnToAccept] = React.useState<OwnershipReqPayload | null>(null);
+  const [ownToAccept, setOwnToAccept] = React.useState<{
+    payload: OwnershipReqPayload;
+    messageId: string;
+  } | null>(null);
 
   const mapRole = React.useCallback((r: DbRole): 'domme' | 'submissive' => (r === 'DOMME' ? 'domme' : 'submissive'), []);
 
@@ -2186,7 +2189,7 @@ export default function ChatThreadPage() {
                 <button
                   type="button"
                   className="px-3 py-1.5 rounded-lg bg-[var(--purple)]/90 text-white hover:opacity-95"
-                  onClick={() => setOwnToAccept(ownReq)}
+                  onClick={() => setOwnToAccept({ payload: ownReq, messageId: m.id })}
                 >
                   {t('actions.accept')}
                 </button>
@@ -2774,8 +2777,9 @@ export default function ChatThreadPage() {
         <OwnershipRequestAcceptModal
           open={!!ownToAccept}
           onClose={() => setOwnToAccept(null)}
-          payload={ownToAccept}
-          selfUserId={meId ?? undefined}
+          payload={ownToAccept?.payload ?? ({} as OwnershipReqPayload)}
+          conversationId={String(id)}
+          messageId={ownToAccept?.messageId ?? ''}
           onSuccess={async () => {
             await sendMessage({ text: `${OWNACC_PREFIX}{}` });
             setOwnToAccept(null);
