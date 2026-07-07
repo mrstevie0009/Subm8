@@ -1,8 +1,9 @@
 // middleware.ts
-import { NextResponse, type NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 import createIntlMiddleware from 'next-intl/middleware';
 import nextIntlConfig from './next-intl.config';
+import { buildCsp } from './src/lib/csp';
 
 const intl = createIntlMiddleware(nextIntlConfig);
 
@@ -125,8 +126,29 @@ export default async function middleware(req: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // 7) Locale-Handling (next-intl)
-  return intl(req);
+  // 7) Locale-Handling (next-intl) + CSP-Nonce
+  const isDev = process.env.NODE_ENV !== 'production';
+
+  // Pro-Request-Nonce (Edge-tauglich: Web-Crypto + btoa)
+  const nonce = btoa(crypto.randomUUID());
+  const csp = buildCsp(nonce, isDev);
+
+  // Nonce + CSP auf die REQUEST-Header:
+  // - x-nonce: damit unser eigenes Inline-Skript den Wert lesen kann
+  // - Content-Security-Policy: damit Next.js seine Hydration-Skripte automatisch nonce't
+  const requestHeaders = new Headers(req.headers);
+  requestHeaders.set('x-nonce', nonce);
+  requestHeaders.set('content-security-policy', csp);
+
+  // next-intl mit einer Anfrage laufen lassen, die die angereicherten Header trägt.
+  const intlReq = new NextRequest(req.nextUrl, {
+    headers: requestHeaders,
+  });
+  const res = intl(intlReq);
+
+  // CSP zusätzlich auf die RESPONSE (für den Browser).
+  res.headers.set('content-security-policy', csp);
+  return res;
 }
 
 export const config = {

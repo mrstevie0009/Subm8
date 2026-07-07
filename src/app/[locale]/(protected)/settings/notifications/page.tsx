@@ -1,5 +1,6 @@
 // src/app/[locale]/settings/notifications/page.tsx
 import Link from 'next/link';
+import { headers } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/currentUser';
@@ -219,6 +220,7 @@ export default async function NotificationsPage({
   params: Promise<Params>;
 }) {
   const { locale } = await params;
+  const nonce = (await headers()).get('x-nonce') ?? undefined;
   const me = await getCurrentUser().catch(() => null);
 
   // i18n-Datei manuell laden und Translator erstellen (Namespace: "notifications")
@@ -358,6 +360,7 @@ export default async function NotificationsPage({
 
         {/* Client: lokaler Pref-Sync + submit per fetch + Toast */}
         <script
+          nonce={nonce}
           dangerouslySetInnerHTML={{
             __html: `
               (function(){
