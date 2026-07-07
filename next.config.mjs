@@ -113,7 +113,7 @@ const nextConfig = {
   },
   turbopack: {},
   experimental: {
-    serverActions: { bodySizeLimit: '200mb' },
+    serverActions: { bodySizeLimit: '10mb' },
   },
   outputFileTracingExcludes: {
     '/**': ['.next/cache/**'],
