@@ -45,7 +45,7 @@ export default function ResetPasswordPage() {
     window.dispatchEvent(new Event('boot:splash-done'));
   }, []);
 
-  const minLen = 8;
+  const minLen = 10;
   const tooShort = pw.length > 0 && pw.length < minLen;
   const mismatch = pw2.length > 0 && pw !== pw2;
   const canSubmit = !busy && token && pw.length >= minLen && pw2.length >= minLen && !mismatch;

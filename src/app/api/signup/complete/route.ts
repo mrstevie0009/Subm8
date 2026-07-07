@@ -81,8 +81,8 @@ export async function POST(req: Request) {
     if (!isValidEmail(emailLower)) {
       return NextResponse.json({ ok: false, error: "Invalid email" }, { status: 400 });
     }
-    if (password.length < 8) {
-      return NextResponse.json({ ok: false, error: "Password too short" }, { status: 400 });
+    if (password.length < 10) {
+      return NextResponse.json({ ok: false, error: "Password must be at least 10 characters" }, { status: 400 });
     }
 
     const roleUpper = roleRaw.toUpperCase();

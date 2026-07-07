@@ -390,7 +390,7 @@ export default function SignupAccountPage() {
                         className={`${baseInput} h-10 sm:h-11`}
                         autoComplete="new-password"
                         required
-                        minLength={8}
+                        minLength={10}
                       />
                       <div className="mt-1 text-[12px] text-white/70">{t('fields.password.help')}</div>
                     </div>
@@ -406,7 +406,7 @@ export default function SignupAccountPage() {
                         className={`${baseInput} h-10 sm:h-11`}
                         autoComplete="new-password"
                         required
-                        minLength={8}
+                        minLength={10}
                       />
                       {pw2.length > 0 && pw !== pw2 && (
                         <div className="mt-1 text-[12px] text-red-300">{t('errors.passwordMismatch')}</div>

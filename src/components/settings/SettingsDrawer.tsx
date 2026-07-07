@@ -952,21 +952,21 @@ function AccountSheet({
               <div className="grid sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm text-white/90 mb-1">
-                    {tA('phPwMin', { min: 8 })}
+                    {tA('phPwMin', { min: 10 })}
                   </label>
                   <input
                     type="password"
                     className={`${baseInput} ${pw && !okPw ? 'border-red-400/70 focus:ring-red-400/30' : ''}`}
-                    placeholder={tA('phPwMin', { min: 8 })}
+                    placeholder={tA('phPwMin', { min: 10 })}
                     value={pw}
                     onChange={(e) => setPw(e.target.value)}
                     autoComplete="new-password"
-                    minLength={8}
+                    minLength={10}
                   />
                 </div>
                 <div>
                   <label className="block text-sm text-white/90 mb-1">
-                    {tA('phPwMin', { min: 8 })} — repeat
+                    {tA('phPwMin', { min: 10 })} — repeat
                   </label>
                   <input
                     type="password"
@@ -975,7 +975,7 @@ function AccountSheet({
                     value={pw2}
                     onChange={(e) => setPw2(e.target.value)}
                     autoComplete="new-password"
-                    minLength={8}
+                    minLength={10}
                   />
                   {pw2 && !pwMatch && (
                     <div className="mt-1 text-[12px] text-red-300">Passwords do not match.</div>

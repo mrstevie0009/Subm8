@@ -190,10 +190,10 @@ async function changePasswordAction(formData: FormData) {
   const newPassword2 = (formData.get('newPassword2') ?? '').toString();
 
   if (!user.passwordHash) {
-    throw new Error('Dieses Konto unterstützt keine Passwort-Änderung.');
+    throw new Error('This user account does not support password changes.');
   }
-  if (newPassword.length < 8) throw new Error('Neues Passwort muss mind. 8 Zeichen haben.');
-  if (newPassword !== newPassword2) throw new Error('Passwörter stimmen nicht überein.');
+  if (newPassword.length < 10) throw new Error('New Password must have at least 10 characters.');
+  if (newPassword !== newPassword2) throw new Error('Passwords do not match.');
 
   const ok = await bcrypt.compare(currentPassword, user.passwordHash);
   if (!ok) throw new Error('Aktuelles Passwort ist falsch.');
