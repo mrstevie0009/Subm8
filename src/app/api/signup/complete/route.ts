@@ -35,6 +35,7 @@ function isValidEmail(e: string) {
 const CODE_TTL_MIN = 10;
 const RESEND_COOLDOWN_SEC = 15;
 const BRAND = "Subm8";
+const GENERIC_CONFLICT = "Could not create an account with these details";
 
 async function sendVerifyEmail(to: string, code: string) {
   await sendMail({
@@ -120,15 +121,15 @@ export async function POST(req: Request) {
 
     // If email exists and is verified -> conflict
     if (existingByEmail?.emailVerifiedAt) {
-      return NextResponse.json({ ok: false, error: "Email already in use" }, { status: 409 });
+      // Details nur ins Log, generische Meldung nach außen (Anti-Enumeration)
+      console.warn("signup conflict: email already verified", { emailLower });
+      return NextResponse.json({ ok: false, error: GENERIC_CONFLICT }, { status: 409 });
     }
 
     // If email exists but unverified AND handle doesn't match -> conflict (prevents hijacking email)
     if (existingByEmail && existingByEmail.handle.toLowerCase() !== handleRaw) {
-      return NextResponse.json(
-        { ok: false, error: "Email already pending verification for another handle" },
-        { status: 409 }
-      );
+      console.warn("signup conflict: email pending for another handle", { emailLower });
+      return NextResponse.json({ ok: false, error: GENERIC_CONFLICT }, { status: 409 });
     }
 
     const now = Date.now();

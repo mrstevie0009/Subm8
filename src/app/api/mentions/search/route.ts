@@ -1,10 +1,18 @@
 // src/app/api/mentions/search/route.ts
 import { prisma } from '@/lib/prisma';
+import { getClientIp } from '@/lib/ip';
+import { rateLimit } from '@/lib/rateLimitStore';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
   try {
+    const ip = await getClientIp();
+    const gate = await rateLimit(`mentions:${ip}`, 90, 60 * 1000); // 90/min (Tippen im @-Feld)
+    if (!gate.ok) {
+      return Response.json({ ok: true, users: [] }, { status: 429 });
+    }
+
     const { searchParams } = new URL(req.url);
     const q = (searchParams.get('q') || '').trim();
     const limit = Math.min(Number(searchParams.get('limit') || 8), 20);
