@@ -391,15 +391,13 @@ export default async function NotificationsPage({
                   if(!toast) return;
                   if(msg && toastText) toastText.textContent = msg;
                   toast.classList.remove('hidden');
-                  toast.classList.add('opacity-0');
-                  requestAnimationFrame(function(){
-                    toast.classList.remove('opacity-0');
-                  });
-                  setTimeout(hideToast, 2000);
+                  toast.style.opacity = '1';
+                  clearTimeout(toast._hideTimer);
+                  toast._hideTimer = setTimeout(hideToast, 2000);
                 }
                 function hideToast(){
                   if(!toast) return;
-                  toast.classList.add('opacity-0');
+                  toast.style.opacity = '0';
                   setTimeout(function(){ toast.classList.add('hidden'); }, 200);
                 }
                 (function injectStyles(){
