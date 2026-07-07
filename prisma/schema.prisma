@@ -194,6 +194,18 @@ model LoginThrottle {
   @@index([ip, identifier])
 }
 
+/// Generischer, persistenter Rate-Limit-Zähler (Fixed-Window).
+/// Ersetzt den nicht-serverless-tauglichen In-Memory-Bucket.
+/// key = z.B. "signup:1.2.3.4", "reset:user@x.de", "tip:<userId>"
+model RateLimitCounter {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  count     Int      @default(0)
+  windowEnd DateTime
+
+  @@index([windowEnd])
+}
+
 model SmsChallenge {
   id        String              @id @default(cuid())
   userId    String

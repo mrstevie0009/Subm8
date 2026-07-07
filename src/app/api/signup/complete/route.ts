@@ -5,6 +5,12 @@ import bcrypt from "bcryptjs";
 import { Role } from "@prisma/client";
 import { sendMail } from "@/lib/mailer";
 import { make6DigitCode, hashCode } from "@/lib/emailVerify";
+import { getClientIp } from "@/lib/ip";
+import { rateLimit } from "@/lib/rateLimitStore";
+
+// Max.Registrierungen pro IP / Zeitfenster
+const SIGNUP_MAX_PER_IP = 3;
+const SIGNUP_WINDOW_MS = 24 * 60 * 60 * 1000; // 24h
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -47,9 +53,19 @@ async function sendVerifyEmail(to: string, code: string) {
 }
 
 export async function POST(req: Request) {
-  let createdUserId: string | null = null;
+   let createdUserId: string | null = null;
 
   try {
+    //IP-Rate-Limit: verhindert Massen-Accounts + Mail-Flooding.
+    const ip = await getClientIp();
+    const gate = await rateLimit(`signup:${ip}`, SIGNUP_MAX_PER_IP, SIGNUP_WINDOW_MS);
+    if (!gate.ok) {
+      return NextResponse.json(
+        { ok: false, error: "Too many signups from this network. Please try again later." },
+        { status: 429, headers: { "Retry-After": String(gate.retryAfterSec) } }
+      );
+    }
+
     const body = (await req.json().catch(() => null)) as Body | null;
 
     const handleRaw = String(body?.handle ?? "").trim().toLowerCase();

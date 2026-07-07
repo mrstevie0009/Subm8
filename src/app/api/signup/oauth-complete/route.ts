@@ -5,6 +5,8 @@ import { Role } from '@prisma/client';
 import { cookies } from 'next/headers';
 import { encode } from 'next-auth/jwt';
 import { ensureAvailableHandle } from '@/lib/auth';
+import { getClientIp } from '@/lib/ip';
+import { rateLimit } from '@/lib/rateLimitStore';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -35,6 +37,16 @@ type PendingOAuthData = {
 
 export async function POST(req: NextRequest) {
   try {
+    //Gleiches IP-Budget wie der reguläre Signup 
+    const ip = await getClientIp();
+    const gate = await rateLimit(`signup:${ip}`, 3, 24 * 60 * 60 * 1000);
+    if (!gate.ok) {
+      return NextResponse.json(
+        { ok: false, error: 'Too many signups from this network. Please try again later.' },
+        { status: 429, headers: { 'Retry-After': String(gate.retryAfterSec) } }
+      );
+    }
+
     const body = (await req.json().catch(() => null)) as {
       handle?: string;
       role?: string;

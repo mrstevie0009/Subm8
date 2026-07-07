@@ -2,8 +2,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { Role } from '@prisma/client';
+import { getClientIp } from '@/lib/ip';
+import { rateLimit } from '@/lib/rateLimitStore';
 
 export const dynamic = 'force-dynamic';
+
 
 function isValidHandle(h: string) {
   return /^[a-z0-9_]{3,20}$/.test(h);
@@ -18,6 +21,16 @@ function parseRole(raw: unknown): Role {
 
 export async function POST(req: NextRequest) {
   try {
+    //Moderates IP-Limit gegen Handle-Enumeration/Cookie-Spam
+    const ip = await getClientIp();
+    const gate = await rateLimit(`signup-start:${ip}`, 30, 60 * 60 * 1000); // 30/h
+    if (!gate.ok) {
+      return NextResponse.json(
+        { ok: false, error: 'Too many requests' },
+        { status: 429, headers: { 'Retry-After': String(gate.retryAfterSec) } }
+      );
+    }
+
     const body = (await req.json().catch(() => null)) as {
       handle?: string;
       role?: string;
