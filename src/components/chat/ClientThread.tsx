@@ -8,10 +8,13 @@ import Image from 'next/image';
 import ChatHeader from '@/components/chat/ChatHeader';
 import ChatComposer from '@/components/chat/ChatComposer';
 import type { ReplyTargetLite } from '@/components/chat/ChatComposer';
+
+import dynamic from 'next/dynamic';
 import TipModal from '@/components/TipModal';
 import TipRequestAcceptModal from '@/components/TipRequestAcceptModal';
-import OwnershipRequestAcceptModal from '@/components/OwnershipRequestAcceptModal';
+
 import AutoDrainRequestAcceptModal from '@/components/AutoDrainRequestAcceptModal';
+const OwnershipRequestAcceptModal = dynamic(() => import('@/components/OwnershipRequestAcceptModal'), { ssr: false });
 import type {
   OwnershipReqPayload as AcceptOwnReqPayload,
 } from '@/components/OwnershipRequestAcceptModal';

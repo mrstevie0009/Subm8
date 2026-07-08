@@ -8,13 +8,11 @@ import Image from 'next/image';
 import ChatHeader from '@/components/chat/ChatHeaderGroup';
 import ChatComposer from '@/components/chat/ChatGroupComposer';
 import type { ReplyTargetLite } from '@/components/chat/ChatGroupComposer';
+
 import TipModal from '@/components/TipModal';
 import TipRequestAcceptModal from '@/components/TipRequestAcceptModal';
-import OwnershipRequestAcceptModal from '@/components/OwnershipRequestAcceptModal';
+
 import AutoDrainRequestAcceptModal from '@/components/AutoDrainRequestAcceptModal';
-import type {
-  OwnershipReqPayload as AcceptOwnReqPayload,
-} from '@/components/OwnershipRequestAcceptModal';
 import type { ChatMessage } from '@/types/chat';
 import RichText from '@/components/RichText';
 import { useRouter } from 'next/navigation';
@@ -206,40 +204,6 @@ function parseAutoDrainAcc(text?: string | null): AutoDrainAccPayload | null {
     }
   } catch {}
   return null;
-}
-
-/* ----- Ownership envelopes ----- */
-const OWNREQ_PREFIX = 'OWNREQ::';
-const OWNACC_PREFIX = 'OWNACC::';
-
-/** Benutze exakt den Typ aus dem Modal, um Inkompatibilitäten zu vermeiden */
-type OwnershipReqPayload = AcceptOwnReqPayload;
-
-function parseOwnReq(text?: string | null): OwnershipReqPayload | null {
-  if (!text || !text.startsWith(OWNREQ_PREFIX)) return null;
-  try {
-    const obj = JSON.parse(text.slice(OWNREQ_PREFIX.length)) as OwnershipReqPayload;
-    if (obj && typeof obj === 'object') return obj;
-  } catch {}
-  return null;
-}
-function parseOwnAcc(text?: string | null): { ok: true } | null {
-  if (!text || !text.startsWith(OWNACC_PREFIX)) return null;
-  return { ok: true };
-}
-
-function isRecord(v: unknown): v is Record<string, unknown> {
-  return typeof v === 'object' && v !== null;
-}
-
-/** Legacy-Shape-Erkennung nur für bequemen Zugriff */
-type LegacyDataUrls = { avatarDataUrl?: string; bannerDataUrl?: string; bio?: string };
-function isLegacyDataUrls(p: OwnershipReqPayload): p is LegacyDataUrls {
-  return isRecord(p) && (
-    'avatarDataUrl' in p ||
-    'bannerDataUrl' in p ||
-    'bio' in p
-  );
 }
 
 function fmtCurrency(cents: number, currency: string) {
@@ -1562,8 +1526,6 @@ export default function ChatThreadPage() {
     }
     }, [baseUrl, kind, other]);
 
-  const [ownToAccept, setOwnToAccept] = React.useState<OwnershipReqPayload | null>(null);
-
   const mapRole = React.useCallback((r: DbRole): 'domme' | 'submissive' => (r === 'DOMME' ? 'domme' : 'submissive'), []);
 
   // 🟣 NEW: Sender-Meta für Gruppen/DM
@@ -2344,78 +2306,6 @@ export default function ChatThreadPage() {
       );
     }
 
-    /* --------------- OWNERSHIP REQUEST --------------- */
-    const ownReq = parseOwnReq(m.text);
-    if (ownReq) {
-      const canAct = !mine && meRole === 'submissive';
-      const bubble = 'bg-white/[.07] border-white/10';
-      return (
-        <div className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
-          <div
-            className={`max-w-[75%] rounded-2xl px-3 py-2 border ${bubble}`}
-            {...longPress}
-            onClick={(e) => {
-              const el = e.target as HTMLElement;
-              if (el.closest('a,button,video,audio,img')) e.stopPropagation();
-            }}
-          >
-            <div className="text-[11px] uppercase tracking-wide text-white/70 mb-1">
-              {t('envelopes.ownershipRequest.title', { default: 'Ownership-Anfrage' })}
-            </div>
-
-            {isLegacyDataUrls(ownReq) && ownReq.bio && (
-              <div className="text-[13px] text-white/80 whitespace-pre-wrap mb-1">{ownReq.bio}</div>
-            )}
-            {isLegacyDataUrls(ownReq) && (ownReq.avatarDataUrl || ownReq.bannerDataUrl) && (
-              <div className="text-[12px] text-white/60 italic">
-                {ownReq.avatarDataUrl ? t('envelopes.ownershipRequest.legacy.avatarPreview') + ' ' : ''}
-                {ownReq.bannerDataUrl ? t('envelopes.ownershipRequest.legacy.bannerPreview') : ''}
-              </div>
-            )}
-
-            {canAct && (
-              <div className="mt-2 flex items-center gap-2">
-                <button
-                  type="button"
-                  className="px-3 py-1.5 rounded-lg bg-[var(--purple)]/90 text-white hover:opacity-95"
-                  onClick={() => setOwnToAccept(ownReq)}
-                >
-                  {t('actions.accept')}
-                </button>
-                <button
-                  type="button"
-                  className="px-3 py-1.5 rounded-lg border border-white/15 hover:bg-white/10"
-                  onClick={() =>
-                    void sendMessage({
-                      text: t('envelopes.ownershipRequest.declinedMsg', { default: 'Abgelehnt.' }),
-                    })
-                  }
-                >
-                  {t('actions.decline')}
-                </button>
-              </div>
-            )}
-
-            <div className="text-[11px] mt-2 text-white/60" title={new Date(m.createdAt).toLocaleString()}>
-              {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    /* --------------- OWNERSHIP ACCEPTED --------------- */
-    const ownAcc = parseOwnAcc(m.text);
-    if (ownAcc) {
-      return (
-        <div className="flex justify-center">
-          <div className="text-[12px] text-white/70 px-3 py-1">
-            {t('envelopes.ownershipAccepted.title', { default: 'Ownership akzeptiert.' })}
-          </div>
-        </div>
-      );
-    }
-
     /* ---------------- TIP REQUEST ---------------- */
     const req = parseTipRequest(m.text);
     if (req) {
@@ -2963,20 +2853,6 @@ export default function ChatThreadPage() {
             setAdAccept(null);
           }}
           onDeclined={() => setAdAccept(null)}
-        />
-      )}
-
-      {ownToAccept && (
-        <OwnershipRequestAcceptModal
-          open={!!ownToAccept}
-          onClose={() => setOwnToAccept(null)}
-          payload={ownToAccept}
-          selfUserId={meId ?? undefined}
-          onSuccess={async () => {
-            await sendMessage({ text: `${OWNACC_PREFIX}{}` });
-            setOwnToAccept(null);
-            await load();
-          }}
         />
       )}
 

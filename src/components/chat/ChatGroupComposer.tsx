@@ -6,9 +6,6 @@ import { createPortal } from 'react-dom';
 import { useTranslations } from 'next-intl';
 import MentionSuggestChat from '@/components/MentionSuggestChat';
 import TipRequestCreateModal from '@/components/TipRequestCreateModal';
-import OwnershipRequestCreateModal, {
-  type OwnershipReqPayload as OwnReqPayload,
-} from '@/components/OwnershipRequestCreateModal';
 import AutoDrainRequestCreateModal, {
   type AutoDrainReqPayload as ADReqPayload,
 } from '@/components/AutoDrainRequestCreateModal';
@@ -391,10 +388,6 @@ export default function ChatGroupComposer({
   disabled,
   disabledNotice,
   viewerRole,
-  selfUserId,
-
-  // optional in Groups
-  targetHandle,
 
   onSend,
 
@@ -487,7 +480,6 @@ export default function ChatGroupComposer({
 
   // Modals
   const [tipReqOpen, setTipReqOpen] = React.useState(false);
-  const [ownReqOpen, setOwnReqOpen] = React.useState(false);
   const [adReqOpen, setAdReqOpen] = React.useState(false);
 
   /* -------- Voice recording (press & hold) -------- */
@@ -1034,15 +1026,6 @@ export default function ChatGroupComposer({
                       >
                         {t('menu.autodrainRequest')}
                       </button>
-                      <button
-                        type="button"
-                        className="w-full text-left px-3 py-2 rounded-lg hover:bg-white/10"
-                        onClick={() => { setMenuOpen(false); setOwnReqOpen(true); }}
-                        disabled={!targetHandle}
-                        title={!targetHandle ? 'Requires target handle' : undefined}
-                      >
-                        {t('menu.ownershipRequest')}
-                      </button>
                     </ActionMenu>
                   )}
                 </>
@@ -1200,19 +1183,6 @@ export default function ChatGroupComposer({
           onSend(msg);
         }}
       />
-
-      {!!targetHandle && (
-        <OwnershipRequestCreateModal
-          open={ownReqOpen}
-          onClose={() => setOwnReqOpen(false)}
-          userId={selfUserId}
-          handle={targetHandle}
-          onCreate={(payload: OwnReqPayload) => {
-            setOwnReqOpen(false);
-            onSend(`OWNREQ::${JSON.stringify(payload)}`);
-          }}
-        />
-      )}
 
       <AutoDrainRequestCreateModal
         open={adReqOpen}
