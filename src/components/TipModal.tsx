@@ -547,6 +547,8 @@ function StripePayStep({
 }) {
   const stripe = useStripe();
   const elements = useElements();
+  // Recovery-State: 'idle' normal, 'timeout' = Zahlung läuft noch (nicht Fehler!)
+  const [payState, setPayState] = React.useState<'idle' | 'timeout'>('idle');
 
   async function finalizeWithPoll() {
     // Ziel: 8–12s Gesamt-Wartezeit, mit kurzem "fast retry" am Anfang.
@@ -600,18 +602,21 @@ function StripePayStep({
       // Otherwise continue polling
     }
 
-    // Timeout: user-friendly message
-    throw new Error(
-      lastStatus === 'PROCESSING'
-        ? (t('errors.confirmProcessingTimeout') || 'Zahlung wird noch finalisiert… bitte kurz erneut versuchen.')
-        : (lastMsg || t('errors.confirmFailed'))
-    );
+    // Timeout: KEIN Fehler werfen. Unterscheide "läuft noch" von "echter Fehler".
+    if (lastStatus === 'PROCESSING') {
+      // Zahlung ist unterwegs – beruhigenden Recovery-Zustand setzen statt Fehler.
+      setPayState('timeout');
+      return;
+    }
+    // Nur wenn es KEIN PROCESSING war, ist es ein echter Fehler.
+    throw new Error(lastMsg || t('errors.confirmFailed'));
   }
 
   async function handleConfirmPayment() {
     try {
       setSending(true);
       setError(null);
+      setPayState('idle');
 
       if (!stripe || !elements) throw new Error(t('stripe.errors.notReady'));
 
@@ -627,6 +632,21 @@ function StripePayStep({
       if (paymentIntent?.status === 'canceled') throw new Error(t('stripe.errors.canceled'));
       if (paymentIntent?.status === 'requires_payment_method') throw new Error(t('stripe.errors.paymentFailed'));
 
+      await finalizeWithPoll();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t('errors.generic'));
+    } finally {
+      setSending(false);
+    }
+  }
+
+  async function recheckStatus() {
+    try {
+      setSending(true);
+      setError(null);
+      setPayState('idle');
+      // Nur das Polling erneut laufen lassen – KEIN neuer confirmPayment,
+      // also keine Möglichkeit einer Doppelbelastung.
       await finalizeWithPoll();
     } catch (e) {
       setError(e instanceof Error ? e.message : t('errors.generic'));
@@ -691,6 +711,25 @@ function StripePayStep({
           ? t('stripe.savedCardNote')
           : t('stripe.newCardNote')}
       </div>
+
+      {payState === 'timeout' && (
+        <div className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/[.07] p-4 space-y-3">
+          <div className="text-[14px] font-medium text-amber-100">
+            {t('recovery.stillProcessing')}
+          </div>
+          <div className="text-[12px] text-white/70">
+            {t('recovery.noDoubleCharge')}
+          </div>
+          <button
+            type="button"
+            onClick={() => void recheckStatus()}
+            disabled={sending}
+            className="px-4 h-9 rounded-full bg-[var(--purple)] text-white text-[13px] disabled:opacity-60"
+          >
+            {sending ? t('recovery.checking') : t('recovery.recheck')}
+          </button>
+        </div>
+      )}
 
       <div className="mt-4 flex items-center justify-end gap-2">
         <button

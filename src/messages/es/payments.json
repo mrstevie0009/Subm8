@@ -254,6 +254,12 @@
     }
   },
   "tipModal": {
+    "recovery": {
+      "stillProcessing": "Tu pago aún se está procesando.",
+      "noDoubleCharge": "Esto puede tardar un momento. No se te cobrará dos veces; solo estamos verificando el estado.",
+      "recheck": "Verificar estado nuevamente",
+      "checking": "Verificando…"
+    },
     "budget": {
     "daily": "diario",
     "weekly": "semanal",
