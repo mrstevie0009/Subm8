@@ -55,6 +55,7 @@ export default async function PaymentsPage({ params }: { params: Promise<Params>
 
   if (!me) {
     return (
+      
       <section className="rounded-app border border-sub overflow-hidden shadow-app">
         <header className="px-4 pt-3 pb-4 border-b border-white/10">
           <div className="flex items-center">
@@ -77,6 +78,8 @@ export default async function PaymentsPage({ params }: { params: Promise<Params>
       </section>
     );
   }
+  const isDomme = me.role === "DOMME";
+  const isSub = me.role === "SUBMISSIVE";
 
   const payments = await prisma.payment.findMany({
     where: { OR: [{ payeeId: me.id }, { payerId: me.id }] },
@@ -286,7 +289,8 @@ export default async function PaymentsPage({ params }: { params: Promise<Params>
       <section className="px-4 py-6 border-b border-white/10">
         <h2 className="text-[18px] font-semibold mb-3">{t("paymentsPage.autodrain.title")}</h2>
 
-        {/* Enabled by you */}
+        {/* Enabled by you (ich zahle) — Sub sieht es immer (Discovery), Domme nur mit Einträgen */}
+        {(isSub || outgoingSubs.length > 0) && (
         <div className="mb-6">
           <div className="text-[13px] text-white/70 mb-2">{t("paymentsPage.autodrain.outgoing.title")}</div>
           {outgoingSubs.length === 0 ? (
@@ -354,8 +358,10 @@ export default async function PaymentsPage({ params }: { params: Promise<Params>
             </div>
           )}
         </div>
+        )}
 
-        {/* Paying you */}
+        {/* Paying you (andere zahlen mir) — Domme sieht es immer (Discovery), Sub nur mit Einträgen */}
+        {(isDomme || incomingSubs.length > 0) && (
         <div>
           <h2 className="text-[18px] font-semibold mb-3">{t("paymentsPage.autodrain.incoming.title")}</h2>
           {incomingSubs.length === 0 ? (
@@ -403,9 +409,11 @@ export default async function PaymentsPage({ params }: { params: Promise<Params>
             </div>
           )}
         </div>
+        )}
       </section>
 
-      {/* Received */}
+      {/* Received (empfangenes Geld) — Domme sieht es immer (Discovery), Sub nur mit Einträgen */}
+      {(isDomme || receivedRows.length > 0) && (
       <section className="px-4 py-6 border-b border-white/10">
         <h2 className="text-[18px] font-semibold mb-3">{t("paymentsPage.payments.received.title")}</h2>
         {receivedRows.length === 0 ? (
@@ -494,6 +502,7 @@ export default async function PaymentsPage({ params }: { params: Promise<Params>
           </>
         )}
       </section>
+      )}
 
       {/* Sent */}
       <section className="px-4 py-6">
