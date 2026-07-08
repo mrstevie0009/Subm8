@@ -9,6 +9,8 @@ import { createPortal } from 'react-dom';
 import { loadStripe } from '@stripe/stripe-js';
 import type { Stripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js';
+import AutoDrainProjection from '@/components/payments/AutoDrainProjection';
+import { useLocale } from 'next-intl';
 
 import { useStepUp } from "@/hooks/useStepUp";
 import { StepUpDialog } from "@/components/StepUpDialog";
@@ -700,6 +702,7 @@ export default function AutoDrainRequestAcceptModal({
   const stepUpForRemove = useStepUp();
   const [stepUpRemoveOpen, setStepUpRemoveOpen] = React.useState(false);
   const pendingRemoveRef = React.useRef<(() => Promise<void>) | null>(null);
+  const locale = useLocale();
 
   const { topupFeeCents, totalCents } = computeTipBreakdown(amountCents);
 
@@ -1017,6 +1020,14 @@ export default function AutoDrainRequestAcceptModal({
                   <div className="mt-3 rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-[12px] text-white/70">
                     {t('cancelAnytime', { default: 'Du kannst AutoDrain jederzeit beenden.' })}
                   </div>
+
+                  {/* Hochrechnung: was das über Monat/Jahr wirklich kostet */}
+                  <AutoDrainProjection
+                    totalCents={totalCents}
+                    cadence={cadence}
+                    currency={currency}
+                    locale={locale}
+                  />
 
                   {!giftAck && (
                     <label className="mt-3 flex items-start gap-2 text-[13px]">

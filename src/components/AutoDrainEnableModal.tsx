@@ -4,11 +4,13 @@
 import * as React from 'react';
 import Image from 'next/image';
 import { createPortal } from 'react-dom';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 
 import { loadStripe } from '@stripe/stripe-js';
 import type { Stripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js';
+import AutoDrainProjection from '@/components/payments/AutoDrainProjection';
+
 
 import { useStepUp } from "@/hooks/useStepUp";
 import { StepUpDialog } from "@/components/StepUpDialog";
@@ -131,11 +133,13 @@ function PaymentMethodsModal({
 
   const [methods, setMethods] = React.useState<SavedMethod[]>([]);
   const [defaultId, setDefaultId] = React.useState<string | null>(null);
+  
 
   const stepUp = useStepUp();
   const [stepUpOpen, setStepUpOpen] = React.useState(false);
   const [stepUpLabel, setStepUpLabel] = React.useState("");
   const pendingActionRef = React.useRef<(() => void) | null>(null);
+  
 
   const loadMethods = React.useCallback(async () => {
     const res = await fetch('/api/payments/methods/list', { method: 'GET' });
@@ -833,6 +837,7 @@ export default function AutoDrainEnableModal({
   onSuccess,
 }: Props) {
   const t = useTranslations('payment.autoDrainAcceptModal');
+  const locale = useLocale();
   // IMPORTANT: reuse TipModal namespace so PaymentMethods strings match exactly
   const paymentT = useTranslations('payment.tipModal');
 
@@ -844,6 +849,7 @@ export default function AutoDrainEnableModal({
   const [sending, setSending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [giftAck, setGiftAck] = React.useState<boolean>(true);
+  
 
   // Budget
   type BudgetStatus = {
@@ -1292,6 +1298,14 @@ export default function AutoDrainEnableModal({
                       {t('cancelAnytime', { default: 'Du kannst AutoDrain jederzeit in deinen Zahlungen wieder beenden.' })}
                     </div>
                   </div>
+
+                  {/* Hochrechnung: macht die wiederkehrende Gesamtbelastung sichtbar */}
+                  <AutoDrainProjection
+                    totalCents={totalCents}
+                    cadence={cadence}
+                    currency={currency}
+                    locale={locale}
+                  />
 
                   {!giftAck && (
                     <label className="mt-3 flex items-start gap-2 text-[13px]">
