@@ -223,6 +223,9 @@ export default async function PaymentsPage({ params }: { params: Promise<Params>
         </div>
       </header>
 
+      {/* Budget Status (oben, weil für Subs die wichtigste Info; wird bei Nicht-Nutzung ausgeblendet) */}
+      <BudgetSection locale={locale} userId={me.id} />
+
       {/* Balance (Earned DB + Available Stripe) */}
       <div>
         <PayoutBalances
@@ -491,9 +494,6 @@ export default async function PaymentsPage({ params }: { params: Promise<Params>
           </>
         )}
       </section>
-
-      {/* Budget Status */}
-      <BudgetSection locale={locale} userId={me.id} />
 
       {/* Sent */}
       <section className="px-4 py-6">
