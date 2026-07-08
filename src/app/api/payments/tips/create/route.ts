@@ -6,6 +6,7 @@ import { randomUUID } from "node:crypto";
 import Stripe from "stripe";
 import { getClientIp } from "@/lib/ip";
 import { rateLimit } from "@/lib/rateLimitStore";
+import { computeTipBreakdown } from '@/lib/fees';
 
 // Betrags-Grenzen (in Cent). Passe die Obergrenze an dein Risikoprofil an.
 const MIN_TIP_CENTS = 100;       // 1,00 €
@@ -17,8 +18,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {});
 
 const CURRENCY = "eur";
 const DB_CURRENCY = "EUR";
-const TOPUP_PCT = 0.10;
-const SPLIT_PCT = 0.10;
+
 
 type CreateBody = {
   toUserId?: string;
@@ -104,11 +104,10 @@ export async function POST(req: NextRequest) {
   });
   if (!payee) return NextResponse.json({ ok: false, error: "User not found" }, { status: 404 });
 
-  const topupCents = Math.round(baseAmountCents * TOPUP_PCT);
-  const splitCents = Math.round(baseAmountCents * SPLIT_PCT);
-  const grossCents = baseAmountCents + topupCents;
-  const amountNetToDommeCents = baseAmountCents - splitCents;
-  const platformFeeCents = topupCents + splitCents;
+  const { topupFeeCents, totalCents } = computeTipBreakdown(baseAmountCents);
+  const grossCents = totalCents;
+  const amountNetToDommeCents = baseAmountCents;
+  const platformFeeCents = topupFeeCents;
 
   const id = randomUUID();
 

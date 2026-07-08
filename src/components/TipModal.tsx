@@ -6,6 +6,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
 import { createPortal } from 'react-dom';
+import { computeTipBreakdown } from '@/lib/fees';
 
 
 import { loadStripe } from '@stripe/stripe-js';
@@ -37,7 +38,6 @@ type Props = {
 const MIN_CENTS = 100;
 const MAX_CENTS = 1_000_000;
 const CURRENCY = 'EUR';
-const PLATFORM_FEE_BPS_TOPUP = 1000; // 10% on top
 
 // Stripe
 const STRIPE_PK = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? '';
@@ -844,8 +844,7 @@ export default function TipModal({
   }, [open]);
 
   const amountCents = parseCents(amount) ?? 0;
-  const topupFeeCents = Math.round(amountCents * (PLATFORM_FEE_BPS_TOPUP / 10_000));
-  const totalCents = amountCents + topupFeeCents;
+  const { topupFeeCents, totalCents } = computeTipBreakdown(amountCents);
 
   const amountValid = amountCents >= MIN_CENTS && amountCents <= MAX_CENTS;
   const budgetWouldBlock = budget?.action === 'BLOCK' && budget?.isOver;
@@ -1105,6 +1104,26 @@ export default function TipModal({
                       ))}
                     </div>
                   </div>
+
+                  {/* Live-Aufschlüsselung – zeigt Gebühr & Gesamtbetrag schon beim Tippen */}
+                  {amountValid && (
+                    <div className="mt-3 rounded-xl border border-white/10 bg-white/[.03] p-3">
+                      <div className="flex items-center justify-between text-[13px] mb-1">
+                        <span className="text-white/70">{t('breakdown.amountToCreator')}</span>
+                        <span className="font-medium tabular-nums">{fmtCurrency(amountCents)}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-[12px] text-white/60 mb-2">
+                        <span>{t('breakdown.platformFeeTop')}</span>
+                        <span className="tabular-nums">{fmtCurrency(topupFeeCents)}</span>
+                      </div>
+                      <div className="flex items-center justify-between border-t border-white/10 pt-2">
+                        <span className="text-[14px] font-semibold">{t('breakdown.youPay')}</span>
+                        <span className="text-[18px] font-bold text-[var(--purple)] tabular-nums">
+                          {fmtCurrency(totalCents)}
+                        </span>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Ack */}
                   <div className="mt-3 rounded-xl border border-white/10 bg-white/[.03] p-3">
