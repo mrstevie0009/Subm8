@@ -338,7 +338,7 @@
       "savedCardNote": "You already have a saved card.",
       "newCardNote": "The card will be saved automatically after successful activation."
     },
-    "success": { "title": "Gift sent!", "youPaid": "You paid {amount}", "closing": "Closing…", "historyHint": "You can check the payment status anytime under Settings → Payments." },
+    "success": { "nextCharge": "Next charge: {date}", "title": "Gift sent!", "youPaid": "You paid {amount}", "closing": "Closing…", "historyHint": "You can check the payment status anytime under Settings → Payments." },
     "breakdown": { "amount": "Amount", "fee": "Platform fee ({pct}%)", "youPay": "You pay" },
     "disclaimer": "By confirming you are sending a voluntary gift. This is not payment for services. Gifts are final (no refunds unless required by law).",
     "errors": { "confirm": "Confirmation failed", "create": "Could not create payment", "generic": "Something went wrong" },

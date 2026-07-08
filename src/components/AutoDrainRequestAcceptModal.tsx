@@ -83,7 +83,7 @@ function getErr(x: unknown): string | null {
   return o.ok === false && typeof o.error === 'string' ? o.error : null;
 }
 
-type ConfirmOk = { ok: true; autoDrainId: string; status: string };
+type ConfirmOk = { ok: true; autoDrainId: string; status: string; nextChargeAt?: string | null };
 function isConfirmOk(x: unknown): x is ConfirmOk {
   if (!x || typeof x !== 'object') return false;
   const o = x as Record<string, unknown>;
@@ -497,7 +497,7 @@ function StripeSubscribeStep({
   setSending: (v: boolean) => void;
   setError: (s: string | null) => void;
   onBack: () => void;
-  onActivated: () => void;
+  onActivated: (nextChargeAt: string | null) => void;
   savedSummary: { count: number; hasDefault: boolean };
   onRemoveSaved: () => Promise<void>;
 }) {
@@ -505,67 +505,100 @@ function StripeSubscribeStep({
   const elements = useElements();
   const tTip = useTranslations("payment.tipModal");
   const tTipRe = useTranslations("payment.tipRequestAcceptModal");
+  const [activateState, setActivateState] = React.useState<'idle' | 'pending'>('idle');
 
-  async function confirmAndFinalize() {
-  if (!stripe || !elements) throw new Error('Stripe not ready');
+  // Nur die Stripe-Bestätigung (confirmSetup / confirmPayment)
+  async function confirmStripe() {
+    if (!stripe || !elements) throw new Error('Stripe not ready');
 
-  if (intentType === 'setup_intent') {
-    const { error, setupIntent } = await stripe.confirmSetup({
-      elements,
-      confirmParams: { return_url: typeof window !== 'undefined' ? window.location.href : undefined },
-      redirect: 'if_required',
-    });
+    if (intentType === 'setup_intent') {
+      const { error, setupIntent } = await stripe.confirmSetup({
+        elements,
+        confirmParams: { return_url: typeof window !== 'undefined' ? window.location.href : undefined },
+        redirect: 'if_required',
+      });
 
-    if (error) throw new Error(error.message || t('errors.generic'));
-    if (setupIntent?.status !== 'succeeded' && setupIntent?.status !== 'processing') {
-      throw new Error('Setup Intent not completed');
-    }
-  } else {
-    const { error, paymentIntent } = await stripe.confirmPayment({
-      elements,
-      confirmParams: { return_url: typeof window !== 'undefined' ? window.location.href : undefined },
-      redirect: 'if_required',
-    });
+      if (error) throw new Error(error.message || t('errors.generic'));
+      if (setupIntent?.status !== 'succeeded' && setupIntent?.status !== 'processing') {
+        throw new Error('Setup Intent not completed');
+      }
+    } else {
+      const { error, paymentIntent } = await stripe.confirmPayment({
+        elements,
+        confirmParams: { return_url: typeof window !== 'undefined' ? window.location.href : undefined },
+        redirect: 'if_required',
+      });
 
-    if (error) throw new Error(error.message || t('errors.generic'));
-    if (paymentIntent?.status === 'canceled') throw new Error('Payment canceled');
-    if (paymentIntent?.status === 'requires_payment_method') throw new Error('Payment failed');
-  }
-
-  // ⬇️ Polling OHNE return (läuft durch, wirft Error wenn failed)
-  const delays = [0, 400, 800, 1200, 2000];
-  let last: string | null = null;
-
-  for (const d of delays) {
-    if (d) await sleep(d);
-
-    const res = await fetch('/api/payments/autodrain/confirm', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ autoDrainId }),
-    });
-    const j: unknown = await res.json().catch(() => null);
-
-    if (res.ok && isConfirmOk(j)) return; // ✅ Success
-
-    last = getErr(j) || getStatusString(j);
-
-    if (res.status === 400 || res.status === 401 || res.status === 403 || res.status === 404) {
-      throw new Error(getErr(j) || t('errors.generic'));
+      if (error) throw new Error(error.message || t('errors.generic'));
+      if (paymentIntent?.status === 'canceled') throw new Error('Payment canceled');
+      if (paymentIntent?.status === 'requires_payment_method') throw new Error('Payment failed');
     }
   }
 
-  throw new Error(last || t('errors.generic'));
-}
+  // Nur das Polling gegen /confirm – KEIN Stripe-Confirm.
+  // Gibt Ergebnis + nextChargeAt zurück (throw nur bei echtem Fehler).
+  async function pollConfirm(): Promise<{ result: 'ok' | 'pending'; nextChargeAt: string | null }> {
+    const delays = [0, 400, 800, 1200, 2000];
+    let last: string | null = null;
+    let stillPending = false;
+
+    for (const d of delays) {
+      if (d) await sleep(d);
+
+      const res = await fetch('/api/payments/autodrain/confirm', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ autoDrainId }),
+      });
+      const j: unknown = await res.json().catch(() => null);
+
+      if (res.ok && isConfirmOk(j)) {
+        return { result: 'ok', nextChargeAt: j.nextChargeAt ?? null };
+      }
+
+      last = getErr(j) || getStatusString(j);
+
+      // 409 = Subscription noch nicht aktiv -> "läuft noch", kein Fehler
+      if (res.status === 409) {
+        stillPending = true;
+        continue;
+      }
+
+      if (res.status === 400 || res.status === 401 || res.status === 403 || res.status === 404) {
+        throw new Error(getErr(j) || t('errors.generic'));
+      }
+    }
+
+    if (stillPending) {
+      setActivateState('pending');
+      return { result: 'pending', nextChargeAt: null };
+    }
+    throw new Error(last || t('errors.generic'));
+  }
 
 async function handleEnable() {
   try {
     setSending(true);
     setError(null);
-    await confirmAndFinalize();
-    
-    // ⬇️ NEU: onActivated ruft SOFORT handleActivatedFinal auf (wie TipModal)
-    onActivated();
+    setActivateState('idle');
+    await confirmStripe();               // 1. Stripe bestätigen
+    const { result, nextChargeAt } = await pollConfirm();  // 2. Status pollen
+    if (result === 'ok') onActivated(nextChargeAt);
+  } catch (e) {
+    setError(e instanceof Error ? e.message : t('errors.generic'));
+  } finally {
+    setSending(false);
+  }
+}
+
+async function recheckStatus() {
+  try {
+    setSending(true);
+    setError(null);
+    setActivateState('idle');
+    // NUR pollen – kein confirmStripe, also garantiert keine Doppelbelastung.
+    const { result, nextChargeAt } = await pollConfirm();
+    if (result === 'ok') onActivated(nextChargeAt);
   } catch (e) {
     setError(e instanceof Error ? e.message : t('errors.generic'));
   } finally {
@@ -624,9 +657,30 @@ async function handleEnable() {
           : 'Die Karte wird nach erfolgreicher Aktivierung automatisch gespeichert.'}
       </div>
 
+      {activateState === 'pending' && (
+        <div className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/[.07] p-4 space-y-3">
+          <div className="text-[14px] font-medium text-amber-100">
+            {t('autodrainRecovery.stillActivating', { default: 'Dein AutoDrain wird gerade aktiviert.' })}
+          </div>
+          <div className="text-[12px] text-white/70">
+            {t('autodrainRecovery.takesAMoment', { default: 'Das kann einen Moment dauern. Es wird nichts doppelt eingerichtet — wir prüfen nur den Status.' })}
+          </div>
+          <button
+            type="button"
+            onClick={() => void recheckStatus()}
+            disabled={sending}
+            className="px-4 h-9 rounded-full bg-[var(--purple)] text-white text-[13px] disabled:opacity-60"
+          >
+            {sending
+              ? t('autodrainRecovery.checking', { default: 'Wird geprüft…' })
+              : t('autodrainRecovery.recheck', { default: 'Status erneut prüfen' })}
+          </button>
+        </div>
+      )}
+
+      {activateState !== 'pending' && (
       <div className="mt-4 flex items-center justify-end">
         <button
-          type="button"
           onClick={handleEnable}
           disabled={sending || !stripe || !elements}
           className={`px-4 py-2 rounded-lg text-white transition w-full sm:w-auto ${
@@ -639,6 +693,7 @@ async function handleEnable() {
           </span>
         </button>
       </div>
+      )}
 
       <div className="mt-2 text-[12px] text-white/55">{t('stripe.secureHint') ?? 'Deine Zahlungsdaten werden sicher von Stripe verarbeitet.'}</div>
     </div>
@@ -697,6 +752,7 @@ export default function AutoDrainRequestAcceptModal({
   const [hasDefaultSaved, setHasDefaultSaved] = React.useState(false);
 
   const [closingSoon, setClosingSoon] = React.useState(false);
+  const [nextChargeAt, setNextChargeAt] = React.useState<string | null>(null);
   const closeTimerRef = React.useRef<number | null>(null);
 
   const stepUpForRemove = useStepUp();
@@ -1109,7 +1165,8 @@ export default function AutoDrainRequestAcceptModal({
                         setAutoDrainId(null);
                         setIntentType(null);
                       }}
-                      onActivated={() => {
+                      onActivated={(nextChargeAt) => {
+                        setNextChargeAt(nextChargeAt);
                         markAck();
                         onSuccess({ autoDrainId, amountCents, currency, cadence });
                         setStep('success');
@@ -1143,6 +1200,14 @@ export default function AutoDrainRequestAcceptModal({
 
                 <div className="mt-3 text-[12px] text-white/55">{t("success.closing")}</div>
                 <div className="mt-1 text-[11px] text-white/40">{t('success.historyHint')}</div>
+                {nextChargeAt && (
+                  <div className="mt-2 text-[13px] text-white/70">
+                    {t('success.nextCharge', {
+                      date: new Date(nextChargeAt).toLocaleDateString(locale),
+                      default: `Nächste Abbuchung: ${new Date(nextChargeAt).toLocaleDateString(locale)}`,
+                    })}
+                  </div>
+                )}
               </div>
 
               <style jsx>{`

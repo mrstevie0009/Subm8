@@ -338,7 +338,7 @@
       "savedCardNote": "Du hast bereits eine gespeicherte Karte.",
       "newCardNote": "Die Karte wird nach erfolgreicher Aktivierung automatisch gespeichert."
     },
-    "success": { "title": "Geschenk gesendet!", "youPaid": "Du hast {amount} bezahlt", "closing": "Wird geschlossen…", "historyHint": "Den Zahlungsstand findest du jederzeit unter Einstellungen → Zahlungen." },
+    "success": { "nextCharge": "Nächste Abbuchung: {date}", "title": "Geschenk gesendet!", "youPaid": "Du hast {amount} bezahlt", "closing": "Wird geschlossen…", "historyHint": "Den Zahlungsstand findest du jederzeit unter Einstellungen → Zahlungen." },
     "breakdown": { "amount": "Betrag", "fee": "Plattformgebühr ({pct}%)", "youPay": "Du zahlst" },
     "disclaimer": "Mit der Bestätigung sendest du ein freiwilliges Geschenk. Dies ist keine Bezahlung für Leistungen. Geschenke sind endgültig (keine Rückerstattung, außer gesetzlich vorgeschrieben).",
     "errors": { "confirm": "Bestätigung fehlgeschlagen", "create": "Zahlung konnte nicht erstellt werden", "generic": "Etwas ist schiefgelaufen" },

@@ -338,7 +338,7 @@
       "savedCardNote": "Ya tienes una tarjeta guardada.",
       "newCardNote": "La tarjeta se guardará automáticamente tras la activación exitosa."
     },
-    "success": { "title": "¡Regalo enviado!", "youPaid": "Pagaste {amount}", "closing": "Cerrando…", "historyHint": "Puedes verificar el estado del pago en cualquier momento en Configuración → Pagos." },
+    "success": { "nextCharge": "Próxima carga: {date}", "title": "¡Regalo enviado!", "youPaid": "Pagaste {amount}", "closing": "Cerrando…", "historyHint": "Puedes verificar el estado del pago en cualquier momento en Configuración → Pagos." },
     "breakdown": { "amount": "Importe", "fee": "Comisión de plataforma ({pct}%)", "youPay": "Pagas" },
     "disclaimer": "Al confirmar envías un regalo voluntario. No es pago por servicios. Los regalos son definitivos (sin reembolsos salvo exigencia legal).",
     "errors": { "confirm": "Confirmación fallida", "create": "No se pudo crear el pago", "generic": "Algo salió mal" },
