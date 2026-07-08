@@ -154,7 +154,7 @@
     "errors": { "generic": "Etwas ist schiefgelaufen" },
     "header": { "title": "Autodrain aktivieren", "to": "für {name}" },
     "breakdown": { "amountTo": "Betrag an {name}", "fee": "Plattform-Gebühr (10%)", "youPay": "Du zahlst" },
-    "success": { "title": "Aktiviert!", "enabled": "AutoDrain wurde aktiviert.", "closing": "Wird geschlossen…", "historyHint": "Den Zahlungsstand findest du jederzeit unter Einstellungen → Zahlungen."},
+    "success": { "nextCharge": "Nächste Abbuchung: {date}", "title": "Aktiviert!", "enabled": "AutoDrain wurde aktiviert.", "closing": "Wird geschlossen…", "historyHint": "Den Zahlungsstand findest du jederzeit unter Einstellungen → Zahlungen."},
     "stripe": {
       "enterCard": "Zahlungsmethode wählen",
       "secureHint": "Deine Zahlungsdaten werden sicher von Stripe verarbeitet.",

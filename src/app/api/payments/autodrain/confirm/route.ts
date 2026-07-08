@@ -125,6 +125,9 @@ export async function POST(req: NextRequest) {
     where: { id: ad.id },
     data: { active: true, stripeStatus: sub.status },
   });
+  
+  const periodEnd = sub.items?.data?.[0]?.current_period_end ?? null;
+  const nextChargeAt = periodEnd ? new Date(periodEnd * 1000).toISOString() : null;
 
-  return NextResponse.json({ ok: true, autoDrainId: ad.id, status: sub.status });
+  return NextResponse.json({ ok: true, autoDrainId: ad.id, status: sub.status, nextChargeAt });
 }

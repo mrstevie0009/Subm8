@@ -594,7 +594,7 @@ function getErr(x: unknown): string | null {
   return o.ok === false && typeof o.error === 'string' ? o.error : null;
 }
 
-type ConfirmOk = { ok: true; autoDrainId: string; status?: string };
+type ConfirmOk = { ok: true; autoDrainId: string; status?: string; nextChargeAt?: string | null };
 function isConfirmOk(x: unknown): x is ConfirmOk {
   if (!x || typeof x !== 'object') return false;
   const o = x as Record<string, unknown>;
@@ -629,7 +629,7 @@ function StripeSubscribeStep({
   setSending: (v: boolean) => void;
   setError: (s: string | null) => void;
   onBack: () => void;
-  onActivated: () => void;
+  onActivated: (nextChargeAt: string | null) => void;
   savedSummary: { count: number; hasDefault: boolean };
   onRemoveSaved: () => Promise<void>;
 }) {
@@ -684,7 +684,9 @@ function StripeSubscribeStep({
       });
       const j: unknown = await res.json().catch(() => null);
 
-      if (res.ok && isConfirmOk(j)) return 'ok' as const;
+      if (res.ok && isConfirmOk(j)) {
+        return { result: 'ok' as const, nextChargeAt: j.nextChargeAt ?? null };
+      }
 
       last = getErr(j) || getStatusString(j);
 
@@ -702,7 +704,7 @@ function StripeSubscribeStep({
     // Timeout: wenn zuletzt "noch nicht aktiv" -> Recovery statt Fehler
     if (stillPending) {
       setActivateState('pending');
-      return 'pending' as const;
+      return { result: 'pending' as const, nextChargeAt: null };
     }
     throw new Error(last || t('errors.generic', { default: 'Etwas ist schiefgelaufen.' }));
   }
@@ -713,11 +715,10 @@ function StripeSubscribeStep({
       setError(null);
       setActivateState('idle');
       await confirmStripe();
-      const result = await finalizeWithPoll();
+      const { result, nextChargeAt } = await finalizeWithPoll();
 
-      // Nur bei echtem 'ok' auf Success weiterleiten.
-      // Bei 'pending' übernimmt der Recovery-Kasten – KEIN onActivated().
-      if (result === 'ok') onActivated();
+    // Nur bei echtem 'ok' auf Success weiterleiten.
+    if (result === 'ok') onActivated(nextChargeAt);
     } catch (e) {
       setError(e instanceof Error ? e.message : t('errors.generic'));
     } finally {
@@ -731,8 +732,8 @@ function StripeSubscribeStep({
       setError(null);
       setActivateState('idle');
       // Nur erneut pollen – KEIN neuer confirmStripe, keine Doppel-Einrichtung.
-      const result = await finalizeWithPoll();
-      if (result === 'ok') onActivated();
+      const { result, nextChargeAt } = await finalizeWithPoll();
+      if (result === 'ok') onActivated(nextChargeAt);
     } catch (e) {
       setError(e instanceof Error ? e.message : t('errors.generic'));
     } finally {
@@ -938,7 +939,7 @@ export default function AutoDrainEnableModal({
   const [savedCount, setSavedCount] = React.useState(0);
   const [hasDefaultSaved, setHasDefaultSaved] = React.useState(false);
 
-  const [success, setSuccess] = React.useState<null | { autoDrainId: string; totalCents: number; currency: string }>(null);
+  const [success, setSuccess] = React.useState<null | { autoDrainId: string; totalCents: number; currency: string; nextChargeAt: string | null }>(null);
   const [closingSoon, setClosingSoon] = React.useState(false);
   const closeTimerRef = React.useRef<number | null>(null);
 
@@ -1073,11 +1074,11 @@ export default function AutoDrainEnableModal({
     }
   }
 
-  function handleActivatedFinal() {
+  function handleActivatedFinal(nextChargeAt: string | null) {
     if (!autoDrainId) return;
 
     // UI success
-    setSuccess({ autoDrainId, totalCents, currency });
+    setSuccess({ autoDrainId, totalCents, currency, nextChargeAt });
     setStep('success');
 
     // update local disclaimers
@@ -1504,6 +1505,17 @@ export default function AutoDrainEnableModal({
                 <p className="mt-1 text-white/80">
                   {paymentT('success.youPaid', { amount: fmtCurrency(success?.totalCents ?? 0, currency), default: `Du zahlst ${fmtCurrency(success?.totalCents ?? 0, currency)}` })}
                 </p>
+                </div>
+                {success?.nextChargeAt && (
+                  <div className="mt-2 text-[13px] text-white/70">
+                    {t('success.nextCharge', {
+                      date: new Date(success.nextChargeAt).toLocaleDateString(locale),
+                      default: `Nächste Abbuchung: ${new Date(success.nextChargeAt).toLocaleDateString(locale)}`,
+                    })}
+                  </div>
+                )}
+                <div>
+                
                 <div className="mt-3 text-[12px] text-white/55">{t("success.closing")}</div>
                 <div className="mt-1 text-[11px] text-white/40">{t('success.historyHint')}</div>
               </div>

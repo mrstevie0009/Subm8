@@ -154,7 +154,7 @@
     "errors": { "generic": "Algo salió mal" },
     "header": { "title": "Activar AutoDrain", "to": "para {name}" },
     "breakdown": { "amountTo": "Importe a {name}", "fee": "Comisión de plataforma (10%)", "youPay": "Pagas" },
-    "success": { "title": "¡Activado!", "enabled": "AutoDrain ha sido activado.", "closing": "Cerrando…", "historyHint": "Puedes verificar el estado del pago en cualquier momento en Configuración → Pagos." },
+    "success": { "nextCharge": "Próximo cargo: {date}", "title": "¡Activado!", "enabled": "AutoDrain ha sido activado.", "closing": "Cerrando…", "historyHint": "Puedes verificar el estado del pago en cualquier momento en Configuración → Pagos." },
     "stripe": {
       "enterCard": "Elegir método de pago",
       "secureHint": "Tus datos de pago son procesados de forma segura por Stripe.",

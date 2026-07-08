@@ -154,7 +154,7 @@
     "errors": { "generic": "Une erreur s'est produite" },
     "header": { "title": "Activer AutoDrain", "to": "pour {name}" },
     "breakdown": { "amountTo": "Montant à {name}", "fee": "Frais de plateforme (10%)", "youPay": "Vous payez" },
-    "success": { "title": "Activé !", "enabled": "AutoDrain a été activé.", "closing": "Fermeture…", "historyHint": "Vous pouvez vérifier le statut du paiement à tout moment sous Paramètres → Paiements." },
+    "success": { "nextCharge": "Prochain prélèvement : {date}", "title": "Activé !", "enabled": "AutoDrain a été activé.", "closing": "Fermeture…", "historyHint": "Vous pouvez vérifier le statut du paiement à tout moment sous Paramètres → Paiements." },
     "stripe": {
       "enterCard": "Choisir un moyen de paiement",
       "secureHint": "Vos données de paiement sont traitées en toute sécurité par Stripe.",

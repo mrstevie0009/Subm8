@@ -154,7 +154,7 @@
     "errors": { "generic": "Something went wrong" },
     "header": { "title": "Enable AutoDrain", "to": "for {name}" },
     "breakdown": { "amountTo": "Amount to {name}", "fee": "Platform fee (10%)", "youPay": "You pay" },
-    "success": { "title": "Activated!", "enabled": "AutoDrain has been activated.", "closing": "Closing…", "historyHint": "You can check the payment status anytime under Settings → Payments." },
+    "success": { "nextCharge": "Next charge: {date}", "title": "Activated!", "enabled": "AutoDrain has been activated.", "closing": "Closing…", "historyHint": "You can check the payment status anytime under Settings → Payments." },
     "stripe": {
       "enterCard": "Choose payment method",
       "secureHint": "Your payment details are securely processed by Stripe.",
