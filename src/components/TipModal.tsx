@@ -731,6 +731,7 @@ function StripePayStep({
         </div>
       )}
 
+      {payState !== 'timeout' && (
       <div className="mt-4 flex items-center justify-end gap-2">
         <button
           type="button"
@@ -746,6 +747,7 @@ function StripePayStep({
           </span>
         </button>
       </div>
+      )}
 
       <div className="mt-2 text-[12px] text-white/55">{t('stripe.secureHint')}</div>
     </div>
