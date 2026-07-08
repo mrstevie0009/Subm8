@@ -1435,7 +1435,8 @@ export default function AutoDrainEnableModal({
                 <p className="mt-1 text-white/80">
                   {paymentT('success.youPaid', { amount: fmtCurrency(success?.totalCents ?? 0, currency), default: `Du zahlst ${fmtCurrency(success?.totalCents ?? 0, currency)}` })}
                 </p>
-                <div className="mt-3 text-[12px] text-white/55">Closing…</div>
+                <div className="mt-3 text-[12px] text-white/55">{t("success.closing")}</div>
+                <div className="mt-1 text-[11px] text-white/40">{t('success.historyHint')}</div>
               </div>
             </div>
           )}

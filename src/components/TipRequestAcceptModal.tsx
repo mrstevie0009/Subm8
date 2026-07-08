@@ -1105,6 +1105,7 @@ export default function TipRequestAcceptModal({
                 <h3 className="mt-4 text-[18px] font-semibold tracking-tight">{t('success.title') ?? 'Erfolgreich'}</h3>
                 <p className="mt-1 text-white/80">{t('success.youPaid', { amount: fmtCurrency(totalCents, currency) }) ?? 'Zahlung abgeschlossen.'}</p>
                 <div className="mt-3 text-[12px] text-white/55">{t("success.closing")}</div>
+                <div className="mt-1 text-[11px] text-white/40">{t('success.historyHint')}</div>
               </div>
 
               <style jsx>{`

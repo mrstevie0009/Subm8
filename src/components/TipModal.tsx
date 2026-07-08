@@ -1263,6 +1263,7 @@ export default function TipModal({
                 <h3 className="mt-4 text-[18px] font-semibold tracking-tight">{t('success.title')}</h3>
                 <p className="mt-1 text-white/80">{t('success.youPaid', { amount: fmtCurrency(success?.totalCents ?? 0) })}</p>
                 <div className="mt-3 text-[12px] text-white/55">{t('success.closing')}</div>
+                <div className="mt-1 text-[11px] text-white/40">{t('success.historyHint')}</div>
               </div>
             </div>
           )}

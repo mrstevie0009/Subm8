@@ -148,7 +148,7 @@
     "errors": { "generic": "Etwas ist schiefgelaufen" },
     "header": { "title": "Autodrain aktivieren", "to": "für {name}" },
     "breakdown": { "amountTo": "Betrag an {name}", "fee": "Plattform-Gebühr (10%)", "youPay": "Du zahlst" },
-    "success": { "title": "Aktiviert!", "enabled": "AutoDrain wurde aktiviert.", "closing": "Wird geschlossen…" },
+    "success": { "title": "Aktiviert!", "enabled": "AutoDrain wurde aktiviert.", "closing": "Wird geschlossen…", "historyHint": "Den Zahlungsstand findest du jederzeit unter Einstellungen → Zahlungen."},
     "stripe": {
       "enterCard": "Zahlungsmethode wählen",
       "secureHint": "Deine Zahlungsdaten werden sicher von Stripe verarbeitet.",
@@ -271,7 +271,7 @@
     "header": { "title": "Sende ein Geschenk an {name}", "subtitleFinal": "Geschenke sind freiwillig und endgültig." },
     "note": { "label": "Notiz (optional)", "placeholder": "Schreibe etwas Nettes…" },
     "roles": { "domme": "Domme", "sub": "Sub" },
-    "success": { "title": "Geschenk gesendet!", "youPaid": "Du hast {amount} bezahlt", "closing": "Wird geschlossen…" },
+    "success": { "title": "Geschenk gesendet!", "youPaid": "Du hast {amount} bezahlt", "closing": "Wird geschlossen…", "historyHint": "Den Zahlungsstand findest du jederzeit unter Einstellungen → Zahlungen." },
     "stripe": {
       "enterCard": "Kartendaten eingeben",
       "secureHint": "Die Zahlungsdaten werden sicher von Stripe verarbeitet.",
@@ -318,7 +318,7 @@
       "savedCardNote": "Du hast bereits eine gespeicherte Karte.",
       "newCardNote": "Die Karte wird nach erfolgreicher Aktivierung automatisch gespeichert."
     },
-    "success": { "title": "Geschenk gesendet!", "youPaid": "Du hast {amount} bezahlt", "closing": "Wird geschlossen…" },
+    "success": { "title": "Geschenk gesendet!", "youPaid": "Du hast {amount} bezahlt", "closing": "Wird geschlossen…", "historyHint": "Den Zahlungsstand findest du jederzeit unter Einstellungen → Zahlungen." },
     "breakdown": { "amount": "Betrag", "fee": "Plattformgebühr ({pct}%)", "youPay": "Du zahlst" },
     "disclaimer": "Mit der Bestätigung sendest du ein freiwilliges Geschenk. Dies ist keine Bezahlung für Leistungen. Geschenke sind endgültig (keine Rückerstattung, außer gesetzlich vorgeschrieben).",
     "errors": { "confirm": "Bestätigung fehlgeschlagen", "create": "Zahlung konnte nicht erstellt werden", "generic": "Etwas ist schiefgelaufen" },

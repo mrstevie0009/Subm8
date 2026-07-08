@@ -148,7 +148,7 @@
     "errors": { "generic": "Algo salió mal" },
     "header": { "title": "Activar AutoDrain", "to": "para {name}" },
     "breakdown": { "amountTo": "Importe a {name}", "fee": "Comisión de plataforma (10%)", "youPay": "Pagas" },
-    "success": { "title": "¡Activado!", "enabled": "AutoDrain ha sido activado.", "closing": "Cerrando…" },
+    "success": { "title": "¡Activado!", "enabled": "AutoDrain ha sido activado.", "closing": "Cerrando…", "historyHint": "Puedes verificar el estado del pago en cualquier momento en Configuración → Pagos." },
     "stripe": {
       "enterCard": "Elegir método de pago",
       "secureHint": "Tus datos de pago son procesados de forma segura por Stripe.",
@@ -271,7 +271,7 @@
     "header": { "title": "Enviar un regalo a {name}", "subtitleFinal": "Los regalos son voluntarios y definitivos." },
     "note": { "label": "Nota (opcional)", "placeholder": "Escribe algo bonito…" },
     "roles": { "domme": "Domme", "sub": "Sub" },
-    "success": { "title": "¡Regalo enviado!", "youPaid": "Pagaste {amount}", "closing": "Cerrando…" },
+    "success": { "title": "¡Regalo enviado!", "youPaid": "Pagaste {amount}", "closing": "Cerrando…", "historyHint": "Puedes verificar el estado del pago en cualquier momento en Configuración → Pagos." },
     "stripe": {
       "enterCard": "Introducir datos de tarjeta",
       "secureHint": "Los datos de pago son procesados de forma segura por Stripe.",
@@ -318,7 +318,7 @@
       "savedCardNote": "Ya tienes una tarjeta guardada.",
       "newCardNote": "La tarjeta se guardará automáticamente tras la activación exitosa."
     },
-    "success": { "title": "¡Regalo enviado!", "youPaid": "Pagaste {amount}", "closing": "Cerrando…" },
+    "success": { "title": "¡Regalo enviado!", "youPaid": "Pagaste {amount}", "closing": "Cerrando…", "historyHint": "Puedes verificar el estado del pago en cualquier momento en Configuración → Pagos." },
     "breakdown": { "amount": "Importe", "fee": "Comisión de plataforma ({pct}%)", "youPay": "Pagas" },
     "disclaimer": "Al confirmar envías un regalo voluntario. No es pago por servicios. Los regalos son definitivos (sin reembolsos salvo exigencia legal).",
     "errors": { "confirm": "Confirmación fallida", "create": "No se pudo crear el pago", "generic": "Algo salió mal" },

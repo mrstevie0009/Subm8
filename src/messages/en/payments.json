@@ -148,7 +148,7 @@
     "errors": { "generic": "Something went wrong" },
     "header": { "title": "Enable AutoDrain", "to": "for {name}" },
     "breakdown": { "amountTo": "Amount to {name}", "fee": "Platform fee (10%)", "youPay": "You pay" },
-    "success": { "title": "Activated!", "enabled": "AutoDrain has been activated.", "closing": "Closing…" },
+    "success": { "title": "Activated!", "enabled": "AutoDrain has been activated.", "closing": "Closing…", "historyHint": "You can check the payment status anytime under Settings → Payments." },
     "stripe": {
       "enterCard": "Choose payment method",
       "secureHint": "Your payment details are securely processed by Stripe.",
@@ -271,7 +271,7 @@
     "header": { "title": "Send a gift to {name}", "subtitleFinal": "Gifts are voluntary and final." },
     "note": { "label": "Note (optional)", "placeholder": "Write something nice…" },
     "roles": { "domme": "Domme", "sub": "Sub" },
-    "success": { "title": "Gift sent!", "youPaid": "You paid {amount}", "closing": "Closing…" },
+    "success": { "title": "Gift sent!", "youPaid": "You paid {amount}", "closing": "Closing…", "historyHint": "You can check the payment status anytime under Settings → Payments." },
     "stripe": {
       "enterCard": "Enter card details",
       "secureHint": "Payment details are securely processed by Stripe.",
@@ -318,7 +318,7 @@
       "savedCardNote": "You already have a saved card.",
       "newCardNote": "The card will be saved automatically after successful activation."
     },
-    "success": { "title": "Gift sent!", "youPaid": "You paid {amount}", "closing": "Closing…" },
+    "success": { "title": "Gift sent!", "youPaid": "You paid {amount}", "closing": "Closing…", "historyHint": "You can check the payment status anytime under Settings → Payments." },
     "breakdown": { "amount": "Amount", "fee": "Platform fee ({pct}%)", "youPay": "You pay" },
     "disclaimer": "By confirming you are sending a voluntary gift. This is not payment for services. Gifts are final (no refunds unless required by law).",
     "errors": { "confirm": "Confirmation failed", "create": "Could not create payment", "generic": "Something went wrong" },

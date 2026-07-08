@@ -1131,6 +1131,7 @@ export default function AutoDrainRequestAcceptModal({
                 </p>
 
                 <div className="mt-3 text-[12px] text-white/55">{t("success.closing")}</div>
+                <div className="mt-1 text-[11px] text-white/40">{t('success.historyHint')}</div>
               </div>
 
               <style jsx>{`

@@ -8,6 +8,7 @@ import { createTranslator } from "next-intl";
 import { notFound } from "next/navigation";
 import PayoutButton from "@/components/PayoutButton";
 import PayoutBalances from "@/components/PayoutBalances";
+import PaymentStatusBadge, { type PaymentStatus } from "@/components/payments/PaymentStatusBadge";
 
 type Params = { locale: string };
 
@@ -355,63 +356,87 @@ export default async function PaymentsPage({ params }: { params: Promise<Params>
         {receivedRows.length === 0 ? (
           <div className="text-white/60 text-sm">{t("paymentsPage.payments.received.empty")}</div>
         ) : (
-          <div className="overflow-auto" style={{ maxHeight: "60vh" }}>
-            <table className="w-full text-left" style={{ minWidth: 760 }}>
-              <thead className="sticky top-0 z-10 bg-black/70 backdrop-blur border-b border-white/10">
-                <tr className="[&>th]:py-3 [&>th]:px-4 text-white/80">
-                  <th style={{ width: 110, minWidth: 110 }}>{t("paymentsPage.payments.th.avatar")}</th>
-                  <th style={{ width: 200, minWidth: 200 }}>{t("paymentsPage.payments.th.date")}</th>
-                  <th style={{ width: 220, minWidth: 220 }}>{t("paymentsPage.payments.th.username")}</th>
-                  <th style={{ width: 180, minWidth: 180 }}>{t("paymentsPage.payments.th.amount")}</th>
-                  <th style={{ width: 200, minWidth: 200 }}>{t("paymentsPage.payments.th.what")}</th>
-                  <th style={{ width: 160, minWidth: 160 }}>{t("paymentsPage.payments.th.status")}</th>
-                </tr>
-              </thead>
-              <tbody className="[&>tr]:border-b [&>tr]:border-white/10">
-                {receivedRows.map((r) => {
-                  const who = r.counterparty.displayName ?? r.counterparty.handle;
-                  const amountLabel = t("paymentsPage.payments.amountPrefixReceived", {
-                    amount: fmtMoney(r.amountCents, r.currency, locale),
-                  });
-                  const statusTone =
-                    r.status === "SUCCEEDED"
-                      ? "text-emerald-400"
-                      : r.status === "CREATED" || r.status === "PROCESSING"
-                      ? "text-yellow-300"
-                      : r.status === "FAILED"
-                      ? "text-red-400"
-                      : "text-white/70";
+          <>
+            {/* MOBILE: Karten (< md) */}
+            <ul className="md:hidden divide-y divide-white/10 overflow-auto" style={{ maxHeight: "60vh" }}>
+              {receivedRows.map((r) => {
+                const who = r.counterparty.displayName ?? r.counterparty.handle;
+                const amountLabel = t("paymentsPage.payments.amountPrefixReceived", {
+                  amount: fmtMoney(r.amountCents, r.currency, locale),
+                });
+                return (
+                  <li key={r.id} className="py-3 flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full overflow-hidden bg-white/10 border border-white/10 shrink-0">
+                      <Image
+                        src={r.counterparty.avatarUrl ?? "/images/avatar-placeholder.png"}
+                        alt={t("paymentsPage.avatarAlt", { name: who })}
+                        width={40}
+                        height={40}
+                        className="object-cover w-10 h-10"
+                      />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-medium truncate">{who}</span>
+                        <span className="text-[14px] font-semibold tabular-nums whitespace-nowrap">{amountLabel}</span>
+                      </div>
+                      <div className="mt-1 flex items-center justify-between gap-2">
+                        <span className="text-[12px] text-white/50 truncate">{r.what} · {dtf.format(r.createdAt)}</span>
+                        <PaymentStatusBadge status={r.status as PaymentStatus} />
+                      </div>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
 
-                  return (
-                    <tr key={r.id} className="[&>td]:py-3 [&>td]:px-4 align-middle">
-                      <td>
-                        <div className="w-10 h-10 rounded-full overflow-hidden bg-white/10 border border-white/10">
-                          <Image
-                            src={r.counterparty.avatarUrl ?? "/images/avatar-placeholder.png"}
-                            alt={t("paymentsPage.avatarAlt", { name: who })}
-                            width={40}
-                            height={40}
-                            className="object-cover w-10 h-10"
-                          />
-                        </div>
-                      </td>
-                      <td className="whitespace-nowrap">{dtf.format(r.createdAt)}</td>
-                      <td className="whitespace-nowrap">{who}</td>
-                      <td className="whitespace-nowrap">{amountLabel}</td>
-                      <td className="whitespace-nowrap">{r.what}</td>
-                      <td className={`whitespace-nowrap font-medium ${statusTone}`}>
-                        {t(
-                          `paymentsPage.payments.status.${
-                            r.status.toLowerCase() as "created" | "processing" | "succeeded" | "failed" | "canceled"
-                          }`
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+            {/* DESKTOP: Tabelle (>= md) */}
+            <div className="hidden md:block overflow-auto" style={{ maxHeight: "60vh" }}>
+              <table className="w-full text-left" style={{ minWidth: 760 }}>
+                <thead className="sticky top-0 z-10 bg-black/70 backdrop-blur border-b border-white/10">
+                  <tr className="[&>th]:py-3 [&>th]:px-4 text-white/80">
+                    <th style={{ width: 110, minWidth: 110 }}>{t("paymentsPage.payments.th.avatar")}</th>
+                    <th style={{ width: 200, minWidth: 200 }}>{t("paymentsPage.payments.th.date")}</th>
+                    <th style={{ width: 220, minWidth: 220 }}>{t("paymentsPage.payments.th.username")}</th>
+                    <th style={{ width: 180, minWidth: 180 }}>{t("paymentsPage.payments.th.amount")}</th>
+                    <th style={{ width: 200, minWidth: 200 }}>{t("paymentsPage.payments.th.what")}</th>
+                    <th style={{ width: 160, minWidth: 160 }}>{t("paymentsPage.payments.th.status")}</th>
+                  </tr>
+                </thead>
+                <tbody className="[&>tr]:border-b [&>tr]:border-white/10">
+                  {receivedRows.map((r) => {
+                    const who = r.counterparty.displayName ?? r.counterparty.handle;
+                    const amountLabel = t("paymentsPage.payments.amountPrefixReceived", {
+                      amount: fmtMoney(r.amountCents, r.currency, locale),
+                    });
+
+                    return (
+                      <tr key={r.id} className="[&>td]:py-3 [&>td]:px-4 align-middle">
+                        <td>
+                          <div className="w-10 h-10 rounded-full overflow-hidden bg-white/10 border border-white/10">
+                            <Image
+                              src={r.counterparty.avatarUrl ?? "/images/avatar-placeholder.png"}
+                              alt={t("paymentsPage.avatarAlt", { name: who })}
+                              width={40}
+                              height={40}
+                              className="object-cover w-10 h-10"
+                            />
+                          </div>
+                        </td>
+                        <td className="whitespace-nowrap">{dtf.format(r.createdAt)}</td>
+                        <td className="whitespace-nowrap">{who}</td>
+                        <td className="whitespace-nowrap">{amountLabel}</td>
+                        <td className="whitespace-nowrap">{r.what}</td>
+                        <td className="whitespace-nowrap">
+                          <PaymentStatusBadge status={r.status as PaymentStatus} />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </section>
 
@@ -424,63 +449,87 @@ export default async function PaymentsPage({ params }: { params: Promise<Params>
         {sentRows.length === 0 ? (
           <div className="text-white/60 text-sm">{t("paymentsPage.payments.sent.empty")}</div>
         ) : (
-          <div className="overflow-auto" style={{ maxHeight: "60vh" }}>
-            <table className="w-full text-left" style={{ minWidth: 760 }}>
-              <thead className="sticky top-0 z-10 bg-black/70 backdrop-blur border-b border-white/10">
-                <tr className="[&>th]:py-3 [&>th]:px-4 text-white/80">
-                  <th style={{ width: 110, minWidth: 110 }}>{t("paymentsPage.payments.th.avatar")}</th>
-                  <th style={{ width: 200, minWidth: 200 }}>{t("paymentsPage.payments.th.date")}</th>
-                  <th style={{ width: 220, minWidth: 220 }}>{t("paymentsPage.payments.th.username")}</th>
-                  <th style={{ width: 180, minWidth: 180 }}>{t("paymentsPage.payments.th.amount")}</th>
-                  <th style={{ width: 200, minWidth: 200 }}>{t("paymentsPage.payments.th.what")}</th>
-                  <th style={{ width: 160, minWidth: 160 }}>{t("paymentsPage.payments.th.status")}</th>
-                </tr>
-              </thead>
-              <tbody className="[&>tr]:border-b [&>tr]:border-white/10">
-                {sentRows.map((r) => {
-                  const who = r.counterparty.displayName ?? r.counterparty.handle;
-                  const amountLabel = t("paymentsPage.payments.amountPrefixSent", {
-                    amount: fmtMoney(r.amountCents, r.currency, locale),
-                  });
-                  const statusTone =
-                    r.status === "SUCCEEDED"
-                      ? "text-emerald-400"
-                      : r.status === "CREATED" || r.status === "PROCESSING"
-                      ? "text-yellow-300"
-                      : r.status === "FAILED"
-                      ? "text-red-400"
-                      : "text-white/70";
+          <>
+            {/* MOBILE: Karten (< md) */}
+            <ul className="md:hidden divide-y divide-white/10 overflow-auto" style={{ maxHeight: "60vh" }}>
+              {sentRows.map((r) => {
+                const who = r.counterparty.displayName ?? r.counterparty.handle;
+                const amountLabel = t("paymentsPage.payments.amountPrefixSent", {
+                  amount: fmtMoney(r.amountCents, r.currency, locale),
+                });
+                return (
+                  <li key={r.id} className="py-3 flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full overflow-hidden bg-white/10 border border-white/10 shrink-0">
+                      <Image
+                        src={r.counterparty.avatarUrl ?? "/images/avatar-placeholder.png"}
+                        alt={t("paymentsPage.avatarAlt", { name: who })}
+                        width={40}
+                        height={40}
+                        className="object-cover w-10 h-10"
+                      />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-medium truncate">{who}</span>
+                        <span className="text-[14px] font-semibold tabular-nums whitespace-nowrap">{amountLabel}</span>
+                      </div>
+                      <div className="mt-1 flex items-center justify-between gap-2">
+                        <span className="text-[12px] text-white/50 truncate">{r.what} · {dtf.format(r.createdAt)}</span>
+                        <PaymentStatusBadge status={r.status as PaymentStatus} />
+                      </div>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
 
-                  return (
-                    <tr key={r.id} className="[&>td]:py-3 [&>td]:px-4 align-middle">
-                      <td>
-                        <div className="w-10 h-10 rounded-full overflow-hidden bg-white/10 border border-white/10">
-                          <Image
-                            src={r.counterparty.avatarUrl ?? "/images/avatar-placeholder.png"}
-                            alt={t("paymentsPage.avatarAlt", { name: who })}
-                            width={40}
-                            height={40}
-                            className="object-cover w-10 h-10"
-                          />
-                        </div>
-                      </td>
-                      <td className="whitespace-nowrap">{dtf.format(r.createdAt)}</td>
-                      <td className="whitespace-nowrap">{who}</td>
-                      <td className="whitespace-nowrap">{amountLabel}</td>
-                      <td className="whitespace-nowrap">{r.what}</td>
-                      <td className={`whitespace-nowrap font-medium ${statusTone}`}>
-                        {t(
-                          `paymentsPage.payments.status.${
-                            r.status.toLowerCase() as "created" | "processing" | "succeeded" | "failed" | "canceled"
-                          }`
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+            {/* DESKTOP: Tabelle (>= md) */}
+            <div className="hidden md:block overflow-auto" style={{ maxHeight: "60vh" }}>
+              <table className="w-full text-left" style={{ minWidth: 760 }}>
+                <thead className="sticky top-0 z-10 bg-black/70 backdrop-blur border-b border-white/10">
+                  <tr className="[&>th]:py-3 [&>th]:px-4 text-white/80">
+                    <th style={{ width: 110, minWidth: 110 }}>{t("paymentsPage.payments.th.avatar")}</th>
+                    <th style={{ width: 200, minWidth: 200 }}>{t("paymentsPage.payments.th.date")}</th>
+                    <th style={{ width: 220, minWidth: 220 }}>{t("paymentsPage.payments.th.username")}</th>
+                    <th style={{ width: 180, minWidth: 180 }}>{t("paymentsPage.payments.th.amount")}</th>
+                    <th style={{ width: 200, minWidth: 200 }}>{t("paymentsPage.payments.th.what")}</th>
+                    <th style={{ width: 160, minWidth: 160 }}>{t("paymentsPage.payments.th.status")}</th>
+                  </tr>
+                </thead>
+                <tbody className="[&>tr]:border-b [&>tr]:border-white/10">
+                  {sentRows.map((r) => {
+                    const who = r.counterparty.displayName ?? r.counterparty.handle;
+                    const amountLabel = t("paymentsPage.payments.amountPrefixSent", {
+                      amount: fmtMoney(r.amountCents, r.currency, locale),
+                    });
+
+                    return (
+                      <tr key={r.id} className="[&>td]:py-3 [&>td]:px-4 align-middle">
+                        <td>
+                          <div className="w-10 h-10 rounded-full overflow-hidden bg-white/10 border border-white/10">
+                            <Image
+                              src={r.counterparty.avatarUrl ?? "/images/avatar-placeholder.png"}
+                              alt={t("paymentsPage.avatarAlt", { name: who })}
+                              width={40}
+                              height={40}
+                              className="object-cover w-10 h-10"
+                            />
+                          </div>
+                        </td>
+                        <td className="whitespace-nowrap">{dtf.format(r.createdAt)}</td>
+                        <td className="whitespace-nowrap">{who}</td>
+                        <td className="whitespace-nowrap">{amountLabel}</td>
+                        <td className="whitespace-nowrap">{r.what}</td>
+                        <td className="whitespace-nowrap">
+                          <PaymentStatusBadge status={r.status as PaymentStatus} />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </section>
     </section>
