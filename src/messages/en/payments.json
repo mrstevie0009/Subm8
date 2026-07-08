@@ -160,7 +160,15 @@
       "newCardNote": "The card will be saved automatically after successful activation."
     }
   },
+  "payoutStatus": {
+  "requested": "Requested",
+  "processing": "Processing",
+  "in_transit": "In transit",
+  "paid": "Paid out",
+  "failed": "Failed"
+},
   "paymentsPage": {
+    "payouts": { "title": "Your payouts" },
     "budget": {
       "title": "Spending Budget",
       "cadence": {

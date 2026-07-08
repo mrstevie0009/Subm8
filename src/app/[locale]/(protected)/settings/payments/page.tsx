@@ -9,6 +9,7 @@ import { notFound } from "next/navigation";
 import PayoutButton from "@/components/PayoutButton";
 import PayoutBalances from "@/components/PayoutBalances";
 import PaymentStatusBadge, { type PaymentStatus } from "@/components/payments/PaymentStatusBadge";
+import PayoutStatusChip, { type PayoutStatus } from "@/components/payments/PayoutStatusChip";
 
 type Params = { locale: string };
 
@@ -84,6 +85,23 @@ export default async function PaymentsPage({ params }: { params: Promise<Params>
       User_Payment_payeeIdToUser: { select: { handle: true, displayName: true, avatarUrl: true } },
     },
     orderBy: { createdAt: "desc" },
+  });
+
+  // Auszahlungs-Anfragen der Domme (für die Status-Sichtbarkeit)
+  const payoutRequests = await prisma.payoutRequest.findMany({
+    where: { userId: me.id },
+    orderBy: { createdAt: "desc" },
+    take: 20,
+    select: {
+      id: true,
+      payoutCents: true,
+      currency: true,
+      status: true,
+      stripePayoutStatus: true,
+      failedReason: true,
+      createdAt: true,
+      processedAt: true,
+    },
   });
 
   // Earned (DB) - calculate available balance
@@ -226,6 +244,40 @@ export default async function PaymentsPage({ params }: { params: Promise<Params>
           {t("paymentsPage.balance.lockedHint")}
         </div>
       </div>
+
+      {/* Auszahlungen */}
+      {payoutRequests.length > 0 && (
+        <section className="px-4 py-6 border-t border-white/10">
+          <h2 className="text-[18px] font-semibold mb-3">
+            {t("paymentsPage.payouts.title")}
+          </h2>
+          <ul className="divide-y divide-white/10">
+            {payoutRequests.map((p) => (
+              <li key={p.id} className="py-3">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-[15px] font-semibold tabular-nums">
+                    {fmtMoney(p.payoutCents, p.currency, locale)}
+                  </span>
+                  <span className="text-[12px] text-white/50 whitespace-nowrap">
+                    {dtf.format(p.createdAt)}
+                  </span>
+                </div>
+                <div className="mt-2">
+                  <PayoutStatusChip
+                    status={p.status as PayoutStatus}
+                    stripeStatus={p.stripePayoutStatus}
+                  />
+                </div>
+                {p.status === "FAILED" && p.failedReason && (
+                  <div className="mt-1.5 text-[12px] text-red-300/80">
+                    {p.failedReason}
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {/* Active Autodrain */}
       <section className="px-4 py-6 border-b border-white/10">

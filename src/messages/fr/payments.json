@@ -160,7 +160,15 @@
       "newCardNote": "La carte sera enregistrée automatiquement après l'activation réussie."
     }
   },
+  "payoutStatus": {
+    "requested": "Demandé",
+    "processing": "En cours",
+    "in_transit": "En transit",
+    "paid": "Payé",
+    "failed": "Échoué"
+  },
   "paymentsPage": {
+    "payouts": { "title": "Vos retraits" },
     "budget": {
       "title": "Budget de dépenses",
       "cadence": {

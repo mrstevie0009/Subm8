@@ -160,7 +160,15 @@
       "newCardNote": "Die Karte wird nach erfolgreicher Aktivierung automatisch gespeichert."
     }
   },
+  "payoutStatus": {
+  "requested": "Angefordert",
+  "processing": "In Bearbeitung",
+  "in_transit": "Unterwegs",
+  "paid": "Ausgezahlt",
+  "failed": "Fehlgeschlagen"
+},
   "paymentsPage": {
+    "payouts": { "title": "Deine Auszahlungen" },
     "budget": {
       "title": "Spending Budget",
       "cadence": {
