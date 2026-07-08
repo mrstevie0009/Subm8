@@ -12,6 +12,7 @@ import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-
 
 import { useStepUp } from "@/hooks/useStepUp";
 import { StepUpDialog } from "@/components/StepUpDialog";
+import { computeTipBreakdown, TIP_TOPUP_RATE } from '@/lib/fees';
 
 type Props = {
   open: boolean;
@@ -29,7 +30,6 @@ type Props = {
 };
 
 const CURRENCY = 'EUR';
-const TOPUP_PCT = 0.10; // 10% on top
 
 // Stripe
 const STRIPE_PK = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? '';
@@ -708,9 +708,8 @@ export default function TipRequestAcceptModal({
       .catch(() => { setBudget(null); });
   }, [open]);
 
-  const platformFeeCents = Math.round(amountCents * TOPUP_PCT);
-  const totalCents = amountCents + platformFeeCents;
-  const pctLabel = Math.round(TOPUP_PCT * 100);
+  const { topupFeeCents: platformFeeCents, totalCents } = computeTipBreakdown(amountCents);
+  const pctLabel = Math.round(TIP_TOPUP_RATE * 100);
 
   const budgetWouldBlock = budget?.action === 'BLOCK' && budget?.isOver;
   const budgetWouldWarn = budget?.action === 'WARN' && budget?.isOver && !budgetWarnAck;

@@ -12,6 +12,7 @@ import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-
 
 import { useStepUp } from "@/hooks/useStepUp";
 import { StepUpDialog } from "@/components/StepUpDialog";
+import { computeTipBreakdown } from '@/lib/fees';
 
 export type AutoDrainCadence = 'DAILY' | 'WEEKLY' | 'MONTHLY';
 
@@ -34,7 +35,6 @@ type Props = {
 };
 
 const GIFT_ACK_KEY = 'subm8_gift_ack_v1';
-const PLATFORM_FEE_BPS_TOPUP = 1000; // 10% on top
 
 // Stripe
 const STRIPE_PK = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? '';
@@ -701,8 +701,7 @@ export default function AutoDrainRequestAcceptModal({
   const [stepUpRemoveOpen, setStepUpRemoveOpen] = React.useState(false);
   const pendingRemoveRef = React.useRef<(() => Promise<void>) | null>(null);
 
-  const topupFeeCents = Math.round(amountCents * (PLATFORM_FEE_BPS_TOPUP / 10_000));
-  const totalCents = amountCents + topupFeeCents;
+  const { topupFeeCents, totalCents } = computeTipBreakdown(amountCents);
 
   const budgetWouldBlock = budget?.action === 'BLOCK' && budget?.isOver;
   const budgetWouldWarn = budget?.action === 'WARN' && budget?.isOver && !budgetWarnAck;

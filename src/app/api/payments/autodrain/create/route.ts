@@ -4,13 +4,11 @@ import { prisma } from "@/lib/prisma";
 import { requireStepUp } from "@/lib/stepup";
 import { addCadence } from "@/lib/autodrain";
 import Stripe from "stripe";
+import { computeTipBreakdown } from '@/lib/fees';
 
 export const runtime = "nodejs";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {});
-
-// Platform Fee
-const PLATFORM_FEE_BPS_TOPUP = 1000; // 10% on top
 
 type Body = {
   toUserId?: string;
@@ -350,8 +348,7 @@ export async function POST(req: NextRequest) {
     metadata: { kind: "autodrain" },
   });
 
-  const topupFeeCents = Math.round(amountCents * (PLATFORM_FEE_BPS_TOPUP / 10_000));
-  const totalCents = amountCents + topupFeeCents;
+  const { totalCents } = computeTipBreakdown(amountCents);
 
   const price = await stripe.prices.create({
     currency: currency.toLowerCase(),
