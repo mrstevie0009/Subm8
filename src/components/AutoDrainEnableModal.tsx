@@ -635,6 +635,8 @@ function StripeSubscribeStep({
 }) {
   const stripe = useStripe();
   const elements = useElements();
+  // Recovery-State: 'pending' = Subscription wird noch aktiviert (kein Fehler)
+  const [activateState, setActivateState] = React.useState<'idle' | 'pending'>('idle');
 
   async function confirmStripe() {
     if (!stripe || !elements) throw new Error(paymentT('stripe.errors.notReady', { default: 'Stripe nicht bereit' }));
@@ -670,6 +672,7 @@ function StripeSubscribeStep({
   async function finalizeWithPoll() {
     const delays = [0, 400, 800, 1200, 2000];
     let last: string | null = null;
+    let stillPending = false;
 
     for (const d of delays) {
       if (d) await sleep(d);
@@ -681,32 +684,61 @@ function StripeSubscribeStep({
       });
       const j: unknown = await res.json().catch(() => null);
 
-      if (res.ok && isConfirmOk(j)) return;
+      if (res.ok && isConfirmOk(j)) return 'ok' as const;
 
       last = getErr(j) || getStatusString(j);
+
+      // 409 = Subscription noch nicht aktiv -> KEIN Fehler, sondern "läuft noch"
+      if (res.status === 409) {
+        stillPending = true;
+        continue;
+      }
 
       if (res.status === 400 || res.status === 401 || res.status === 403 || res.status === 404) {
         throw new Error(getErr(j) || t('errors.generic', { default: 'Etwas ist schiefgelaufen.' }));
       }
     }
 
+    // Timeout: wenn zuletzt "noch nicht aktiv" -> Recovery statt Fehler
+    if (stillPending) {
+      setActivateState('pending');
+      return 'pending' as const;
+    }
     throw new Error(last || t('errors.generic', { default: 'Etwas ist schiefgelaufen.' }));
   }
 
   async function handleEnable() {
-  try {
-    setSending(true);
-    setError(null);
-    await confirmStripe();
-    await finalizeWithPoll();
-    
-    onActivated();
-  } catch (e) {
-    setError(e instanceof Error ? e.message : t('errors.generic'));
-  } finally {
-    setSending(false);
+    try {
+      setSending(true);
+      setError(null);
+      setActivateState('idle');
+      await confirmStripe();
+      const result = await finalizeWithPoll();
+
+      // Nur bei echtem 'ok' auf Success weiterleiten.
+      // Bei 'pending' übernimmt der Recovery-Kasten – KEIN onActivated().
+      if (result === 'ok') onActivated();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t('errors.generic'));
+    } finally {
+      setSending(false);
+    }
   }
-}
+
+  async function recheckStatus() {
+    try {
+      setSending(true);
+      setError(null);
+      setActivateState('idle');
+      // Nur erneut pollen – KEIN neuer confirmStripe, keine Doppel-Einrichtung.
+      const result = await finalizeWithPoll();
+      if (result === 'ok') onActivated();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t('errors.generic'));
+    } finally {
+      setSending(false);
+    }
+  }
 
   return (
     <div className="mt-4 rounded-xl border border-white/10 bg-white/[.03] p-3">
@@ -763,6 +795,28 @@ function StripeSubscribeStep({
           : 'Die Karte wird nach erfolgreicher Aktivierung automatisch gespeichert.'}
       </div>
 
+      {activateState === 'pending' && (
+        <div className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/[.07] p-4 space-y-3">
+          <div className="text-[14px] font-medium text-amber-100">
+            {t('autodrainRecovery.stillActivating', { default: 'Dein AutoDrain wird gerade aktiviert.' })}
+          </div>
+          <div className="text-[12px] text-white/70">
+            {t('autodrainRecovery.takesAMoment', { default: 'Das kann einen Moment dauern. Es wird nichts doppelt eingerichtet — wir prüfen nur den Status.' })}
+          </div>
+          <button
+            type="button"
+            onClick={() => void recheckStatus()}
+            disabled={sending}
+            className="px-4 h-9 rounded-full bg-[var(--purple)] text-white text-[13px] disabled:opacity-60"
+          >
+            {sending
+              ? t('autodrainRecovery.checking', { default: 'Wird geprüft…' })
+              : t('autodrainRecovery.recheck', { default: 'Status erneut prüfen' })}
+          </button>
+        </div>
+      )}
+
+      {activateState !== 'pending' && (
       <div className="mt-4 flex items-center justify-end">
         <button
           type="button"
@@ -778,6 +832,7 @@ function StripeSubscribeStep({
           </span>
         </button>
       </div>
+      )}
 
       <div className="mt-2 text-[12px] text-white/55">{paymentT('stripe.secureHint', { default: 'Deine Zahlungsdaten werden sicher von Stripe verarbeitet.' })}</div>
     </div>

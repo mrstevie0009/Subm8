@@ -139,6 +139,12 @@
     "title": "Autodrain-Anfrage erstellen"
   },
   "autoDrainAcceptModal": {
+    "autodrainRecovery": {
+      "stillActivating": "Dein AutoDrain wird gerade aktiviert.",
+      "takesAMoment": "Das kann einen Moment dauern. Es wird nichts doppelt eingerichtet — wir prüfen nur den Status.",
+      "recheck": "Status erneut prüfen",
+      "checking": "Wird geprüft…"
+    },
     "cancelAnytime": "Du kannst AutoDrain jederzeit in deinen Zahlungen wieder beenden.",
     "acknowledge": "Ich verstehe, dass Geschenke freiwillig und endgültig sind. Es werden keine Leistungen zugesichert.",
     "actions": { "cancel": "Abbrechen", "closeAria": "Schließen", "enable": "Autodrain aktivieren", "enabling": "Aktiviere…", "back": "Zurück", "cards": "Karten" },

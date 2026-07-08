@@ -139,6 +139,12 @@
     "title": "Create AutoDrain request"
   },
   "autoDrainAcceptModal": {
+    "autodrainRecovery": {
+      "stillActivating": "Your AutoDrain is being activated.",
+      "takesAMoment": "This can take a moment. Nothing is set up twice — we're just checking the status.",
+      "recheck": "Check status again",
+      "checking": "Checking…"
+    },
     "cancelAnytime": "You can cancel AutoDrain at any time in your payments.",
     "acknowledge": "I understand that gifts are voluntary and final. No services are implied.",
     "actions": { "cancel": "Cancel", "closeAria": "Close", "enable": "Enable AutoDrain", "enabling": "Enabling…", "back": "Back", "cards": "Cards" },

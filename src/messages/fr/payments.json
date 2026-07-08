@@ -139,6 +139,12 @@
     "title": "Créer une demande AutoDrain"
   },
   "autoDrainAcceptModal": {
+    "autodrainRecovery": {
+      "stillActivating": "Votre AutoDrain est en cours d'activation.",
+      "takesAMoment": "Cela peut prendre un moment. Rien n'est configuré deux fois — nous vérifions simplement le statut.",
+      "recheck": "Vérifier le statut à nouveau",
+      "checking": "Vérification…"
+    },
     "cancelAnytime": "Vous pouvez annuler AutoDrain à tout moment dans vos paiements.",
     "acknowledge": "Je comprends que les cadeaux sont volontaires et définitifs. Aucun service n'est impliqué.",
     "actions": { "cancel": "Annuler", "closeAria": "Fermer", "enable": "Activer AutoDrain", "enabling": "Activation…", "back": "Retour", "cards": "Cartes" },
