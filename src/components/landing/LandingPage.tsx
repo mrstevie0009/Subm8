@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useLocale, useTranslations } from 'next-intl';
 import LegalModal, { type LegalTab } from './LegalModal';
 import './landing.css';
@@ -130,7 +131,7 @@ export default function LandingPage() {
       <nav className="lp-nav">
         <div className="lp-wrap lp-nav-in">
           <div className="lp-logo">
-            Subm<b>8</b>
+            <Image src="/Sub m8.png" alt="Subm8" width={120} height={32} priority className="lp-logo-img" />
           </div>
           <div className="lp-toggle" role="tablist" aria-label={t('toggle.aria')}>
             <span className="lp-pill" aria-hidden="true" />
@@ -444,7 +445,7 @@ export default function LandingPage() {
           <div className="lp-foot-in">
             <div className="lp-foot-brand">
               <div className="lp-logo">
-                Subm<b>8</b>
+                <Image src="/logo-bigger.png" alt="Subm8" width={120} height={32} className="lp-logo-img" />
               </div>
               <p>{t('footer.tagline')}</p>
             </div>

@@ -146,11 +146,11 @@
 .lp-final p{font-size:18px;color:var(--lp-muted);max-width:500px;margin:0 auto 32px}
 
 .lp-footer{position:relative;z-index:1;border-top:1px solid var(--lp-border);padding:44px 0 34px}
-.lp-foot-in{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:30px}
-.lp-foot-brand{max-width:270px}
+.lp-foot-in{display:flex;flex-direction:column;align-items:center;gap:36px}
+.lp-foot-brand{max-width:420px;text-align:center;display:flex;flex-direction:column;align-items:center}
 .lp-foot-brand .lp-logo{margin-bottom:12px}
 .lp-foot-brand p{font-size:13.5px;color:var(--lp-muted-2)}
-.lp-foot-cols{display:flex;gap:60px;flex-wrap:wrap}
+.lp-foot-cols{display:flex;gap:60px;flex-wrap:wrap;justify-content:center}
 .lp-foot-col h4{font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--lp-muted-2);margin-bottom:14px}
 .lp-foot-col a{display:block;font-size:14px;color:var(--lp-muted);margin-bottom:9px;transition:color .2s;cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none}
 .lp-foot-col a:focus,.lp-foot-col a:active{color:var(--lp-muted);outline:none}
