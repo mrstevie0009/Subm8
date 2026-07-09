@@ -13,7 +13,7 @@ export default async function ProtectedLayout({ children, params }: Props) {
   const session = await auth();
 
   if (!session?.user?.id) {
-    redirect(`/${locale}/signin`);
+    redirect(`/${locale}/welcome`);
   }
 
   return <PageChrome locale={locale}>{children}</PageChrome>;

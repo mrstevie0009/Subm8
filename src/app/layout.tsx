@@ -1,6 +1,15 @@
 // src/app/layout.tsx
 import './globals.css';
 import type { Metadata } from 'next';
+import { Inter, Fraunces } from 'next/font/google';        
+
+const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' });  
+const fraunces = Fraunces({                                                                
+  subsets: ['latin'],
+  variable: '--font-fraunces',
+  display: 'swap',
+  style: ['normal', 'italic'],
+});
 
 export const metadata: Metadata = {
   title: 'Subm8',
@@ -16,7 +25,7 @@ export const metadata: Metadata = {
     type: 'website',
     images: [
       {
-        url: '/og-image.png',         // später gern auf /og-image.png ändern
+        url: '/og-image.png',
         width: 500,
         height: 500,
         alt: 'Subm8 Logo',
@@ -40,7 +49,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${inter.variable} ${fraunces.variable}`}>   {/* ← NEU: className */}
       <body className="bg-black text-white min-h-[100svh]">
         {children}
       </body>

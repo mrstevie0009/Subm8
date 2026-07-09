@@ -1,0 +1,82 @@
+{
+  "landing": {
+    "toggle": { "aria": "Ansicht wählen", "sub": "Ich bin Sub", "domme": "Ich bin Domme" },
+    "nav": { "signin": "Anmelden", "signup": "Registrieren" },
+    "common": { "week": "Woche", "month": "Monat", "paid": "Bezahlt" },
+    "hero": {
+      "eyebrow": { "sub": "Financial Domination — deine Hingabe", "domme": "Financial Domination — deine Herrschaft" },
+      "title": { "sub": "Diene. <span class=\"lp-em\">Bedingungslos.</span>", "domme": "Herrsche. <span class=\"lp-em\">Verdiene.</span>" },
+      "sub": {
+        "sub": "Finde die Herrin, die dich fordert. Zeig deine Hingabe in echter Währung — mit voller Kostenkontrolle, diskret und sicher.",
+        "domme": "Bau deine Präsenz auf, setz deine Regeln und lass Hingabe fließen — mit voller Kontrolle über jeden Euro."
+      },
+      "cta": { "sub": "Als Sub registrieren", "domme": "Als Domme registrieren" },
+      "trust": "Diskret · Altersgeprüft · Sichere Zahlungen über Stripe"
+    },
+    "phones": {
+      "sub": {
+        "back": { "in": "Auf die Knie. Zeig mir, was ich dir wert bin. 👑", "out": "Ja, Herrin. Sofort.", "lbl": "AutoDrain aktiv", "paid": "Nächste Abbuchung Mo." },
+        "main": { "in1": "Braver Sub. Dafür gibt's ein Bild. 🔥", "out": "Danke, Herrin. Darf ich mehr geben?", "in2": "Immer.", "lbl": "Tribut gesendet" }
+      },
+      "domme": {
+        "back": { "in": "Herrin, darf ich Ihr Ownership-Profil tragen? 🙏", "out": "Du hast es dir verdient. Angenommen.", "lbl": "Ownership vergeben", "paid": "Profil trägt deine Marke" },
+        "main": { "in1": "Ich unterschreibe den Vertrag, Herrin.", "out": "Gut. 200 € monatlich. Bindend.", "in2": "Danke, Herrin. 🖤", "lbl": "Debt-Contract aktiv", "paid": "Unterzeichnet · bindend" }
+      }
+    },
+    "marquee": { "tributes": "Tributes", "autodrain": "AutoDrain", "ownership": "Ownership", "contracts": "Verträge", "premium": "Premium", "chats": "Private Chats", "communities": "Communities" },
+    "highlight": {
+      "eyebrow": { "sub": "Warum Subs Subm8 wählen", "domme": "Warum Dommes Subm8 wählen" },
+      "title": { "sub": "Deine Hingabe, <span class=\"lp-em\">deine Grenzen</span>", "domme": "Deine Regeln, <span class=\"lp-em\">dein Einkommen</span>" },
+      "sub": {
+        "a": { "k": "Budget", "h": "Kostenkontrolle", "p": "Setz dir Grenzen — pro Woche oder Monat. Subm8 warnt und blockt, bevor du zu weit gehst." },
+        "b": { "k": "100%", "h": "Diskret", "p": "Kein Klarname nötig. Deine Identität bleibt geschützt, deine Hingabe privat." },
+        "c": { "k": "Klar", "h": "Jede Zahlung sichtbar", "p": "Volle Historie mit Status: gesendet, in Bearbeitung, bezahlt. Nie im Unklaren." }
+      },
+      "domme": {
+        "a": { "k": "100%", "h": "Voller Tribut", "p": "Du bekommst den vollen Basisbetrag. Die Plattformgebühr zahlt der Sub obendrauf." },
+        "b": { "k": "Auto", "h": "Wiederkehrend verdienen", "p": "AutoDrain bucht automatisch ab — täglich, wöchentlich, monatlich. Passives Einkommen." },
+        "c": { "k": "Direkt", "h": "Auszahlung aufs Konto", "p": "Transparenter Auszahlungs-Status von angefordert bis ausgezahlt. Immer nachvollziehbar." }
+      }
+    },
+    "features": {
+      "eyebrow": "Was Subm8 bietet",
+      "title": "Alles für die <span class=\"lp-em\">Machtdynamik</span>",
+      "sub": { "sub": "Werkzeuge, die deine Hingabe echt und sicher machen.", "domme": "Werkzeuge, die echte Kontrolle und echtes Einkommen möglich machen." },
+      "items": {
+        "tributes": { "h": "Tributes & Tips", "sub": "Zeig deine Hingabe mit einem direkten Geldgeschenk — ein Klick, sofort überwiesen.", "domme": "Empfange direkte Geldgeschenke mit klarer Aufschlüsselung — der volle Betrag gehört dir." },
+        "autodrain": { "h": "AutoDrain", "sub": "Gib automatisch — täglich, wöchentlich, monatlich. Jederzeit kündbar, mit Kostenübersicht.", "domme": "Wiederkehrende Tributes, die automatisch fließen. Passives, planbares Einkommen." },
+        "ownership": { "h": "Ownership", "sub": "Trag das Profil, das deine Herrin für dich gestaltet — sichtbar für alle als Zeichen der Zugehörigkeit.", "domme": "Gestalte das Profil deines Subs. Nimmt er an, trägt er deine Marke — öffentlich sichtbar." },
+        "contracts": { "h": "Verträge", "sub": "Verbindliche Debt- & Blackmail-Contracts machen deine Unterwerfung ernst und nachvollziehbar.", "domme": "Setz verbindliche Debt- & Blackmail-Verträge auf — die Machtdynamik in klaren Regeln." },
+        "chats": { "h": "Private Chats", "sub": "Direkter Draht zu deiner Herrin — mit Tip-Anfragen und Medien direkt im Verlauf.", "domme": "Halt den direkten Draht zu deinen Subs — mit Tip-Anfragen und Medien im Chat." },
+        "communities": { "h": "Communities", "sub": "Tritt geschlossenen Räumen bei, finde Gleichgesinnte und lern von erfahrenen Subs.", "domme": "Gründe eigene Communities — nur für Dommes oder gemischt. Bau deine Reichweite." },
+        "premium": { "h": "Premium-Badges", "sub": "Zeig deinen Status mit exklusiven Abzeichen und heb dich von anderen Subs ab.", "domme": "Exklusive Abzeichen und Vorteile, die deinen Premium-Status auf einen Blick zeigen." },
+        "banners": { "h": "Animierte Banner", "sub": "Setz dein Profil mit GIF oder Video in Szene — Bewegung, die auffällt.", "domme": "Präsentier dich mit GIF- oder Video-Banner statt statischem Bild — fall im Feed auf." },
+        "safe": { "h": "Diskret & sicher", "sub": "Altersverifizierung, sichere Zahlungen, kein Klarname. Deine Privatsphäre bleibt deine.", "domme": "Altersverifizierung und sichere Stripe-Zahlungen schützen dich und deine Einnahmen." }
+      }
+    },
+    "how": {
+      "eyebrow": "In drei Schritten",
+      "title": "So <span class=\"lp-em\">startest</span> du",
+      "s1": { "h": "Registrieren & verifizieren", "p": "Kostenlos anmelden, Rolle wählen, Alter bestätigen. Diskret und in Minuten erledigt." },
+      "s2": { "h": "Verbinden", "sub": "Entdecke Dommes, starte einen privaten Chat und finde deine Herrin.", "domme": "Werde entdeckt, empfange Nachrichten und bau deine Sub-Basis auf." },
+      "s3": { "h_sub": "Hingabe leben", "h_domme": "Herrschaft leben", "sub": "Tributes senden, AutoDrain einrichten, Ownership tragen — sicher bezahlt.", "domme": "Tributes empfangen, Verträge setzen, auszahlen lassen — alles nachvollziehbar." }
+    },
+    "safety": {
+      "eyebrow": "Vertrauen zuerst",
+      "title": "Gebaut auf <span class=\"lp-em\">Sicherheit</span>",
+      "sub": "Findom lebt von Vertrauen. Deshalb ist Subm8 von Grund auf sicher gebaut.",
+      "chips": { "age": "Altersverifizierung", "stripe": "Zahlungen über Stripe", "anon": "Kein Klarname nötig", "budget": "Budget-Kontrolle", "payouts": "Transparente Auszahlungen", "history": "Volle Transaktions-Historie" }
+    },
+    "final": {
+      "title": { "sub": "Bereit, <span class=\"lp-em\">zu dienen</span>?", "domme": "Bereit, <span class=\"lp-em\">zu herrschen</span>?" },
+      "p": { "sub": "Finde deine Herrin und zeig deine Hingabe. Kostenlos starten, in Minuten.", "domme": "Bau dein Einkommen mit echter Kontrolle. Kostenlos starten, in Minuten." }
+    },
+    "footer": {
+      "tagline": "Die Findom-Plattform für den deutschsprachigen Raum. Diskret, sicher, kompromisslos.",
+      "platform": "Plattform", "legal": "Rechtliches", "account": "Konto",
+      "terms": "AGB", "privacy": "Datenschutz", "imprint": "Impressum", "age": "Altersverifizierung",
+      "copyright": "© 2026 Subm8. Alle Rechte vorbehalten.",
+      "adults": "Nur für Erwachsene. Inhalte ab 18 Jahren."
+    }
+  }
+}

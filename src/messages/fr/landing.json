@@ -1,0 +1,82 @@
+{
+  "landing": {
+    "toggle": { "aria": "Choisir la vue", "sub": "Je suis Sub", "domme": "Je suis Domme" },
+    "nav": { "signin": "Se connecter", "signup": "S'inscrire" },
+    "common": { "week": "semaine", "month": "mois", "paid": "Payé" },
+    "hero": {
+      "eyebrow": { "sub": "Domination financière — ta dévotion", "domme": "Domination financière — ton règne" },
+      "title": { "sub": "Sers. <span class=\"lp-em\">Sans condition.</span>", "domme": "Règne. <span class=\"lp-em\">Gagne.</span>" },
+      "sub": {
+        "sub": "Trouve la Maîtresse qui exige plus de toi. Montre ta dévotion en monnaie réelle — avec un contrôle total des dépenses, en toute discrétion et sécurité.",
+        "domme": "Construis ta présence, pose tes règles et laisse couler la dévotion — avec un contrôle total sur chaque euro."
+      },
+      "cta": { "sub": "S'inscrire en tant que Sub", "domme": "S'inscrire en tant que Domme" },
+      "trust": "Discret · Âge vérifié · Paiements sécurisés via Stripe"
+    },
+    "phones": {
+      "sub": {
+        "back": { "in": "À genoux. Montre-moi ce que je vaux pour toi. 👑", "out": "Oui, Maîtresse. Tout de suite.", "lbl": "AutoDrain actif", "paid": "Prochain prélèvement lun." },
+        "main": { "in1": "Bon Sub. Pour ça, une photo. 🔥", "out": "Merci, Maîtresse. Puis-je donner plus ?", "in2": "Toujours.", "lbl": "Tribut envoyé" }
+      },
+      "domme": {
+        "back": { "in": "Maîtresse, puis-je porter votre profil Ownership ? 🙏", "out": "Tu l'as mérité. Accepté.", "lbl": "Ownership accordé", "paid": "Le profil porte ta marque" },
+        "main": { "in1": "Je signe le contrat, Maîtresse.", "out": "Bien. 200 € par mois. Contraignant.", "in2": "Merci, Maîtresse. 🖤", "lbl": "Contrat de dette actif", "paid": "Signé · contraignant" }
+      }
+    },
+    "marquee": { "tributes": "Tributs", "autodrain": "AutoDrain", "ownership": "Ownership", "contracts": "Contrats", "premium": "Premium", "chats": "Chats privés", "communities": "Communautés" },
+    "highlight": {
+      "eyebrow": { "sub": "Pourquoi les Subs choisissent Subm8", "domme": "Pourquoi les Dommes choisissent Subm8" },
+      "title": { "sub": "Ta dévotion, <span class=\"lp-em\">tes limites</span>", "domme": "Tes règles, <span class=\"lp-em\">tes revenus</span>" },
+      "sub": {
+        "a": { "k": "Budget", "h": "Contrôle des dépenses", "p": "Fixe tes limites — par semaine ou par mois. Subm8 alerte et bloque avant que tu ailles trop loin." },
+        "b": { "k": "100%", "h": "Discret", "p": "Aucun vrai nom requis. Ton identité reste protégée, ta dévotion privée." },
+        "c": { "k": "Clair", "h": "Chaque paiement visible", "p": "Historique complet avec statut : envoyé, en cours, payé. Jamais dans le flou." }
+      },
+      "domme": {
+        "a": { "k": "100%", "h": "Tribut intégral", "p": "Tu reçois le montant de base complet. Les frais de plateforme sont payés en plus par le Sub." },
+        "b": { "k": "Auto", "h": "Gagner de façon récurrente", "p": "AutoDrain prélève automatiquement — quotidien, hebdo, mensuel. Revenu passif." },
+        "c": { "k": "Direct", "h": "Versement sur ton compte", "p": "Statut de versement transparent, de la demande au paiement. Toujours traçable." }
+      }
+    },
+    "features": {
+      "eyebrow": "Ce que propose Subm8",
+      "title": "Tout pour la <span class=\"lp-em\">dynamique de pouvoir</span>",
+      "sub": { "sub": "Des outils qui rendent ta dévotion réelle et sûre.", "domme": "Des outils qui rendent possibles un vrai contrôle et de vrais revenus." },
+      "items": {
+        "tributes": { "h": "Tributs & pourboires", "sub": "Montre ta dévotion par un don d'argent direct — un clic, envoyé aussitôt.", "domme": "Reçois des dons directs avec un détail clair — le montant complet est à toi." },
+        "autodrain": { "h": "AutoDrain", "sub": "Donne automatiquement — quotidien, hebdo, mensuel. Résiliable à tout moment, avec aperçu des coûts.", "domme": "Des tributs récurrents qui coulent d'eux-mêmes. Un revenu passif et prévisible." },
+        "ownership": { "h": "Ownership", "sub": "Porte le profil que ta Maîtresse conçoit pour toi — visible par tous, signe d'appartenance.", "domme": "Conçois le profil de ton Sub. S'il accepte, il porte ta marque — visible publiquement." },
+        "contracts": { "h": "Contrats", "sub": "Des contrats contraignants de Dette et de Blackmail rendent ta soumission sérieuse et traçable.", "domme": "Établis des contrats contraignants de Dette et de Blackmail — la dynamique de pouvoir en règles claires." },
+        "chats": { "h": "Chats privés", "sub": "Un lien direct avec ta Maîtresse — avec demandes de pourboire et médias dans la conversation.", "domme": "Garde le lien direct avec tes Subs — avec demandes de pourboire et médias dans le chat." },
+        "communities": { "h": "Communautés", "sub": "Rejoins des salons fermés, trouve des personnes qui te ressemblent et apprends de Subs expérimentés.", "domme": "Crée tes propres communautés — Dommes uniquement ou mixtes. Développe ta portée." },
+        "premium": { "h": "Badges Premium", "sub": "Affiche ton statut avec des badges exclusifs et démarque-toi des autres Subs.", "domme": "Des badges et avantages exclusifs qui montrent ton statut premium d'un coup d'œil." },
+        "banners": { "h": "Bannières animées", "sub": "Mets ton profil en scène avec un GIF ou une vidéo — un mouvement qui attire l'œil.", "domme": "Présente-toi avec une bannière GIF ou vidéo plutôt qu'une image fixe — démarque-toi dans le feed." },
+        "safe": { "h": "Discret & sécurisé", "sub": "Vérification d'âge, paiements sécurisés, aucun vrai nom. Ta vie privée reste la tienne.", "domme": "La vérification d'âge et les paiements sécurisés Stripe te protègent, toi et tes revenus." }
+      }
+    },
+    "how": {
+      "eyebrow": "En trois étapes",
+      "title": "Comment tu <span class=\"lp-em\">commences</span>",
+      "s1": { "h": "Inscris-toi & vérifie", "p": "Inscription gratuite, choisis ton rôle, confirme ton âge. Discret et fait en quelques minutes." },
+      "s2": { "h": "Connecte-toi", "sub": "Découvre des Dommes, lance un chat privé et trouve ta Maîtresse.", "domme": "Fais-toi découvrir, reçois des messages et construis ta base de Subs." },
+      "s3": { "h_sub": "Vis ta dévotion", "h_domme": "Vis ton règne", "sub": "Envoie des tributs, configure AutoDrain, porte l'Ownership — payé en sécurité.", "domme": "Reçois des tributs, établis des contrats, fais-toi verser tes gains — tout est traçable." }
+    },
+    "safety": {
+      "eyebrow": "La confiance d'abord",
+      "title": "Bâti sur la <span class=\"lp-em\">sécurité</span>",
+      "sub": "Le Findom vit de confiance. C'est pourquoi Subm8 est sécurisé dès sa base.",
+      "chips": { "age": "Vérification d'âge", "stripe": "Paiements via Stripe", "anon": "Aucun vrai nom requis", "budget": "Contrôle du budget", "payouts": "Versements transparents", "history": "Historique complet des transactions" }
+    },
+    "final": {
+      "title": { "sub": "Prêt à <span class=\"lp-em\">servir</span> ?", "domme": "Prête à <span class=\"lp-em\">régner</span> ?" },
+      "p": { "sub": "Trouve ta Maîtresse et montre ta dévotion. Commence gratuitement, en quelques minutes.", "domme": "Construis tes revenus avec un vrai contrôle. Commence gratuitement, en quelques minutes." }
+    },
+    "footer": {
+      "tagline": "La plateforme Findom pour l'espace germanophone. Discrète, sécurisée, sans compromis.",
+      "platform": "Plateforme", "legal": "Mentions légales", "account": "Compte",
+      "terms": "CGU", "privacy": "Confidentialité", "imprint": "Mentions légales", "age": "Vérification d'âge",
+      "copyright": "© 2026 Subm8. Tous droits réservés.",
+      "adults": "Réservé aux adultes. Contenu pour les 18 ans et plus."
+    }
+  }
+}

@@ -13,9 +13,9 @@ const SUPPORTED_LOCALES = new Set(
 const DEFAULT_LOCALE = (nextIntlConfig.defaultLocale ?? 'en').toLowerCase();
 
 // Öffentliche Auth-Routen (lokalisiert + nicht-lokalisiert)
-const AUTH_PATHS_NON_LOCALIZED = new Set(['/signin', '/signup', '/signin-bridge']);
+const AUTH_PATHS_NON_LOCALIZED = new Set(['/signin', '/signup', '/signin-bridge', '/welcome']);
 const AUTH_RE_LOCALIZED =
-  /^\/[A-Za-z-]{2,5}(?:-[A-Za-z]{2})?\/(signin|signup|signin-bridge)\/?$/i;
+  /^\/[A-Za-z-]{2,5}(?:-[A-Za-z]{2})?\/(signin|signup|signin-bridge|welcome)\/?$/i;
 
 // 18+ geschützte Pfade NACH dem Locale-Segment
 const PROTECTED_PREFIXES = ['chat', 'messages', 'images']; // ggf. erweitern
@@ -106,7 +106,7 @@ export default async function middleware(req: NextRequest) {
   // 4) Nicht eingeloggt → alles sperren außer Auth-Seiten
   if (!token && !onAuthPage) {
     const locale = pathname.split('/').filter(Boolean)[0]!.toLowerCase();
-    const url = new URL(`/${locale}/signin`, req.url);
+    const url = new URL(`/${locale}/welcome`, req.url);
     url.searchParams.set('callbackUrl', `${pathname}${search || ''}`);
     return NextResponse.redirect(url);
   }
