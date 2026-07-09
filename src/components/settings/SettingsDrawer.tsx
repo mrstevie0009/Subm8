@@ -356,16 +356,16 @@ async function smartSignOut() {
     const j = await r.json().catch(() => null);
 
     if (!r.ok || !j?.ok) {
-      await signOut({ callbackUrl: `/${locale}` });
+      await signOut({ callbackUrl: `/${locale}/welcome` });
       return;
     }
     if (j.fullSignOut) {
-      await signOut({ callbackUrl: `/${locale}` });
+      await signOut({ callbackUrl: `/${locale}/welcome` });
     } else {
       if (typeof window !== 'undefined') window.location.reload();
     }
   } catch {
-    await signOut({ callbackUrl: `/${locale}` });
+    await signOut({ callbackUrl: `/${locale}/welcome` });
   }
 }
 

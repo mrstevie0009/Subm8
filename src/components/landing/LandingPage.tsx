@@ -10,7 +10,7 @@ type Mode = 'sub' | 'domme';
 
 export default function LandingPage() {
   const locale = useLocale();
-  const t = useTranslations('landing');
+  const t = useTranslations('landing.landing');
 
   const [mode, setMode] = React.useState<Mode>('sub');
   const [wipeTo, setWipeTo] = React.useState<Mode | null>(null);

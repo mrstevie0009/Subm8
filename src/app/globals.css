@@ -212,3 +212,14 @@ html.s8-splash .signin-splash {
     rgba(0,0,0,0.7) 100%
   );
 }
+
+html:has(body[data-scope="auth"]),
+body[data-scope="auth"] {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+html:has(body[data-scope="auth"])::-webkit-scrollbar,
+body[data-scope="auth"]::-webkit-scrollbar {
+  display: none;
+}

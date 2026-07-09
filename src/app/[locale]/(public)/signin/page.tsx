@@ -2,19 +2,14 @@
 'use client';
 
 import * as React from 'react';
-import { createPortal } from 'react-dom';
 import { signIn } from 'next-auth/react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import Link from 'next/link';
 import Image from 'next/image';
-import dynamic from 'next/dynamic';
 import { startAuthentication } from '@simplewebauthn/browser';
 
-// Lottie nur clientseitig laden
-const Lottie = dynamic(() => import('lottie-react'), { ssr: false });
-// JSON direkt importieren (stelle sicher, dass "resolveJsonModule": true in tsconfig ist)
-import heartThrow from '@/lotties/heart-throw-Lottie.json';
+
 
 // shadcn/ui
 import { Input } from '@/components/ui/input';
@@ -75,10 +70,6 @@ export default function SignInPage() {
   const [showBruteModal, setShowBruteModal] = React.useState(false);
   const [bruteInfo, setBruteInfo] = React.useState<{ ok?: boolean; reason?: 'temp' | 'perm'; until?: string | null } | null>(null);
 
-  // ---- Splash-Portal-Ziel finden (SSR-Splash im Layout) ----
-  const [splashHost, setSplashHost] = React.useState<HTMLElement | null>(null);
-  const [mounted, setMounted] = React.useState(false);
-
   function mapAuthError(code?: string | null) {
     if (!code) return null;
 
@@ -102,29 +93,6 @@ export default function SignInPage() {
 
     return code;
   }
-
-  React.useEffect(() => {
-    setMounted(true);
-    if (typeof window === 'undefined') return;
-
-    const isAuthScope = document.body?.dataset?.scope === 'auth';
-    const pathOk = /\/[^/]+\/(signin|signup)(\?|$)/.test(location.pathname);
-    const el = document.getElementById('boot-splash-lottie') as HTMLElement | null;
-
-    // Harte Guards
-    if (!isAuthScope || !pathOk || !el) {
-      setSplashHost(null);
-      return;
-    }
-    setSplashHost(el);
-
-    return () => setSplashHost(null);
-  }, []);
-
-  // ---- Event senden: Layout blendet SSR-Splash aus ----
-  const signalSplashDone = React.useCallback(() => {
-    window.dispatchEvent(new Event('boot:splash-done'));
-  }, []);
 
   function resetAll() {
     setIdentifier('');
@@ -324,24 +292,10 @@ export default function SignInPage() {
 
   return (
     <div
-      className="relative grid min-h-[100svh] place-items-center px-3 py-4
-                 bg-[#0b0b0c] overflow-hidden rounded-none md:rounded-2xl
-                 [background-image:radial-gradient(00%_40%_at_50%_0%,rgba(255,255,255,.08),transparent_60%)]"
+      className="auth-page relative grid min-h-[100svh] place-items-center px-3 py-4
+                bg-[#0b0b0c] rounded-none md:rounded-2xl"
     >
-      {/* Lottie wird in den SSR-Splash (Layout) portaliert */}
-      {mounted && splashHost &&
-        createPortal(
-          <Lottie
-            key="boot-splash"
-            animationData={heartThrow as unknown as object}
-            loop={false}
-            autoplay
-            onComplete={signalSplashDone}
-            style={{ width: '100%', height: '100%' }}
-          />,
-          splashHost
-        )
-      }
+
 
       {/* dekorative Blobs */}
       <div className="pointer-events-none absolute -top-24 -left-24 h-48 w-48 md:h-72 md:w-72 rounded-full bg-purple-500/20 blur-3xl hidden sm:block" />
@@ -349,12 +303,11 @@ export default function SignInPage() {
 
       {/* --- ab hier DEINE bestehende Sign-in Card --- */}
       <div className="w-full max-w-[380px] sm:max-w-md">
-        <Card className="rounded-2xl bg-[rgba(162,89,255,0.12)] backdrop-blur-xl ring-1 ring-white/20 shadow-[0_8px_30px_rgba(0,0,0,.35)] overflow-hidden">
+        <Card className="rounded-2xl bg-[rgba(162,89,255,0.12)] backdrop-blur-xl ring-1 ring-white/20 shadow-[0_8px_30px_rgba(0,0,0,.35)] overflow-visible">
           <CardContent
             className="p-5 sm:p-6 md:p-8 pt-3 sm:pt-1 md:pt-2
-                       bg-[rgba(0,0,0,0.7)]
-                       overflow-visible
-                       sm:max-h-[92svh] sm:overflow-auto sm:overscroll-contain"
+                      bg-[rgba(0,0,0,0.7)]
+                      overflow-visible"
           >
             <div className="text-center mb-6 sm:mb-8">
               <div className="flex justify-center mb-1 sm:mb-2">
@@ -371,14 +324,21 @@ export default function SignInPage() {
                 {t('welcome', { brand: tc('brand.name') })}
               </p>
               <div className="mb-1 sm:mb-2">
-                <Image
-                  src="/Sub m8.png"
-                  alt={`${tc('brand.name')} logo`}
-                  width={240}
-                  height={80}
-                  priority
-                  className="mx-auto w-[180px] sm:w-[220px] md:w-[240px] h-auto"
-                />
+                <Link
+                  href={`/${locale}/welcome`}
+                  aria-label="Go to Subm8 welcome page"
+                  prefetch={false}
+                  className="inline-block"
+                >
+                  <Image
+                    src="/Sub m8.png"
+                    alt={`${tc('brand.name')} logo`}
+                    width={240}
+                    height={80}
+                    priority
+                    className="mx-auto w-[180px] sm:w-[220px] md:w-[240px] h-auto hover:opacity-90 transition-opacity"
+                  />
+                </Link>
               </div>
               <p className="text-white/70 text-[13px] sm:text-sm">{t('title')}</p>
             </div>

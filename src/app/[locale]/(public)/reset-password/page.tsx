@@ -2,22 +2,17 @@
 
 import * as React from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useLocale, useTranslations } from 'next-intl'; // ✅ NEU
-import dynamic from 'next/dynamic';
+import { useLocale, useTranslations } from 'next-intl'; 
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
-import heartThrow from '@/lotties/heart-throw-Lottie.json';
-import { createPortal } from 'react-dom';
 import Image from 'next/image';
-
-const Lottie = dynamic(() => import('lottie-react'), { ssr: false });
 
 export default function ResetPasswordPage() {
   const router = useRouter();
   const sp = useSearchParams();
   const locale = useLocale();
 
-  const t = useTranslations('auth.auth.resetPage'); // ✅ NEU
+  const t = useTranslations('auth.auth.resetPage');
   const tc = useTranslations('common');
 
   const token = sp.get('token') ?? '';
@@ -26,24 +21,6 @@ export default function ResetPasswordPage() {
   const [busy, setBusy] = React.useState(false);
   const [done, setDone] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
-
-  const [splashHost, setSplashHost] = React.useState<HTMLElement | null>(null);
-  const [mounted, setMounted] = React.useState(false);
-
-  React.useEffect(() => {
-    setMounted(true);
-    if (typeof window === 'undefined') return;
-    const el = document.getElementById('boot-splash-lottie') as HTMLElement | null;
-    setSplashHost(el ?? null);
-    const tmo = window.setTimeout(() => {
-      window.dispatchEvent(new Event('boot:splash-done'));
-    }, 2500);
-    return () => window.clearTimeout(tmo);
-  }, []);
-
-  const signalSplashDone = React.useCallback(() => {
-    window.dispatchEvent(new Event('boot:splash-done'));
-  }, []);
 
   const minLen = 10;
   const tooShort = pw.length > 0 && pw.length < minLen;
@@ -83,20 +60,6 @@ export default function ResetPasswordPage() {
 
   return (
     <div className="relative grid place-items-center min-h-[100svh] bg-[#0b0b0c] px-3">
-      {mounted && splashHost &&
-        createPortal(
-          <Lottie
-            key="boot-splash"
-            animationData={heartThrow as unknown as object}
-            loop={false}
-            autoplay
-            onComplete={signalSplashDone}
-            style={{ width: '100%', height: '100%' }}
-          />,
-          splashHost
-        )
-      }
-
       <Card className="max-w-md w-full bg-[rgba(162,89,255,0.12)] backdrop-blur-xl ring-1 ring-white/20">
         <CardContent className="p-6">
             {/* Logo-Header – gleiches Styling wie auf Sign-in */}

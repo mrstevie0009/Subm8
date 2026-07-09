@@ -31,6 +31,7 @@ export default async function RootLayout({ children, params }: LayoutProps) {
     const paymentFile      = (await import(`../../messages/${locale}/payments.json`)).default;
     const ownershipFile    = (await import(`../../messages/${locale}/ownership.json`)).default;
     const monetizationFile = (await import(`../../messages/${locale}/monetization.json`)).default;
+    const landingFile = (await import(`../../messages/${locale}/landing.json`)).default;
 
     messages = {
       post: postFile.post,
@@ -50,6 +51,7 @@ export default async function RootLayout({ children, params }: LayoutProps) {
       payment: paymentFile,
       ownership: ownershipFile,
       monetization: monetizationFile.monetizationPage,
+      landing: landingFile,
     };
   } catch {
     notFound();

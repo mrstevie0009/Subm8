@@ -49,7 +49,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${inter.variable} ${fraunces.variable}`}>   {/* ← NEU: className */}
+    <html lang="en" className={`${inter.variable} ${fraunces.variable}`}>
       <body className="bg-black text-white min-h-[100svh]">
         {children}
       </body>

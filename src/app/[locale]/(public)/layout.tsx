@@ -2,6 +2,7 @@
 import Image from 'next/image';
 import Script from 'next/script';
 import AuthScopeFlag from '@/components/AuthScopeFlag'; // ⬅ Import des Clients
+import BootSplashLottie from '@/components/BootSplashLottie';
 
 type PublicLayoutProps = {
   children: React.ReactNode;
@@ -37,9 +38,12 @@ export default async function PublicLayout({ children, params }: PublicLayoutPro
           id="boot-splash-lottie"
           className="mt-6 w-[260px] sm:w-[320px] h-[180px] sm:h-[220px]"
         />
-      </div>
 
-      {children}
+        <BootSplashLottie />
+
+        </div>
+
+        {children}
 
       <Script id="boot-splash-script" strategy="afterInteractive">
         {`

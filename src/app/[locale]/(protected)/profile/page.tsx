@@ -306,7 +306,7 @@ async function deactivateAccountAction() {
   jar2.set('next-auth.session-token', '', expire);
   jar2.set('__Secure-next-auth.session-token', '', expire);
   jar2.delete(ACTIVE_COOKIE_NAME);
-  redirect('/signin');
+  redirect('/welcome');
 }
 
 /**
