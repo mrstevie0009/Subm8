@@ -131,7 +131,7 @@ export default function LandingPage() {
       <nav className="lp-nav">
         <div className="lp-wrap lp-nav-in">
           <div className="lp-logo">
-            <Image src="/Sub m8.png" alt="Subm8" width={120} height={32} priority className="lp-logo-img" />
+            <Image src="/subm8-logo.png" alt="Subm8" width={120} height={32} priority className="lp-logo-img" />
           </div>
           <div className="lp-toggle" role="tablist" aria-label={t('toggle.aria')}>
             <span className="lp-pill" aria-hidden="true" />
