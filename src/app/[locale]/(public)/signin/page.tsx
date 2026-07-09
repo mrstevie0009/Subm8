@@ -331,7 +331,7 @@ export default function SignInPage() {
                   className="inline-block"
                 >
                   <Image
-                    src="/Sub m8.png"
+                    src="/subm8-logo.png"
                     alt={`${tc('brand.name')} logo`}
                     width={240}
                     height={80}

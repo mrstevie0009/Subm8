@@ -26,7 +26,7 @@ export default async function PublicLayout({ children, params }: PublicLayoutPro
         aria-hidden
       >
         <Image
-          src="/Sub m8.png"
+          src="/subm8-logo.png"
           alt="Subm8 Logo"
           width={240}
           height={72}

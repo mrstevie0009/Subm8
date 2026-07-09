@@ -460,8 +460,8 @@ export default function LandingPage() {
                 <h4>{t('footer.legal')}</h4>
                 <a onClick={() => openLegal('terms')}>{t('footer.terms')}</a>
                 <a onClick={() => openLegal('privacy')}>{t('footer.privacy')}</a>
-                <Link href={`/${locale}/legal/impressum`}>{t('footer.imprint')}</Link>
-                <Link href={`/${locale}/legal/age-verification`}>{t('footer.age')}</Link>
+                <a onClick={() => openLegal('imprint')}>{t('footer.imprint')}</a>
+                <a onClick={() => openLegal('age')}>{t('footer.age')}</a>
               </div>
               <div className="lp-foot-col">
                 <h4>{t('footer.account')}</h4>
