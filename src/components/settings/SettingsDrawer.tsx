@@ -337,14 +337,29 @@ export default function SettingsDrawer({ open, onClose }: Props) {
     borderRight: '1px solid rgba(255,255,255,0.10)',
     transform: show ? 'translateX(0)' : 'translateX(-100%)',
     transition: 'transform 220ms ease',
-    padding: '20px 16px',
-    paddingBottom: 'calc(env(safe-area-inset-bottom) + 20px)',
+
+    paddingTop: 20,
+    paddingLeft: 16,
+    paddingRight: 16,
+
+    /*
+    * Platz für BottomNav + zusätzlichen Abstand.
+    * --bottomnav-h ist bereits in globals.css definiert.
+    */
+    paddingBottom: 'calc(var(--bottomnav-h, 84px) + 24px)',
+
     overflowY: 'auto',
     overflowX: 'hidden',
     overscrollBehavior: 'contain',
     WebkitOverflowScrolling: 'touch',
     touchAction: 'pan-y',
     willChange: 'transform',
+
+    /* Firefox */
+    scrollbarWidth: 'none',
+
+    /* ältere Edge-/IE-Versionen */
+    msOverflowStyle: 'none',
   };
 
 async function smartSignOut() {
@@ -386,6 +401,7 @@ async function smartSignOut() {
       aria-hidden={!open}
     >
       <aside
+        className="no-scrollbar"
         style={panelStyle}
         onMouseDown={(e) => e.stopPropagation()}
         onTouchStart={(e) => e.stopPropagation()}
@@ -559,7 +575,7 @@ async function smartSignOut() {
           <button
             type="button"
             onClick={() => void smartSignOut()}
-            className="w-full text-left px-4 py-3 rounded-lg hover:bg-white/[.06]"
+            className="mb-4 w-full text-left px-4 py-3 rounded-lg hover:bg-white/[.06]"
             style={{ color: 'rgba(255,255,255,0.85)' }}
           >
             {t('signOut')}
