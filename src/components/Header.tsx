@@ -542,10 +542,10 @@ export default function Header({ locale }: { locale: string }) {
           className="justify-self-center flex items-center -translate-y-[2px]"
         >
           <Image
-            src="/logo.svg"
+            src="/Icon.png"
             alt="Subm8 Logo"
-            width={80}
-            height={80}
+            width={35}
+            height={35}
             priority
             className="select-none"
           />

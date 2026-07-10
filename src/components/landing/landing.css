@@ -28,7 +28,19 @@
 @keyframes lp-float1{0%,100%{transform:translate(0,0)}50%{transform:translate(-40px,50px)}}
 @keyframes lp-float2{0%,100%{transform:translate(0,0)}50%{transform:translate(50px,-40px)}}
 
-.lp-nav{position:sticky;top:0;z-index:50;backdrop-filter:blur(14px);background:rgba(9,9,11,.72);border-bottom:1px solid var(--lp-border)}
+.lp-nav{
+  position:sticky;
+  top:0;
+  z-index:100;
+  width:100%;
+
+  background:#000;
+  border-bottom:1px solid var(--lp-border);
+
+  /* verhindert, dass Inhalte beim Scrollen durchscheinen */
+  backdrop-filter:none;
+  -webkit-backdrop-filter:none;
+}
 .lp-nav-in{display:flex;align-items:center;justify-content:space-between;height:68px;gap:16px}
 .lp-logo{font-family:var(--font-fraunces,serif);font-size:26px;font-weight:500;letter-spacing:-.01em}
 .lp-logo b{color:var(--lp-accent);font-weight:500;transition:color 1.1s ease}
@@ -179,3 +191,19 @@
 
 /* Akzent-Wort in Überschriften (via i18n-HTML eingefügt) */
 .lp-root .lp-em{font-style:italic;color:var(--lp-accent);transition:color 1.1s ease}
+
+.lp-toggle-wrap{
+  position:relative;
+  z-index:20;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  width:100%;
+  margin-top:18px;
+  padding:0 24px;
+}
+
+.lp-toggle-wrap .lp-toggle{
+  flex:none;
+  margin:0 auto;
+}

@@ -129,29 +129,68 @@ export default function LandingPage() {
 
       {/* NAV */}
       <nav className="lp-nav">
-        <div className="lp-wrap lp-nav-in">
-          <div className="lp-logo">
-            <Image src="/subm8-logo.png" alt="Subm8" width={120} height={32} priority className="lp-logo-img" />
-          </div>
-          <div className="lp-toggle" role="tablist" aria-label={t('toggle.aria')}>
-            <span className="lp-pill" aria-hidden="true" />
-            <button type="button" data-set="sub" role="tab" onClick={() => switchMode('sub')}>
-              {t('toggle.sub')}
-            </button>
-            <button type="button" data-set="domme" role="tab" onClick={() => switchMode('domme')}>
-              {t('toggle.domme')}
-            </button>
-          </div>
-          <div className="lp-nav-cta">
-            <Link href={signin} className="lp-btn lp-btn-ghost">
-              {t('nav.signin')}
-            </Link>
-            <Link href={signup} className="lp-btn lp-btn-primary">
-              {t('nav.signup')}
-            </Link>
+        <div className="lp-wrap">
+          <div className="lp-nav-in">
+            <div className="lp-logo">
+              <Image
+                src="/subm8-logo.png"
+                alt="Subm8"
+                width={120}
+                height={32}
+                priority
+                className="lp-logo-img"
+              />
+            </div>
+
+            <div className="lp-logo">
+              <Image
+                src="/Icon.png"
+                alt="Subm8"
+                width={50}
+                height={32}
+                priority
+                className="lp-logo-img"
+              />
+            </div>
+
+            <div className="lp-nav-cta">
+              <Link href={signin} className="lp-btn lp-btn-ghost">
+                {t('nav.signin')}
+              </Link>
+
+              <Link href={signup} className="lp-btn lp-btn-primary">
+                {t('nav.signup')}
+              </Link>
+            </div>
           </div>
         </div>
       </nav>
+
+      <div className="lp-toggle-wrap">
+        <div
+          className="lp-toggle"
+          role="tablist"
+          aria-label={t('toggle.aria')}
+        >
+          <span className="lp-pill" aria-hidden="true" />
+
+          <button
+            type="button"
+            role="tab"
+            onClick={() => switchMode('sub')}
+          >
+            {t('toggle.sub')}
+          </button>
+
+          <button
+            type="button"
+            role="tab"
+            onClick={() => switchMode('domme')}
+          >
+            {t('toggle.domme')}
+          </button>
+        </div>
+      </div>
 
       {/* HERO */}
       <header className="lp-hero">
