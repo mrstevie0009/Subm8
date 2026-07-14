@@ -207,3 +207,73 @@
   flex:none;
   margin:0 auto;
 }
+/* ================= Scroll-3D-Szene (Figuren) ================= */
+.lp-scene{position:fixed;inset:0;z-index:0;pointer-events:none}
+.lp-scene canvas{display:block;width:100%!important;height:100%!important}
+
+/* Platzhalter statt Phone-Mockups im Hero (Figur liegt fix dahinter) */
+.lp-visual-scene{pointer-events:none}
+
+/* Lesbarkeits-Scrim: leichter Verlauf hinter dem Hero-Text */
+.lp-hero::before{
+  content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;
+  background:linear-gradient(90deg,rgba(0,0,0,.55),transparent 55%);
+}
+@media(max-width:900px){
+  .lp-hero::before{background:linear-gradient(180deg,rgba(0,0,0,.55),transparent 70%)}
+}
+
+/* Karten etwas deckender, damit Text über der Figur ruhig bleibt */
+.lp-root .lp-feat,.lp-root .lp-step,.lp-root .lp-hl{
+  background:rgba(12,12,16,.72);
+  backdrop-filter:blur(6px);
+  -webkit-backdrop-filter:blur(6px);
+}
+
+/* ================= Lesbarkeit über der 3D-Szene ================= */
+
+/* Muted-Töne etwas heller für mehr Kontrast */
+.lp-root{ --lp-muted:rgba(255,255,255,.78); --lp-muted-2:rgba(255,255,255,.58); }
+
+/* Weiche Schatten unter Headlines & Fließtext — macht Text über allem lesbar */
+.lp-root .lp-display,
+.lp-root .lp-sec-eyebrow,
+.lp-root .lp-hero-sub,
+.lp-root .lp-sec-sub,
+.lp-root .lp-final p{
+  text-shadow:0 1px 3px rgba(0,0,0,.85), 0 4px 18px rgba(0,0,0,.6);
+}
+
+/* Sektions-Köpfe bekommen einen weichen dunklen Hof hinter sich */
+.lp-sec-head{position:relative}
+.lp-sec-head::before{
+  content:"";position:absolute;inset:-28px -60px;z-index:-1;border-radius:32px;
+  background:radial-gradient(ellipse at center, rgba(6,6,9,.72), rgba(6,6,9,.35) 60%, transparent 78%);
+  filter:blur(6px);
+}
+
+/* Safety-Chips: deckend statt durchscheinend */
+.lp-root .lp-chip{
+  background:rgba(10,10,14,.82);
+  backdrop-filter:blur(8px);
+  -webkit-backdrop-filter:blur(8px);
+  border-color:rgba(255,255,255,.16);
+  text-shadow:0 1px 2px rgba(0,0,0,.7);
+}
+
+/* Final-Card: dunklere Basis unter dem Verlauf */
+.lp-root .lp-final-card{
+  background:
+    linear-gradient(160deg,color-mix(in srgb,var(--lp-accent) 14%,transparent),transparent),
+    rgba(9,9,12,.78);
+  backdrop-filter:blur(8px);
+  -webkit-backdrop-filter:blur(8px);
+}
+
+/* Footer: eigener Hintergrund, damit das Model dahinter verschwindet */
+.lp-root .lp-footer{
+  background:linear-gradient(180deg, rgba(8,8,10,.55), rgba(8,8,10,.95) 30%);
+  backdrop-filter:blur(10px);
+  -webkit-backdrop-filter:blur(10px);
+}
+.lp-foot-col a{text-shadow:0 1px 2px rgba(0,0,0,.6)}

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useLocale, useTranslations } from 'next-intl';
 import LegalModal, { type LegalTab } from './LegalModal';
+import LandingScrollScene from './LandingScrollScene';
 import './landing.css';
 
 type Mode = 'sub' | 'domme';
@@ -52,12 +53,10 @@ export default function LandingPage() {
     }, 1120);
   }
 
-  // ---- Scroll-Reveal + Hero-Parallax ----
+  // ---- Scroll-Reveal ----
   React.useEffect(() => {
     const root = rootRef.current;
     if (!root) return;
-
-    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     const io = new IntersectionObserver(
       (entries) => {
@@ -76,22 +75,8 @@ export default function LandingPage() {
       io.observe(el);
     });
 
-    let onMove: ((e: MouseEvent) => void) | null = null;
-    if (!reduce) {
-      onMove = (e: MouseEvent) => {
-        const x = e.clientX / window.innerWidth - 0.5;
-        const y = e.clientY / window.innerHeight - 0.5;
-        const main = root.querySelector<HTMLElement>('.lp-phone-main');
-        const back = root.querySelector<HTMLElement>('.lp-phone-back');
-        if (main) main.style.translate = `${x * 14}px ${y * 14}px`;
-        if (back) back.style.translate = `${x * -10}px ${y * -10}px`;
-      };
-      window.addEventListener('mousemove', onMove);
-    }
-
     return () => {
       io.disconnect();
-      if (onMove) window.removeEventListener('mousemove', onMove);
     };
   }, []);
 
@@ -110,6 +95,9 @@ export default function LandingPage() {
         <div className="lp-orb lp-orb-1" />
         <div className="lp-orb lp-orb-2" />
       </div>
+
+      {/* Scroll-getriebene 3D-Figur */}
+      <LandingScrollScene mode={mode} />
 
       {/* Diagonal wipe overlay */}
       {wipeTo && (
@@ -167,26 +155,14 @@ export default function LandingPage() {
       </nav>
 
       <div className="lp-toggle-wrap">
-        <div
-          className="lp-toggle"
-          role="tablist"
-          aria-label={t('toggle.aria')}
-        >
+        <div className="lp-toggle" role="tablist" aria-label={t('toggle.aria')}>
           <span className="lp-pill" aria-hidden="true" />
 
-          <button
-            type="button"
-            role="tab"
-            onClick={() => switchMode('sub')}
-          >
+          <button type="button" role="tab" data-set="sub" onClick={() => switchMode('sub')}>
             {t('toggle.sub')}
           </button>
 
-          <button
-            type="button"
-            role="tab"
-            onClick={() => switchMode('domme')}
-          >
+          <button type="button" role="tab" data-set="domme" onClick={() => switchMode('domme')}>
             {t('toggle.domme')}
           </button>
         </div>
@@ -232,98 +208,8 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* Phones */}
-          <div className="lp-visual">
-            {/* SUB-Sicht */}
-            <div className="lp-phone lp-phone-back m-sub">
-              <div className="lp-screen">
-                <div className="lp-sc-head">
-                  <div className="lp-sc-ava" />
-                  <div>
-                    <div className="lp-sc-name">Mistress V.</div>
-                    <div className="lp-sc-status">Online</div>
-                  </div>
-                </div>
-                <div className="lp-bubbles">
-                  <div className="lp-bub lp-bub-in">{t('phones.sub.back.in')}</div>
-                  <div className="lp-bub lp-bub-out">{t('phones.sub.back.out')}</div>
-                </div>
-                <div className="lp-tip">
-                  <div className="lp-lbl">{t('phones.sub.back.lbl')}</div>
-                  <div className="lp-amt">
-                    25 €<small> / {t('common.week')}</small>
-                  </div>
-                  <div className="lp-paid">✓ {t('phones.sub.back.paid')}</div>
-                </div>
-              </div>
-            </div>
-            <div className="lp-phone lp-phone-main m-sub">
-              <div className="lp-screen">
-                <div className="lp-sc-head">
-                  <div className="lp-sc-ava" />
-                  <div>
-                    <div className="lp-sc-name">Lady Noir</div>
-                    <div className="lp-sc-status">Online</div>
-                  </div>
-                </div>
-                <div className="lp-bubbles">
-                  <div className="lp-bub lp-bub-in">{t('phones.sub.main.in1')}</div>
-                  <div className="lp-bub lp-bub-out">{t('phones.sub.main.out')}</div>
-                  <div className="lp-bub lp-bub-in">{t('phones.sub.main.in2')}</div>
-                </div>
-                <div className="lp-tip">
-                  <div className="lp-lbl">{t('phones.sub.main.lbl')}</div>
-                  <div className="lp-amt">120,00 €</div>
-                  <div className="lp-paid">✓ 14:42 · {t('common.paid')}</div>
-                </div>
-              </div>
-            </div>
-
-            {/* DOMME-Sicht */}
-            <div className="lp-phone lp-phone-back m-domme">
-              <div className="lp-screen">
-                <div className="lp-sc-head">
-                  <div className="lp-sc-ava" />
-                  <div>
-                    <div className="lp-sc-name">sub_thomas</div>
-                    <div className="lp-sc-status">Online</div>
-                  </div>
-                </div>
-                <div className="lp-bubbles">
-                  <div className="lp-bub lp-bub-in">{t('phones.domme.back.in')}</div>
-                  <div className="lp-bub lp-bub-out">{t('phones.domme.back.out')}</div>
-                </div>
-                <div className="lp-tip">
-                  <div className="lp-lbl">{t('phones.domme.back.lbl')}</div>
-                  <div className="lp-amt">@sub_thomas</div>
-                  <div className="lp-paid">✓ {t('phones.domme.back.paid')}</div>
-                </div>
-              </div>
-            </div>
-            <div className="lp-phone lp-phone-main m-domme">
-              <div className="lp-screen">
-                <div className="lp-sc-head">
-                  <div className="lp-sc-ava" />
-                  <div>
-                    <div className="lp-sc-name">devoted_m</div>
-                    <div className="lp-sc-status">Online</div>
-                  </div>
-                </div>
-                <div className="lp-bubbles">
-                  <div className="lp-bub lp-bub-in">{t('phones.domme.main.in1')}</div>
-                  <div className="lp-bub lp-bub-out">{t('phones.domme.main.out')}</div>
-                  <div className="lp-bub lp-bub-in">{t('phones.domme.main.in2')}</div>
-                </div>
-                <div className="lp-tip">
-                  <div className="lp-lbl">{t('phones.domme.main.lbl')}</div>
-                  <div className="lp-amt">
-                    200,00 €<small> / {t('common.month')}</small>
-                  </div>
-                  <div className="lp-paid">✓ {t('phones.domme.main.paid')}</div>
-                </div>
-              </div>
-            </div>
-          </div>
+          {/* Platz für die 3D-Figur (Canvas liegt fix dahinter) */}
+          <div className="lp-visual lp-visual-scene" aria-hidden="true" />
         </div>
       </header>
 
@@ -358,14 +244,14 @@ export default function LandingPage() {
           <div className="lp-highlight">
             {(['a', 'b', 'c'] as const).map((k) => (
               <div className="lp-hl m-sub lp-reveal" key={`hl-sub-${k}`}>
-                <div className="lp-hl-k">{t(`highlight.sub.${k}.k`)}</div>
+                <div className="lp-hl-k k">{t(`highlight.sub.${k}.k`)}</div>
                 <h3>{t(`highlight.sub.${k}.h`)}</h3>
                 <p>{t(`highlight.sub.${k}.p`)}</p>
               </div>
             ))}
             {(['a', 'b', 'c'] as const).map((k) => (
               <div className="lp-hl m-domme lp-reveal" key={`hl-domme-${k}`}>
-                <div className="lp-hl-k">{t(`highlight.domme.${k}.k`)}</div>
+                <div className="lp-hl-k k">{t(`highlight.domme.${k}.k`)}</div>
                 <h3>{t(`highlight.domme.${k}.h`)}</h3>
                 <p>{t(`highlight.domme.${k}.p`)}</p>
               </div>
@@ -379,8 +265,11 @@ export default function LandingPage() {
         <div className="lp-wrap">
           <div className="lp-sec-head lp-reveal">
             <div className="lp-sec-eyebrow">{t('features.eyebrow')}</div>
-            <h2 className="lp-display" style={{ fontSize: 'clamp(32px,4vw,46px)' }}
-              dangerouslySetInnerHTML={{ __html: t.raw('features.title') }} />
+            <h2
+              className="lp-display"
+              style={{ fontSize: 'clamp(32px,4vw,46px)' }}
+              dangerouslySetInnerHTML={{ __html: t.raw('features.title') }}
+            />
             <p className="lp-sec-sub">
               <span className="m-sub">{t('features.sub.sub')}</span>
               <span className="m-domme">{t('features.sub.domme')}</span>
@@ -406,8 +295,11 @@ export default function LandingPage() {
         <div className="lp-wrap">
           <div className="lp-sec-head lp-reveal">
             <div className="lp-sec-eyebrow">{t('how.eyebrow')}</div>
-            <h2 className="lp-display" style={{ fontSize: 'clamp(32px,4vw,46px)' }}
-              dangerouslySetInnerHTML={{ __html: t.raw('how.title') }} />
+            <h2
+              className="lp-display"
+              style={{ fontSize: 'clamp(32px,4vw,46px)' }}
+              dangerouslySetInnerHTML={{ __html: t.raw('how.title') }}
+            />
           </div>
           <div className="lp-steps">
             <div className="lp-step lp-reveal">
@@ -443,8 +335,11 @@ export default function LandingPage() {
         <div className="lp-wrap">
           <div className="lp-sec-head lp-reveal">
             <div className="lp-sec-eyebrow">{t('safety.eyebrow')}</div>
-            <h2 className="lp-display" style={{ fontSize: 'clamp(32px,4vw,46px)' }}
-              dangerouslySetInnerHTML={{ __html: t.raw('safety.title') }} />
+            <h2
+              className="lp-display"
+              style={{ fontSize: 'clamp(32px,4vw,46px)' }}
+              dangerouslySetInnerHTML={{ __html: t.raw('safety.title') }}
+            />
             <p className="lp-sec-sub">{t('safety.sub')}</p>
           </div>
           <div className="lp-safety">
