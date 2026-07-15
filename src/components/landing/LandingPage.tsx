@@ -132,7 +132,7 @@ export default function LandingPage() {
 
             <div className="lp-logo">
               <Image
-                src="/Icon.png"
+                src="/logo-bigger.png"
                 alt="Subm8"
                 width={50}
                 height={32}
