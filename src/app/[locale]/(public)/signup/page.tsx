@@ -522,11 +522,23 @@ export default function SignupStartPage() {
         <Card className="rounded-2xl bg-[rgba(162,89,255,0.12)] backdrop-blur-xl ring-1 ring-white/20 shadow-[0_8px_30px_rgba(0,0,0,.35)] overflow-hidden">
           <CardContent
             className="p-5 sm:p-6 md:p-8 pt-3 sm:pt-1 md:pt-2
-                      bg-[rgba(0,0,0,0.7)]
                       overflow-visible"
           >
             {/* Header + Logo */}
             <div className="text-center mb-6 sm:mb-8">
+                          <div className="flex justify-center mb-1 sm:mb-2">
+                            <Image
+                              src="/logo-bigger.png"
+                              alt={`${tc('brand.name')} logo`}
+                              width={120}
+                              height={36}
+                              priority
+                              className="h-7 sm:h-8 w-auto drop-shadow-md"
+                            />
+                          </div>
+              <p className="text-white/80 mb-1 sm:mb-2 text-[13px] sm:text-base">
+                {t('welcome', { brand: tc('brand.name') })}
+              </p>
               <div className="mb-1 sm:mb-2">
                 <Link
                   href={`/${locale}/welcome`}
@@ -544,16 +556,6 @@ export default function SignupStartPage() {
                   />
                 </Link>
               </div>
-              <p className="text-white/80 mb-1 sm:mb-2 text-[13px] sm:text-base">
-                {t('welcome', { brand: tc('brand.name') })}
-              </p>
-              <Link
-                href={`/${locale}`}
-                prefetch={false}
-                className="text-white text-2xl sm:text-4xl mb-3 sm:mb-4 inline-block font-extrabold leading-tight"
-              >
-                {tc('brand.name')}
-              </Link>
 
               {isOAuthPending && oauthEmail && (
                 <div className="mb-4 rounded-xl border border-blue-300/40 bg-blue-300/15 p-3 text-[13px] sm:text-sm text-blue-100">
@@ -703,7 +705,7 @@ export default function SignupStartPage() {
                 <label className="mt-4 flex items-start gap-2 text-[13px] sm:text-sm text-white/90">
                   <input
                     type="checkbox"
-                    className="accent-[var(--purple)] mt-[3px]"
+                    className="accent-[var(--purple)] mt-[9px]"
                     checked={agree}
                     onChange={(e) => {
                       const checked = e.target.checked;
@@ -718,7 +720,7 @@ export default function SignupStartPage() {
                     {tAccount('agree').split('Terms')[0]}
                     <button
                       type="button"
-                      className="underline text-purple-100 hover:text-white px-1 py-1 rounded-md active:bg-white/10"
+                      className="underline text-purple-100 hover:text-white py-1 rounded-md active:bg-white/10"
                       onClick={() => {
                         setLegalTab('terms');
                         setLegalOpen(true);
@@ -729,7 +731,7 @@ export default function SignupStartPage() {
                     {tAccount('agree').split('Terms')[1]?.split('Privacy Policy')[0] ?? ' & '}
                     <button
                       type="button"
-                      className="underline text-purple-100 hover:text-white px-1 py-1 rounded-md active:bg-white/10"
+                      className="underline text-purple-100 hover:text-white py-1 rounded-md active:bg-white/10"
                       onClick={() => {
                         setLegalTab('privacy');
                         setLegalOpen(true);
@@ -751,12 +753,6 @@ export default function SignupStartPage() {
                     {t('errors.dommeDisclaimerRequired')}
                   </div>
                 )}
-              </div>
-
-              {/* Kein Button — Enter im Username-Feld triggert onSubmit */}
-              <div className="text-center text-[11px] sm:text-xs text-white/60">
-                {t('enterToContinue')}&nbsp;
-                <kbd className="px-1 py-0.5 rounded border border-white/20">Enter</kbd>.
               </div>
             </form>
 

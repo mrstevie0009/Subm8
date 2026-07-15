@@ -306,7 +306,6 @@ export default function SignInPage() {
         <Card className="rounded-2xl bg-[rgba(162,89,255,0.12)] backdrop-blur-xl ring-1 ring-white/20 shadow-[0_8px_30px_rgba(0,0,0,.35)] overflow-visible">
           <CardContent
             className="p-5 sm:p-6 md:p-8 pt-3 sm:pt-1 md:pt-2
-                      bg-[rgba(0,0,0,0.7)]
                       overflow-visible"
           >
             <div className="text-center mb-6 sm:mb-8">
