@@ -1,82 +1,72 @@
 {
   "landing": {
-    "toggle": { "aria": "Elegir vista", "sub": "Soy Sub", "domme": "Soy Domme" },
+    "toggle": { "aria": "Elige la vista", "sub": "Soy Sub", "domme": "Soy Domme" },
     "nav": { "signin": "Iniciar sesión", "signup": "Registrarse" },
     "common": { "week": "semana", "month": "mes", "paid": "Pagado" },
     "hero": {
-      "eyebrow": { "sub": "Dominación financiera es tu devoción", "domme": "Dominación financiera es tu reinado" },
-      "title": { "sub": "Sirve. <span class=\"lp-em\">Sin condiciones.</span>", "domme": "Domina. <span class=\"lp-em\">Gana.</span>" },
+      "eyebrow": { "sub": "PLATAFORMA SOCIAL FINDOM", "domme": "PLATAFORMA SOCIAL FINDOM" },
+      "title": { "sub": "Sirve. <span class=\"lp-em\">Sin condiciones.</span>", "domme": "Reina. <span class=\"lp-em\">Gana.</span>" },
       "sub": {
-        "sub": "Encuentra a la Ama que te exige más. Muestra tu devoción en moneda real — con control total del gasto, con discreción y seguridad.",
-        "domme": "Construye tu presencia, marca tus reglas y deja fluir la devoción — con control total sobre cada euro."
+        "sub": "Únete a la comunidad Findom de más rápido crecimiento del mundo, encuentra a tu Mistress y demuestra tu devoción con tributos reales",
+        "domme": "Crea tu perfil Findom, haz crecer tu audiencia, recibe tributos y convierte tu dominación en ingresos recurrentes."
       },
-      "cta": { "sub": "Registrarse como Sub", "domme": "Registrarse como Domme" },
-      "trust": "Discreto · Edad verificada · Pagos seguros con Stripe"
-    },
-    "phones": {
-      "sub": {
-        "back": { "in": "De rodillas. Muéstrame cuánto valgo para ti. 👑", "out": "Sí, Ama. Enseguida.", "lbl": "AutoDrain activo", "paid": "Próximo cobro lun." },
-        "main": { "in1": "Buen Sub. Por eso, una foto. 🔥", "out": "Gracias, Ama. ¿Puedo dar más?", "in2": "Siempre.", "lbl": "Tributo enviado" }
-      },
-      "domme": {
-        "back": { "in": "Ama, ¿puedo llevar tu perfil de Ownership? 🙏", "out": "Te lo has ganado. Aceptado.", "lbl": "Ownership concedido", "paid": "El perfil lleva tu marca" },
-        "main": { "in1": "Firmaré el contrato, Ama.", "out": "Bien. 200 € al mes. Vinculante.", "in2": "Gracias, Ama. 🖤", "lbl": "Contrato de deuda activo", "paid": "Firmado · vinculante" }
-      }
+      "cta": { "sub": "Regístrate como Sub", "domme": "Regístrate como Domme" },
+      "trust": "Discreto · Verificación de edad · Pagos seguros con Stripe"
     },
     "marquee": { "tributes": "Tributos", "autodrain": "AutoDrain", "ownership": "Ownership", "contracts": "Contratos", "premium": "Premium", "chats": "Chats privados", "communities": "Comunidades" },
     "highlight": {
-      "eyebrow": { "sub": "Por qué los Subs eligen Subm8", "domme": "Por qué las Dommes eligen Subm8" },
+      "eyebrow": { "sub": "Por qué los Subs Findom eligen Subm8", "domme": "Por qué las Dommes Findom eligen Subm8" },
       "title": { "sub": "Tu devoción, <span class=\"lp-em\">tus límites</span>", "domme": "Tus reglas, <span class=\"lp-em\">tus ingresos</span>" },
       "sub": {
-        "a": { "k": "Límite", "h": "Control del gasto", "p": "Marca tus límites — por semana o mes. Subm8 avisa y bloquea antes de que vayas demasiado lejos." },
-        "b": { "k": "100%", "h": "Discreto", "p": "Sin nombre real. Tu identidad queda protegida, tu devoción privada." },
+        "a": { "k": "Presupuesto", "h": "Control de gastos", "p": "Define tus límites — por semana o por mes. Subm8 te avisa y bloquea antes de que vayas demasiado lejos." },
+        "b": { "k": "100 %", "h": "Discreto", "p": "No necesitas tu nombre real. Tu identidad queda protegida, tu devoción en privado." },
         "c": { "k": "Claro", "h": "Cada pago visible", "p": "Historial completo con estado: enviado, en proceso, pagado. Nunca a ciegas." }
       },
       "domme": {
-        "a": { "k": "100%", "h": "Tributo íntegro", "p": "Recibes el importe base completo. La comisión la paga el Sub aparte." },
-        "b": { "k": "Auto", "h": "Ingresos recurrentes", "p": "AutoDrain cobra automáticamente — a diario, semanal, mensual. Ingresos pasivos." },
-        "c": { "k": "Directo", "h": "Retiro a tu cuenta", "p": "Estado de retiro transparente, de solicitado a pagado. Siempre trazable." }
+        "a": { "k": "100 %", "h": "Tributo completo", "p": "Recibes el importe base completo. La comisión de la plataforma la paga el Sub aparte." },
+        "b": { "k": "Auto", "h": "Gana de forma recurrente", "p": "AutoDrain cobra automáticamente — a diario, semanal o mensual. Ingresos pasivos." },
+        "c": { "k": "Directo", "h": "Pago a tu cuenta", "p": "Estado de pago transparente, de solicitado a pagado. Siempre trazable." }
       }
     },
     "features": {
-      "eyebrow": "Qué ofrece Subm8",
+      "eyebrow": "Todo lo que necesita una plataforma Findom moderna",
       "title": "Todo para la <span class=\"lp-em\">dinámica de poder</span>",
-      "sub": { "sub": "Herramientas que hacen tu devoción real y segura.", "domme": "Herramientas que hacen posible el control real y los ingresos reales." },
+      "sub": { "sub": "Todo lo que necesitas para explorar el Findom con seguridad, servir a tu Mistress y gestionar tu devoción.", "domme": "Todo lo que necesitas para construir tu negocio Findom, recibir tributos y hacer crecer tu audiencia." },
       "items": {
-        "tributes": { "h": "Tributos y propinas", "sub": "Muestra tu devoción con un regalo directo de dinero — un clic, enviado al instante.", "domme": "Recibe regalos directos con un desglose claro — el importe completo es tuyo." },
-        "autodrain": { "h": "AutoDrain", "sub": "Da automáticamente — a diario, semanal, mensual. Cancela cuando quieras, con resumen de costes.", "domme": "Tributos recurrentes que fluyen solos. Ingresos pasivos y previsibles." },
-        "ownership": { "h": "Ownership", "sub": "Lleva el perfil que tu Ama diseña para ti — visible para todos como señal de pertenencia.", "domme": "Diseña el perfil de tu Sub. Si acepta, lleva tu marca — visible para todos." },
-        "contracts": { "h": "Contratos", "sub": "Contratos vinculantes de Deuda y Blackmail hacen tu sumisión seria y trazable.", "domme": "Establece contratos vinculantes de Deuda y Blackmail — la dinámica de poder en reglas claras." },
-        "chats": { "h": "Chats privados", "sub": "Una línea directa con tu Ama — con solicitudes de propina y medios en la conversación.", "domme": "Mantén la línea directa con tus Subs — con solicitudes de propina y medios en el chat." },
-        "communities": { "h": "Comunidades", "sub": "Únete a salas cerradas, encuentra afines y aprende de Subs con experiencia.", "domme": "Crea tus propias comunidades — solo Dommes o mixtas. Amplía tu alcance." },
-        "premium": { "h": "Insignias Premium", "sub": "Muestra tu estatus con insignias exclusivas y destaca entre otros Subs.", "domme": "Insignias y ventajas exclusivas que muestran tu estatus premium de un vistazo." },
-        "banners": { "h": "Banners animados", "sub": "Pon en escena tu perfil con un GIF o vídeo — movimiento que llama la atención.", "domme": "Preséntate con un banner GIF o vídeo en lugar de una imagen fija — destaca en el feed." },
+        "tributes": { "h": "Tributos y propinas", "sub": "Demuestra tu devoción con un regalo directo de dinero — un clic, enviado al instante.", "domme": "Recibe regalos directos con un desglose claro — el importe completo es tuyo." },
+        "autodrain": { "h": "AutoDrain", "sub": "Da automáticamente — a diario, semanal o mensual. Cancela cuando quieras, con resumen de costes.", "domme": "Tributos recurrentes que fluyen automáticamente. Ingresos pasivos y predecibles." },
+        "ownership": { "h": "Ownership", "sub": "Lleva el perfil que tu Mistress diseña para ti — visible para todos como señal de pertenencia.", "domme": "Diseña el perfil de tu Sub. Si acepta, llevará tu marca — visible públicamente." },
+        "contracts": { "h": "Contratos", "sub": "Los contratos vinculantes de Debt y Blackmail hacen tu sumisión seria y trazable.", "domme": "Establece contratos vinculantes de Debt y Blackmail — la dinámica de poder en reglas claras." },
+        "chats": { "h": "Chats privados", "sub": "Una línea directa con tu Mistress — con solicitudes de propina y medios en la conversación.", "domme": "Mantén la línea directa con tus Subs — con solicitudes de propina y medios en el chat." },
+        "communities": { "h": "Comunidades", "sub": "Únete a comunidades Findom privadas, descubre nuevas Mistresses y conoce Subs afines.", "domme": "Crea comunidades Findom privadas, atrae Subs leales y haz crecer tu audiencia." },
+        "premium": { "h": "Insignias Premium", "sub": "Desbloquea insignias exclusivas y ventajas de perfil que muestran tu dedicación.", "domme": "Desbloquea insignias premium y ventajas exclusivas, y destaca en toda la plataforma." },
+        "banners": { "h": "Banners animados", "sub": "Dale vida a tu perfil con un banner animado en GIF o vídeo.", "domme": "Dale vida a tu perfil con banners animados que captan la atención al instante." },
         "safe": { "h": "Discreto y seguro", "sub": "Verificación de edad, pagos seguros, sin nombre real. Tu privacidad sigue siendo tuya.", "domme": "La verificación de edad y los pagos seguros con Stripe te protegen a ti y a tus ingresos." }
       }
     },
     "how": {
       "eyebrow": "En tres pasos",
-      "title": "Cómo <span class=\"lp-em\">empiezas</span>",
-      "s1": { "h": "Regístrate y verifica", "p": "Regístrate gratis, elige tu rol, confirma tu edad. Discreto y listo en minutos." },
-      "s2": { "h": "Conecta", "sub": "Descubre Dommes, inicia un chat privado y encuentra a tu Ama.", "domme": "Hazte visible, recibe mensajes y construye tu base de Subs." },
-      "s3": { "h_sub": "Vive tu devoción", "h_domme": "Vive tu reinado", "sub": "Envía tributos, configura AutoDrain, lleva Ownership — pagado con seguridad.", "domme": "Recibe tributos, establece contratos, retira tus ingresos — todo trazable." }
+      "title": "Cómo <span class=\"lp-em\">empezar</span>",
+      "s1": { "h": "Regístrate y verifícate", "p": "Regístrate gratis, elige tu rol, confirma tu edad. Discreto y listo en minutos." },
+      "s2": { "h": "Conecta", "sub": "Descubre Dommes, inicia un chat privado y encuentra a tu Mistress.", "domme": "Hazte visible, recibe mensajes y construye tu base de Subs." },
+      "s3": { "h_sub": "Vive tu devoción", "h_domme": "Vive tu reinado", "sub": "Envía tributos, configura AutoDrain, lleva el Ownership — con pagos seguros.", "domme": "Recibe tributos, establece contratos, cobra tus pagos — todo trazable." }
     },
     "safety": {
-      "eyebrow": "La confianza primero",
+      "eyebrow": "Tu privacidad importa",
       "title": "Construido sobre la <span class=\"lp-em\">seguridad</span>",
-      "sub": "El Findom vive de la confianza. Por eso Subm8 es seguro desde su base.",
-      "chips": { "age": "Verificación de edad", "stripe": "Pagos con Stripe", "anon": "Sin nombre real", "budget": "Control de gasto", "payouts": "Retiros transparentes", "history": "Historial completo de transacciones" }
+      "sub": "Las mejores experiencias Findom se basan en la confianza. Por eso Subm8 protege tu privacidad, tu identidad y tus pagos desde la base.",
+      "chips": { "age": "Verificación de edad", "stripe": "Pagos con Stripe", "anon": "Sin nombre real", "budget": "Control de presupuesto", "payouts": "Pagos transparentes", "history": "Historial completo de transacciones" }
     },
     "final": {
-      "title": { "sub": "¿Listo para <span class=\"lp-em\">servir</span>?", "domme": "¿Lista para <span class=\"lp-em\">dominar</span>?" },
-      "p": { "sub": "Encuentra a tu Ama y muestra tu devoción. Empieza gratis, en minutos.", "domme": "Construye tus ingresos con control real. Empieza gratis, en minutos." }
+      "title": { "sub": "¿Listo para <span class=\"lp-em\">servir</span>?", "domme": "¿Lista para <span class=\"lp-em\">reinar</span>?" },
+      "p": { "sub": "Únete a la comunidad Findom, encuentra a tu Mistress y empieza a servir hoy mismo.", "domme": "Haz crecer tu presencia Findom, recibe tributos y genera ingresos recurrentes." }
     },
     "footer": {
-      "tagline": "La plataforma de Findom para el mundo. Discreta, segura, sin concesiones.",
+      "tagline": "El hogar del Findom moderno y la dominación financiera. Discreto, seguro, sin concesiones.",
       "platform": "Plataforma", "legal": "Legal", "account": "Cuenta",
       "terms": "Términos", "privacy": "Privacidad", "imprint": "Aviso legal", "age": "Verificación de edad",
       "copyright": "© 2026 Subm8. Todos los derechos reservados.",
-      "adults": "Solo adultos. Contenido para mayores de 18 años."
+      "adults": "Solo para adultos. Contenido para mayores de 18 años."
     }
   }
 }

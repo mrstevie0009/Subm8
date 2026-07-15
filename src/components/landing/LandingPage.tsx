@@ -119,18 +119,18 @@ export default function LandingPage() {
       <nav className="lp-nav">
         <div className="lp-wrap">
           <div className="lp-nav-in">
-            <div className="lp-logo">
+            <div className="lp-logo lp-logo-text">
               <Image
                 src="/subm8-logo.png"
                 alt="Subm8"
                 width={120}
                 height={32}
                 priority
-                className="lp-logo-img"
+                className="lp-logo-text-img"
               />
             </div>
 
-            <div className="lp-logo">
+            <div className="lp-logo lp-logo-mark">
               <Image
                 src="/logo-bigger.png"
                 alt="Subm8"
@@ -172,28 +172,19 @@ export default function LandingPage() {
       <header className="lp-hero">
         <div className="lp-wrap lp-hero-grid">
           <div>
+            <h1 className="lp-display" style={{ fontSize: 'clamp(44px,5.6vw,74px)', marginBottom: 22 }}>
+              <span className="m-sub" dangerouslySetInnerHTML={{ __html: t.raw('hero.title.sub') }} />
+              <span className="m-domme" dangerouslySetInnerHTML={{ __html: t.raw('hero.title.domme') }} />
+            </h1>
             <span className="lp-eyebrow">
               <span className="lp-dot" />
               <span className="m-sub">{t('hero.eyebrow.sub')}</span>
               <span className="m-domme">{t('hero.eyebrow.domme')}</span>
             </span>
-            <h1 className="lp-display" style={{ fontSize: 'clamp(44px,5.6vw,74px)', marginBottom: 22 }}>
-              <span className="m-sub" dangerouslySetInnerHTML={{ __html: t.raw('hero.title.sub') }} />
-              <span className="m-domme" dangerouslySetInnerHTML={{ __html: t.raw('hero.title.domme') }} />
-            </h1>
             <p className="lp-hero-sub">
               <span className="m-sub">{t('hero.sub.sub')}</span>
               <span className="m-domme">{t('hero.sub.domme')}</span>
             </p>
-            <div className="lp-hero-cta">
-              <Link href={signup} className="lp-btn lp-btn-primary lp-btn-lg">
-                <span className="m-sub">{t('hero.cta.sub')}</span>
-                <span className="m-domme">{t('hero.cta.domme')}</span>
-              </Link>
-              <Link href={signin} className="lp-btn lp-btn-ghost lp-btn-lg">
-                {t('nav.signin')}
-              </Link>
-            </div>
             <div className="lp-trust">
               <span className="lp-trust-ico">
                 <svg fill="none" viewBox="0 0 24 24" strokeWidth="1.8">
