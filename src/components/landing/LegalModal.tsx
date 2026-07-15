@@ -26,20 +26,54 @@ export default function LegalModal({
   const tAge = useTranslations('legal.legal.age');
   const tShared = useTranslations('legal.legal.shared');
 
-  const [tab, setTab] = React.useState<LegalTab>(initialTab);
-  React.useEffect(() => setTab(initialTab), [initialTab, open]);
+    React.useEffect(() => {
+      if (!open) return;
+
+      const scrollY = window.scrollY;
+      const previousOverflow = document.body.style.overflow;
+      const previousPosition = document.body.style.position;
+      const previousTop = document.body.style.top;
+      const previousWidth = document.body.style.width;
+
+      document.body.style.overflow = 'hidden';
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.width = '100%';
+
+      return () => {
+        document.body.style.overflow = previousOverflow;
+        document.body.style.position = previousPosition;
+        document.body.style.top = previousTop;
+        document.body.style.width = previousWidth;
+
+        window.scrollTo(0, scrollY);
+      };
+    }, [open]);
 
   const updatedStr = new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(new Date());
+  const articleClass =
+    'prose prose-invert prose-sm sm:prose-base max-w-none ' +
+    'prose-headings:text-white prose-p:text-white/80 prose-li:text-white/80';
+
+  const titleClass =
+    'mt-0 mb-3 !text-3xl sm:!text-4xl !font-semibold !leading-tight tracking-tight text-white';
+
+  const subtitleClass =
+    'mt-0 mb-2 !text-base sm:!text-lg !leading-relaxed text-white/65';
+
+  const updatedClass =
+    'mt-0 mb-8 !text-xs sm:!text-sm !leading-normal uppercase tracking-[0.08em] text-white/45';
 
   if (!open) return null;
 
-  const tabs: { id: LegalTab; label: string }[] = [
-    { id: 'terms', label: tTerms('title') },
-    { id: 'privacy', label: tPrivacy('title') },
-    { id: 'imprint', label: tImprint('title') },
-    { id: 'age', label: tAge('title') },
-  ];
-  const activeLabel = tabs.find((x) => x.id === tab)?.label ?? '';
+  const activeLabel =
+    initialTab === 'terms'
+      ? tTerms('title')
+      : initialTab === 'privacy'
+        ? tPrivacy('title')
+        : initialTab === 'imprint'
+          ? tImprint('title')
+          : tAge('title');
 
   return (
     <div
@@ -50,40 +84,46 @@ export default function LegalModal({
       onKeyDown={(e) => e.key === 'Escape' && onClose()}
     >
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-3xl rounded-2xl bg-[#101014] ring-1 ring-white/15 shadow-[0_8px_40px_rgba(0,0,0,.5)] overflow-hidden">
-        {/* Tab-Leiste: bricht bei Bedarf um (kein horizontales Scrollen) */}
-        <div className="flex items-start justify-between gap-3 px-4 sm:px-6 pt-5">
-          <div className="flex flex-wrap gap-1.5 rounded-2xl bg-black/30 p-1.5 ring-1 ring-white/10">
-            {tabs.map((x) => (
-              <button
-                key={x.id}
-                type="button"
-                onClick={() => setTab(x.id)}
-                className={`px-3.5 py-1.5 text-[13px] sm:text-sm rounded-full transition ${
-                  tab === x.id ? 'bg-white/20 text-white' : 'text-white/70 hover:text-white/90'
-                }`}
-              >
-                {x.label}
-              </button>
-            ))}
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="shrink-0 text-white/70 hover:text-white transition p-2"
-            title="Close"
-          >
-            ✕
-          </button>
-        </div>
+      <div
+        className="
+          relative
+          w-full
+          max-w-3xl
+          overflow-hidden
+          rounded-3xl
+          border
+          border-white/10
+          bg-[#101014]
+          shadow-[0_24px_80px_rgba(0,0,0,.72)]
+        "
+      >
+        <div
+          className="
+            max-h-[82svh]
+            overflow-y-auto
+            overscroll-contain
+            px-5
+            pb-8
+            pt-7
+            sm:px-8
+            sm:pt-8
+          "
+        >
+          {initialTab === 'terms' && (
+            <article className={articleClass}>
+              <header className="mb-8 border-b border-white/10 pb-6">
+                <h1 className={titleClass}>
+                  {tTerms('title')}
+                </h1>
 
-        <div className="max-h-[70svh] overflow-y-auto px-6 pb-6 pt-4">
-          {tab === 'terms' && (
-            <article className="prose prose-invert prose-sm sm:prose-base max-w-none">
-              <h1 className="mt-0">{tTerms('title')}</h1>
-              <p className="text-white/70 -mt-3">{tTerms('subtitle')}</p>
-              <p className="text-xs text-white/60">{tShared('updated')}: {updatedStr}</p>
+                <p className={subtitleClass}>
+                  {tTerms('subtitle')}
+                </p>
+
+                <p className={updatedClass}>
+                  {tShared('updated')}: {updatedStr}
+                </p>
+              </header>
               <h3 className="font-bold">{tTerms('sections.scope')}</h3>
               <p>{tTerms('content.p_scope')}</p>
               <h3 className="font-bold">{tTerms('sections.audience')}</h3>
@@ -108,11 +148,21 @@ export default function LegalModal({
             </article>
           )}
 
-          {tab === 'privacy' && (
-            <article className="prose prose-invert prose-sm sm:prose-base max-w-none">
-              <h1 className="mt-0">{tPrivacy('title')}</h1>
-              <p className="text-white/70 -mt-3">{tPrivacy('subtitle')}</p>
-              <p className="text-xs text-white/60">{tShared('updated')}: {updatedStr}</p>
+          {initialTab === 'privacy' && (
+            <article className={articleClass}>
+              <header className="mb-8 border-b border-white/10 pb-6">
+                <h1 className={titleClass}>
+                  {tPrivacy('title')}
+                </h1>
+
+                <p className={subtitleClass}>
+                  {tPrivacy('subtitle')}
+                </p>
+
+                <p className={updatedClass}>
+                  {tShared('updated')}: {updatedStr}
+                </p>
+              </header>
               <h3 className="font-bold">{tPrivacy('sections.controller')}</h3>
               <p>{tPrivacy('content.p_controller')}</p>
               <h3 className="font-bold">{tPrivacy('sections.data')}</h3>
@@ -132,25 +182,75 @@ export default function LegalModal({
             </article>
           )}
 
-          {tab === 'imprint' && (
-            <article className="prose prose-invert prose-sm sm:prose-base max-w-none">
-              <h1 className="mt-0">{tImprint('title')}</h1>
-              <p className="text-white/70 -mt-3">{tImprint('subtitle')}</p>
-              <p>{tImprint('content.line_1')}</p>
-              <h3 className="font-bold">{tImprint('content.represented_by_label')}</h3>
-              <p>—</p>
-              <h3 className="font-bold">{tImprint('content.contact_label')}</h3>
-              <p>—</p>
-              <h3 className="font-bold">{tImprint('content.vat_label')}</h3>
-              <p>—</p>
-              <p className="text-sm text-white/60">{tImprint('content.adult_note')}</p>
+          {initialTab === 'imprint' && (
+            <article className={articleClass}>
+              <header className="mb-8 border-b border-white/10 pb-6">
+                <h1 className={titleClass}>
+                  {tImprint('title')}
+                </h1>
+
+                <p className={subtitleClass}>
+                  {tImprint('subtitle')}
+                </p>
+
+                <p className={updatedClass}>
+                  {tShared('updated')}: 30.08.2025
+                </p>
+              </header>
+
+              <p className="text-white/80">
+                {tImprint('content.line_1')}
+                <br />
+                Lyncora Media e.U.
+                <br />
+                5020 Salzburg
+                <br />
+                Österreich
+              </p>
+
+              <p className="mt-3">
+                <strong>{tImprint('content.contact_label')}:</strong>{' '}
+                <a
+                  href="mailto:stephan.schmidbauer@subm8.com"
+                  className="break-all text-white underline decoration-white/30 underline-offset-4 hover:decoration-white"
+                >
+                  stephan.schmidbauer@subm8.com
+                </a>
+              </p>
+
+              <p>
+                <strong>{tImprint('content.represented_by_label')}:</strong>{' '}
+                Stephan Schmidbauer
+              </p>
+
+              <p>
+                <strong>{tImprint('content.vat_label')}:</strong>{' '}
+                No VAT according to § 6 para. 1 no. 27 UStG
+              </p>
+
+              <hr className="border-white/15" />
+
+              <p className="text-sm text-white/60">
+                {tImprint('content.adult_note')}
+              </p>
             </article>
           )}
 
-          {tab === 'age' && (
-            <article className="prose prose-invert prose-sm sm:prose-base max-w-none">
-              <h1 className="mt-0">{tAge('title')}</h1>
-              <p className="text-white/70 -mt-3">{tAge('subtitle')}</p>
+          {initialTab === 'age' && (
+            <article className={articleClass}>
+              <header className="mb-8 border-b border-white/10 pb-6">
+                <h1 className={titleClass}>
+                  {tAge('title')}
+                </h1>
+
+                <p className={subtitleClass}>
+                  {tAge('subtitle')}
+                </p>
+
+                <p className={updatedClass}>
+                  {tShared('updated')}: {updatedStr}
+                </p>
+              </header>
               <h3 className="font-bold">{tAge('sections.access')}</h3>
               <p>{tAge('content.p_access')}</p>
               <h3 className="font-bold">{tAge('sections.proof')}</h3>

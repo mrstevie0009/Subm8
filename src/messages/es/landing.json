@@ -4,7 +4,7 @@
     "nav": { "signin": "Iniciar sesión", "signup": "Registrarse" },
     "common": { "week": "semana", "month": "mes", "paid": "Pagado" },
     "hero": {
-      "eyebrow": { "sub": "Dominación financiera — tu devoción", "domme": "Dominación financiera — tu reinado" },
+      "eyebrow": { "sub": "Dominación financiera es tu devoción", "domme": "Dominación financiera es tu reinado" },
       "title": { "sub": "Sirve. <span class=\"lp-em\">Sin condiciones.</span>", "domme": "Domina. <span class=\"lp-em\">Gana.</span>" },
       "sub": {
         "sub": "Encuentra a la Ama que te exige más. Muestra tu devoción en moneda real — con control total del gasto, con discreción y seguridad.",

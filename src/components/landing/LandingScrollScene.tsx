@@ -130,7 +130,10 @@ export default function LandingScrollScene({ mode }: { mode: Mode }) {
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
-    renderer.setSize(window.innerWidth, window.innerHeight);
+    const initialWidth = host.clientWidth || window.innerWidth;
+    const initialHeight = host.clientHeight || window.innerHeight;
+
+    renderer.setSize(initialWidth, initialHeight, false);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.15;
@@ -145,7 +148,12 @@ export default function LandingScrollScene({ mode }: { mode: Mode }) {
     scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
     scene.environmentIntensity = 0.4;
 
-    const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.1, 40);
+    const camera = new THREE.PerspectiveCamera(
+      42,
+      initialWidth / Math.max(initialHeight, 1),
+      0.1,
+      40,
+    );
 
     const ambient = new THREE.AmbientLight(0xffffff, 0.3);
     const key = new THREE.SpotLight(COLORS.sub.accent, 55, 25, Math.PI / 5, 0.45, 1.2);
@@ -221,12 +229,41 @@ export default function LandingScrollScene({ mode }: { mode: Mode }) {
       return max > 0 ? Math.min(1, Math.max(0, window.scrollY / max)) : 0;
     };
 
-    const onResize = () => {
-      camera.aspect = window.innerWidth / window.innerHeight;
+    let lastWidth = window.innerWidth;
+    let lastHeight = host.clientHeight || window.innerHeight;
+
+    const resizeRenderer = (force = false) => {
+      const width = host.clientWidth || window.innerWidth;
+      const height = host.clientHeight || lastHeight;
+
+      /*
+      * Mobile Browser lösen beim Ein-/Ausblenden ihrer Leisten
+      * Resize-Events aus, obwohl sich nur die sichtbare Höhe ändert.
+      *
+      * Solche Height-only-Resizes ignorieren wir.
+      */
+      const widthChanged = Math.abs(width - lastWidth) > 2;
+
+      if (!force && !widthChanged) {
+        return;
+      }
+
+      lastWidth = width;
+      lastHeight = height;
+
+      camera.aspect = width / Math.max(height, 1);
       camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
+
+      renderer.setSize(width, height, false);
     };
+
+    const onResize = () => {
+      resizeRenderer(false);
+    };
+
     window.addEventListener('resize', onResize);
+
+    resizeRenderer(true);
 
     const tick = () => {
       raf = requestAnimationFrame(tick);

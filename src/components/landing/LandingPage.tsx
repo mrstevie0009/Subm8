@@ -343,12 +343,29 @@ export default function LandingPage() {
             <p className="lp-sec-sub">{t('safety.sub')}</p>
           </div>
           <div className="lp-safety">
-            <div className="lp-chip lp-reveal">{t('safety.chips.age')}</div>
-            <div className="lp-chip lp-reveal">{t('safety.chips.stripe')}</div>
-            <div className="lp-chip lp-reveal">{t('safety.chips.anon')}</div>
-            <div className="lp-chip lp-reveal m-sub">{t('safety.chips.budget')}</div>
-            <div className="lp-chip lp-reveal m-domme">{t('safety.chips.payouts')}</div>
-            <div className="lp-chip lp-reveal">{t('safety.chips.history')}</div>
+            <div className="lp-chip lp-chip-age lp-reveal">
+              {t('safety.chips.age')}
+            </div>
+
+            <div className="lp-chip lp-chip-stripe lp-reveal">
+              {t('safety.chips.stripe')}
+            </div>
+
+            <div className="lp-chip lp-chip-anon lp-reveal">
+              {t('safety.chips.anon')}
+            </div>
+
+            <div className="lp-chip lp-chip-role lp-reveal m-sub">
+              {t('safety.chips.budget')}
+            </div>
+
+            <div className="lp-chip lp-chip-role lp-reveal m-domme">
+              {t('safety.chips.payouts')}
+            </div>
+
+            <div className="lp-chip lp-chip-history lp-reveal">
+              {t('safety.chips.history')}
+            </div>
           </div>
         </div>
       </section>
@@ -419,23 +436,198 @@ export default function LandingPage() {
   );
 }
 
-/* Feature-Icons (rein visuell, kein Text) */
+/* =========================================================
+   Feature-Icons
+   Bestehende Website-Icons + neue einheitliche Line-Icons
+========================================================= */
+
 const FEATURES: { key: string; icon: React.ReactNode }[] = [
-  { key: 'tributes', icon: <IconPath d="M12 6v12m-3-2.8c0 1.5 1.3 2.3 3 2.3s3-.8 3-2.3-1.3-2.1-3-2.5-3-1-3-2.5 1.3-2.2 3-2.2 3 .7 3 2.2" /> },
-  { key: 'autodrain', icon: <IconPath d="M4 4v5h.6M20 20v-5h-.6M18.4 9A8 8 0 0 0 5.6 6M5.6 15A8 8 0 0 0 18.4 18" /> },
-  { key: 'ownership', icon: <IconPath d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM12 3l1.5 3 3.3.5-2.4 2.3.6 3.3L12 14l-3 1.6.6-3.3L7.2 9l3.3-.5L12 3z" /> },
-  { key: 'contracts', icon: <IconPath d="M9 12h6m-6 4h4m1-11H8a2 2 0 0 0-2 2v13a1 1 0 0 0 1.5.9L12 19l4.5 1.9A1 1 0 0 0 18 20V7a2 2 0 0 0-2-2z" /> },
-  { key: 'chats', icon: <IconPath d="M8 12h8M8 8h8m-8 8h5m4-10v10a2 2 0 0 1-2 2H7l-4 3V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2z" /> },
-  { key: 'communities', icon: <IconPath d="M17 20h5v-2a4 4 0 0 0-3-3.9M9 20H4v-2a4 4 0 0 1 3-3.9m10-4a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM7 10a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" /> },
-  { key: 'premium', icon: <IconPath d="M12 3l2.4 5 5.6.7-4 3.9 1 5.5L12 20.6 7 18l1-5.5-4-3.9L9.6 8 12 3z" /> },
-  { key: 'banners', icon: <IconPath d="M3 5h18v14H3V5zm7 3.5v7l6-3.5-6-3.5z" /> },
-  { key: 'safe', icon: <IconPath d="M12 2l8 4v6c0 5-3.4 8.5-8 10-4.6-1.5-8-5-8-10V6l8-4z" /> },
+  {
+    key: 'tributes',
+    icon: <LandingTipIcon />,
+  },
+  {
+    key: 'autodrain',
+    icon: <AutoDrainIcon />,
+  },
+  {
+    key: 'ownership',
+    icon: <OwnershipIcon />,
+  },
+  {
+    key: 'contracts',
+    icon: <ContractIcon />,
+  },
+  {
+    key: 'chats',
+    icon: <LandingChatIcon />,
+  },
+  {
+    key: 'communities',
+    icon: <CommunityIcon />,
+  },
+  {
+    key: 'premium',
+    icon: <PremiumIcon />,
+  },
+  {
+    key: 'banners',
+    icon: <BannerIcon />,
+  },
+  {
+    key: 'safe',
+    icon: <SafetyIcon />,
+  },
 ];
 
-function IconPath({ d }: { d: string }) {
+type FeatureIconProps = React.SVGProps<SVGSVGElement>;
+
+const lineIconProps = {
+  viewBox: '0 0 24 24',
+  fill: 'none',
+  stroke: 'currentColor',
+  strokeWidth: 1.8,
+  strokeLinecap: 'round' as const,
+  strokeLinejoin: 'round' as const,
+  'aria-hidden': true,
+};
+
+/*
+ * Dasselbe Dollar-/Tip-Symbol, das du bereits
+ * im ProfileHeader verwendest.
+ */
+function LandingTipIcon(props: FeatureIconProps) {
   return (
-    <svg fill="none" viewBox="0 0 24 24" strokeWidth="1.8">
-      <path strokeLinecap="round" strokeLinejoin="round" d={d} />
+    <svg
+      viewBox="0 0 50 50"
+      fill="currentColor"
+      aria-hidden
+      {...props}
+    >
+      <g transform="translate(24 25) scale(1.45) translate(-25 -25)">
+        <path d="M24 14v2.1875c-1.6016.1992-4.5 1.6016-4.5 5 0 6.3984 9.3125 3.1055 9.3125 7.9063 0 1.6015-.7109 3.0937-3.8125 3.0937S21 29.8008 21 28.5h-2c.3008 4.3008 3.3008 5.293 5 5.5938V36h2v-1.9062c1.5-.1016 5-1.1875 5-5.1875 0-3.3008-2.7109-4.211-5.3125-4.8125-2.1016-.5-4-1-4-3.0938 0-.8984.4063-2.9062 3.4063-2.9062 2.1015 0 3.1054 1.3046 3.4062 2.9062h2c-.6016-2.1992-1.6016-4.1875-4.5-4.6875V14Z" />
+      </g>
+    </svg>
+  );
+}
+
+/*
+ * AutoDrain:
+ * Wiederkehrender Kreislauf mit einem kleinen Pfeil.
+ */
+function AutoDrainIcon(props: FeatureIconProps) {
+  return (
+    <svg {...lineIconProps} {...props}>
+      <path d="M10 15.5C9.3627 16.603 8.99715 17 7.49786 17C5.49881 17 3 15.4038 3 12.7143C3 9.71425 4.72398 8.00004 7.49786 8C12.058 7.99993 11.496 17 16.4936 17C19.5997 17 20.8679 14.9635 20.9914 12.7143C21.122 10.3382 19.7654 8 16.4936 8C14.4945 8 14.1091 8.42857 13.5 9.5" />
+    </svg>
+  );
+}
+
+/*
+ * Ownership:
+ * Halsband/Collar mit Ring – klarer als der bisherige Stern.
+ */
+function OwnershipIcon(props: FeatureIconProps) {
+  return (
+    <svg {...lineIconProps} {...props}>
+      {/* O-Ring */}
+      <circle cx="12" cy="10" r="5.2" />
+
+      {/* Anhänger */}
+      <line x1="12" y1="15.2" x2="12" y2="16.6" />
+      <circle cx="12" cy="18.5" r="2.3" />
+    </svg>
+  );
+}
+
+/*
+ * Contracts:
+ * Dokument mit Text und Unterschrift.
+ */
+function ContractIcon(props: FeatureIconProps) {
+  return (
+    <svg {...lineIconProps} {...props}>
+      <path d="M7 3.5h7l3 3V20a1.5 1.5 0 0 1-1.5 1.5h-8A1.5 1.5 0 0 1 6 20V5A1.5 1.5 0 0 1 7.5 3.5Z" />
+      <path d="M14 3.5V7h3" />
+      <path d="M9 10h5" />
+      <path d="M9 13h5" />
+      <path d="M9 16h5" />
+    </svg>
+  );
+}
+
+/*
+ * Dasselbe Chat-Grundsymbol wie auf deiner Website,
+ * aber sauber auf die Feature-Karte skaliert.
+ */
+function LandingChatIcon(props: FeatureIconProps) {
+  return (
+    <svg
+      viewBox="0 0 50 50"
+      fill="currentColor"
+      aria-hidden
+      {...props}
+    >
+      <path d="M43 8H7c-2.7578 0-5 2.2422-5 5v24c0 2.7578 2.2422 5 5 5h4.1406c.3399 2.8945-.5156 4.8594-2.6562 6.1445-.3828.2305-.5664.6914-.4492 1.1211C8.1562 49.6992 8.5508 50 9 50c2.5586 0 8.707-.7969 11.6836-8H43c2.7578 0 5-2.2422 5-5V13c0-2.7578-2.2422-5-5-5ZM15 27a2 2 0 1 1 0-4 2 2 0 0 1 0 4Zm10 0a2 2 0 1 1 0-4 2 2 0 0 1 0 4Zm10 0a2 2 0 1 1 0-4 2 2 0 0 1 0 4Z" />
+    </svg>
+  );
+}
+
+/*
+ * Communities:
+ * Drei Personen statt des schwer erkennbaren alten Symbols.
+ */
+function CommunityIcon(props: FeatureIconProps) {
+  return (
+    <svg {...lineIconProps} {...props}>
+      <circle cx="12" cy="8" r="3" />
+      <circle cx="5.5" cy="10" r="2.2" />
+      <circle cx="18.5" cy="10" r="2.2" />
+
+      <path d="M7 20v-1.2A4.8 4.8 0 0 1 11.8 14h.4a4.8 4.8 0 0 1 4.8 4.8V20" />
+      <path d="M2.5 19v-.8a3.7 3.7 0 0 1 3.7-3.7" />
+      <path d="M21.5 19v-.8a3.7 3.7 0 0 0-3.7-3.7" />
+    </svg>
+  );
+}
+
+/*
+ * Premium:
+ * Badge-Sechseck mit Stern.
+ */
+function PremiumIcon(props: FeatureIconProps) {
+  return (
+    <svg {...lineIconProps} {...props}>
+      <path d="m12 2.8 2.3 1.5 2.8-.1.9 2.7 2.3 1.6-.9 2.6.9 2.7-2.3 1.6-.9 2.7-2.8-.1-2.3 1.5-2.3-1.5-2.8.1-.9-2.7-2.3-1.6.9-2.7-.9-2.6L6 6.9l.9-2.7 2.8.1L12 2.8Z" />
+      <path d="m12 7.4 1.2 2.4 2.7.4-2 1.9.5 2.7-2.4-1.3-2.4 1.3.5-2.7-2-1.9 2.7-.4L12 7.4Z" />
+    </svg>
+  );
+}
+
+/*
+ * Animated Banners:
+ * Bildschirm mit Play-Symbol und Bewegungslinien.
+ */
+function BannerIcon(props: FeatureIconProps) {
+  return (
+    <svg {...lineIconProps} {...props}>
+      <rect x="3" y="5" width="18" height="13" rx="2" />
+      <path d="m10 9 5 2.5-5 2.5V9Z" />
+      <path d="M8 21h8" />
+      <path d="M12 18v3" />
+    </svg>
+  );
+}
+
+/*
+ * Sicherheit:
+ * Schild mit Häkchen.
+ */
+function SafetyIcon(props: FeatureIconProps) {
+  return (
+    <svg {...lineIconProps} {...props}>
+      <path d="M12 3 20 6.5v5.2c0 4.8-3.1 8.1-8 9.8-4.9-1.7-8-5-8-9.8V6.5L12 3Z" />
+      <path d="m8.5 12 2.2 2.2 4.8-5" />
     </svg>
   );
 }
