@@ -134,8 +134,8 @@ export default function LandingPage() {
               <Image
                 src="/logo-bigger.png"
                 alt="Subm8"
-                width={50}
-                height={32}
+                width={60}
+                height={40}
                 priority
                 className="lp-logo-img"
               />
