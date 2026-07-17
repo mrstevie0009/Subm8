@@ -23,6 +23,11 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 
+import { preload } from 'react-dom';
+
+preload('/models/submissiv-guy-kneeling.glb', { as: 'fetch', crossOrigin: 'anonymous' });
+preload('/models/dominant-woman-whip.glb', { as: 'fetch', crossOrigin: 'anonymous' });
+
 type Mode = 'sub' | 'domme';
 
 /* ============ HIER anpassen ============ */
@@ -199,6 +204,7 @@ export default function LandingScrollScene({ mode }: { mode: Mode }) {
       (gltf) => {
         prepareModel(gltf.scene, MODELS.sub.targetHeight, MODELS.sub.rotationY);
         subGroup.add(gltf.scene);
+        subLoaded = true;
       },
       undefined,
       (err) => console.warn(`[LandingScrollScene] ${MODELS.sub.url} konnte nicht geladen werden:`, err),
@@ -208,6 +214,7 @@ export default function LandingScrollScene({ mode }: { mode: Mode }) {
       (gltf) => {
         prepareModel(gltf.scene, MODELS.domme.targetHeight, MODELS.domme.rotationY);
         dommeGroup.add(gltf.scene);
+        dommeLoaded = true;
       },
       undefined,
       (err) => console.warn(`[LandingScrollScene] ${MODELS.domme.url} konnte nicht geladen werden:`, err),
@@ -215,6 +222,8 @@ export default function LandingScrollScene({ mode }: { mode: Mode }) {
 
     /* ---- Animations-State ---- */
     let fade = mode === 'domme' ? 1 : 0;
+    let subIntro = 0, subLoaded = false;
+    let dommeIntro = 0, dommeLoaded = false;
     let progress = 0;
     const accent = new THREE.Color(mode === 'domme' ? COLORS.domme.accent : COLORS.sub.accent);
     const fogColor = new THREE.Color(mode === 'domme' ? COLORS.domme.bg : COLORS.sub.bg);
@@ -283,8 +292,10 @@ export default function LandingScrollScene({ mode }: { mode: Mode }) {
       ringMat.color.copy(accent);
       ringMat.emissive.copy(accent);
 
-      setGroupOpacity(subGroup, 1 - fade);
-      setGroupOpacity(dommeGroup, fade);
+      subIntro += ((subLoaded ? 1 : 0) - subIntro) * Math.min(1, dt * 2.5);
+      dommeIntro += ((dommeLoaded ? 1 : 0) - dommeIntro) * Math.min(1, dt * 2.5);
+      setGroupOpacity(subGroup, (1 - fade) * subIntro);
+      setGroupOpacity(dommeGroup, fade * dommeIntro);
 
       const y =
         THREE.MathUtils.lerp(CAM.sub.yStart, CAM.sub.yEnd, progress) * (1 - fade) +
