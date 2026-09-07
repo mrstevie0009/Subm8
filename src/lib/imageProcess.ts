@@ -33,56 +33,89 @@ export async function processImage(
     return { data: input, mime: 'image/gif', ext: '.gif' };
   }
 
-  // sharp dynamisch importieren (robust für ESM und CJS), ohne "any"
-  type SharpModule = typeof import('sharp');
-  let sharpFactory: SharpModule;
+  // sharp dynamisch importieren
+  type SharpFactory = typeof import('sharp');
+
+  let sharpFactory: SharpFactory;
+
   try {
-    const mod = (await import('sharp')) as unknown;
-    sharpFactory = (mod as { default?: SharpModule }).default ?? (mod as SharpModule);
+    const mod = await import('sharp');
+    const sharpModule = mod as typeof import('sharp') & {
+      default?: SharpFactory;
+    };
+    sharpFactory = sharpModule.default ?? sharpModule;
   } catch {
     // Fallback: keine Verarbeitung, nur zurückgeben
     return mapBypass(input, mime);
   }
 
-  let img = sharpFactory(input, { failOn: 'none' }).rotate(); // Auto-rotate gemäß EXIF
+  let img = sharpFactory(input, { failOn: 'none' }).rotate();
 
-  // Resize nur wenn größer als max
   const { maxW, maxH } = opts;
-  img = img.resize({ width: maxW, height: maxH, fit: 'inside', withoutEnlargement: true });
 
-  // Standard: strippen (== true), nur behalten wenn explizit false
+  img = img.resize({
+    width: maxW,
+    height: maxH,
+    fit: 'inside',
+    withoutEnlargement: true,
+  });
+
   const preserveMetadata = opts.stripMetadata === false;
-  const quality = Number.isFinite(opts.quality) ? (opts.quality as number) : 82;
+  const quality = Number.isFinite(opts.quality)
+    ? (opts.quality as number)
+    : 82;
 
-  const toBuf = () => (preserveMetadata ? img.withMetadata().toBuffer() : img.toBuffer());
+  const toBuf = () =>
+    preserveMetadata
+      ? img.withMetadata().toBuffer()
+      : img.toBuffer();
 
   if (opts.convertToWebP) {
     img = img.webp({ quality });
     const data = await toBuf();
-    return { data, mime: 'image/webp', ext: '.webp' };
+
+    return {
+      data,
+      mime: 'image/webp',
+      ext: '.webp',
+    };
   }
 
-  // Behalte Ursprungsformat (jpg/png/webp)
   switch (mime) {
     case 'image/jpeg': {
       img = img.jpeg({ quality });
       const data = await toBuf();
-      return { data, mime: 'image/jpeg', ext: '.jpg' };
+
+      return {
+        data,
+        mime: 'image/jpeg',
+        ext: '.jpg',
+      };
     }
+
     case 'image/png': {
-      // PNG: optional kann quality (0-100) für Quantisierung genutzt werden
       img = img.png({ quality });
       const data = await toBuf();
-      return { data, mime: 'image/png', ext: '.png' };
+
+      return {
+        data,
+        mime: 'image/png',
+        ext: '.png',
+      };
     }
+
     case 'image/webp': {
       img = img.webp({ quality });
       const data = await toBuf();
-      return { data, mime: 'image/webp', ext: '.webp' };
+
+      return {
+        data,
+        mime: 'image/webp',
+        ext: '.webp',
+      };
     }
   }
 
-  // Unbekanntes Bildformat sollte hier nicht landen – fallback:
   return mapBypass(input, mime);
 }
 
