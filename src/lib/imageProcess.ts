@@ -34,16 +34,26 @@ export async function processImage(
   }
 
   // sharp dynamisch importieren
-  type SharpFactory = typeof import('sharp');
+  type SharpInstance = import('sharp').Sharp;
+
+  type SharpFactory = (
+    input: Buffer,
+    options?: {
+      failOn?: 'none' | 'warning' | 'error' | 'truncated';
+    }
+  ) => SharpInstance;
 
   let sharpFactory: SharpFactory;
 
   try {
     const mod = await import('sharp');
-    const sharpModule = mod as typeof import('sharp') & {
-      default?: SharpFactory;
-    };
-    sharpFactory = sharpModule.default ?? sharpModule;
+
+    const candidate =
+      'default' in mod && mod.default
+        ? mod.default
+        : mod;
+
+    sharpFactory = candidate as unknown as SharpFactory;
   } catch {
     // Fallback: keine Verarbeitung, nur zurückgeben
     return mapBypass(input, mime);
