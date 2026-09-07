@@ -365,7 +365,6 @@ export default function EditProfileForm({
     };
   }, [avatarPreview, bannerPreview, cropSrc, bannerCropSrc]);
 
-  const bannerH = 'clamp(160px, 26vw, 260px)';
   const avatarSize = 96;
   const avatarOverlap = 0.0;
 
@@ -389,7 +388,7 @@ export default function EditProfileForm({
 
       {/* Banner + Avatar */}
       <div className="relative">
-        <div className="relative overflow-hidden" style={{ height: bannerH }}>
+        <div className="relative w-full aspect-[3/1] overflow-hidden">
           {bannerIsVideo ? (
             <video
               src={bannerPreview}

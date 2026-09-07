@@ -181,8 +181,7 @@ export default function ProfileHeader({
   const b = useTranslations('common');
   const t = useTranslations('settings.settings');
 
-  const AVATAR_BIG   = 'clamp(88px, 18vw, 136px)';
-  const BANNER_H     = 'clamp(160px, 26vw, 260px)';
+  const AVATAR_BIG   = 'clamp(60px, 18vw, 100px)';
 
   const [bannerSrc, setBannerSrc] = React.useState<string>(cdnify(profile.bannerUrl) || BANNER_PH);
   const [avatarSrc, setAvatarSrc] = React.useState<string>(cdnify(profile.avatarUrl) || AVATAR_PH);
@@ -248,9 +247,13 @@ export default function ProfileHeader({
     return () => io.disconnect();
   }, []);
 
-  type CSSVars = React.CSSProperties & { ['--avatar']?: string; ['--bannerH']?: string };
-  const rootVars: CSSVars = { ['--avatar']: AVATAR_BIG, ['--bannerH']: BANNER_H };
+  type CSSVars = React.CSSProperties & {
+    ['--avatar']?: string;
+  };
 
+  const rootVars: CSSVars = {
+    ['--avatar']: AVATAR_BIG,
+  };
   // ---------- Icons ----------
   function DotIcon(props: React.SVGProps<SVGSVGElement>) {
     return (
@@ -941,71 +944,92 @@ export default function ProfileHeader({
         )
       }
 
-      {/* Banner */}
-      <div className="relative" style={{ height: 'var(--bannerH)' }}>
-        <div className={`absolute inset-0 bg-white/10 ${bannerLoaded ? 'opacity-0' : 'opacity-100'} transition-opacity`} />
-        {isVideoUrl(bannerSrc) ? (
-          <video
-            src={bannerSrc}
-            className="absolute inset-0 w-full h-full object-cover"
-            autoPlay
-            muted
-            loop
-            playsInline
-            preload="metadata"
-            onLoadedData={() => setBannerLoaded(true)}
-            onError={() => setBannerSrc(BANNER_PH)}
-          />
-        ) : (
-          <Image
-            src={bannerSrc}
-            alt=""
-            fill
-            className="object-cover"
-            sizes="100vw"
-            priority
-            placeholder="blur"
-            blurDataURL={BLUR_PIXEL}
-            onLoad={() => setBannerLoaded(true)}
-            onError={() => setBannerSrc(BANNER_PH)}
-            fetchPriority="high"
-            decoding="async"
-          />
-        )}
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/30 via-black/0 to-black/35" />
-        <div className="absolute top-2 left-2 z-10 flex items-center gap-2">
-        <BackButton
-          fallbackHref={`/${locale}`}
-          ariaLabel="Back"
-          className="inline-flex items-center justify-center size-9 rounded-full border border-white/15
-                    bg-black/40 backdrop-blur hover:bg-black/60 text-white"
-        />
+      {/* Banner + overlapping Avatar */}
+      <div className="relative w-full aspect-[3/1] overflow-visible">
 
-        <Chip tone="purple" size="lg">
-          {profile.role === 'domme' ? 'Domme' : 'Sub'}
-        </Chip>
-      </div>
+        {/* Nur das eigentliche Banner wird abgeschnitten */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div
+            className={`absolute inset-0 bg-white/10 ${
+              bannerLoaded ? 'opacity-0' : 'opacity-100'
+            } transition-opacity`}
+          />
+
+          {isVideoUrl(bannerSrc) ? (
+            <video
+              src={bannerSrc}
+              className="absolute inset-0 w-full h-full object-cover"
+              autoPlay
+              muted
+              loop
+              playsInline
+              preload="metadata"
+              onLoadedData={() => setBannerLoaded(true)}
+              onError={() => setBannerSrc(BANNER_PH)}
+            />
+          ) : (
+            <Image
+              src={bannerSrc}
+              alt=""
+              fill
+              className="object-cover"
+              sizes="100vw"
+              priority
+              placeholder="blur"
+              blurDataURL={BLUR_PIXEL}
+              onLoad={() => setBannerLoaded(true)}
+              onError={() => setBannerSrc(BANNER_PH)}
+              fetchPriority="high"
+              decoding="async"
+            />
+          )}
+
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/30 via-black/0 to-black/35" />
+        </div>
+
+        {/* Banner controls */}
+        <div className="absolute top-2 left-2 z-10 flex items-center gap-2">
+          <BackButton
+            fallbackHref={`/${locale}`}
+            ariaLabel="Back"
+            className="inline-flex items-center justify-center size-9 rounded-full border border-white/15
+                      bg-black/40 backdrop-blur hover:bg-black/60 text-white"
+          />
+
+          <Chip tone="purple" size="lg">
+            {profile.role === 'domme' ? 'Domme' : 'Sub'}
+          </Chip>
+        </div>
+
         <div className="absolute top-2 right-2 z-10">
           <MoreMenu />
         </div>
 
-        {/* Avatar am Banner andocken (halb überlappend) */}
+        {/* Avatar darf jetzt aus dem Banner herausragen */}
         <div
-          className="absolute left-4 bottom-0 translate-y-[42%] z-20"
+          className="absolute left-4 bottom-0 translate-y-1/2 z-20"
           style={{ width: 'var(--avatar)' }}
         >
           <div className="inline-block w-fit rounded-full p-[2px] bg-gradient-to-br from-[var(--purple)]/70 via-fuchsia-500/50 to-sky-400/50">
             <div
               className="relative rounded-full overflow-hidden bg-white/10 ring-1 ring-white/20 shadow-[0_6px_30px_-10px_rgba(0,0,0,.8)]"
-              style={{ width: 'var(--avatar)', height: 'var(--avatar)' }}
+              style={{
+                width: 'var(--avatar)',
+                height: 'var(--avatar)',
+              }}
             >
               <div
-                className={`absolute inset-0 bg-white/10 ${avatarLoaded ? 'opacity-0' : 'opacity-100'} transition-opacity`}
+                className={`absolute inset-0 bg-white/10 ${
+                  avatarLoaded ? 'opacity-0' : 'opacity-100'
+                } transition-opacity`}
                 aria-hidden
               />
+
               <Image
                 src={avatarSrc}
-                alt={`${profile.displayName} avatar (${profile.role === 'domme' ? 'Domme' : 'Sub'})`}
+                alt={`${profile.displayName} avatar (${
+                  profile.role === 'domme' ? 'Domme' : 'Sub'
+                })`}
                 fill
                 className="object-cover"
                 sizes="(min-width:1024px) 136px, (min-width:640px) 104px, 88px"

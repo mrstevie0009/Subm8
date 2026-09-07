@@ -118,6 +118,44 @@ function phys(opts: THREE.MeshPhysicalMaterialParameters, baseOpacity = 1) {
   return m;
 }
 
+/* ============ Soft Glow Texture ============ */
+
+function createGlowTexture() {
+  const size = 512;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+
+  const ctx = canvas.getContext('2d');
+
+  if (!ctx) {
+    return new THREE.Texture();
+  }
+
+  const gradient = ctx.createRadialGradient(
+    size / 2,
+    size / 2,
+    0,
+    size / 2,
+    size / 2,
+    size / 2,
+  );
+
+  gradient.addColorStop(0, 'rgba(255,255,255,0.9)');
+  gradient.addColorStop(0.25, 'rgba(255,255,255,0.35)');
+  gradient.addColorStop(0.6, 'rgba(255,255,255,0.08)');
+  gradient.addColorStop(1, 'rgba(255,255,255,0)');
+
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, size, size);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.needsUpdate = true;
+
+  return texture;
+}
+
 /* ============ Banknoten (wie v2) ============ */
 
 /* ============ Komponente ============ */
@@ -173,24 +211,109 @@ export default function LandingScrollScene({ mode }: { mode: Mode }) {
     under.position.set(0, 0.15, 1.3);
     scene.add(ambient, key, key.target, rim, under);
 
-    const floorMat = phys({ color: 0x0a0a0d, roughness: 0.9, metalness: 0.05 });
-    const floor = new THREE.Mesh(new THREE.CircleGeometry(7, 48), floorMat);
-    floor.rotation.x = -Math.PI / 2;
-    floor.receiveShadow = true;
-    scene.add(floor);
-
     const ringMat = phys(
-      { color: COLORS.sub.accent, emissive: COLORS.sub.accent, emissiveIntensity: 0.9, side: THREE.DoubleSide },
+      {
+        color: COLORS.sub.accent,
+        emissive: COLORS.sub.accent,
+        emissiveIntensity: 0.9,
+        side: THREE.DoubleSide,
+      },
       0.35,
     );
-    const ring = new THREE.Mesh(new THREE.RingGeometry(1.15, 1.24, 64), ringMat);
+
+    const ring = new THREE.Mesh(
+      new THREE.RingGeometry(1.15, 1.24, 64),
+      ringMat,
+    );
+
     ring.rotation.x = -Math.PI / 2;
     ring.position.y = 0.012;
     scene.add(ring);
 
+
+    /* =========================================================
+      BACKGROUND DECORATION
+    ========================================================= */
+
+    const backgroundGroup = new THREE.Group();
+    scene.add(backgroundGroup);
+
+
+    /* ---------- 1. Soft glow behind figure ---------- */
+
+    const glowTexture = createGlowTexture();
+
+    const glowMat = new THREE.SpriteMaterial({
+      map: glowTexture,
+      color: COLORS.sub.accent,
+      transparent: true,
+      opacity: 0.16,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+    });
+
+    const glow = new THREE.Sprite(glowMat);
+
+    glow.scale.set(5.8, 5.8, 1);
+    glow.position.set(0, 1.35, -1.3);
+
+    backgroundGroup.add(glow);
+
+
+    
+
+
+    /* ---------- 3. Floating particles ---------- */
+
+    const particleCount = 20;
+
+    const particlePositions = new Float32Array(particleCount * 3);
+
+    for (let i = 0; i < particleCount; i++) {
+      const i3 = i * 3;
+
+      particlePositions[i3] =
+        THREE.MathUtils.randFloatSpread(5.5);
+
+      particlePositions[i3 + 1] =
+        THREE.MathUtils.randFloat(0.2, 3.5);
+
+      /*
+      * Größtenteils hinter der Figur.
+      */
+      particlePositions[i3 + 2] =
+        THREE.MathUtils.randFloat(-2.8, -0.8);
+    }
+
+    const particleGeo = new THREE.BufferGeometry();
+
+    particleGeo.setAttribute(
+      'position',
+      new THREE.BufferAttribute(particlePositions, 3),
+    );
+
+    const particleMat = new THREE.PointsMaterial({
+      color: COLORS.sub.accent,
+      size: 0.035,
+      transparent: true,
+      opacity: 0.26,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+    });
+
+    const particles = new THREE.Points(
+      particleGeo,
+      particleMat,
+    );
+
+    backgroundGroup.add(particles);
+
+
     /* ---- Gruppen ---- */
+
     const subGroup = new THREE.Group();
     const dommeGroup = new THREE.Group();
+
     scene.add(subGroup, dommeGroup);
 
     /* ---- GLB-Modelle laden ---- */
@@ -289,8 +412,14 @@ export default function LandingScrollScene({ mode }: { mode: Mode }) {
       (scene.fog as THREE.Fog).color.copy(fogColor);
       key.color.copy(accent);
       under.color.copy(accent);
+
       ringMat.color.copy(accent);
       ringMat.emissive.copy(accent);
+
+      /* Background decoration */
+      glowMat.color.copy(accent);
+
+      particleMat.color.copy(accent);
 
       subIntro += ((subLoaded ? 1 : 0) - subIntro) * Math.min(1, dt * 2.5);
       dommeIntro += ((dommeLoaded ? 1 : 0) - dommeIntro) * Math.min(1, dt * 2.5);
@@ -307,11 +436,51 @@ export default function LandingScrollScene({ mode }: { mode: Mode }) {
       tmp.lerpVectors(CAM.domme.lookStart, CAM.domme.lookEnd, progress).multiplyScalar(fade);
       look.add(tmp);
 
-      const theta = 0.45 + progress * Math.PI * 2 + (reduce ? t * 0.02 : 0);
-      camera.position.set(Math.sin(theta) * r, y, Math.cos(theta) * r);
+      const theta =
+        0.45 +
+        progress * Math.PI * 2 +
+        (reduce ? t * 0.02 : 0);
+
+      camera.position.set(
+        Math.sin(theta) * r,
+        y,
+        Math.cos(theta) * r,
+      );
+
       const shift = window.innerWidth >= 900 ? -1.05 : 0;
-      camera.lookAt(look.x + shift, look.y, look.z);
-      
+
+      camera.lookAt(
+        look.x + shift,
+        look.y,
+        look.z,
+      );
+
+
+      /* =========================================================
+        Background motion
+      ========================================================= */
+
+      if (!reduce) {
+        /*
+        * Barely visible movement.
+        * Important: don't make this look like an animation effect.
+        */
+
+        particles.rotation.y =
+          Math.sin(t * 0.08) * 0.12;
+
+        particles.position.y =
+          Math.sin(t * 0.25) * 0.05;
+
+        /*
+        * Slightly breathing glow.
+        */
+        glowMat.opacity =
+          0.14 +
+          Math.sin(t * 0.6) * 0.025;
+      }
+
+
       renderer.render(scene, camera);
     };
     tick();

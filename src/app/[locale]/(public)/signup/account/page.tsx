@@ -170,7 +170,7 @@ export default function SignupAccountPage() {
       // fallback (falls du später provider signups hast)
       await signIn('credentials', {
         redirect: true,
-        callbackUrl: `/${locale}`,
+        callbackUrl: `/${locale}/u/${handle}`,
         identifier: isValidEmail(email) ? email : handle,
         password: pw,
       });
@@ -216,7 +216,7 @@ export default function SignupAccountPage() {
 
       // Danach Google OAuth starten
       await signIn('google', {
-        callbackUrl: `/${locale}`,
+        callbackUrl: `/${locale}/u/${handle}`,
       });
     } catch (e) {
       console.error(e);
@@ -565,7 +565,7 @@ export default function SignupAccountPage() {
                     // ✅ verified -> sign in
                     await signIn('credentials', {
                       redirect: true,
-                      callbackUrl: `/${locale}`,
+                      callbackUrl: `/${locale}/u/${handle}`,
                       identifier: email,
                       password: pw,
                     });
